@@ -140,6 +140,8 @@ def _duration_via_ffprobe(ffprobe: str, file_path: str) -> Optional[float]:
             ],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             creationflags=_SUBPROCESS_FLAGS,
         )
         value = result.stdout.strip()
@@ -158,6 +160,8 @@ def _duration_via_ffmpeg(ffmpeg: str, file_path: str) -> Optional[float]:
             [ffmpeg, "-i", file_path],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             creationflags=_SUBPROCESS_FLAGS,
         )
         match = _FFMPEG_DURATION_RE.search(result.stderr)
