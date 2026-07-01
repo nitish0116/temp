@@ -7,6 +7,7 @@ import argparse
 import html
 import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,7 +19,8 @@ from typing import Dict, List, Tuple
 SCRIPT_ARGS = {
     "path": r"D:\wd stuff\WD Software Offline Installers\For Windows\WD Backup\redist\J",
     "output": None,
-    "skip_below_master_avg": "--skip-below-master-avg",
+    #"skip_below_master_avg": "--skip-below-master-avg",
+    "skip_below_master_avg": None,
 }
 
 
@@ -114,7 +116,9 @@ def _collect_folder_summary(root_path: str) -> Dict[str, FolderStats]:
             if _is_video_file(filename):
                 video_paths.append(os.path.join(current_root, filename))
 
+    _log_progress(f"reading durations for {len(video_paths)} video(s)", "start")
     video_durations = _compute_video_durations(video_paths)
+    _log_progress(f"reading durations for {len(video_paths)} video(s)", "end")
 
     total_rows = len(walk_rows)
     for index, (current_root, dirs, files) in enumerate(walk_rows):
@@ -158,9 +162,33 @@ def _collect_folder_summary(root_path: str) -> Dict[str, FolderStats]:
 
 
 def _log_progress(message: str, phase: str) -> None:
-    """Print a simple start/end progress tag for major operations."""
-    tag = "START" if phase.lower() == "start" else "END"
-    print(f"[{tag}] {message}")
+    """Print a start/end progress tag, reporting elapsed time on completion."""
+    if phase.lower() == "start":
+        _log_progress._start_times[message] = time.perf_counter()  # type: ignore[attr-defined]
+        print(f"[START] {message}")
+    else:
+        start = _log_progress._start_times.pop(message, None)  # type: ignore[attr-defined]
+        if start is not None:
+            elapsed = time.perf_counter() - start
+            print(f"[END]   {message} (took {_format_duration(elapsed)})")
+        else:
+            print(f"[END]   {message}")
+
+
+_log_progress._start_times = {}  # type: ignore[attr-defined]
+
+
+def _format_duration(seconds: float) -> str:
+    """Return a human-readable duration string for an elapsed time in seconds."""
+    if seconds < 1.0:
+        return f"{seconds * 1000:.0f} ms"
+    minutes, secs = divmod(seconds, 60.0)
+    hours, minutes = divmod(minutes, 60.0)
+    if hours >= 1:
+        return f"{int(hours)}h {int(minutes)}m {secs:.1f}s"
+    if minutes >= 1:
+        return f"{int(minutes)}m {secs:.1f}s"
+    return f"{secs:.2f}s"
 
 
 def _print_progress_bar(current: int, total: int, prefix: str = "Progress", length: int = 40) -> None:
@@ -512,6 +540,8 @@ def main() -> int:
         print(f"Error: '{target_path}' is not a valid directory.")
         return 1
 
+    overall_start = time.perf_counter()
+
     _log_progress("collecting folder statistics", "start")
     summary = _collect_folder_summary(target_path)
     _log_progress("collecting folder statistics", "end")
@@ -525,6 +555,7 @@ def main() -> int:
     )
     _log_progress("writing HTA summary report", "end")
 
+    print(f"Total time: {_format_duration(time.perf_counter() - overall_start)}")
     print(f"Explorer-clickable HTA report: {output_report_file}")
     print(f"Report link: {_to_file_uri(output_report_file)}")
 
