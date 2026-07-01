@@ -6,12 +6,19 @@ from __future__ import annotations
 import argparse
 import html
 import os
+import re
+import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
+
+
+# Suppress console windows for subprocess calls on Windows.
+_SUBPROCESS_FLAGS = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 # Script-level arguments are checked first. Set any value to None to allow
@@ -63,7 +70,107 @@ def _is_video_file(filename: str) -> bool:
 
 
 def _get_video_duration_seconds(file_path: str) -> float:
-    """Return video duration in seconds when available; otherwise 0.0."""
+    """Return video duration in seconds when available; otherwise 0.0.
+
+    Uses fast metadata probing (ffprobe/ffmpeg) and only falls back to the
+    much slower moviepy loader when no ffmpeg tooling is available.
+    """
+    ffprobe = _find_ffprobe()
+    if ffprobe:
+        duration = _duration_via_ffprobe(ffprobe, file_path)
+        if duration is not None:
+            return duration
+
+    ffmpeg = _find_ffmpeg()
+    if ffmpeg:
+        duration = _duration_via_ffmpeg(ffmpeg, file_path)
+        if duration is not None:
+            return duration
+
+    return _duration_via_moviepy(file_path)
+
+
+@lru_cache(maxsize=1)
+def _find_ffprobe() -> Optional[str]:
+    """Locate an ffprobe executable on PATH or next to the bundled ffmpeg."""
+    from shutil import which
+
+    found = which("ffprobe")
+    if found:
+        return found
+
+    ffmpeg = _find_ffmpeg()
+    if ffmpeg:
+        candidate = os.path.join(os.path.dirname(ffmpeg), "ffprobe.exe" if os.name == "nt" else "ffprobe")
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+@lru_cache(maxsize=1)
+def _find_ffmpeg() -> Optional[str]:
+    """Locate an ffmpeg executable on PATH or the one bundled with imageio."""
+    from shutil import which
+
+    found = which("ffmpeg")
+    if found:
+        return found
+
+    try:
+        import imageio_ffmpeg
+
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return None
+
+
+def _duration_via_ffprobe(ffprobe: str, file_path: str) -> Optional[float]:
+    """Read duration using ffprobe (fast, metadata only)."""
+    try:
+        result = subprocess.run(
+            [
+                ffprobe,
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                file_path,
+            ],
+            capture_output=True,
+            text=True,
+            creationflags=_SUBPROCESS_FLAGS,
+        )
+        value = result.stdout.strip()
+        return float(value) if value else None
+    except Exception:
+        return None
+
+
+_FFMPEG_DURATION_RE = re.compile(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)")
+
+
+def _duration_via_ffmpeg(ffmpeg: str, file_path: str) -> Optional[float]:
+    """Read duration by parsing ffmpeg's metadata output (no decoding)."""
+    try:
+        result = subprocess.run(
+            [ffmpeg, "-i", file_path],
+            capture_output=True,
+            text=True,
+            creationflags=_SUBPROCESS_FLAGS,
+        )
+        match = _FFMPEG_DURATION_RE.search(result.stderr)
+        if not match:
+            return None
+        hours, minutes, seconds = match.groups()
+        return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+    except Exception:
+        return None
+
+
+def _duration_via_moviepy(file_path: str) -> float:
+    """Slow fallback: read duration via moviepy when ffmpeg tooling is absent."""
     try:
         from moviepy import VideoFileClip
     except Exception:
@@ -192,17 +299,29 @@ def _format_duration(seconds: float) -> str:
 
 
 def _print_progress_bar(current: int, total: int, prefix: str = "Progress", length: int = 40) -> None:
-    """Print a console progress bar for long-running operations."""
+    """Print a console progress bar, throttled to reduce stdout overhead."""
     if total <= 0:
         return
 
     current = max(0, min(current, total))
+    # Only redraw when the filled-bar length changes or on the final tick,
+    # so we avoid thousands of stdout flushes for large item counts.
+    completed = int((current / total) * length)
+    last_completed = _print_progress_bar._last.get(prefix)  # type: ignore[attr-defined]
+    if current != total and completed == last_completed:
+        return
+    _print_progress_bar._last[prefix] = completed  # type: ignore[attr-defined]
+
     percent = current / total
-    completed = int(percent * length)
     bar = "#" * completed + "-" * (length - completed)
     print(f"{prefix}: |{bar}| {current}/{total} ({percent * 100:5.1f}%)", end="\r", flush=True)
     if current == total:
+        _print_progress_bar._last.pop(prefix, None)  # type: ignore[attr-defined]
         print()
+
+
+_print_progress_bar._last = {}  # type: ignore[attr-defined]
+
 
 
 def _human_size(size_bytes: float) -> str:
