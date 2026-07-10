@@ -1,0 +1,8 @@
+Proprietary.
+
+This skill and its accompanying documentation are provided for internal use.
+All rights reserved. Redistribution or external publication is not permitted
+without prior written consent from the owner.
+
+No warranty is expressed or implied. The code samples are provided "as is",
+and the user assumes all responsibility for their use.
