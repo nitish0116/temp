@@ -1,0 +1,9 @@
+# Third-party Python packages required by md_to_audio.py
+#
+# Install with:
+#   pip install -r requirements.txt
+#
+# Only the Edge TTS backend requires an external package.
+# The default SAPI backend uses only Python standard library + Windows speech API.
+
+edge-tts==7.2.8
