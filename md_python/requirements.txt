@@ -1,0 +1,10 @@
+# Third-party Python packages required by md_to_pdf.py
+#
+# Install with:
+#   pip install -r requirements.txt
+#
+# All other imports (argparse, glob, html, os, re, subprocess, sys, typing)
+# are Python standard library and require no installation.
+
+markdown==3.10.2
+reportlab==5.0.0
