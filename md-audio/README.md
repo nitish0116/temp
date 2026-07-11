@@ -86,6 +86,8 @@ python md_to_audio.py [input_path] [output_path] [options]
 | `--all-voices` | Show the full Edge voice catalog when listing voices. |
 | `--edge-workers N` | Max concurrent Edge chunk requests (Edge backend only, default `6`). |
 | `--quiet` | Reduce console output by hiding step-by-step progress logs. |
+| `--chapter-markers` | Insert silence markers at chapter/section endings for audiobook navigation. |
+| `--chapter-marker-duration SECONDS` | Duration of silence at chapter endings (default `2.0` seconds). |
 | `--keep-intermediate-wav` | Keep the temporary WAV when producing MP3 output (SAPI only). |
 | `--chunk-size N` | Max characters per speech chunk (default 2500). |
 
@@ -165,6 +167,53 @@ python md_to_audio.py --backend edge --voice Aria --edge-workers 8 --quiet ".\\b
 | 8 | 5.40 | 3,116,397 |
 
 Recommended starting point: `--edge-workers 8`.
+
+---
+
+## Chapter Markers for Audiobook Navigation
+
+Add silence markers at chapter and section endings to help listeners navigate audiobooks.
+
+### How It Works
+
+The script automatically detects chapter headings (Chapter, Section, Part, Volume, Act, etc.) in your Markdown and can insert brief silence gaps at those boundaries. This makes audiobooks easier to pause and resume between chapters.
+
+### Usage
+
+```powershell
+# Add chapter markers (default 2 seconds of silence)
+python md_to_audio.py --chapter-markers "book.md" "output.mp3"
+
+# Customize marker duration (e.g., 1.5 seconds)
+python md_to_audio.py --chapter-markers --chapter-marker-duration 1.5 "book.md" "output.mp3"
+
+# Use with Edge backend
+python md_to_audio.py --backend edge --voice Aria --chapter-markers --chapter-marker-duration 2.0 "book.md" "output.mp3"
+```
+
+### Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `--chapter-markers` | Flag | Off | Enable chapter ending markers |
+| `--chapter-marker-duration` | Float | 2.0 | Silence duration in seconds at chapter endings |
+
+### Supported Heading Formats
+
+The script recognizes the following as chapter/section markers:
+
+- `# Chapter 1`, `# Section 1.2`, `# Part I`
+- `# Prologue`, `# Epilogue`, `# Afterword`
+- `# Act 1`, `# Scene 1`, `# Episode 1`
+- `# Side Story`, `# Interlude`, `# Arc 1`
+- `# I`, `# II`, `# III` (Roman numerals)
+- `# 1`, `# 2`, `# 3` (Regular numbering)
+
+### Implementation Details
+
+**Edge Backend:** Generates dedicated silence MP3 chunks and inserts them during concatenation.
+
+**SAPI Backend:** Skips chapter markers during synthesis; silence insertion is planned for future versions.
 
 ---
 
