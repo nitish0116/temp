@@ -44,6 +44,10 @@ def build_book_title(input_name: str) -> str:
     return f"# {stem}"
 
 
+# 3+ consecutive identical letters (SSS, sss, eee …) — OCR artifact
+_REPEATED_ALPHA_RE = re.compile(r'([a-zA-Z])\1{2,}')
+
+
 def is_ocr_noise(line: str) -> bool:
     s = line.strip()
     if not s: return False
@@ -51,8 +55,8 @@ def is_ocr_noise(line: str) -> bool:
     if len(s) <= 2: return True
     if len(s) == 3 and not s[0].isalpha(): return True
     # Very low alphanumeric density
-    alpha = sum(c.isalnum() for c in s)
-    if len(s) > 8 and alpha / len(s) < 0.20: return True
+    alnum = sum(c.isalnum() for c in s)
+    if len(s) > 8 and alnum / len(s) < 0.20: return True
     # Entirely punctuation / symbols
     if re.fullmatch(r"[\W_]+", s) and len(s) > 3: return True
     # Long consonant clusters (OCR gobbledegook)
@@ -76,6 +80,37 @@ def is_ocr_noise(line: str) -> bool:
     non_ascii = sum(ord(ch) > 127 for ch in s)
     if len(s) > 6 and non_ascii / len(s) > 0.20 and len(words) < 3:
         return True
+
+    # ── Statistical OCR-noise detection ───────────────────────────────────
+    alpha = sum(c.isalpha() for c in s)
+
+    if alpha >= 15:
+        upper   = sum(c.isupper() for c in s if c.isalpha())
+        s_count = sum(1 for c in s if c.lower() == 's')
+        u_ratio = upper / alpha
+        s_ratio = s_count / alpha
+
+        # Overwhelming random-caps (>55 % uppercase = OCR randomisation)
+        if u_ratio > 0.55:
+            return True
+        # Very high S-density — normal English tops out ~26 %
+        if s_ratio > 0.32:
+            return True
+        # Elevated S-density combined with significant uppercase
+        if s_ratio > 0.22 and u_ratio > 0.25:
+            return True
+
+    # 3+ distinct runs of 3+ identical letters (SSS … sss … eee …)
+    if len(s) > 15 and len(_REPEATED_ALPHA_RE.findall(s)) >= 3:
+        return True
+
+    # All tokens are ≤ 2 alpha chars in a short/medium line (fragmented OCR)
+    tokens      = [w.strip('"\'.,:;!?-[](){}*') for w in s.split()]
+    alpha_tokens = [t for t in tokens if t and any(c.isalpha() for c in t)]
+    if len(alpha_tokens) >= 3 and len(s) <= 25:
+        if all(sum(c.isalpha() for c in t) <= 2 for t in alpha_tokens):
+            return True
+
     return False
 
 
