@@ -23,6 +23,151 @@ import re
 from pathlib import Path
 
 CLEANUP_FOLDER = Path(r"C:\Users\z005537p\NitishWork\HM\temp\cleanup")
+CHAPTERS_ROOT = CLEANUP_FOLDER / "chapters"
+
+HEADING_RE = re.compile(r"^(#{1,4})\s+(.*)$")
+MAJOR_CHAPTER_HEADING_RE = re.compile(
+    r"^(?:"
+    r"chapter\b|prologue\b|epilogue\b|afterword\b|interlude\b|appendix\b"
+    r"|part\b|book\b|act\b|[ivxlcdm]+\b|\d+[\s:.-]+"
+    r")",
+    re.IGNORECASE,
+)
+
+CHAPTER_MARKERS_BY_VOLUME: dict[int, list[str]] = {
+    1: [
+        "Chapter 0: Prologue",
+        "Chapter I: The Sky over Norden",
+        "Chapter II: The Elinium Type 95 Computation Orb",
+        "Chapter III: The Watch/Guard on the Rhine",
+        "Chapter IV: War College",
+        "Chapter V: The Primeval Battalion",
+    ],
+    2: [
+        "Chapter I: The Dacian War",
+        "Chapter II: Norden I",
+        "Chapter III: Norden II",
+        "Chapter IV: The Devil off the Coast of Norden",
+        "Chapter V: The Devil of the Rhine",
+        "Chapter VI: Ordeal of Fire",
+        "Chapter VII: Preparation to Move Forward",
+        "Side Story: A Borrowed Cat",
+    ],
+    3: [
+        "Chapter I: Open Sesame",
+        "Chapter II: The Intervention, Which Was Too Late",
+        "Chapter III: Operation Ark",
+        "Chapter IV: How to Use Victory",
+        "Chapter V: Internal Affairs",
+        "Chapter VI: The Southern Campaign",
+    ],
+    4: [
+        "Chapter I: A Long-Range Reconnaissance Mission",
+        "Chapter II: A Goodwill Visit",
+        "Chapter III: A Magnificent Victory",
+        "Chapter IV: Reorganization",
+        "Chapter V: The Battle of Dodobird",
+        "Chapter VI: Operation Door Knocker",
+    ],
+    5: [
+        "Chapter 0: A Letter Home",
+        "Chapter I: Rapid Advance",
+        "Chapter II: Strange Friendship",
+        "Chapter III: Northern Operation",
+        "Chapter IV: Long-Range Assault Operation",
+        "Chapter V: Out of Time",
+        "Chapter VI: \"Liberator\"",
+    ],
+    6: [
+        "Chapter I: Winter Operation: Limited Offensive",
+        "Chapter II: Paradox",
+        "Chapter III: Lull in the Wind",
+        "Chapter IV: Diplomatic Deal",
+        "Chapter V: Portent",
+        "Chapter VI: Structural Problems",
+    ],
+    7: [
+        "Chapter I: Disarray",
+        "Chapter II: Restoration",
+        "Chapter III: Effort and Ingenuity",
+        "Chapter IV: Operation Iron Hammer",
+        "Chapter V: Turning Point",
+        "Chapter VI: Excessive Triumph",
+    ],
+    8: [
+        "Chapter I: A Journalist's Memories of the Eastern Front",
+        "Chapter II: Andromeda Eve",
+        "Chapter III: Andromeda",
+        "Chapter IV: Encounter and Engage",
+        "Chapter V: Pocket",
+        "Chapter VI: Hans von Zettour",
+    ],
+    9: [
+        "Chapter I: Erosion",
+        "Chapter II: The Home Front",
+        "Chapter III: Necessity Is the Mother of Invention",
+        "Chapter IV: Love from Underwater",
+        "Chapter V: Sightseeing",
+        "Chapter VI: At Dusk",
+    ],
+    10: [
+        "Chapter 0: Prologue",
+        "Chapter I: Blueprint",
+        "Chapter II: Con Artist",
+        "Chapter III: Boss",
+        "Chapter IV: Value Verification",
+        "Chapter V: Imperial Door Knocker",
+        "Chapter VI: Hourglass",
+    ],
+    11: [
+        "Chapter I: Create a Rift",
+        "Chapter II: Memoir",
+        "Chapter III: The Incident",
+        "Chapter IV: Turning Point",
+        "Chapter V: Stage",
+        "Chapter VI: Impact",
+    ],
+    12: [
+        "Chapter 0: Prologue",
+        "Chapter I: The World's Enemy",
+        "Chapter II: The Stage",
+        "Chapter III: An Appointment",
+        "Chapter IV: A Temporary Visitor",
+        "Chapter V: Hard Work",
+        "Chapter VI: The Logistics of War",
+    ],
+    13: [
+        "Chapter 0: Prologue",
+        "Chapter I: End of the Beginning",
+        "Chapter II: House of Cards",
+        "Chapter III: Last Ditch",
+        "Chapter IV: Setback",
+        "Chapter V: Dawn",
+        "Chapter VI: Mutiny",
+    ],
+    14: [
+        "Chapter I: In the Name of Duty",
+        "Chapter II: Untimely AirLand Battle Doctrine",
+        "Chapter III: Liar Today, Thief Tomorrow",
+        "Chapter IV: Professionalism",
+        "Chapter V: Mage Graveyard",
+        "Chapter VI: By a Whisker",
+        "Chapter VII: Living the Dream",
+    ],
+}
+
+# Matches the TEXT of a heading (after stripping leading #) that marks a
+# canonical chapter boundary across all Tanya volumes.
+# Handles: "I The Sky over Norden", "Chapter 0: Prologue", "Side Story: ..."
+CHAPTER_BOUNDARY_RE = re.compile(
+    r"^(?:"
+    r"(?:[IVX]+)(?:\s|$)"                        # standalone Roman numeral prefix
+    r"|Chapter\s+(?:[IVX]+|\d+)\b"              # 'Chapter I' / 'Chapter 0'
+    r"|Prologue\b|Epilogue\b|Afterword\b"
+    r"|Side\s+Story\b"
+    r")",
+    re.IGNORECASE,
+)
 
 
 def build_book_title(input_name: str) -> str:
@@ -175,6 +320,176 @@ def clean_line(text: str) -> str:
     text = re.sub(r" {2,}", " ", text)
     text = text.replace("\u200b", "").replace("\xa0", " ")
     return text.strip()
+
+
+def normalize_heading_text(s: str) -> str:
+    s = s.strip()
+    s = re.sub(r"\*\*(.*?)\*\*", r"\1", s)
+    s = re.sub(r"\*(.*?)\*", r"\1", s)
+    s = re.sub(r"`(.*?)`", r"\1", s)
+    s = re.sub(r"\s+", " ", s)
+    return s.strip(" .-_")
+
+
+def sanitize_filename(name: str, max_len: int = 90) -> str:
+    name = normalize_heading_text(name)
+    name = re.sub(r"[\\/:*?\"<>|]", "", name)
+    name = re.sub(r"\s+", " ", name).strip(" .")
+    if not name:
+        name = "Untitled"
+    if len(name) > max_len:
+        name = name[:max_len].rstrip(" ._")
+    return name
+
+
+def is_fragment_heading(content: str) -> bool:
+    """Detect OCR-damaged prose fragments mis-tagged as markdown headings."""
+    s = normalize_heading_text(content)
+    if not s:
+        return True
+
+    # Keep obvious structural headings.
+    if MAJOR_CHAPTER_HEADING_RE.match(s):
+        return False
+
+    words = re.findall(r"[A-Za-z']+", s)
+    if not words:
+        return True
+
+    # Fragment-like headings often end like normal sentences.
+    if len(words) >= 2 and s.endswith((".", "!", "?")):
+        return True
+
+    # Lowercase-leading phrase headings are often OCR spillover.
+    if s[0].islower() and len(words) >= 2:
+        return True
+
+    # Very long heading lines with many lowercase words are usually prose.
+    lowercase_words = sum(1 for w in words if w.islower())
+    if len(words) >= 9 and lowercase_words >= max(5, len(words) // 2):
+        return True
+
+    return False
+
+
+def _ratio_split(lines: list[str], n: int) -> list[list[str]]:
+    """Divide lines into n roughly equal segments (last-resort fallback)."""
+    content = [ln for ln in lines if not ln.startswith("# The Saga of Tanya the Evil - Volume")]
+    size = max(1, len(content) // n)
+    parts = []
+    for i in range(n):
+        start = i * size
+        end   = start + size if i < n - 1 else len(content)
+        chunk = [ln for ln in content[start:end] if ln.strip()]
+        if chunk:
+            parts.append(chunk)
+    # Pad with empty if we came up short
+    while len(parts) < n:
+        parts.append([])
+    return parts
+
+
+def extract_chapters(cleaned_text: str, input_name: str) -> tuple[str, list[tuple[str, list[str]]]]:
+    lines = cleaned_text.splitlines()
+
+    book_title = ""
+    for ln in lines:
+        if ln.startswith("# "):
+            book_title = normalize_heading_text(ln[2:])
+            break
+
+    volume_match = re.search(r"Volume\s*(\d+)", input_name, flags=re.IGNORECASE)
+    volume_num   = int(volume_match.group(1)) if volume_match else None
+    canonical    = CHAPTER_MARKERS_BY_VOLUME.get(volume_num, [])
+
+    # ── Step 1: detect all chapter-boundary headings ──────────────────────
+    # Also collect pre-chapter content (prologue content before first boundary)
+    chapters:     list[tuple[str, list[str]]] = []
+    current_title = ""
+    current_body:  list[str] = []
+    pre_chapter:   list[str] = []
+    found_first    = False
+
+    for ln in lines:
+        # Skip the book-title line itself
+        if ln.startswith("# ") and not found_first:
+            continue
+        m = HEADING_RE.match(ln)
+        if m:
+            level        = len(m.group(1))
+            heading_text = normalize_heading_text(m.group(2))
+            if level <= 2 and CHAPTER_BOUNDARY_RE.match(heading_text):
+                if current_title and any(s.strip() for s in current_body):
+                    chapters.append((current_title, current_body))
+                elif not found_first and any(s.strip() for s in pre_chapter):
+                    chapters.append(("_pre", pre_chapter))
+                found_first   = True
+                current_title = heading_text
+                current_body  = []
+                continue
+
+        if found_first:
+            if current_title:
+                current_body.append(ln)
+        else:
+            pre_chapter.append(ln)
+
+    if current_title and any(s.strip() for s in current_body):
+        chapters.append((current_title, current_body))
+
+    # ── Step 2: if count matches canonical, rename in order ───────────────
+    if canonical and len(chapters) == len(canonical):
+        chapters = [(canonical[i], body) for i, (_, body) in enumerate(chapters)]
+        return book_title, chapters
+
+    # ── Step 3: count mismatch — merge or ratio-split then rename ─────────
+    if canonical:
+        n = len(canonical)
+        if len(chapters) > n:
+            # Too many detected: merge extras into the last canonical slot.
+            merged   = chapters[:n - 1]
+            leftover = chapters[n - 1:]
+            combined = [ln for _, body in leftover for ln in body]
+            merged.append((chapters[n - 1][0], combined))
+            chapters = [(canonical[i], body) for i, (_, body) in enumerate(merged)]
+        else:
+            # Too few detected (or none): fall back to line-ratio split.
+            segs     = _ratio_split(lines, n)
+            chapters = [(canonical[i], segs[i]) for i in range(n)]
+        return book_title, chapters
+
+    # ── Step 4: no canonical at all ───────────────────────────────────────
+    if not chapters:
+        payload   = [ln for ln in lines if not ln.startswith("# ") if ln.strip()]
+        chapters  = [("Full Text", payload)]
+
+    return book_title, chapters
+
+
+def write_chapter_files(cleaned_text: str, input_name: str) -> int:
+    book_title, chapters = extract_chapters(cleaned_text, input_name)
+
+    volume_stem = re.sub(r"_Cleaned$", "", Path(input_name).stem, flags=re.IGNORECASE)
+    volume_dir = CHAPTERS_ROOT / sanitize_filename(volume_stem)
+    volume_dir.mkdir(parents=True, exist_ok=True)
+
+    for old in volume_dir.glob("*.md"):
+        old.unlink()
+
+    for idx, (chapter_title, body_lines) in enumerate(chapters, start=1):
+        chapter_file = volume_dir / f"{idx:03d}_{sanitize_filename(chapter_title)}.md"
+        out_lines = []
+        if book_title:
+            out_lines.append(f"# {book_title}")
+            out_lines.append("")
+        out_lines.append(f"## {chapter_title}")
+        out_lines.append("")
+        out_lines.extend(body_lines)
+
+        chapter_text = "\n".join(out_lines).strip() + "\n"
+        chapter_file.write_text(chapter_text, encoding="utf-8")
+
+    return len(chapters)
 
 
 def fix_mojibake(text: str) -> str:
@@ -336,7 +651,7 @@ def process(raw: str, title: str) -> str:
             i += 1; continue
 
         # ── Markdown headers ───────────────────────────────────────────────
-        hm = re.match(r"^(#{1,4})\s+(.*)", line)
+        hm = HEADING_RE.match(line)
         if hm:
             content = hm.group(2).strip()
             hashes  = hm.group(1)
@@ -365,6 +680,9 @@ def process(raw: str, title: str) -> str:
             if hashes == "#" and len(content) < 4: i += 1; continue
             content = content.replace("**", "")
             content = re.sub(r"\[chapter\]\s*", "", content, flags=re.IGNORECASE)
+            if is_fragment_heading(content):
+                i += 1
+                continue
             out.append(f"{hashes} {clean_line(content)}")
             i += 1; continue
 
@@ -458,10 +776,13 @@ def main():
         
         output_file.parent.mkdir(parents=True, exist_ok=True)
         output_file.write_text(cleaned, encoding="utf-8")
+
+        chapter_count = write_chapter_files(cleaned, input_file.name)
         
         print(f"Lines out: {out_lines:,}")
         print(f"Removed  : {removed:,} lines ({pct:.1f}%)")
         print(f"Written  : {output_file.name}\n")
+        print(f"Chapters : {chapter_count} files in {CHAPTERS_ROOT / sanitize_filename(input_file.stem)}\n")
 
 
 if __name__ == "__main__":
