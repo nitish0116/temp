@@ -165,6 +165,16 @@ def parse_args() -> argparse.Namespace:
         default=2.0,
         help="Duration of silence at chapter endings in seconds (default: 2.0).",
     )
+    parser.add_argument(
+        "--cue-file",
+        action="store_true",
+        help=(
+            "Write a .cue sheet alongside the output MP3 listing every "
+            "section/scene heading with its start timestamp. "
+            "Also writes a _youtube_chapters.txt file ready to paste "
+            "into a YouTube video description."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -540,6 +550,232 @@ def create_silence_mp3(output_path: Path, duration: float) -> None:
         raise RuntimeError(f"Failed to generate silence MP3: {e.stderr.decode()}")
     except subprocess.TimeoutExpired:
         raise RuntimeError("Silence generation timed out")
+
+
+def narration_paragraphs_with_scene_markers(
+    markdown_text: str, chunk_size: int
+) -> tuple[list[str], dict[int, str]]:
+    """
+    Like narration_paragraphs() but also returns a scene/chapter map.
+
+    Every markdown heading (## ...) is treated as a scene boundary regardless
+    of whether it matches HEADING_RE. This is correct for Tanya-style files
+    where headings are date/location stamps rather than "Chapter N" labels.
+
+    Returns:
+        (chunks, scene_map) where scene_map maps chunk index (0-based) to the
+        heading title that begins at that chunk position.
+    """
+    paragraph: list[str] = []
+    out: list = []          # items: plain str OR ("__SCENE__", title)
+    pending_prefix = ""
+
+    def flush() -> None:
+        if paragraph:
+            joined = re.sub(r"\s+", " ", " ".join(paragraph)).strip()
+            if joined:
+                out.append(joined)
+            paragraph.clear()
+
+    for raw in markdown_text.splitlines():
+        if FENCE_RE.match(raw):
+            continue
+        line = ORNAMENT_RE.sub("", raw).strip()
+        if not line:
+            flush()
+            continue
+        # Detect ANY markdown heading (not just HEADING_RE matches)
+        hash_match = re.match(r"^(#{1,6})\s+(.*)", line)
+        if hash_match:
+            flush()
+            title = hash_match.group(2).strip()
+            # Strip trailing OCR junk from heading titles
+            title = OCR_JUNK_RE.sub("", title).strip()
+            if title:
+                out.append(("__SCENE__", title))
+            continue
+        line = LEADING_HASH_RE.sub("", line).strip()
+        if not line:
+            flush()
+            continue
+        if HEADING_RE.match(line):
+            flush()
+            tail = re.search(r"\s+([IA])$", line)
+            if tail:
+                pending_prefix = tail.group(1) + " "
+                line = line[: tail.start()].rstrip()
+            out.append(line)
+            continue
+        previous = None
+        while line and line != previous:
+            previous = line
+            line = OCR_JUNK_RE.sub("", line).rstrip()
+        if not line:
+            flush()
+            continue
+        if pending_prefix and not paragraph:
+            line = pending_prefix + line
+            pending_prefix = ""
+        paragraph.append(line)
+        if SENTENCE_END_RE.search(line):
+            flush()
+
+    flush()
+
+    # Build raw chunks and track which raw index each scene begins at
+    raw_chunks: list[str] = []
+    raw_scene_before: dict[int, str] = {}   # raw_chunk_index -> scene title
+    pending_scene: str | None = None
+
+    for item in out:
+        if isinstance(item, tuple) and item[0] == "__SCENE__":
+            pending_scene = item[1]
+        else:
+            sub = split_speech_chunk(item, chunk_size)
+            if sub and pending_scene is not None:
+                raw_scene_before[len(raw_chunks)] = pending_scene
+                pending_scene = None
+            raw_chunks.extend(sub)
+
+    # Post-filter (same as narration_paragraphs)
+    MIN_ALPHA = 4
+    filtered: list[str] = []
+    old_to_new: dict[int, int] = {}
+    for old_idx, chunk in enumerate(raw_chunks):
+        alpha = sum(c.isalpha() for c in chunk)
+        if alpha >= MIN_ALPHA:
+            old_to_new[old_idx] = len(filtered)
+            filtered.append(chunk)
+        elif filtered:
+            old_to_new[old_idx] = len(filtered) - 1
+            filtered[-1] = filtered[-1].rstrip() + " " + chunk.strip()
+
+    # Remap scene markers to filtered indices
+    scene_map: dict[int, str] = {}
+    for old_idx, title in raw_scene_before.items():
+        for scan in range(old_idx, len(raw_chunks)):
+            if scan in old_to_new:
+                new_idx = old_to_new[scan]
+                if new_idx not in scene_map:
+                    scene_map[new_idx] = title
+                break
+
+    return filtered, scene_map
+
+
+def get_audio_duration_ms(audio_path: Path) -> int:
+    """Return audio duration in milliseconds via ffprobe. Returns 0 on failure."""
+    ffprobe = shutil.which("ffprobe")
+    if not ffprobe:
+        return 0
+    try:
+        result = subprocess.run(
+            [ffprobe, "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(audio_path)],
+            capture_output=True, text=True, check=True,
+        )
+        return int(float(result.stdout.strip()) * 1000)
+    except Exception:
+        return 0
+
+
+def estimate_chunk_durations_ms(chunks: list[str], total_ms: int) -> list[int]:
+    """Distribute total_ms across chunks proportionally by character count."""
+    total_chars = sum(len(c) for c in chunks)
+    if total_chars == 0 or total_ms == 0:
+        return [0] * len(chunks)
+    result, allocated = [], 0
+    for i, chunk in enumerate(chunks):
+        if i == len(chunks) - 1:
+            result.append(total_ms - allocated)
+        else:
+            d = round(len(chunk) / total_chars * total_ms)
+            result.append(d)
+            allocated += d
+    return result
+
+
+def write_cue_file(
+    output_mp3: Path,
+    scene_map: dict[int, str],
+    chunks: list[str],
+    total_ms: int,
+) -> tuple[Path, Path]:
+    """
+    Write a .cue sheet and a YouTube chapters text file for the output MP3.
+
+    The .cue file lists every scene/chapter heading with its start time,
+    derived by distributing total_ms across chunks proportionally by character
+    count (accurate to within a few seconds for typical narration).
+
+    The _youtube_chapters.txt file contains the same data formatted for
+    pasting directly into a YouTube video description.
+
+    Args:
+        output_mp3:  Path to the final MP3 file.
+        scene_map:   {chunk_index: scene_title} from narration_paragraphs_with_scene_markers().
+        chunks:      The full list of narration chunks (for timing estimation).
+        total_ms:    Total audio duration in milliseconds.
+
+    Returns:
+        (cue_path, youtube_path): Paths to the two written files.
+    """
+    # Build per-chunk cumulative start times
+    durations = estimate_chunk_durations_ms(chunks, total_ms)
+    cumulative: list[int] = []
+    running = 0
+    for d in durations:
+        cumulative.append(running)
+        running += d
+
+    # Collect scene entries in order
+    scenes: list[tuple[int, str]] = []
+    for chunk_idx in sorted(scene_map):
+        start_ms = cumulative[chunk_idx] if chunk_idx < len(cumulative) else 0
+        scenes.append((start_ms, scene_map[chunk_idx]))
+
+    # Ensure first scene starts at 0:00 (YouTube requirement)
+    if scenes and scenes[0][0] != 0:
+        scenes.insert(0, (0, scenes[0][1]))
+    if not scenes:
+        scenes = [(0, output_mp3.stem)]
+
+    def ms_to_cue(ms: int) -> str:
+        """Convert milliseconds to CUE MM:SS:FF format (75 frames/sec)."""
+        total_s = ms // 1000
+        frames  = (ms % 1000) * 75 // 1000
+        return f"{total_s // 60:02d}:{total_s % 60:02d}:{frames:02d}"
+
+    def ms_to_yt(ms: int) -> str:
+        """Convert milliseconds to YouTube H:MM:SS or M:SS timestamp."""
+        total_s = ms // 1000
+        h = total_s // 3600
+        m = (total_s % 3600) // 60
+        s = total_s % 60
+        return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
+    # Write .cue file
+    cue_path = output_mp3.with_suffix(".cue")
+    cue_lines = [f'FILE "{output_mp3.name}" MP3']
+    for track_num, (start_ms, title) in enumerate(scenes, start=1):
+        cue_lines.append(f"  TRACK {track_num:02d} AUDIO")
+        cue_lines.append(f'    TITLE "{title}"')
+        cue_lines.append(f"    INDEX 01 {ms_to_cue(start_ms)}")
+    cue_path.write_text("\n".join(cue_lines) + "\n", encoding="utf-8")
+
+    # Write YouTube chapters text file
+    yt_path = output_mp3.with_name(output_mp3.stem + "_youtube_chapters.txt")
+    yt_lines = ["Paste these timestamps into the YouTube video description:", ""]
+    for start_ms, title in scenes:
+        yt_lines.append(f"{ms_to_yt(start_ms)} {title}")
+    yt_lines += [
+        "",
+        "Note: YouTube requires at least 3 timestamps and the first must be 0:00.",
+        "Chapters appear automatically once the video is published.",
+    ]
+    yt_path.write_text("\n".join(yt_lines) + "\n", encoding="utf-8")
+
+    return cue_path, yt_path
 
 
 def ensure_ffmpeg() -> str:
@@ -918,6 +1154,7 @@ def convert_one_edge(
     quiet: bool,
     chapter_markers: bool = False,
     chapter_marker_duration: float = 2.0,
+    cue_file: bool = False,
 ) -> tuple[int, int, int]:
     """
     Convert a single markdown file to MP3 using the Edge TTS backend.
@@ -1008,6 +1245,22 @@ def convert_one_edge(
     final_size = output_path.stat().st_size
     print(f"Created: {output_path}")
     print(f"Size: {final_size:,} bytes")
+
+    # CUE file generation
+    if cue_file:
+        log_step("Generating CUE sheet and YouTube chapters file")
+        markdown_text = input_path.read_text(encoding="utf-8")
+        cue_chunks, scene_map = narration_paragraphs_with_scene_markers(
+            markdown_text, effective_chunk_size
+        )
+        total_ms = get_audio_duration_ms(output_path)
+        if scene_map:
+            cue_path, yt_path = write_cue_file(output_path, scene_map, cue_chunks, total_ms)
+            print(f"CUE sheet  : {cue_path}")
+            print(f"YT chapters: {yt_path}")
+        else:
+            print("[INFO] No headings found in markdown — CUE file skipped.")
+
     return effective_chunk_size, len(chunks), final_size
 
 
@@ -1540,6 +1793,7 @@ def convert_one(
     quiet: bool,
     chapter_markers: bool = False,
     chapter_marker_duration: float = 2.0,
+    cue_file: bool = False,
 ) -> tuple[int, int, int]:
     """
     Convert a single markdown file to audio using the SAPI backend.
@@ -1620,6 +1874,22 @@ def convert_one(
     final_size = output_path.stat().st_size
     print(f"Created: {output_path}")
     print(f"Size: {final_size:,} bytes")
+
+    # CUE file generation
+    if cue_file:
+        log_step("Generating CUE sheet and YouTube chapters file")
+        markdown_text = input_path.read_text(encoding="utf-8")
+        cue_chunks, scene_map = narration_paragraphs_with_scene_markers(
+            markdown_text, effective_chunk_size
+        )
+        total_ms = get_audio_duration_ms(output_path)
+        if scene_map:
+            cue_path, yt_path = write_cue_file(output_path, scene_map, cue_chunks, total_ms)
+            print(f"CUE sheet  : {cue_path}")
+            print(f"YT chapters: {yt_path}")
+        else:
+            print("[INFO] No headings found in markdown — CUE file skipped.")
+
     return effective_chunk_size, len(chunks), final_size
 
 
@@ -1673,6 +1943,7 @@ def main() -> int:
                     args.quiet,
                     args.chapter_markers,
                     args.chapter_marker_duration,
+                    cue_file=args.cue_file,
                 )
                 elapsed = time.perf_counter() - started
                 results.append(
@@ -1744,6 +2015,7 @@ def main() -> int:
                 args.quiet,
                 args.chapter_markers,
                 args.chapter_marker_duration,
+                cue_file=args.cue_file,
             )
             elapsed = time.perf_counter() - started
             results.append(
