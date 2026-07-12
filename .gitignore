@@ -1,4 +1,3 @@
-cleanup/__pycache__/clean_tanya.cpython-312.pyc
-md-audio/__pycache__/md_to_audio.cpython-312.pyc
 !*.mp3
 !*.mp4
+!*.pyc
