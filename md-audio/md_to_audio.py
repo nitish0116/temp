@@ -335,6 +335,11 @@ def clean_stem(path: Path) -> str:
     return " ".join(deduped) or "converted"
 
 
+def source_output_stem(path: Path) -> str:
+    """Return the original input filename stem for output naming."""
+    return path.stem or "converted"
+
+
 def split_speech_chunk(text: str, max_length: int) -> list[str]:
     """
     Split a paragraph into speech chunks at sentence/phrase boundaries.
@@ -1039,17 +1044,17 @@ def resolve_edge_targets(args: argparse.Namespace) -> list[tuple[Path, Path]]:
         if out_dir.suffix:
             raise SystemExit("When converting a folder, output_path must be a directory, not a file.")
         for src in input_paths:
-            targets.append((src, (out_dir / f"{clean_stem(src)}.mp3").resolve()))
+            targets.append((src, (out_dir / f"{source_output_stem(src)}.mp3").resolve()))
         return targets
     src = input_paths[0]
     if raw is None:
-        out = (src.parent / f"{clean_stem(src)}.mp3").resolve()
+        out = (src.parent / f"{source_output_stem(src)}.mp3").resolve()
     elif raw.suffix:
         if raw.suffix.lower() != ".mp3":
             raise SystemExit("Edge TTS output must end in .mp3.")
         out = raw
     else:
-        out = (raw / f"{clean_stem(src)}.mp3").resolve()
+        out = (raw / f"{source_output_stem(src)}.mp3").resolve()
     targets.append((src, out))
     return targets
 
@@ -1456,7 +1461,7 @@ def default_output_path(input_path: Path, extension: str) -> Path:
     Returns:
         Path: Absolute path to default output file location.
     """
-    return (input_path.parent / f"{clean_stem(input_path)}{extension}").resolve()
+    return (input_path.parent / f"{source_output_stem(input_path)}{extension}").resolve()
 
 
 def resolve_targets(args: argparse.Namespace) -> list[tuple[Path, Path, str]]:
@@ -1504,7 +1509,7 @@ def resolve_targets(args: argparse.Namespace) -> list[tuple[Path, Path, str]]:
             output_directory = raw_output_path
 
         for source_path in input_paths:
-            output_path = (output_directory / f"{clean_stem(source_path)}{output_extension}").resolve()
+            output_path = (output_directory / f"{source_output_stem(source_path)}{output_extension}").resolve()
             targets.append((source_path, output_path, output_extension))
 
         return targets
@@ -1515,7 +1520,7 @@ def resolve_targets(args: argparse.Namespace) -> list[tuple[Path, Path, str]]:
     elif raw_output_path.suffix:
         output_path = raw_output_path
     else:
-        output_path = (raw_output_path / f"{clean_stem(source_path)}.mp3").resolve()
+        output_path = (raw_output_path / f"{source_output_stem(source_path)}.mp3").resolve()
 
     extension = output_path.suffix.lower()
     if extension not in {".mp3", ".wav"}:
