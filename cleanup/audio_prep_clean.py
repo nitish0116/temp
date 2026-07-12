@@ -2,8 +2,8 @@
 """
 audio_prep_clean.py  —  v2
 --------------------------
-Batch-cleans all 14 Tanya the Evil *_Cleaned.md volumes for Edge TTS audio
-conversion.  Run once; produces one *_AudioPrep.md per volume.
+Batch-cleans markdown volumes for Edge TTS audio conversion.
+Run once; produces one *_AudioPrep.md per input volume.
 
 What is REMOVED:
   • Footnote / glossary blocks (bare "1 **term**" or blockquote "> 1 **term**")
@@ -26,8 +26,9 @@ import re
 import sys
 from pathlib import Path
 
-INPUT_DIR  = Path(r"C:\Users\z005537p\NitishWork\HM\temp\cleanup")
+INPUT_DIR  = Path(r"C:\Users\z005537p\NitishWork\HM\temp\cleanup\old")
 OUTPUT_DIR = Path(r"C:\Users\z005537p\NitishWork\HM\temp\cleanup\cleaned_audio_prep")
+INPUT_FALLBACK_DIR = INPUT_DIR / "new"
 
 # ── Compiled patterns ──────────────────────────────────────────────────────
 OCR_CLUSTER_RE      = re.compile(r"[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]{6,}")
@@ -249,6 +250,26 @@ def clean_line(line: str) -> str:
     return line.strip()
 
 
+def find_source_files() -> list[Path]:
+    """Find source markdown files across common cleanup locations."""
+    patterns = (
+        (INPUT_DIR, "*Cleaned*.md"),
+        (INPUT_FALLBACK_DIR, "*Cleaned*.md"),
+        (INPUT_DIR, "*AudioPrep*.md"),
+        (INPUT_DIR, "*Volume*.md"),
+    )
+    for base, pattern in patterns:
+        files = sorted(
+            p for p in base.glob(pattern)
+            if not p.name.startswith("audio_prep_clean")
+            and not p.name.startswith("clean_")
+            and "CRITICAL_CHUNKS" not in p.name
+        )
+        if files:
+            return files
+    return []
+
+
 # ── Per-file processor ─────────────────────────────────────────────────────
 
 def process_file(src: Path, dst: Path) -> dict:
@@ -320,7 +341,7 @@ def process_file(src: Path, dst: Path) -> dict:
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text(text, encoding="utf-8")
-    return {"in": n_in, "out": n_out, "removed": n_in - n_out}
+    return {"in": n_in, "out": n_out, "removed": n_in - n_out, "text": text}
 
 
 # ── TTS chunk validator ────────────────────────────────────────────────────
@@ -352,9 +373,12 @@ def count_bad_tts_chunks(text: str) -> tuple:
 # ── Entry point ────────────────────────────────────────────────────────────
 
 def main():
-    sources = sorted(INPUT_DIR.glob("*Tanya*Cleaned*.md"))
+    sources = find_source_files()
     if not sources:
-        print(f"No files found in {INPUT_DIR} matching *Tanya*Cleaned*.md")
+        print(
+            "No files found matching source patterns in "
+            f"{INPUT_DIR} or {INPUT_FALLBACK_DIR}."
+        )
         sys.exit(1)
 
     print(f"Processing {len(sources)} volumes...\n")
@@ -370,14 +394,18 @@ def main():
         vnum  = vol.group(1) if vol else "??"
 
         # Output filename
-        dst_name = re.sub(r"_Cleaned(\.md)$", r"_AudioPrep\1",
-                          src.name, flags=re.IGNORECASE)
-        if dst_name == src.name:
+        if re.search(r"_Cleaned\.md$", src.name, re.IGNORECASE):
+            dst_name = re.sub(
+                r"_Cleaned(\.md)$", r"_AudioPrep\1", src.name, flags=re.IGNORECASE
+            )
+        elif re.search(r"_AudioPrep\.md$", src.name, re.IGNORECASE):
+            dst_name = src.name
+        else:
             dst_name = src.stem + "_AudioPrep.md"
         dst = OUTPUT_DIR / dst_name
 
-        stats       = process_file(src, dst)
-        crit, warn, crit_chunks  = count_bad_tts_chunks(dst.read_text(encoding="utf-8"))
+        stats = process_file(src, dst)
+        crit, warn, crit_chunks = count_bad_tts_chunks(stats["text"])
 
         total_in   += stats["in"]
         total_out  += stats["out"]
