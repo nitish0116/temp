@@ -1,3 +1,6 @@
 *.mp3
 *.mp4
 *.pyc
+cleanup/*.md
+md-audio/*.md
+md_python/*.md
