@@ -268,6 +268,16 @@ def clean_line(line: str) -> str:
     line = line.replace("\u200b", "").replace("\xa0", " ")
     # Strip inline markdown italic markers: _word_ → word
     line = re.sub(r'_([^_\n]+)_', r'\1', line)
+    # Strip orphaned italic openers with no content after: leading _word or _a
+    line = re.sub(r'^_([a-zA-Z]{1,12})\s*$', r'\1', line)
+    # Strip bold markers: **word** → word
+    line = re.sub(r'\*\*([^*\n]+)\*\*', r'\1', line)
+    # Strip lone emphasis asterisks: *word* → word
+    line = re.sub(r'\*([^*\n]+)\*', r'\1', line)
+    # Remove blockquote markers (> ) at line start unless the rest is real content
+    line = re.sub(r'^>\s+', '', line)
+    # Remove noise-only symbol runs: ===, ---, ~~~, *** (decorative dividers)
+    line = re.sub(r'^[\s\-=~*|_]{3,}\s*$', '', line)
     return line.strip()
 
 
@@ -312,38 +322,47 @@ def process_file(src: Path, dst: Path) -> dict:
     removed_lines = []  # (category, text)
 
     for line in lines:
-        s = line.strip()
+        raw_s = line.strip()
 
-        if not s:
+        if not raw_s:
             blanks += 1
             if blanks <= 2:
                 out.append("")
             continue
         blanks = 0
 
-        # Always keep headings
-        if HEADING_RE.match(line):
-            out.append(clean_line(line))
+        # Always keep headings (clean inline noise from them too)
+        if HEADING_RE.match(raw_s):
+            out.append(clean_line(raw_s))
             continue
 
-        # Drop lingering signup / newsletter content
-        if SIGNUP_RE.search(s):
-            removed_lines.append(("signup", s))
+        # Drop signup / TOC whole-line blocks (these are never real content)
+        if SIGNUP_RE.search(raw_s):
+            removed_lines.append(("signup", raw_s))
+            continue
+        if TOC_ITEM_RE.match(raw_s):
+            removed_lines.append(("toc_item", raw_s))
             continue
 
-        # Drop TOC items
-        if TOC_ITEM_RE.match(s):
-            removed_lines.append(("toc_item", s))
+        # Drop lines that are pure OCR garbage BEFORE cleaning
+        if is_ocr_noise(raw_s):
+            removed_lines.append(("ocr_noise", raw_s))
             continue
 
-        # Drop OCR noise
+        # Apply inline cleaning: strip italic markers, normalise spaces, etc.
+        s = clean_line(raw_s)
+
+        # If cleaning emptied the line, skip it
+        if not s:
+            continue
+
+        # If cleaning changed the line, note it but keep the cleaned version
+        if s != raw_s:
+            removed_lines.append(("inline_cleaned", f"{repr(raw_s)} → {repr(s)}"))
+
+        # Drop if still garbage after cleaning
         if is_ocr_noise(s):
-            removed_lines.append(("ocr_noise", s))
-            continue
-
-        # Drop italic noise fragments (_a, _to, _really_, etc.)
-        if is_italic_noise(s):
-            removed_lines.append(("italic_noise", s))
+            removed_lines.append(("ocr_noise_postcleaned", s))
             continue
 
         # Very short: keep if legitimate dialogue, otherwise merge into previous
@@ -353,7 +372,7 @@ def process_file(src: Path, dst: Path) -> dict:
                     out[-1] = out[-1].rstrip() + " " + s
                 continue
 
-        out.append(clean_line(s))
+        out.append(s)
 
     # Step 4: Collapse excess blank lines
     final  = []
