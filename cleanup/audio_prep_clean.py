@@ -56,8 +56,8 @@ BACK_COVER_RE = re.compile(
 )
 
 # Italic noise: orphaned opener (_a, _to, _really — no closing _)
-ITALIC_ORPHAN_RE = re.compile(r'^_[a-zA-Z]{1,8}[,.\s!?]*$')
-# Whole-line lone italic: _really_, _word_ (standalone, not mid-sentence)
+ITALIC_ORPHAN_RE = re.compile(r'^_[a-zA-Z]{1,8}[,.\s!?]*$')# Copyright heading: #### **Copyright** or ###### **<u>Copyright</u>**
+COPYRIGHT_RE = re.compile(r'^#{1,6}\s+\*{0,2}(<u>)?\s*Copyright\s*(</u>)?\*{0,2}\s*$', re.IGNORECASE)# Whole-line lone italic: _really_, _word_ (standalone, not mid-sentence)
 LONE_ITALIC_RE   = re.compile(r'^_[^_\n]{1,40}_[.!?,\'";\s]*$')
 
 
@@ -211,6 +211,10 @@ def find_endbook_cutoff(lines: list) -> int:
         if TOC_ITEM_RE.match(s):
             cutoff = min(cutoff, i)
 
+        # Copyright / publisher boilerplate heading
+        if COPYRIGHT_RE.match(s):
+            cutoff = min(cutoff, i)
+
     # Post-afterword OCR blurb: scan up to 30 lines after Carlo Zen sign-off
     if carlo_idx is not None:
         for i in range(carlo_idx + 1, min(cutoff, carlo_idx + 30)):
@@ -282,6 +286,10 @@ def clean_line(line: str) -> str:
     line = re.sub(r'\*\*([^*\n]+)\*\*', r'\1', line)
     # Strip lone emphasis asterisks: *word* → word
     line = re.sub(r'\*([^*\n]+)\*', r'\1', line)
+    # Strip inline code backticks: `word` → word
+    line = re.sub(r'`([^`\n]+)`', r'\1', line)
+    # Strip lone backticks
+    line = line.replace('`', '')
     # Remove blockquote markers (> ) at line start unless the rest is real content
     line = re.sub(r'^>\s+', '', line)
     # Remove noise-only symbol runs: ===, ---, ~~~, *** (decorative dividers)
