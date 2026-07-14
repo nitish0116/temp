@@ -32,7 +32,7 @@ INPUT_FALLBACK_DIR = INPUT_DIR / "new"
 
 # ── Compiled patterns ──────────────────────────────────────────────────────
 OCR_CLUSTER_RE      = re.compile(r"[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]{6,}")
-NOISE_SYM_RE        = re.compile(r"[><~=|/_@#^&*\\]{3,}")
+NOISE_SYM_RE        = re.compile(r"[><~=|/@#^&\\]{3,}")  # excludes * and _ (markdown formatting)
 REPEATED_ALPHA_RE   = re.compile(r'([a-zA-Z])\1{2,}')   # 3+ identical letters in a row
 SENTENCE_END_RE     = re.compile(r'[.!?…;"\')}\]]\s*$')
 HEADING_RE          = re.compile(r"^#{1,6}\s")
@@ -94,7 +94,9 @@ def is_ocr_noise(line: str) -> bool:
         u_ratio = upper / alpha
         s_ratio = s_count / alpha
         # Overwhelming random-caps (>55 % uppercase = OCR randomisation)
-        if u_ratio > 0.55:
+        # — but skip if line has enough real words (all-caps shouted dialogue)
+        real_words = [w for w in s.split() if sum(c.isalpha() for c in w) >= 3]
+        if u_ratio > 0.55 and len(real_words) < 4:
             return True
         # Very high S-density — normal English tops out ~26 %
         if s_ratio > 0.32:
@@ -104,8 +106,14 @@ def is_ocr_noise(line: str) -> bool:
             return True
 
     # 3+ distinct runs of 3+ identical letters (SSS … sss … eee …)
-    if len(s) > 15 and len(REPEATED_ALPHA_RE.findall(s)) >= 3:
-        return True
+    # Only applies to shorter lines — long coherent paragraphs use intentional
+    # elongation for onomatopoeia/dialogue ("CLAAANG!", "riiight", "Carbooon").
+    # Also exempt if the line has enough real words (dramatic dialogue like
+    # "NOOOOO!!!! A BUUUUGGGGG!!!! Why do bugs..." is not OCR garbage).
+    if 15 < len(s) <= 80 and len(REPEATED_ALPHA_RE.findall(s)) >= 3:
+        real_words = [w for w in s.split() if sum(c.isalpha() for c in w) >= 3]
+        if len(real_words) < 4:
+            return True
 
     # All tokens are ≤ 2 alpha chars in a short/medium line (fragmented OCR)
     _tokens      = [w.strip('"\'.,:;!?-[](){}*') for w in s.split()]
@@ -386,7 +394,10 @@ def process_file(src: Path, dst: Path) -> dict:
             blanks = 0
             final.append(ln)
 
-    text  = "\n".join(final).strip() + "\n"
+    text = "\n".join(final).strip() + "\n"
+
+    # Step 5: remove critical chunks that would crash Edge TTS
+    text, removed_critical_chunks = remove_critical_tts_chunks(text)
     n_out = text.count("\n")
 
     dst.parent.mkdir(parents=True, exist_ok=True)
@@ -398,6 +409,7 @@ def process_file(src: Path, dst: Path) -> dict:
         "text": text,
         "removed_lines": removed_lines,
         "endbook_removed": endbook_removed,
+        "removed_critical_chunks": removed_critical_chunks,
     }
 
 
@@ -431,6 +443,31 @@ def count_bad_tts_chunks(text: str) -> tuple:
     return critical, marginal, critical_chunks, marginal_chunks
 
 
+def remove_critical_tts_chunks(text: str) -> tuple:
+    """
+    Remove paragraphs with < 2 alpha chars.
+    Returns (cleaned_text, removed_critical_chunks).
+    """
+    kept = []
+    removed = []
+
+    for para_idx, p in enumerate(re.split(r"\n{2,}", text)):
+        p_strip = p.strip()
+        p2 = re.sub(r"^#{1,6}\s+", "", p_strip)
+        alpha = sum(c.isalpha() for c in p2)
+
+        if p2 and alpha < 2:
+            snippet = p2[:100].replace("\n", " ")
+            removed.append((para_idx, alpha, snippet))
+        elif p_strip:
+            kept.append(p_strip)
+
+    cleaned = "\n\n".join(kept).strip()
+    if cleaned:
+        cleaned += "\n"
+    return cleaned, removed
+
+
 # ── Entry point ────────────────────────────────────────────────────────────
 
 def main():
@@ -448,9 +485,11 @@ def main():
     print("-" * len(hdr))
 
     total_in = total_out = total_crit = total_warn = 0
-    all_critical = []  # (volume, para_idx, alpha, snippet)
+    all_removed_critical = []  # removed in cleaner: (volume, para_idx, alpha, snippet)
+    all_critical = []  # residual critical chunks after removal (should be 0)
     all_marginal = []  # (volume, para_idx, alpha, snippet)
     all_removed  = []  # per-volume removed line info
+    all_inline_cleaned = []  # all inline_cleaned entries across all volumes
 
     for src in sources:
         vol   = re.search(r'Volume[\s_-]*(\d+)', src.name, re.IGNORECASE)
@@ -468,6 +507,7 @@ def main():
         dst = OUTPUT_DIR / dst_name
 
         stats = process_file(src, dst)
+        removed_crit_chunks = stats.get("removed_critical_chunks", [])
         crit, warn, crit_chunks, warn_chunks = count_bad_tts_chunks(stats["text"])
 
         total_in   += stats["in"]
@@ -475,6 +515,13 @@ def main():
         total_crit += crit
         total_warn += warn
 
+        for para_idx, alpha, snippet in removed_crit_chunks:
+            all_removed_critical.append({
+                "volume": vnum,
+                "para_idx": para_idx,
+                "alpha": alpha,
+                "snippet": snippet,
+            })
         for para_idx, alpha, snippet in crit_chunks:
             all_critical.append({"volume": vnum, "para_idx": para_idx,
                                   "alpha": alpha, "snippet": snippet})
@@ -491,6 +538,14 @@ def main():
                 "endbook_count": len(endbook),
                 "endbook_sample": endbook[:5],
             })
+        
+        # Collect all inline_cleaned entries separately for dedicated log
+        for cat, text in removed:
+            if cat == "inline_cleaned":
+                all_inline_cleaned.append({
+                    "volume": vnum,
+                    "text": text,
+                })
 
         flag = " ⚠ CRITICAL" if crit else (" warn" if warn else "")
         print(f"Vol {vnum:<6} {stats['in']:>7,} {stats['out']:>7,} "
@@ -511,7 +566,8 @@ def main():
         f.write(f"Total lines in    : {total_in:,}\n")
         f.write(f"Total lines out   : {total_out:,}\n")
         f.write(f"Total removed     : {total_in - total_out:,}\n")
-        f.write(f"Critical chunks   : {total_crit}\n")
+        f.write(f"Critical removed  : {len(all_removed_critical)}\n")
+        f.write(f"Critical remaining: {total_crit}\n")
         f.write(f"Warning chunks    : {total_warn}\n\n")
 
         # ── Removed lines by volume ───────────────────────────────────────
@@ -530,17 +586,32 @@ def main():
                 for cat, text in item["removed_lines"]:
                     by_cat.setdefault(cat, []).append(text)
                 for cat, texts in by_cat.items():
-                    f.write(f"  {cat}: {len(texts)} line(s)\n")
-                    for t in texts[:10]:
-                        f.write(f"    {repr(t)}\n")
-                    if len(texts) > 10:
-                        f.write(f"    ... ({len(texts) - 10} more)\n")
+                    if cat == "inline_cleaned":
+                        # Skip inline_cleaned here—full details in INLINE_CLEANED.log
+                        f.write(f"  {cat}: {len(texts)} line(s) [see INLINE_CLEANED.log for details]\n")
+                    else:
+                        f.write(f"  {cat}: {len(texts)} line(s)\n")
+                        for t in texts[:10]:
+                            f.write(f"    {repr(t)}\n")
+                        if len(texts) > 10:
+                            f.write(f"    ... ({len(texts) - 10} more)\n")
                 f.write("\n")
         else:
             f.write("No inline lines removed (beyond end-of-book cutoff).\n\n")
 
-        # ── Critical TTS chunks ───────────────────────────────────────────
-        f.write("CRITICAL TTS CHUNKS (< 2 alpha chars — WILL crash Edge TTS)\n")
+        # ── Removed critical TTS chunks ───────────────────────────────────
+        f.write("REMOVED CRITICAL TTS CHUNKS (< 2 alpha chars)\n")
+        f.write("-" * 80 + "\n\n")
+        if all_removed_critical:
+            for item in all_removed_critical:
+                f.write(f"Volume {item['volume']}, Paragraph {item['para_idx']}\n")
+                f.write(f"  Alpha chars: {item['alpha']}\n")
+                f.write(f"  Text: {repr(item['snippet'])}\n\n")
+        else:
+            f.write("No critical chunks were removed.\n\n")
+
+        # ── Remaining critical TTS chunks (post-clean check) ─────────────
+        f.write("REMAINING CRITICAL TTS CHUNKS (post-clean check)\n")
         f.write("-" * 80 + "\n\n")
         if all_critical:
             for item in all_critical:
@@ -548,7 +619,7 @@ def main():
                 f.write(f"  Alpha chars: {item['alpha']}\n")
                 f.write(f"  Text: {repr(item['snippet'])}\n\n")
         else:
-            f.write("No critical chunks found.\n\n")
+            f.write("No remaining critical chunks.\n\n")
 
         # ── Warning TTS chunks ────────────────────────────────────────────
         f.write("WARNING TTS CHUNKS (2-3 alpha chars — short dialogue, usually fine)\n")
@@ -562,6 +633,22 @@ def main():
             f.write("No warning chunks.\n\n")
 
     print(f"Cleaning log: {log_path}")
+
+    # Write dedicated inline_cleaned log with ALL entries (no truncation)
+    inline_log_path = OUTPUT_DIR / "INLINE_CLEANED.log"
+    with open(inline_log_path, "w", encoding="utf-8") as f:
+        f.write("INLINE CLEANED ENTRIES (markdown formatting stripped)\n")
+        f.write("=" * 80 + "\n\n")
+        f.write(f"Total inline_cleaned: {len(all_inline_cleaned)}\n\n")
+
+        if all_inline_cleaned:
+            for idx, item in enumerate(all_inline_cleaned, 1):
+                f.write(f"{idx}. Volume {item['volume']}\n")
+                f.write(f"   {item['text']}\n\n")
+        else:
+            f.write("No inline cleaning performed.\n")
+
+    print(f"Inline cleaned log: {inline_log_path}")
 
     if total_crit:
         print(f"\n⚠  {total_crit} CRITICAL chunks (< 2 alpha chars) — these WILL"
