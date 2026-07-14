@@ -55,6 +55,11 @@ BACK_COVER_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Italic noise: orphaned opener (_a, _to, _really — no closing _)
+ITALIC_ORPHAN_RE = re.compile(r'^_[a-zA-Z]{1,8}[,.\s!?]*$')
+# Whole-line lone italic: _really_, _word_ (standalone, not mid-sentence)
+LONE_ITALIC_RE   = re.compile(r'^_[^_\n]{1,40}_[.!?,\'";\s]*$')
+
 
 # ── OCR noise detection ────────────────────────────────────────────────────
 
@@ -137,6 +142,20 @@ def is_legitimate_short(s: str) -> bool:
         return True
     # Two-word short: '"Yes, sir."', 'I nod.'
     if re.match(r'^["\']?[A-Za-z]{1,6}[\s,][A-Za-z]{1,6}[.!?]["\']?$', s):
+        return True
+    return False
+
+
+def is_italic_noise(s: str) -> bool:
+    """Detect markdown italic noise fragments: _a, _to, _really_, etc."""
+    s = s.strip()
+    if not s or HEADING_RE.match(s):
+        return False
+    # Orphaned italic opener with no closing underscore: _a, _to, _really
+    if ITALIC_ORPHAN_RE.match(s) and s.count('_') == 1:
+        return True
+    # Whole-line italic single word/short phrase: _really_, _word_
+    if LONE_ITALIC_RE.match(s):
         return True
     return False
 
@@ -247,6 +266,8 @@ def rejoin_split_sentences(lines: list) -> list:
 def clean_line(line: str) -> str:
     line = re.sub(r" {2,}", " ", line)
     line = line.replace("\u200b", "").replace("\xa0", " ")
+    # Strip inline markdown italic markers: _word_ → word
+    line = re.sub(r'_([^_\n]+)_', r'\1', line)
     return line.strip()
 
 
@@ -279,14 +300,16 @@ def process_file(src: Path, dst: Path) -> dict:
 
     # Step 1: Truncate end-of-book matter
     cutoff = find_endbook_cutoff(lines)
+    endbook_removed = [l.strip() for l in lines[cutoff:] if l.strip()]
     lines  = lines[:cutoff]
 
     # Step 2: Rejoin split sentences
     lines = rejoin_split_sentences(lines)
 
     # Step 3: Line-by-line filtering
-    out    = []
-    blanks = 0
+    out           = []
+    blanks        = 0
+    removed_lines = []  # (category, text)
 
     for line in lines:
         s = line.strip()
@@ -305,14 +328,22 @@ def process_file(src: Path, dst: Path) -> dict:
 
         # Drop lingering signup / newsletter content
         if SIGNUP_RE.search(s):
+            removed_lines.append(("signup", s))
             continue
 
         # Drop TOC items
         if TOC_ITEM_RE.match(s):
+            removed_lines.append(("toc_item", s))
             continue
 
         # Drop OCR noise
         if is_ocr_noise(s):
+            removed_lines.append(("ocr_noise", s))
+            continue
+
+        # Drop italic noise fragments (_a, _to, _really_, etc.)
+        if is_italic_noise(s):
+            removed_lines.append(("italic_noise", s))
             continue
 
         # Very short: keep if legitimate dialogue, otherwise merge into previous
@@ -341,20 +372,29 @@ def process_file(src: Path, dst: Path) -> dict:
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text(text, encoding="utf-8")
-    return {"in": n_in, "out": n_out, "removed": n_in - n_out, "text": text}
+    return {
+        "in": n_in,
+        "out": n_out,
+        "removed": n_in - n_out,
+        "text": text,
+        "removed_lines": removed_lines,
+        "endbook_removed": endbook_removed,
+    }
 
 
 # ── TTS chunk validator ────────────────────────────────────────────────────
 
 def count_bad_tts_chunks(text: str) -> tuple:
     """
-    Returns (critical, marginal, critical_chunks):
-      critical = paragraphs with < 2 alpha chars  (will crash Edge TTS)
-      marginal = paragraphs with 2–3 alpha chars  (short but usually fine)
+    Returns (critical, marginal, critical_chunks, marginal_chunks):
+      critical        = paragraphs with < 2 alpha chars  (will crash Edge TTS)
+      marginal        = paragraphs with 2–3 alpha chars  (short but usually fine)
       critical_chunks = list of (para_index, alpha_count, text_snippet)
+      marginal_chunks = list of (para_index, alpha_count, text_snippet)
     """
     critical = marginal = 0
     critical_chunks = []
+    marginal_chunks = []
     para_idx = 0
     for p in re.split(r"\n{2,}", text):
         p2    = re.sub(r"^#{1,6}\s+", "", p.strip())
@@ -366,8 +406,10 @@ def count_bad_tts_chunks(text: str) -> tuple:
                 critical_chunks.append((para_idx, alpha, snippet))
             elif alpha < 4:
                 marginal += 1
+                snippet = p2[:100].replace("\n", " ")
+                marginal_chunks.append((para_idx, alpha, snippet))
         para_idx += 1
-    return critical, marginal, critical_chunks
+    return critical, marginal, critical_chunks, marginal_chunks
 
 
 # ── Entry point ────────────────────────────────────────────────────────────
@@ -387,7 +429,9 @@ def main():
     print("-" * len(hdr))
 
     total_in = total_out = total_crit = total_warn = 0
-    all_critical = []  # Collect all critical chunks
+    all_critical = []  # (volume, para_idx, alpha, snippet)
+    all_marginal = []  # (volume, para_idx, alpha, snippet)
+    all_removed  = []  # per-volume removed line info
 
     for src in sources:
         vol   = re.search(r'Volume[\s_-]*(\d+)', src.name, re.IGNORECASE)
@@ -405,20 +449,28 @@ def main():
         dst = OUTPUT_DIR / dst_name
 
         stats = process_file(src, dst)
-        crit, warn, crit_chunks = count_bad_tts_chunks(stats["text"])
+        crit, warn, crit_chunks, warn_chunks = count_bad_tts_chunks(stats["text"])
 
         total_in   += stats["in"]
         total_out  += stats["out"]
         total_crit += crit
         total_warn += warn
 
-        # Log critical chunks by volume
         for para_idx, alpha, snippet in crit_chunks:
-            all_critical.append({
+            all_critical.append({"volume": vnum, "para_idx": para_idx,
+                                  "alpha": alpha, "snippet": snippet})
+        for para_idx, alpha, snippet in warn_chunks:
+            all_marginal.append({"volume": vnum, "para_idx": para_idx,
+                                  "alpha": alpha, "snippet": snippet})
+
+        removed = stats.get("removed_lines", [])
+        endbook = stats.get("endbook_removed", [])
+        if removed or endbook:
+            all_removed.append({
                 "volume": vnum,
-                "para_idx": para_idx,
-                "alpha": alpha,
-                "snippet": snippet
+                "removed_lines": removed,
+                "endbook_count": len(endbook),
+                "endbook_sample": endbook[:5],
             })
 
         flag = " ⚠ CRITICAL" if crit else (" warn" if warn else "")
@@ -430,21 +482,67 @@ def main():
           f"{total_in-total_out:>6,}  {total_crit:>5} {total_warn:>5}")
     print(f"\nOutput: {OUTPUT_DIR}")
 
-    # Write critical chunks log
-    log_path = OUTPUT_DIR / "CRITICAL_CHUNKS.log"
+    # Write comprehensive cleaning log
+    log_path = OUTPUT_DIR / "CLEANING_LOG.log"
     with open(log_path, "w", encoding="utf-8") as f:
-        f.write("CRITICAL TTS CHUNKS (< 2 alpha characters)\n")
+
+        f.write("AUDIO PREP CLEANING LOG\n")
         f.write("=" * 80 + "\n\n")
-        
+        f.write(f"Volumes processed : {len(sources)}\n")
+        f.write(f"Total lines in    : {total_in:,}\n")
+        f.write(f"Total lines out   : {total_out:,}\n")
+        f.write(f"Total removed     : {total_in - total_out:,}\n")
+        f.write(f"Critical chunks   : {total_crit}\n")
+        f.write(f"Warning chunks    : {total_warn}\n\n")
+
+        # ── Removed lines by volume ───────────────────────────────────────
+        f.write("REMOVED LINES BY VOLUME\n")
+        f.write("-" * 80 + "\n\n")
+        if all_removed:
+            for item in all_removed:
+                f.write(f"Volume {item['volume']}:\n")
+                if item["endbook_count"]:
+                    f.write(f"  end_of_book: {item['endbook_count']} lines cut\n")
+                    for ln in item["endbook_sample"]:
+                        f.write(f"    {repr(ln)}\n")
+                    if item["endbook_count"] > 5:
+                        f.write(f"    ... ({item['endbook_count'] - 5} more)\n")
+                by_cat: dict = {}
+                for cat, text in item["removed_lines"]:
+                    by_cat.setdefault(cat, []).append(text)
+                for cat, texts in by_cat.items():
+                    f.write(f"  {cat}: {len(texts)} line(s)\n")
+                    for t in texts[:10]:
+                        f.write(f"    {repr(t)}\n")
+                    if len(texts) > 10:
+                        f.write(f"    ... ({len(texts) - 10} more)\n")
+                f.write("\n")
+        else:
+            f.write("No inline lines removed (beyond end-of-book cutoff).\n\n")
+
+        # ── Critical TTS chunks ───────────────────────────────────────────
+        f.write("CRITICAL TTS CHUNKS (< 2 alpha chars — WILL crash Edge TTS)\n")
+        f.write("-" * 80 + "\n\n")
         if all_critical:
             for item in all_critical:
                 f.write(f"Volume {item['volume']}, Paragraph {item['para_idx']}\n")
                 f.write(f"  Alpha chars: {item['alpha']}\n")
                 f.write(f"  Text: {repr(item['snippet'])}\n\n")
         else:
-            f.write("No critical chunks found.\n")
-    
-    print(f"Critical log: {log_path}")
+            f.write("No critical chunks found.\n\n")
+
+        # ── Warning TTS chunks ────────────────────────────────────────────
+        f.write("WARNING TTS CHUNKS (2-3 alpha chars — short dialogue, usually fine)\n")
+        f.write("-" * 80 + "\n\n")
+        if all_marginal:
+            for item in all_marginal:
+                f.write(f"Volume {item['volume']}, Paragraph {item['para_idx']}\n")
+                f.write(f"  Alpha chars: {item['alpha']}\n")
+                f.write(f"  Text: {repr(item['snippet'])}\n\n")
+        else:
+            f.write("No warning chunks.\n\n")
+
+    print(f"Cleaning log: {log_path}")
 
     if total_crit:
         print(f"\n⚠  {total_crit} CRITICAL chunks (< 2 alpha chars) — these WILL"
