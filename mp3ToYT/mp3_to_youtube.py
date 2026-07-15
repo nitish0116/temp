@@ -14,6 +14,8 @@ Usage:
     python mp3_to_youtube.py input.mp3 --title "My Book" --artist "Author" --album "Series"
     python mp3_to_youtube.py input.mp3 --resolution 480p
     python mp3_to_youtube.py input.mp3 --thumbnail cover.jpg
+    python mp3_to_youtube.py input.mp3 --image cover.jpg
+    python mp3_to_youtube.py input.mp3 --image cover.jpg --thumbnail cover.jpg
 
 Requirements:
     ffmpeg + ffprobe must be installed and on PATH.
@@ -122,9 +124,8 @@ def clean_stem(path: Path) -> str:
 
 
 def estimate_size(duration_s: float, resolution: str) -> str:
-    # Static black frame compresses to ~0.1-0.3 Mbps with CRF encoding
-    # Audio at 128k = 0.128 Mbps
-    video_mbps = 0.20
+    # Static image/black frame: ~0.2-0.5 Mbps video + 0.128 Mbps audio
+    video_mbps = 0.30
     audio_mbps = 0.128
     mb = (video_mbps + audio_mbps) * duration_s / 8
     return f"~{mb/1024:.1f} GB" if mb >= 1024 else f"~{mb:.0f} MB"
@@ -156,97 +157,131 @@ def convert(
     resolution:  str,
     thumbnail:   Path | None,
     ffmpeg:      str,
+    image:       Path | None = None,
 ) -> None:
 
     size_str, crf = RESOLUTIONS.get(resolution, RESOLUTIONS[DEFAULT_RESOLUTION])
+    w, h = size_str.split("x")
 
     print(f"\n{'='*62}")
     print(f"  Input      : {mp3_path.name}  ({fmt_bytes(mp3_path.stat().st_size)})")
     print(f"  Output     : {output_path.name}")
     print(f"  Duration   : {fmt_duration(duration_s)}")
-    print(f"  Video      : {resolution} ({size_str})  CRF={crf}  1fps black")
+    video_mode = f"image ({image.name})" if image else "black"
+    print(f"  Video      : {resolution} ({size_str})  CRF={crf}  {video_mode}")
     print(f"  Audio      : AAC {AUDIO_BITRATE}  {AUDIO_SAMPLE_RATE} Hz  stereo")
     if title:     print(f"  Title      : {title}")
     if artist:    print(f"  Artist     : {artist}")
     if album:     print(f"  Album      : {album}")
-    if thumbnail: print(f"  Thumbnail  : {thumbnail.name}")
+    if image:     print(f"  Image      : {image.name}  (full-frame background)")
+    if thumbnail: print(f"  Thumbnail  : {thumbnail.name}  (attached picture)")
     print(f"{'='*62}\n")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # ── Build ffmpeg command ───────────────────────────────────────────
+    # ── Two-pass conversion ────────────────────────────────────────────
+    # Pass 1: encode video (image/black background) + audio
+    # Pass 2: attach thumbnail as attached_pic stream (separate pass avoids
+    #         ffmpeg conflict between -vf filter and stream copy/codec for
+    #         the thumbnail when both are in the same command)
+    #
+    # If no thumbnail requested, a single pass is used.
+
+    # Determine if we need a temp file for two-pass thumbnail attachment
+    needs_two_pass = thumbnail is not None
+    pass1_path     = output_path.with_suffix(".tmp.mp4") if needs_two_pass else output_path
+
+    # ── PASS 1: video + audio ──────────────────────────────────────────
     cmd = [ffmpeg, "-y", "-v", "warning", "-stats"]
 
-    # Input 0: MP3 audio
+    # Input 0: audio
     cmd += ["-i", str(mp3_path)]
 
-    # Input 1: black video — loop indefinitely, stopped by -t
-    # -stream_loop -1  : loop this input forever
-    # color filter     : pure black frame at 1 fps
-    cmd += [
-        "-stream_loop", "-1",
-        "-f", "lavfi",
-        "-i", f"color=c=black:s={size_str}:r=1",
-    ]
+    # Input 1: video source
+    if image:
+        # -loop 1: loop a still image indefinitely.
+        # Must be placed BEFORE -i for the image input.
+        # -stream_loop -1 does NOT work for image inputs; only -loop 1 does.
+        cmd += ["-loop", "1", "-i", str(image)]
+    else:
+        # Pure black lavfi source at 1 fps — minimum file size
+        cmd += [
+            "-stream_loop", "-1",
+            "-f", "lavfi",
+            "-i", f"color=c=black:s={size_str}:r=1",
+        ]
 
-    # Input 2 (optional): thumbnail image
-    if thumbnail:
-        cmd += ["-i", str(thumbnail)]
+    cmd += ["-map", "1:v:0", "-map", "0:a:0"]
 
-    # ── Stream mapping ─────────────────────────────────────────────────
-    # Map video from lavfi (input 1), audio from MP3 (input 0)
-    cmd += ["-map", "1:v:0"]
-    cmd += ["-map", "0:a:0"]
-
-    # ── Video codec ────────────────────────────────────────────────────
+    # Video filter: scale+crop image to exact target resolution
+    # force_original_aspect_ratio=increase → upscale to cover (no letterbox)
+    # crop=W:H                             → centre-crop to exact size
+    # setsar=1                             → square pixels for H.264
+    # fps=1                                → 1 fps (massive file size reduction
+    #                                         for static content — no quality loss)
+    vf = (f"scale={w}:{h}:force_original_aspect_ratio=increase,"
+          f"crop={w}:{h},setsar=1,fps=1")
+    cmd += ["-vf", vf]
     cmd += [
         "-c:v", "libx264",
-        "-preset", "ultrafast",   # fastest encode; fine for static black
+        "-preset", "ultrafast",   # fastest encode; irrelevant for static frame
         "-crf", str(crf),
-        "-pix_fmt", "yuv420p",    # broadest player/browser compatibility
+        "-pix_fmt", "yuv420p",    # required for broadest player compatibility
     ]
-
-    # ── Audio codec ────────────────────────────────────────────────────
     cmd += [
         "-c:a", "aac",
         "-ar",  str(AUDIO_SAMPLE_RATE),
         "-ac",  str(AUDIO_CHANNELS),
         "-b:a", AUDIO_BITRATE,
     ]
-
-    # ── Thumbnail (attached picture stream) ────────────────────────────
-    if thumbnail:
-        cmd += [
-            "-map", "2:v:0",
-            "-c:v:1", "copy",
-            "-disposition:v:1", "attached_pic",
-        ]
-
-    # ── Metadata ───────────────────────────────────────────────────────
     if title:  cmd += ["-metadata", f"title={title}"]
     if artist: cmd += ["-metadata", f"artist={artist}"]
     if album:  cmd += ["-metadata", f"album={album}"]
-
-    # ── Duration + output flags ────────────────────────────────────────
-    # Use explicit -t so ffmpeg knows exactly when to stop.
-    # Do NOT use -shortest with lavfi loop — it can exit at frame 0.
     cmd += ["-t", str(duration_s)]
-    cmd += ["-movflags", "+faststart"]   # moov atom at front for YT streaming
-    cmd += [str(output_path)]
+    cmd += ["-movflags", "+faststart"]
+    cmd += [str(pass1_path)]
 
-    # ── Run ───────────────────────────────────────────────────────────
-    print("Converting... (this will take a few minutes for long files)")
+    print("Pass 1/2: Encoding video + audio..." if needs_two_pass else "Converting...")
     print("(ffmpeg progress shown below)\n")
     started = time.perf_counter()
 
     try:
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as exc:
-        die(f"ffmpeg exited with code {exc.returncode}. See messages above.")
+        die(f"ffmpeg (pass 1) exited with code {exc.returncode}. See messages above.")
+
+    if not pass1_path.exists() or pass1_path.stat().st_size == 0:
+        die(f"ffmpeg produced an empty file at: {pass1_path}")
+
+    # ── PASS 2: attach thumbnail ───────────────────────────────────────
+    if thumbnail:
+        print("\nPass 2/2: Attaching thumbnail...\n")
+        cmd2 = [
+            ffmpeg, "-y", "-v", "warning",
+            "-i",    str(pass1_path),   # existing MP4 from pass 1
+            "-i",    str(thumbnail),    # thumbnail image (1 frame, no -loop needed)
+            "-map",  "0",               # all streams from pass 1
+            "-map",  "1:v",             # thumbnail video stream
+            "-c",    "copy",            # copy all pass-1 streams unchanged
+            "-c:v:1", "png",            # encode thumbnail as PNG (lossless, always works)
+            "-disposition:v:1", "attached_pic",
+            "-movflags", "+faststart",
+            str(output_path),
+        ]
+        try:
+            subprocess.run(cmd2, check=True)
+        except subprocess.CalledProcessError as exc:
+            die(f"ffmpeg (pass 2) exited with code {exc.returncode}. See messages above.")
+        finally:
+            # Remove the pass-1 temp file whether or not pass 2 succeeded
+            try:
+                pass1_path.unlink()
+            except OSError:
+                pass
 
     elapsed = time.perf_counter() - started
 
-    # ── Verify output ─────────────────────────────────────────────────
+    # ── Verify final output ────────────────────────────────────────────
     if not output_path.exists() or output_path.stat().st_size == 0:
         die(
             "ffmpeg finished but the output file is empty or missing.\n"
@@ -278,10 +313,11 @@ def parse_args() -> argparse.Namespace:
 Examples:
   python mp3_to_youtube.py book.mp3
   python mp3_to_youtube.py book.mp3 out.mp4
-    python mp3_to_youtube.py ./audiobooks ./output
+  python mp3_to_youtube.py ./audiobooks ./output
   python mp3_to_youtube.py book.mp3 --title "Tanya Vol 1" --artist "Carlo Zen"
   python mp3_to_youtube.py book.mp3 --resolution 480p
-  python mp3_to_youtube.py book.mp3 --thumbnail cover.jpg --resolution 480p
+  python mp3_to_youtube.py book.mp3 --image cover.jpg
+  python mp3_to_youtube.py book.mp3 --image cover.jpg --thumbnail cover.jpg --resolution 480p
         """,
     )
     parser.add_argument("input",  help="Input audio file OR folder containing audio files")
@@ -299,7 +335,19 @@ Examples:
     parser.add_argument(
         "--thumbnail",
         default=None,
-        help="Cover image to embed as MP4 thumbnail (JPG or PNG).",
+        help="Cover image to embed as MP4 thumbnail/attached picture (JPG or PNG). "
+             "Shown by media players in the library view. "
+             "Use --image to also show it as the video background.",
+    )
+    parser.add_argument(
+        "--image",
+        default=None,
+        help="Static image to display as the full-frame video background (JPG or PNG). "
+             "Scaled and centre-cropped to fill the chosen resolution. "
+             "Use this for cover art, book art, or any still image. "
+             "If omitted, a plain black background is used. "
+             "Tip: pass the same path to both --image and --thumbnail so the "
+             "cover art appears both in the video and in the player library.",
     )
     return parser.parse_args()
 
@@ -331,13 +379,26 @@ def main() -> int:
             raw_output.mkdir(parents=True, exist_ok=True)
             output_path = (raw_output / f"{inputs[0].stem}.mp4").resolve()
 
-    # Thumbnail (applies to all files)
+    # Background image (shown full-frame throughout the video)
+    image = None
+    if args.image:
+        image = Path(args.image).resolve()
+        if not image.exists():
+            print(f"[WARN] --image file not found: {image} — using black background.")
+            image = None
+
+    # Thumbnail (attached picture shown in media player library)
     thumbnail = None
     if args.thumbnail:
         thumbnail = Path(args.thumbnail).resolve()
         if not thumbnail.exists():
             print(f"[WARN] Thumbnail not found: {thumbnail} — skipping.")
             thumbnail = None
+
+    # Convenience: if --image given but no --thumbnail, auto-use image as thumbnail too
+    if image and not thumbnail:
+        thumbnail = image
+        print(f"[INFO] Using --image as thumbnail too (pass --thumbnail separately to override).")
 
     failed = 0
     for src in inputs:
@@ -382,6 +443,7 @@ def main() -> int:
                 resolution  = args.resolution,
                 thumbnail   = thumbnail,
                 ffmpeg      = ffmpeg,
+                image       = image,
             )
         except SystemExit:
             failed += 1
