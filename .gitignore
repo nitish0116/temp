@@ -4,3 +4,13 @@
 cleanup/**/*.md
 md-audio/**/*.md
 md_python/**/*.md
+mp3ToYT/**/*.md
+*.log
+*.cue
+cleanup/**/*.txt
+md-audio/**/*.txt
+md_python/**/*.txt
+mp3ToYT/**/*.txt
+*.jpg
+*.png
+*.pdf
