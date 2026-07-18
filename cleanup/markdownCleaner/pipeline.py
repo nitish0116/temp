@@ -20,6 +20,7 @@ Export Reports
 from __future__ import annotations
 
 
+from markdownCleaner.modules.cleanup.stage import NovelCleanupStage
 from markdownCleaner.modules.core.logger import (
     initialize,
     get_logger,
@@ -121,6 +122,7 @@ class OCRPipeline:
         #
 
         self.stages = [
+            NovelCleanupStage(self.config),
             UnicodeStage(self.config),
             RegexStage(self.config),
             SymSpellStage(self.config),
@@ -219,7 +221,7 @@ class OCRPipeline:
         #
         # Export output
         #
-
+        
         exporter = ReportExporter(
             self.config.get(
                 "paths.output_directory",
