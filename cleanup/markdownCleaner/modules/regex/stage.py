@@ -96,9 +96,14 @@ class RegexStage(PipelineStage):
 
         for segment in context.iter_segments():
 
+            if not segment.current_text.strip():
+                continue
+            original = segment.current_text
+
             for processor in self.processors:
 
                 processor.process(segment)
+
 
         total_changes = context.total_changes - start_changes
 

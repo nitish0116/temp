@@ -67,6 +67,11 @@ class MarkdownSegment:
         Update processed text.
         """
 
+        original_has_newline = self.current_text.endswith("\n")
+
+        if original_has_newline:
+            value = value.rstrip("\n") + "\n"
+
         self.current_text = value
 
     # ---------------------------------------------------------
@@ -79,3 +84,8 @@ class MarkdownSegment:
         """
 
         return self.current_text
+
+
+# Backward-compatible name used by older processor modules.
+# Keep this alias so mixed/stale project copies do not fail at import time.
+TextSegment = MarkdownSegment

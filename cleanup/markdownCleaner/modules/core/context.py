@@ -6,104 +6,90 @@ Shared processing state for OCR cleanup pipeline.
 
 from __future__ import annotations
 
-
 from pathlib import Path
-
 from datetime import datetime
+import logging
 
+from ..report.change_log import ChangeLog
 
-from ..report.change_log import (
-    ChangeLog,
+from ..markdown.markdown import (
+    MarkdownParser,
+    MarkdownDocument,
+    BlockType,
 )
 
-import logging
+from ..markdown.segmenter import MarkdownSegment
+
 
 class ProcessingContext:
     """
-    Shared state passed through all pipeline stages.
+    Shared processing state.
+
+    Markdown flow:
+
+        file
+          ↓
+      MarkdownParser
+          ↓
+     MarkdownDocument
+          ↓
+    editable paragraph blocks
+          ↓
+       pipeline stages
+          ↓
+      rebuild markdown
     """
 
-    def __init__(
-        self,
-        config,
-    ):
+    def __init__(self, config):
 
         self.config = config
 
-        #
-        # Input/output information
-        #
+        self.logger = logging.getLogger("ocr_cleanup")
+
+        self.tracker = ChangeLog()
 
         self.source_file = None
-
         self.output_file = None
 
-        #
-        # Markdown data
-        #
-
         self.original_markdown = ""
-
         self.current_markdown = ""
 
         #
-        # Segments
+        # New markdown model
         #
 
-        self.segments = []
+        self.document: MarkdownDocument | None = None
 
         #
-        # Change tracking
+        # Processing segments
         #
-        self.logger = logging.getLogger("ocr_cleanup")
-        
-        self.tracker = ChangeLog()
 
-        #
-        # Statistics
-        #
+        self.segments: list[MarkdownSegment] = []
 
         self.statistics = {
             "started": datetime.now().isoformat(),
             "stages": {},
         }
 
-        #
-        # Runtime metadata
-        #
-
         self.metadata = {
+            "version": "1.0",
+            "source": None,
+        }
 
-    "version": "1.0",
-
-    "source": None,
-
-}
-
-    def increment(self, name, amount=1):
-
-        self.statistics[name] = (
-        self.statistics.get(name, 0) + amount
-    )
-    # ---------------------------------------------------------
+    # -------------------------------------------------------------
 
     @property
     def total_changes(self):
 
         return self.tracker.total_changes()
-    
-    def load_markdown(
-        self,
-        file_path,
-    ):
-        """
-        Load markdown input.
-        """
+
+    # -------------------------------------------------------------
+
+    def load_markdown(self, file_path):
 
         path = Path(file_path)
 
         if not path.exists():
-
             raise FileNotFoundError(path)
 
         self.source_file = str(path)
@@ -112,104 +98,103 @@ class ProcessingContext:
 
         self.original_markdown = content
 
-        self.current_markdown = content
+        #
+        # Parse markdown
+        #
+
+        parser = MarkdownParser()
+
+        self.document = parser.parse(content)
 
         #
-        # Segment creation
+        # Create editable segments
         #
 
         self._create_segments()
 
-    # ---------------------------------------------------------
+        self.update_markdown()
 
-    def _create_segments(
-        self,
-    ):
-        """
-        Split markdown into processing blocks.
+    # -------------------------------------------------------------
 
-        Keeps processing lightweight.
-        """
-
-        from ..markdown.segmenter import (
-            MarkdownSegment,
-        )
+    def _create_segments(self):
 
         self.segments = []
 
-        lines = self.current_markdown.splitlines(keepends=True)
+        segment_index = 0
 
-        for index, line in enumerate(lines):
+        for block_index, block in enumerate(self.document.blocks):
+
+            #
+            # Only paragraphs are editable
+            #
+
+            if block.block_type != BlockType.PARAGRAPH:
+                continue
 
             self.segments.append(
                 MarkdownSegment(
-    text=line,
-    current_text=line,
-    line_number=index + 1,
-    start_line=index + 1,
-    end_line=index + 1,
-    block_index=index,
-    segment_index=0,
-)
+                    text=block.content,
+                    current_text=block.content,
+                    block_index=block_index,
+                    segment_index=segment_index,
+                    line_number=block.start_line,
+                    start_line=block.start_line,
+                    end_line=block.end_line,
+                )
             )
 
-    # ---------------------------------------------------------
+            segment_index += 1
+
+    # -------------------------------------------------------------
 
     def update_markdown(self):
-        """
-        Rebuild markdown from processed segments.
-        """
-    
-        ordered_segments = sorted(
-            self.segments,
-            key=lambda s: (
-                getattr(s, "block_index", 0),
-                getattr(s, "segment_index", 0),
-            ),
-        )
-    
-        self.current_markdown = "".join(
-            segment.current_text
-            for segment in ordered_segments
-        )
 
-    # ---------------------------------------------------------
+        #
+        # Copy edited text back into markdown blocks
+        #
 
-    def get_markdown(
-        self,
-    ):
-        """
-        Return current processed markdown.
-        """
+        for segment in self.segments:
+
+            self.document.blocks[segment.block_index].content = (
+                segment.current_text
+            )
+
+        #
+        # Rebuild markdown
+        #
+
+        self.current_markdown = self.document.to_markdown()
+
+    # -------------------------------------------------------------
+
+    def get_markdown(self):
 
         self.update_markdown()
 
         return self.current_markdown
 
-    # ---------------------------------------------------------
-
-    def add_stat(
-        self,
-        stage,
-        changes,
-    ):
-        """
-        Store stage statistics.
-        """
-
-        self.statistics["stages"][stage] = changes
-
-    # ---------------------------------------------------------
-
-    def finish(
-        self,
-    ):
-        """
-        Mark pipeline completion.
-        """
-
-        self.statistics["finished"] = datetime.now().isoformat()
+    # -------------------------------------------------------------
 
     def iter_segments(self):
 
         yield from self.segments
+
+    # -------------------------------------------------------------
+
+    def add_stat(self, stage, changes):
+
+        self.statistics["stages"][stage] = changes
+
+    # -------------------------------------------------------------
+
+    def increment(self, name, amount=1):
+
+        self.statistics[name] = (
+            self.statistics.get(name, 0) + amount
+        )
+
+    # -------------------------------------------------------------
+
+    def finish(self):
+
+        self.statistics["finished"] = datetime.now().isoformat()

@@ -62,7 +62,6 @@ class ReportExporter:
         + "_clean.md"
     )
 )
-
         markdown_path.write_text(
             cleaned_markdown,
             encoding="utf-8",

@@ -13,6 +13,7 @@ Nothing in this file modifies text.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
@@ -102,6 +103,8 @@ class MarkdownBlock:
 
     metadata: dict = field(default_factory=dict)
 
+    current_text: str = ""
+
     def line_count(self) -> int:
         return self.end_line - self.start_line + 1
 
@@ -129,6 +132,22 @@ class MarkdownBlock:
             f"editable={self.editable} "
             f"text='{preview}'>"
         )
+    
+    def __post_init__(self):
+        if not self.current_text:
+            self.current_text = self.text
+
+    def update(self, value: str):
+        self.current_text = value
+
+    @property
+    def content(self) -> str:
+        """Compatibility alias for code that expects ``block.content``."""
+        return self.current_text
+
+    @content.setter
+    def content(self, value: str) -> None:
+        self.current_text = value
 
 
 # ==========================================================
@@ -177,7 +196,10 @@ class MarkdownDocument:
         Reconstruct markdown exactly as stored.
         """
 
-        return "\n".join(block.text for block in self.blocks)
+        return "\n".join(
+        block.current_text
+        for block in self.blocks
+    )
 
     def statistics(self):
 
@@ -191,6 +213,16 @@ class MarkdownDocument:
 
         return stats
 
+    def to_markdown(self) -> str:
+        """
+        Rebuild the markdown exactly as parsed.
+        """
+        # Blocks are parsed from ``splitlines()`` (without line endings),
+        # so a newline must be reinserted between adjacent blocks.
+        return "\n".join(
+            block.current_text
+            for block in self.blocks
+        )
 
 # ==========================================================
 # Parser Skeleton
@@ -674,7 +706,7 @@ class MarkdownParser:
                 paragraph.append(current)
                 i += 1
 
-                document.add(
+            document.add(
                     MarkdownBlock(
                         block_type=BlockType.PARAGRAPH,
                         text="\n".join(paragraph),
@@ -690,11 +722,6 @@ class MarkdownParser:
 # ==========================================================
 # Convenience API
 # ==========================================================
-
-
-def load_markdown(filename: str | Path) -> MarkdownDocument:
-
-    return MarkdownParser().parse_file(filename)
 
 
 def parse_markdown(text: str) -> MarkdownDocument:
