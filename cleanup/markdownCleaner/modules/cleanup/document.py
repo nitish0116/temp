@@ -18,6 +18,7 @@ PICTURE_BLOCK = re.compile(
 )
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 UNDERLINE_TAG = re.compile(r"</?u\s*>", re.IGNORECASE)
+HTML_BREAK = re.compile(r"<br\s*/?>", re.IGNORECASE)
 
 # Narrative headings used to identify where the actual book begins.
 START_HEADING = re.compile(
@@ -92,6 +93,22 @@ class DocumentCleanupStage(PipelineStage):
             if count or new != text:
                 changes.append(_Change("Removed Markdown footnotes", "footnotes present", "footnotes removed", 95.0))
                 text = new
+
+        # Merged legacy NovelCleanup behavior: normalize residual HTML/Markdown
+        # at document level so a second segment-level cleanup stage is unnecessary.
+        before_markup = text
+        text = HTML_BREAK.sub("\n", text)
+        text = UNDERLINE_TAG.sub("", text)
+        text = HTML_COMMENT.sub("", text)
+        # Collapse horizontal whitespace only; keep line structure for paragraph
+        # reconstruction below.
+        text = re.sub(r"[ \t]+", " ", text)
+        if text != before_markup:
+            changes.append(_Change(
+                "Normalized residual HTML and Markdown markup",
+                "legacy inline markup",
+                "normalized markup",
+            ))
 
         before_headings = text
         text = self._normalize_headings(text)

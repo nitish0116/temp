@@ -1,119 +1,44 @@
-"""
-modules/symspell/candidate.py
-
-Data structure for SymSpell correction candidates.
-"""
-
+"""Correction candidate used by the local SymSpell lookup engine."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
 
 
 @dataclass
 class CorrectionCandidate:
-    """
-    Represents one possible correction.
-    """
-
-    # Original OCR word
-
     original: str
-
-    # Suggested corrected word
-
     corrected: str
-
-    # Levenshtein / Damerau distance
-
     distance: int
-
-    # Frequency in dictionary
-
     frequency: int = 0
-
-    # Calculated confidence
-
     confidence: float = 0.0
-
-    # Dictionary source
-
     source: str = "default"
-
-    # Extra metadata
-
     metadata: dict = field(default_factory=dict)
 
-    # ---------------------------------------------------------
+    def calculate_confidence(self, max_distance: int = 2) -> float:
+        """Return a deliberately conservative auto-correction score.
 
-    def calculate_confidence(
-        self,
-        max_distance: int = 2,
-    ) -> float:
+        The old formula capped one-edit candidates below 70, making a threshold
+        such as 92 impossible to reach. Here a one-edit candidate starts at 86
+        and earns up to 12 points from corpus frequency. Two-edit candidates are
+        intentionally kept too low for normal automatic application.
         """
-        Calculate correction confidence.
-
-        Factors:
-
-        - lower edit distance = better
-        - higher frequency = better
-
-        """
-
-        #
-        # Distance score
-        #
-
-        distance_score = max(0, 1 - (self.distance / max_distance))
-
-        #
-        # Frequency score
-        #
-
-        if self.frequency <= 0:
-
-            frequency_score = 0.1
-
+        if self.distance <= 0:
+            score = 100.0
+        elif self.distance == 1:
+            # 0..12 frequency bonus; very common words score highest.
+            bonus = min(12.0, max(0.0, math.log10(max(self.frequency, 1))) * 2.0)
+            score = 86.0 + bonus
         else:
-
-            import math
-
-            frequency_score = min(1.0, math.log10(self.frequency + 1) / 6)
-
-        #
-        # Combined score
-        #
-
-        score = distance_score * 0.65 + frequency_score * 0.35
-
-        self.confidence = round(
-            score * 100,
-            2,
-        )
-
+            bonus = min(8.0, max(0.0, math.log10(max(self.frequency, 1))) * 1.25)
+            score = 68.0 + bonus
+        self.confidence = round(min(score, 99.0), 2)
         return self.confidence
 
-    # ---------------------------------------------------------
-
-    def is_safe(
-        self,
-        threshold: float = 85.0,
-    ) -> bool:
-        """
-        Determine whether correction
-        can be applied automatically.
-        """
-
+    def is_safe(self, threshold: float = 92.0) -> bool:
         return self.confidence >= threshold
 
-    # ---------------------------------------------------------
-
-    def to_dict(
-        self,
-    ) -> dict:
-        """
-        Convert to report-friendly format.
-        """
-
+    def to_dict(self) -> dict:
         return {
             "original": self.original,
             "corrected": self.corrected,

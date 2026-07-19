@@ -21,7 +21,6 @@ from __future__ import annotations
 
 
 from markdownCleaner.modules.cleanup.document import DocumentCleanupStage
-from markdownCleaner.modules.cleanup.stage import NovelCleanupStage
 from markdownCleaner.modules.core.logger import (
     initialize,
     get_logger,
@@ -124,7 +123,6 @@ class OCRPipeline:
 
         self.stages = [
             DocumentCleanupStage(self.config),
-            NovelCleanupStage(self.config),
             UnicodeStage(self.config),
             RegexStage(self.config),
             SymSpellStage(self.config),

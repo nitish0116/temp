@@ -23,9 +23,11 @@ class PipelineConfig:
     def __init__(
         self,
         data=None,
+        base_dir=None,
     ):
 
         self.data = data or {}
+        self.base_dir = Path(base_dir).resolve() if base_dir else Path.cwd()
 
     # ---------------------------------------------------------
 
@@ -51,7 +53,7 @@ class PipelineConfig:
 
             data = yaml.safe_load(file)
 
-        return cls(data)
+        return cls(data, base_dir=path.parent)
 
     # ---------------------------------------------------------
 
@@ -128,6 +130,17 @@ class PipelineConfig:
             target = target[part]
 
         target[parts[-1]] = value
+
+
+    def resolve_path(self, value):
+        """Resolve a config-relative path without changing special URI-like values."""
+        if value is None:
+            return None
+        text = str(value)
+        if text.lower().startswith("builtin") or text.lower() == "symspellpy":
+            return text
+        path = Path(text)
+        return str(path if path.is_absolute() else (self.base_dir / path).resolve())
 
     # ---------------------------------------------------------
 

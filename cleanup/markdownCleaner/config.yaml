@@ -46,15 +46,20 @@ regex:
       enabled: true
 
 symspell:
-  # Disabled by default unless you provide a real frequency dictionary.
-  # An empty/missing dictionary gives no useful corrections and aggressive
-  # spell correction can damage names in fiction.
-  enabled: false
-  dictionary: "data/english_frequency.txt"
+  enabled: true
+  # Uses the 82k English frequency dictionary shipped by the symspellpy package.
+  dictionary: "builtin:en-82k"
   glossary: "data/custom_words.json"
   learned: "data/learned_words.json"
   max_edit_distance: 2
+  max_auto_edit_distance: 1
   confidence_threshold: 92
+  minimum_word_length: 4
+  minimum_dictionary_frequency: 1
+  minimum_candidate_frequency: 1000
+  ambiguity_margin: 2
+  auto_protect_proper_nouns: true
+  proper_noun_min_occurrences: 2
   protected:
     - "Ainz"
     - "Yggdrasil"

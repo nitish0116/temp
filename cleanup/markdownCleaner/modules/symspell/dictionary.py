@@ -1,262 +1,112 @@
-"""
-modules/symspell/dictionary.py
-
-Dictionary management for SymSpell correction.
-
-Supports:
-
-- standard frequency dictionary
-- custom glossary
-- learned words
-"""
-
+"""Dictionary loading for safe SymSpell correction."""
 from __future__ import annotations
 
 import json
-
+from importlib import resources
 from pathlib import Path
+from typing import Iterable
 
 
 class DictionaryManager:
-    """
-    Manages word frequency data.
-    """
+    """Manage the main frequency dictionary and protected vocabulary."""
 
-    def __init__(
-        self,
-        dictionary_path=None,
-        glossary_path=None,
-        learned_path=None,
-    ):
+    BUILTIN_NAMES = {"builtin", "builtin:en", "builtin:en-82k", "symspellpy"}
 
-        self.words = {}
-
-        self.protected_words = set()
-
-        self.dictionary_path = Path(dictionary_path) if dictionary_path else None
-
+    def __init__(self, dictionary_path=None, glossary_path=None, learned_path=None):
+        self.words: dict[str, int] = {}
+        self.protected_words: set[str] = set()
+        self.dictionary_path = dictionary_path
         self.glossary_path = Path(glossary_path) if glossary_path else None
-
         self.learned_path = Path(learned_path) if learned_path else None
 
-    # ---------------------------------------------------------
-
-    def load(
-        self,
-    ):
-        """
-        Load all word sources.
-        """
-
+    def load(self) -> None:
         if self.dictionary_path:
-
-            self._load_frequency_dictionary(self.dictionary_path)
-
+            path = self._resolve_dictionary_path(self.dictionary_path)
+            self._load_frequency_dictionary(path)
         if self.glossary_path:
-
             self._load_glossary(self.glossary_path)
-
         if self.learned_path:
-
             self._load_learned_words(self.learned_path)
 
-    # ---------------------------------------------------------
+    @classmethod
+    def _resolve_dictionary_path(cls, value) -> Path:
+        text = str(value).strip()
+        if text.lower() not in cls.BUILTIN_NAMES:
+            return Path(text)
 
-    def _load_frequency_dictionary(
-        self,
-        path: Path,
-    ):
-        """
-        Load:
+        try:
+            resource = resources.files("symspellpy").joinpath(
+                "frequency_dictionary_en_82_765.txt"
+            )
+            # The normal installed package exposes a real filesystem path.
+            return Path(str(resource))
+        except (ModuleNotFoundError, TypeError) as exc:
+            raise RuntimeError(
+                "SymSpell is enabled with the built-in English dictionary, but "
+                "the 'symspellpy' package is not installed. Run: "
+                "pip install -r requirements.txt"
+            ) from exc
 
-            word frequency
-
-        format:
-
-            the 5000000
-            of 4000000
-
-        """
-
+    def _load_frequency_dictionary(self, path: Path) -> None:
         if not path.exists():
-
-            return
-
-        with path.open(
-            "r",
-            encoding="utf-8",
-        ) as file:
-
+            raise FileNotFoundError(f"SymSpell dictionary not found: {path}")
+        with path.open("r", encoding="utf-8") as file:
             for line in file:
-
-                line = line.strip()
-
-                if not line:
-
+                parts = line.strip().split()
+                if len(parts) < 2:
                     continue
-
-                parts = line.split()
-
-                if len(parts) != 2:
-
+                word = parts[0]
+                try:
+                    frequency = int(parts[1])
+                except ValueError:
                     continue
+                self.add_word(word, frequency)
 
-                word, frequency = parts
-
-                self.words[word.lower()] = int(frequency)
-
-    # ---------------------------------------------------------
-
-    def _load_glossary(
-        self,
-        path: Path,
-    ):
-        """
-        Load novel-specific vocabulary.
-
-        Example:
-
-        [
-            "Ainz",
-            "Yggdrasil"
-        ]
-
-        """
-
+    def _load_glossary(self, path: Path) -> None:
         if not path.exists():
-
             return
-
-        with path.open(
-            "r",
-            encoding="utf-8",
-        ) as file:
-
-            words = json.load(file)
-
+        data = json.loads(path.read_text(encoding="utf-8"))
+        words: Iterable[str]
+        if isinstance(data, dict):
+            words = data.keys()
+        elif isinstance(data, list):
+            words = data
+        else:
+            return
         for word in words:
+            self.add_word(str(word), frequency=100_000, protected=True)
 
-            self.add_word(
-                word,
-                frequency=100000,
-                protected=True,
-            )
+    def _load_learned_words(self, path: Path) -> None:
+        """Load user-approved learned words as protected vocabulary.
 
-    # ---------------------------------------------------------
-
-    def _load_learned_words(
-        self,
-        path: Path,
-    ):
+        Learned terms are intentionally *not* used as correction targets. This
+        prevents a typo accidentally learned in one book from being propagated
+        into later books.
         """
-        Load words learned from previous runs.
-        """
-
         if not path.exists():
-
             return
+        data = json.loads(path.read_text(encoding="utf-8"))
+        words = data.keys() if isinstance(data, dict) else data if isinstance(data, list) else []
+        for word in words:
+            self.add_word(str(word), frequency=1, protected=True)
 
-        with path.open(
-            "r",
-            encoding="utf-8",
-        ) as file:
-
-            data = json.load(file)
-
-        for word, frequency in data.items():
-
-            self.add_word(
-                word,
-                frequency,
-                protected=False,
-            )
-
-    # ---------------------------------------------------------
-
-    def add_word(
-        self,
-        word: str,
-        frequency: int = 1,
-        protected: bool = False,
-    ):
-        """
-        Add word to dictionary.
-        """
-
+    def add_word(self, word: str, frequency: int = 1, protected: bool = False) -> None:
         key = word.lower()
-
-        self.words[key] = (
-            self.words.get(
-                key,
-                0,
-            )
-            + frequency
-        )
-
+        if not key:
+            return
+        self.words[key] = max(self.words.get(key, 0), int(frequency))
         if protected:
-
             self.protected_words.add(key)
 
-    # ---------------------------------------------------------
+    def protect(self, word: str) -> None:
+        if word:
+            self.protected_words.add(word.lower())
 
-    def contains(
-        self,
-        word: str,
-    ) -> bool:
-        """
-        Check whether word exists.
-        """
-
+    def contains(self, word: str) -> bool:
         return word.lower() in self.words
 
-    # ---------------------------------------------------------
-
-    def is_protected(
-        self,
-        word: str,
-    ) -> bool:
-        """
-        Check protected vocabulary.
-        """
-
+    def is_protected(self, word: str) -> bool:
         return word.lower() in self.protected_words
 
-    # ---------------------------------------------------------
-
-    def frequency(
-        self,
-        word: str,
-    ) -> int:
-        """
-        Return word frequency.
-        """
-
-        return self.words.get(
-            word.lower(),
-            0,
-        )
-
-    # ---------------------------------------------------------
-
-    def save_learned_words(
-        self,
-    ):
-        """
-        Save vocabulary learned during processing.
-        """
-
-        if not self.learned_path:
-
-            return
-
-        with self.learned_path.open(
-            "w",
-            encoding="utf-8",
-        ) as file:
-
-            json.dump(
-                self.words,
-                file,
-                indent=2,
-                ensure_ascii=False,
-            )
+    def frequency(self, word: str) -> int:
+        return self.words.get(word.lower(), 0)
