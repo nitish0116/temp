@@ -103,6 +103,12 @@ class DocumentCleanupStage(PipelineStage):
         if text != before_paragraphs:
             changes.append(_Change("Reconstructed PDF/OCR wrapped paragraphs", "split paragraph lines", "joined prose paragraphs", 96.0))
 
+        if self.config.get("cleanup.strip_markdown_emphasis", True):
+            before_emphasis = text
+            text = self._strip_markdown_emphasis(text)
+            if text != before_emphasis:
+                changes.append(_Change("Removed Markdown emphasis markers for TTS", "Markdown italic/bold markers", "plain text emphasis"))
+
         before_space = text
         text = self._normalize_spacing(text)
         if text != before_space:
@@ -225,6 +231,21 @@ class DocumentCleanupStage(PipelineStage):
             else:
                 merged.append(block)
         return "\n\n".join(merged)
+
+    @staticmethod
+    def _strip_markdown_emphasis(text: str) -> str:
+        """Remove Markdown bold/italic markers while preserving their text.
+
+        Handles common emphasis forms such as _word_, *word*, __word__, and
+        **word**. Underscores inside identifiers/words are left untouched.
+        """
+        # Strong emphasis first so **text** does not get handled as two
+        # independent italic markers.
+        text = re.sub(r"(?<!\w)\*\*(?=\S)(.+?)(?<=\S)\*\*(?!\w)", r"\1", text)
+        text = re.sub(r"(?<!\w)__(?=\S)(.+?)(?<=\S)__(?!\w)", r"\1", text)
+        text = re.sub(r"(?<!\w)\*(?=\S)(.+?)(?<=\S)\*(?!\w)", r"\1", text)
+        text = re.sub(r"(?<!\w)_(?=\S)(.+?)(?<=\S)_(?!\w)", r"\1", text)
+        return text
 
     @staticmethod
     def _normalize_spacing(text: str) -> str:

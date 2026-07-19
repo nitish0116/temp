@@ -17,3 +17,13 @@ def test_paragraph_wrap_reconstruction():
 def test_heading_normalization():
     source = "### <u>Chapter 1 | The Beginning</u>"
     assert DocumentCleanupStage._normalize_headings(source) == "# Chapter 1: The Beginning"
+
+
+def test_markdown_emphasis_removed_for_tts():
+    source = "_Yggdrasil_, _Ba-ding!_, _because_, **bold**, __strong__"
+    result = DocumentCleanupStage._strip_markdown_emphasis(source)
+    assert result == "Yggdrasil, Ba-ding!, because, bold, strong"
+
+def test_internal_underscores_are_preserved():
+    source = "file_name and snake_case"
+    assert DocumentCleanupStage._strip_markdown_emphasis(source) == source

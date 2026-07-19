@@ -19,6 +19,7 @@ cleanup:
   remove_front_matter: true
   remove_back_matter: true
   remove_footnotes: true
+  strip_markdown_emphasis: true
 
 unicode:
   enabled: true
