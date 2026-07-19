@@ -72,7 +72,6 @@ class RegexStage(PipelineStage):
             BrokenWordProcessor(context),
             HyphenationProcessor(context),
             RepeatedCharacterProcessor(context),
-            NumberLetterProcessor(context),
         ]
 
     # ---------------------------------------------------------

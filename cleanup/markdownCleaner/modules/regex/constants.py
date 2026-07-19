@@ -32,10 +32,10 @@ because they can damage valid text.
 
 
 OCR_CHARACTER_REPLACEMENTS = {
-    # Common OCR letter confusion
-    "rn": "m",
-    "vv": "w",
+    # Intentionally empty by default.  Global replacements such as rn -> m
+    # corrupt valid words (internal -> intemal, turned -> tumed).
 }
+
 
 
 OCR_CHARACTER_CONFIDENCE = {
@@ -90,6 +90,7 @@ Examples:
 """
 
 BROKEN_WORD_PATTERNS = [
+    # OCR inserted a space inside a compound word.
     (
         re.compile(
             r"\b(to|some|every|any|no|what|where)\s+(thing|one|body)\b",
@@ -98,6 +99,9 @@ BROKEN_WORD_PATTERNS = [
         r"\1\2",
         85.0,
     ),
+    # OCR/PDF extraction accidentally removed a required word boundary.
+    (re.compile(r"\btoone(?=['’]s\b)", re.IGNORECASE), "to one", 99.0),
+    (re.compile(r"\bnoone\b", re.IGNORECASE), "no one", 99.0),
 ]
 
 

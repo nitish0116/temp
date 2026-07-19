@@ -167,6 +167,16 @@ class ProcessingContext:
 
     # -------------------------------------------------------------
 
+    def replace_markdown(self, markdown: str):
+        """Replace the complete working document and rebuild editable segments."""
+        self.current_markdown = markdown
+        parser = MarkdownParser()
+        self.document = parser.parse(markdown)
+        self._create_segments()
+        self.update_markdown()
+
+    # -------------------------------------------------------------
+
     def get_markdown(self):
 
         self.update_markdown()
