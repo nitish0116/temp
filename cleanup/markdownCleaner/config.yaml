@@ -30,8 +30,20 @@ cleanup:
   # profiles, diagrams, etc. and removes only likely gibberish.
   picture_ocr_mode: "safe"
   remove_promotional_tail: true
+  remove_publisher_tail: true
+  remove_glossary_footnotes: true
   remove_footnotes: true
   strip_markdown_emphasis: true
+  # Report suspicious whole-document OCR lines but never delete them.
+  report_ocr_noise: true
+  ocr_noise_report_limit: 100
+
+tts_validation:
+  # Report-only validation; cleaned Markdown is never modified by this stage.
+  enabled: true
+  chunk_size: 2600
+  minimum_alpha: 4
+  report_limit: 200
 
 unicode:
   enabled: true

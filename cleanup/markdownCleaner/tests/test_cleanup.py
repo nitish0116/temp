@@ -7,6 +7,8 @@ from markdownCleaner.modules.cleanup.document import (
 from markdownCleaner.modules.regex.constants import OCR_CHARACTER_REPLACEMENTS
 from markdownCleaner.modules.report.exporter import meaningful_output_name
 from markdownCleaner.cli import _unique_batch_output_name
+from markdownCleaner.modules.cleanup.tts_validation import TTSValidationStage
+from md_to_audio import escape_ssml_text, is_speakable_chunk
 
 
 def test_output_filename_is_readable_and_drops_release_tags():
@@ -29,6 +31,92 @@ def test_meaningful_batch_names_remain_collision_safe():
     name = "Book - Volume 1 - Cleaned.md"
     assert _unique_batch_output_name(name, used) == name
     assert _unique_batch_output_name(name, used) == "Book - Volume 1 - Cleaned (2).md"
+
+
+def test_bounded_bare_and_blockquoted_glossary_footnotes_are_removed():
+    text = """Narrative ending.
+
+1 **Heimat** A homeland or native country.
+
+> 2 **Mage** A practitioner of magic.
+> Continued explanation.
+
+# Appendix
+
+Content that must remain.
+"""
+    cleaned, removed = DocumentCleanupStage._remove_bounded_glossary_footnotes(text)
+    assert removed == 2
+    assert "**Heimat**" not in cleaned
+    assert "**Mage**" not in cleaned
+    assert "# Appendix" in cleaned
+    assert "Content that must remain." in cleaned
+
+
+def test_ordinary_numbered_prose_is_not_treated_as_glossary_footnote():
+    text = "1. This is an ordinary numbered instruction.\n"
+    cleaned, removed = DocumentCleanupStage._remove_bounded_glossary_footnotes(text)
+    assert removed == 0
+    assert cleaned == text
+
+
+def test_generic_newsletter_tail_is_removed():
+    text = """# Epilogue
+
+The story ends.
+
+# Sign Up for the Yen Press Newsletter
+Visit yenpress.com/newsletter for updates.
+"""
+    cleaned, kind = DocumentCleanupStage._remove_generic_publisher_tail(text)
+    assert kind == "publisher signup/newsletter tail"
+    assert "The story ends." in cleaned
+    assert "Sign Up" not in cleaned
+
+
+def test_trailing_numbered_contents_appendix_is_removed():
+    text = """# Epilogue
+
+The story ends.
+
+1. Cover
+2. Insert
+3. Chapter 1
+4. Afterword
+"""
+    cleaned, kind = DocumentCleanupStage._remove_generic_publisher_tail(text)
+    assert kind == "numbered contents appendix"
+    assert "The story ends." in cleaned
+    assert "1. Cover" not in cleaned
+
+
+def test_ocr_noise_detection_is_conservative_and_report_only():
+    text = """Normal narrative text remains here.
+bcdfghjklmnpqrstvwxyz
+The year was 1928.
+"""
+    findings = DocumentCleanupStage._find_conservative_ocr_noise(text)
+    assert len(findings) == 1
+    assert findings[0][1] == "bcdfghjklmnpqrstvwxyz"
+    assert "Normal narrative text remains here." in text
+    assert "The year was 1928." in text
+
+
+def test_tts_validation_reports_xml_ampersand_and_low_alpha():
+    assert TTSValidationStage.issues("& < >", minimum_alpha=4) == [
+        "LOW_ALPHA(0)",
+        "XML_BRACKETS",
+        "RAW_AMPERSAND",
+    ]
+    assert TTSValidationStage.issues("Safe narration text.") == []
+
+
+def test_audio_boundary_escapes_ssml_once_and_skips_invalid_chunks():
+    assert escape_ssml_text("R&D <test> &amp; done") == (
+        "R&amp;D &lt;test&gt; &amp; done"
+    )
+    assert not is_speakable_chunk("... 1")
+    assert is_speakable_chunk("Okay.")
 
 
 def test_unsafe_rn_replacement_is_disabled():

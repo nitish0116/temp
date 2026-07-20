@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from datetime import datetime
+import html
 import os
 import random
 import re
@@ -67,6 +68,17 @@ EDGE_RECOMMENDED_VOICES = [
 
 QUIET = False
 EDGE_RETRY_ATTEMPTS = 7
+MIN_SPEAKABLE_ALPHA = 4
+
+
+def is_speakable_chunk(text: str, minimum_alpha: int = MIN_SPEAKABLE_ALPHA) -> bool:
+    """Return whether a chunk contains enough language for a TTS request."""
+    return sum(character.isalpha() for character in text) >= minimum_alpha
+
+
+def escape_ssml_text(text: str) -> str:
+    """Escape user text exactly once before it enters an SSML-based backend."""
+    return html.escape(html.unescape(text), quote=False)
 
 
 def log_step(message: str) -> None:
@@ -493,11 +505,9 @@ def narration_paragraphs(markdown_text: str, chunk_size: int, chapter_markers: b
     # Edge TTS raises NoAudioReceived when given fewer than ~4 alphabetic
     # characters (e.g. 'it.', '-', '. "ie'). These arise from sentences
     # split across blank lines in the source markdown.
-    MIN_ALPHA = 4
     filtered: list[str] = []
     for chunk in chunks:
-        alpha = sum(c.isalpha() for c in chunk)
-        if alpha >= MIN_ALPHA:
+        if chunk == "[CHAPTER_END]" or is_speakable_chunk(chunk):
             filtered.append(chunk)
         elif filtered:
             # Append orphaned fragment to previous chunk (preserves audio).
@@ -931,7 +941,7 @@ async def _edge_synthesize_chunk(text: str, voice_name: str, output_path: Path) 
     edge_tts = _require_edge_tts()
 
     # Guard: skip chunks with no speakable content to prevent NoAudioReceived.
-    if sum(c.isalpha() for c in text) < 4:
+    if not is_speakable_chunk(text):
         if not QUIET:
             print(f'[SKIP] Unspeakable chunk ({repr(text[:60])})')
         output_path.touch()   # zero-byte placeholder for concat step
@@ -940,7 +950,13 @@ async def _edge_synthesize_chunk(text: str, voice_name: str, output_path: Path) 
     last_exc: Exception | None = None
     for attempt in range(1, EDGE_RETRY_ATTEMPTS + 1):
         try:
-            communicate = edge_tts.Communicate(text=text, voice=voice_name)
+            # Edge TTS wraps this plain text in SSML and XML-escapes it
+            # internally. Normalize any pre-encoded entities at this boundary
+            # so the client escapes exactly once rather than speaking "amp".
+            communicate = edge_tts.Communicate(
+                text=html.unescape(text),
+                voice=voice_name,
+            )
             await communicate.save(str(output_path))
             if output_path.exists() and output_path.stat().st_size > 0:
                 return
@@ -1010,8 +1026,10 @@ async def _edge_synthesize_chunks_async(
     for idx, chunk in enumerate(chunks):
         if chunk == "[CHAPTER_END]":
             chapter_marker_indices[idx] = chapter_marker_duration
-        else:
+        elif is_speakable_chunk(chunk):
             synthesis_chunks.append((idx, chunk))
+        elif not quiet:
+            print(f"[SKIP] Unspeakable chunk ({repr(chunk[:60])})")
     
     semaphore = asyncio.Semaphore(workers)
 
@@ -1512,6 +1530,10 @@ def synthesize_wav(chunks: list[str], wav_path: Path, voice_name: str | None = N
     Raises:
         SystemExit: If PowerShell script execution fails.
     """
+    chunks = [chunk for chunk in chunks if is_speakable_chunk(chunk)]
+    if not chunks:
+        raise RuntimeError("No speakable chunks remain after validation.")
+
     temp_dir = Path(tempfile.mkdtemp(prefix="md-audio-"))
     chunk_file = temp_dir / "chunks.txt"
     chunk_file.write_text("\n".join(chunks), encoding="utf-8")

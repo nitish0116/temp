@@ -21,6 +21,7 @@ from __future__ import annotations
 
 
 from markdownCleaner.modules.cleanup.document import DocumentCleanupStage
+from markdownCleaner.modules.cleanup.tts_validation import TTSValidationStage
 from markdownCleaner.modules.core.logger import (
     initialize,
     get_logger,
@@ -126,6 +127,7 @@ class OCRPipeline:
             UnicodeStage(self.config),
             RegexStage(self.config),
             SymSpellStage(self.config),
+            TTSValidationStage(self.config),
         ]
 
     # ---------------------------------------------------------

@@ -28,6 +28,21 @@ ATX_HEADING = re.compile(r"^(\s*#{1,6})\s+(.+?)\s*$")
 SECTION_NUMBER = re.compile(r"^_?(\d+)_?$")
 FOOTNOTE_DEFINITION = re.compile(r"(?m)^\s*\[\^[^\]]+\]:.*(?:\n(?: {2,}|\t).*)*\n?")
 FOOTNOTE_REFERENCE = re.compile(r"\[\^[^\]]+\]")
+GLOSSARY_FOOTNOTE = re.compile(
+    r"^\s*>?\s*\d+\s+\*\*\S(?:.*?\S)?\*\*(?:\s+.*)?$"
+)
+SIGNUP_OR_NEWSLETTER = re.compile(
+    r"(?:\bsign\s*up\b.*\bnewsletter\b|"
+    r"\bnewsletter\s+sign\s*up\b|"
+    r"(?:https?://|www\.)?(?:www\.)?yenpress\.com(?:/\S*)?|"
+    r"\byen\s+(?:press\s+)?newsletter\b)",
+    re.I,
+)
+TRAILING_TOC_ITEM = re.compile(
+    r"^\s*\d+[.)]\s+(?:cover|insert|title\s+page|copyright|"
+    r"chapter\b.*|afterword|appendix\b.*|yen\s+newsletter)\s*$",
+    re.I,
+)
 
 # Backward-compatible regex exports retained for callers/tests from older releases.
 # They are no longer used to truncate documents.
@@ -211,6 +226,28 @@ class DocumentCleanupStage(PipelineStage):
                     98.0,
                 ))
 
+        if self.config.get("cleanup.remove_glossary_footnotes", True):
+            before = text
+            text, removed_glossary = self._remove_bounded_glossary_footnotes(text)
+            if removed_glossary:
+                changes.append(_Change(
+                    "Removed bounded bare/blockquoted glossary footnotes",
+                    f"{removed_glossary} glossary footnote block(s)",
+                    "",
+                    98.0,
+                ))
+
+        if self.config.get("cleanup.remove_publisher_tail", True):
+            before = text
+            text, tail_kind = self._remove_generic_publisher_tail(text)
+            if tail_kind:
+                changes.append(_Change(
+                    f"Removed trailing {tail_kind}",
+                    "publisher/navigation tail",
+                    "",
+                    98.0,
+                ))
+
         before_decorative = text
         text = DECORATIVE_SEPARATOR_LINE.sub("", text)
         if text != before_decorative:
@@ -272,7 +309,25 @@ class DocumentCleanupStage(PipelineStage):
                 reason=item.reason,
             )
 
-        return StageResult(stage=self.name, changes=len(changes))
+        noise_findings = []
+        if self.config.get("cleanup.report_ocr_noise", True):
+            noise_findings = self._find_conservative_ocr_noise(
+                text,
+                limit=int(self.config.get("cleanup.ocr_noise_report_limit", 100)),
+            )
+            for line_number, line, reason in noise_findings:
+                context.tracker.add(
+                    stage="OCRNoiseReview",
+                    block_index=-1,
+                    segment_index=-1,
+                    line=line_number,
+                    before=line,
+                    after=line,
+                    confidence=0.0,
+                    reason=f"Report only; text was preserved: {reason}",
+                )
+
+        return StageResult(stage=self.name, changes=len(changes) + len(noise_findings))
 
     # ------------------------------------------------------------------
     # Picture OCR
@@ -643,6 +698,80 @@ class DocumentCleanupStage(PipelineStage):
                 return "\n".join(lines[:i]).rstrip()
 
         return text
+
+    @staticmethod
+    def _remove_bounded_glossary_footnotes(text: str) -> tuple[str, int]:
+        """Remove only paragraphs explicitly shaped like numbered glossary notes."""
+        paragraphs = re.split(r"(\n\s*\n+)", text)
+        removed = 0
+        out: list[str] = []
+        for part in paragraphs:
+            if not part.strip() or re.fullmatch(r"\n\s*\n+", part):
+                out.append(part)
+                continue
+            lines = [line for line in part.splitlines() if line.strip()]
+            if lines and GLOSSARY_FOOTNOTE.match(lines[0]):
+                # The first line supplies a strong boundary. Continuation lines
+                # remain within this paragraph and are removed with that note.
+                removed += 1
+                continue
+            out.append(part)
+        return "".join(out), removed
+
+    @staticmethod
+    def _remove_generic_publisher_tail(text: str) -> tuple[str, str | None]:
+        """Remove strongly identified newsletter or numbered-TOC material at EOF."""
+        lines = text.splitlines()
+        if not lines:
+            return text, None
+        search_start = max(0, len(lines) - max(300, len(lines) // 5))
+
+        for i in range(search_start, len(lines)):
+            if SIGNUP_OR_NEWSLETTER.search(lines[i]):
+                prefix = "\n".join(lines[:i]).rstrip()
+                return prefix, "publisher signup/newsletter tail"
+
+        matches = [
+            i for i in range(search_start, len(lines))
+            if TRAILING_TOC_ITEM.match(lines[i])
+        ]
+        # Require at least two nearby entries so an ordinary numbered sentence
+        # cannot trigger truncation.
+        for first, second in zip(matches, matches[1:]):
+            if second - first <= 4:
+                return "\n".join(lines[:first]).rstrip(), "numbered contents appendix"
+
+        return text, None
+
+    @staticmethod
+    def _find_conservative_ocr_noise(
+        text: str,
+        *,
+        limit: int = 100,
+    ) -> list[tuple[int, str, str]]:
+        """Find high-signal OCR garbage without changing document text."""
+        findings: list[tuple[int, str, str]] = []
+        if limit <= 0:
+            return findings
+        consonants = re.compile(r"[bcdfghjklmnpqrstvwxyz]{8,}", re.I)
+        symbols = re.compile(r"[><~=|/@#^&\\]{4,}")
+        for number, raw in enumerate(text.splitlines(), 1):
+            line = raw.strip()
+            if not line or re.match(r"^#{1,6}\s", line):
+                continue
+            alpha = sum(char.isalpha() for char in line)
+            reason = None
+            if len(line) >= 10 and alpha / len(line) < 0.12 and symbols.search(line):
+                reason = "very low alphabetic content with dense symbol noise"
+            else:
+                clusters = consonants.findall(line)
+                if clusters and sum(map(len, clusters)) / len(line) > 0.50:
+                    reason = "line is dominated by an improbable consonant cluster"
+            if reason:
+                findings.append((number, line, reason))
+                if len(findings) >= limit:
+                    break
+        return findings
 
     # ------------------------------------------------------------------
     # Heading normalization
