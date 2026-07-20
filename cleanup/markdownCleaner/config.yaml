@@ -89,6 +89,12 @@ symspell:
     - "Yggdrasil"
     - "Nazarick"
 
+vocabulary_candidates:
+  # Discover repeated unknown terms, but never modify custom_words.json.
+  enabled: true
+  minimum_occurrences: 3
+  report_limit: 200
+
 report:
   enabled: true
   export_json: true

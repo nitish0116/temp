@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from markdownCleaner.modules.cleanup.document import DocumentCleanupStage
 from markdownCleaner.modules.cleanup.tts_validation import TTSValidationStage
+from markdownCleaner.modules.symspell.vocabulary import VocabularyCandidateStage
 from markdownCleaner.modules.core.logger import (
     initialize,
     get_logger,
@@ -126,6 +127,7 @@ class OCRPipeline:
             DocumentCleanupStage(self.config),
             UnicodeStage(self.config),
             RegexStage(self.config),
+            VocabularyCandidateStage(self.config),
             SymSpellStage(self.config),
             TTSValidationStage(self.config),
         ]
@@ -241,6 +243,7 @@ class OCRPipeline:
             source_file=input_file,
             change_log=self.context.tracker,
             output_name=output_name,
+            vocabulary_candidates=self.context.metadata.get("glossary_candidates", []),
         )
 
         elapsed = perf_counter() - start

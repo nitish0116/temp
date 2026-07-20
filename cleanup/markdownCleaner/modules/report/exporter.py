@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import json
 from pathlib import Path
 
 from .summary import SummaryReporter
@@ -49,6 +50,7 @@ class ReportExporter:
         source_file,
         change_log,
         output_name: str | None = None,
+        vocabulary_candidates: list[dict] | None = None,
     ):
         self._create_directories()
 
@@ -63,10 +65,17 @@ class ReportExporter:
         summary_path = self.report_directory / "summary.md"
         SummaryReporter(change_log).generate(summary_path, source_file)
 
+        candidates_path = self.report_directory / "glossary_candidates.json"
+        candidates_path.write_text(
+            json.dumps(vocabulary_candidates or [], indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
         return {
             "markdown": markdown_path,
             "changes": changes_path,
             "summary": summary_path,
+            "glossary_candidates": candidates_path,
         }
 
     def _create_directories(self):

@@ -10,6 +10,8 @@ from pathlib import Path
 
 from markdownCleaner.pipeline import OCRPipeline
 from markdownCleaner.modules.report.exporter import meaningful_output_name
+from markdownCleaner.modules.core.config import PipelineConfig
+from markdownCleaner.modules.symspell.vocabulary import merge_approved_words
 
 
 def _markdown_files(root: Path, recursive: bool) -> list[Path]:
@@ -187,7 +189,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Clean OCR/PDF-extracted novel Markdown for TTS. Input may be a file or folder.",
     )
-    parser.add_argument("input", type=Path, help="Input Markdown file or a folder containing .md files")
+    parser.add_argument(
+        "input",
+        type=Path,
+        nargs="?",
+        help="Input Markdown file or a folder containing .md files",
+    )
     parser.add_argument(
         "-o", "--output",
         type=Path,
@@ -215,20 +222,52 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Continue processing remaining files if one file fails",
     )
+    parser.add_argument(
+        "--approve-words",
+        nargs="+",
+        metavar="WORD",
+        help="Explicitly add reviewed terms to custom_words.json, then exit",
+    )
+    parser.add_argument(
+        "--glossary-file",
+        type=Path,
+        default=None,
+        help="Glossary to update with --approve-words (defaults to symspell.glossary)",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    source = args.input.resolve()
     config = args.config.resolve()
+    if not config.exists():
+        parser.error(f"Config file not found: {config}")
+
+    if args.approve_words:
+        loaded_config = PipelineConfig.load(config)
+        glossary = (
+            args.glossary_file.resolve()
+            if args.glossary_file
+            else Path(loaded_config.resolve_path(
+                loaded_config.get("symspell.glossary", "data/custom_words.json")
+            ))
+        )
+        try:
+            added = merge_approved_words(glossary, args.approve_words)
+        except (ValueError, OSError) as exc:
+            parser.error(str(exc))
+        print(f"Glossary: {glossary}")
+        print(f"Added {len(added)} term(s): {', '.join(added) if added else 'none'}")
+        return 0
+
+    if args.input is None:
+        parser.error("input is required unless --approve-words is used")
+    source = args.input.resolve()
     output_root = args.output.resolve() if args.output else None
 
     if not source.exists():
         parser.error(f"Input path not found: {source}")
-    if not config.exists():
-        parser.error(f"Config file not found: {config}")
 
     # Single-file mode keeps the familiar reports/ directory.
     if source.is_file():

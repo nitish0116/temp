@@ -1,0 +1,128 @@
+"""Report-only discovery and explicit approval of domain vocabulary."""
+from __future__ import annotations
+
+from collections import Counter, defaultdict
+import json
+from pathlib import Path
+import re
+
+from ..core.stage import PipelineStage, StageResult
+from .dictionary import DictionaryManager
+from .engine import SymSpellEngine
+
+
+WORD = re.compile(r"[A-Za-z]+(?:['’][A-Za-z]+|-[A-Za-z]+)*")
+TERM = re.compile(rf"{WORD.pattern}(?:\s+{WORD.pattern})*")
+
+
+def merge_approved_words(path: str | Path, words: list[str]) -> list[str]:
+    """Safely merge explicitly approved words into a JSON glossary."""
+    target = Path(path)
+    existing: list[str] = []
+    if target.exists():
+        data = json.loads(target.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            existing = [str(word) for word in data]
+        elif isinstance(data, list):
+            existing = [str(word) for word in data]
+        else:
+            raise ValueError("Glossary JSON must contain a list or object.")
+
+    by_key = {word.casefold(): word for word in existing if word.strip()}
+    added: list[str] = []
+    for raw in words:
+        word = str(raw).strip()
+        if not TERM.fullmatch(word) or len(word) < 2:
+            raise ValueError(f"Invalid glossary word: {raw!r}")
+        if word.casefold() not in by_key:
+            by_key[word.casefold()] = word
+            added.append(word)
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    values = sorted(by_key.values(), key=str.casefold)
+    target.write_text(json.dumps(values, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return added
+
+
+class VocabularyCandidateStage(PipelineStage):
+    """Discover repeated unknown terms without changing text or glossaries."""
+
+    name = "VocabularyCandidates"
+    config_section = "vocabulary_candidates"
+
+    def process(self, context) -> StageResult:
+        text = context.current_markdown or context.original_markdown
+        manager = DictionaryManager(
+            dictionary_path=context.config.resolve_path(
+                context.config.get("symspell.dictionary", "builtin:en-82k")
+            ),
+            glossary_path=context.config.resolve_path(context.config.get("symspell.glossary")),
+            learned_path=context.config.resolve_path(context.config.get("symspell.learned")),
+        )
+        manager.load()
+        for word in context.config.get("symspell.protected", []) or []:
+            manager.protect(str(word))
+
+        counts: Counter[str] = Counter()
+        forms: dict[str, Counter[str]] = defaultdict(Counter)
+        lines: dict[str, list[int]] = defaultdict(list)
+        for line_number, line in enumerate(text.splitlines(), 1):
+            for token in WORD.findall(line):
+                key = token.casefold()
+                counts[key] += 1
+                forms[key][token] += 1
+                if len(lines[key]) < 10:
+                    lines[key].append(line_number)
+
+        engine = SymSpellEngine(
+            max_edit_distance=int(context.config.get("symspell.max_edit_distance", 2))
+        )
+        minimum_frequency = int(
+            context.config.get("symspell.minimum_dictionary_frequency", 1)
+        )
+        for word, frequency in manager.words.items():
+            if frequency >= minimum_frequency:
+                engine.add_word(word, frequency)
+
+        minimum = int(self.get_config("minimum_occurrences", 3))
+        limit = int(self.get_config("report_limit", 200))
+        candidates: list[dict] = []
+        if limit <= 0:
+            context.metadata["glossary_candidates"] = candidates
+            return StageResult(stage=self.name, changes=0)
+        for key, count in counts.most_common():
+            if count < minimum or manager.contains(key) or manager.is_protected(key):
+                continue
+            if len(key) < 4 or not key.isalpha():
+                continue
+            display = forms[key].most_common(1)[0][0]
+            suggestions = engine.lookup(key)
+            best = suggestions[0] if suggestions else None
+            item = {
+                "word": display,
+                "occurrences": count,
+                "lines": lines[key],
+                "suggested_correction": best.corrected if best else None,
+                "edit_distance": best.distance if best else None,
+                "confidence": round(best.confidence, 2) if best else None,
+                "status": "pending_review",
+            }
+            candidates.append(item)
+            context.tracker.add(
+                stage=self.name,
+                block_index=-1,
+                segment_index=-1,
+                line=lines[key][0] if lines[key] else 0,
+                before=display,
+                after=display,
+                confidence=0.0,
+                reason=(
+                    f"Candidate only; {count} occurrences. Explicit approval "
+                    "is required before adding it to custom_words.json."
+                ),
+            )
+            if len(candidates) >= limit:
+                break
+
+        context.metadata["glossary_candidates"] = candidates
+        return StageResult(stage=self.name, changes=len(candidates))

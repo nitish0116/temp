@@ -9,6 +9,10 @@ from markdownCleaner.modules.report.exporter import meaningful_output_name
 from markdownCleaner.cli import _unique_batch_output_name
 from markdownCleaner.modules.cleanup.tts_validation import TTSValidationStage
 from md_to_audio import escape_ssml_text, is_speakable_chunk
+from markdownCleaner.modules.symspell.vocabulary import (
+    VocabularyCandidateStage,
+    merge_approved_words,
+)
 
 
 def test_output_filename_is_readable_and_drops_release_tags():
@@ -117,6 +121,64 @@ def test_audio_boundary_escapes_ssml_once_and_skips_invalid_chunks():
     )
     assert not is_speakable_chunk("... 1")
     assert is_speakable_chunk("Okay.")
+
+
+def test_explicit_glossary_approval_merges_without_duplicates(tmp_path):
+    glossary = tmp_path / "custom_words.json"
+    glossary.write_text('["sitrep", "Ainz Ooal Gown"]\n', encoding="utf-8")
+
+    added = merge_approved_words(
+        glossary,
+        ["SITREP", "noncoms", "Degurechaff"],
+    )
+
+    import json
+    values = json.loads(glossary.read_text(encoding="utf-8"))
+    assert added == ["noncoms", "Degurechaff"]
+    assert sum(word.casefold() == "sitrep" for word in values) == 1
+    assert "noncoms" in values
+    assert "Degurechaff" in values
+    assert "Ainz Ooal Gown" in values
+
+
+def test_vocabulary_candidates_are_discovered_without_mutating_glossary(tmp_path):
+    from markdownCleaner.modules.core.config import PipelineConfig
+    from markdownCleaner.modules.core.context import ProcessingContext
+
+    dictionary = tmp_path / "freq.txt"
+    dictionary.write_text("the 10000000\nreported 9000000\n", encoding="utf-8")
+    glossary = tmp_path / "custom_words.json"
+    glossary.write_text("[]\n", encoding="utf-8")
+    source = tmp_path / "sample.md"
+    source.write_text(
+        "Degurechaff reported. Degurechaff replied. Degurechaff nodded.",
+        encoding="utf-8",
+    )
+    config = PipelineConfig({
+        "paths": {"output_directory": str(tmp_path / "out")},
+        "backup": {"enabled": False},
+        "symspell": {
+            "dictionary": str(dictionary),
+            "glossary": str(glossary),
+            "max_edit_distance": 1,
+        },
+        "vocabulary_candidates": {
+            "enabled": True,
+            "minimum_occurrences": 3,
+            "report_limit": 20,
+        },
+    })
+    context = ProcessingContext(config)
+    context.load_markdown(source)
+
+    result = VocabularyCandidateStage(config).execute(context)
+
+    assert result.success
+    assert any(
+        item["word"] == "Degurechaff"
+        for item in context.metadata["glossary_candidates"]
+    )
+    assert glossary.read_text(encoding="utf-8") == "[]\n"
 
 
 def test_unsafe_rn_replacement_is_disabled():
