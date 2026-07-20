@@ -5,6 +5,8 @@ cleanup/**/*.md
 md-audio/**/*.md
 md_python/**/*.md
 mp3ToYT/**/*.md
+Library/**/*.md
+Library/**/*.txt
 *.log
 *.cue
 cleanup/**/*.txt
