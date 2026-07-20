@@ -16,8 +16,15 @@ backup:
 cleanup:
   enabled: true
   remove_picture_ocr: true
-  remove_front_matter: true
-  remove_back_matter: true
+  remove_front_matter: false
+  # Sequence-independent cleanup: only explicitly named sections are removed.
+  # Other sections are always retained regardless of where they appear.
+  excluded_sections:
+    - "Afterword"
+    - "Aferword"
+  # Picture OCR modes: safe | keep | remove. Safe preserves readable captions,
+  # profiles, diagrams, etc. and removes only likely gibberish.
+  picture_ocr_mode: "safe"
   remove_footnotes: true
   strip_markdown_emphasis: true
 

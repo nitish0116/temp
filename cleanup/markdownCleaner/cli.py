@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections import Counter
+from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 
 from markdownCleaner.pipeline import OCRPipeline
@@ -25,7 +28,7 @@ def _run_one(
     output_directory: Path | None,
     output_name: str | None = None,
     report_subdirectory: Path | str = "reports",
-) -> tuple[dict, int]:
+) -> tuple[dict, int, list[dict]]:
     pipeline = OCRPipeline(config)
     result = pipeline.run(
         source,
@@ -33,12 +36,137 @@ def _run_one(
         output_name=output_name,
         report_subdirectory=report_subdirectory,
     )
+    records = [asdict(record) for record in pipeline.context.tracker.records]
     failed_stages = [stage for stage in result["stages"] if not stage.success]
     if failed_stages:
         details = "; ".join(f"{stage.stage}: {stage.error}" for stage in failed_stages)
-        raise RuntimeError(f"Pipeline stage failure(s): {details}")
-    return result, pipeline.context.total_changes
+        result["pipeline_error"] = f"Pipeline stage failure(s): {details}"
+    return result, pipeline.context.total_changes, records
 
+
+
+def _md_code(value: object) -> str:
+    """Return text safe for a fenced Markdown code block."""
+    text = "" if value is None else str(value)
+    # Avoid accidentally closing our own fence.
+    return text.replace("```", "` ` `")
+
+
+def _write_batch_summary(
+    output_root: Path,
+    *,
+    source_root: Path,
+    entries: list[dict],
+    report_name: str = "batch_summary.md",
+) -> Path:
+    """Write one aggregate Markdown report for the entire batch run."""
+    report_dir = output_root / "reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / report_name
+
+    succeeded = sum(1 for item in entries if item["status"] == "success")
+    failed = sum(1 for item in entries if item["status"] == "failed")
+    total_changes = sum(item.get("changes", 0) for item in entries)
+    total_elapsed = sum(float(item.get("elapsed_seconds", 0) or 0) for item in entries)
+
+    stage_totals: Counter[str] = Counter()
+    for item in entries:
+        for stage_name, count in item.get("stage_counts", {}).items():
+            stage_totals[stage_name] += int(count or 0)
+
+    lines: list[str] = [
+        "# Batch Cleanup Summary",
+        "",
+        f"- Generated: {datetime.now().isoformat(timespec='seconds')}",
+        f"- Input root: `{source_root}`",
+        f"- Output root: `{output_root}`",
+        f"- Files discovered: {len(entries)}",
+        f"- Succeeded: {succeeded}",
+        f"- Failed: {failed}",
+        f"- Total changes logged: {total_changes}",
+        f"- Total pipeline time: {total_elapsed:.2f} seconds",
+        "",
+        "## Aggregate changes by stage",
+        "",
+        "| Stage | Changes |",
+        "|---|---:|",
+    ]
+
+    if stage_totals:
+        for stage_name, count in stage_totals.items():
+            lines.append(f"| {stage_name} | {count} |")
+    else:
+        lines.append("| — | 0 |")
+
+    lines.extend([
+        "",
+        "## Per-file results",
+        "",
+        "| File | Status | Changes | Time (s) | Output |",
+        "|---|---|---:|---:|---|",
+    ])
+
+    for item in entries:
+        output = item.get("output") or "—"
+        error = item.get("error")
+        status = item["status"]
+        if error:
+            status = f"{status}: {str(error).replace('|', '/')}"
+        lines.append(
+            f"| `{item['relative_path']}` | {status} | {item.get('changes', 0)} | "
+            f"{float(item.get('elapsed_seconds', 0) or 0):.2f} | `{output}` |"
+        )
+
+    lines.extend(["", "## Detailed changes", ""])
+
+    for item in entries:
+        lines.append(f"### {item['relative_path']}")
+        lines.append("")
+        lines.append(f"Status: **{item['status']}**  ")
+        lines.append(f"Changes: **{item.get('changes', 0)}**")
+        lines.append("")
+
+        if item.get("error"):
+            lines.extend(["Error:", "", "```text", _md_code(item["error"]), "```", ""])
+            continue
+
+        stage_counts = item.get("stage_counts", {})
+        if stage_counts:
+            lines.extend(["Stage totals:", "", "| Stage | Changes |", "|---|---:|"])
+            for stage_name, count in stage_counts.items():
+                lines.append(f"| {stage_name} | {count} |")
+            lines.append("")
+
+        records = item.get("records", [])
+        if not records:
+            lines.extend(["No change records were logged.", ""])
+            continue
+
+        for number, record in enumerate(records, 1):
+            location = f"line {record.get('line', 0)}"
+            stage = record.get("stage", "Unknown")
+            reason = record.get("reason", "")
+            confidence = record.get("confidence", "")
+            lines.append(f"#### Change {number} — {stage} ({location})")
+            lines.append("")
+            lines.append(f"- Reason: {reason}")
+            lines.append(f"- Confidence: {confidence}")
+            lines.append("")
+            lines.append("Before:")
+            lines.append("")
+            lines.append("```text")
+            lines.append(_md_code(record.get("before", "")))
+            lines.append("```")
+            lines.append("")
+            lines.append("After:")
+            lines.append("")
+            lines.append("```text")
+            lines.append(_md_code(record.get("after", "")))
+            lines.append("```")
+            lines.append("")
+
+    report_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    return report_path
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -61,6 +189,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path(__file__).with_name("config.yaml"),
         help="Path to YAML configuration file",
+    )
+    parser.add_argument(
+        "--batch-report-name",
+        default="batch_summary.md",
+        help="Filename for the combined batch report (default: batch_summary.md)",
     )
     parser.add_argument(
         "--continue-on-error",
@@ -86,13 +219,16 @@ def main(argv: list[str] | None = None) -> int:
     if source.is_file():
         if source.suffix.lower() != ".md":
             parser.error(f"Input file must be Markdown (.md): {source}")
-        result, changes = _run_one(
+        result, changes, _records = _run_one(
             source,
             config=config,
             output_directory=output_root,
         )
         print(f"\nClean Markdown: {result['output']['markdown']}")
         print(f"Changes logged: {changes}")
+        if result.get("pipeline_error"):
+            print(f"ERROR: {result['pipeline_error']}", file=sys.stderr)
+            return 2
         return 0
 
     # Folder mode.
@@ -110,6 +246,7 @@ def main(argv: list[str] | None = None) -> int:
     succeeded = 0
     failed = 0
     total_changes = 0
+    batch_entries: list[dict] = []
 
     print(f"Found {len(files)} Markdown file(s).")
     for index, file in enumerate(files, 1):
@@ -120,27 +257,86 @@ def main(argv: list[str] | None = None) -> int:
 
         print(f"\n[{index}/{len(files)}] {relative}")
         try:
-            result, changes = _run_one(
+            result, changes, records = _run_one(
                 file,
                 config=config,
                 output_directory=target_dir,
                 output_name=output_name,
                 report_subdirectory=report_dir,
             )
-            succeeded += 1
             total_changes += changes
-            print(f"Output: {result['output']['markdown']}")
+            stage_counts = {stage.stage: stage.changes for stage in result["stages"]}
+            pipeline_error = result.get("pipeline_error")
+            if pipeline_error:
+                failed += 1
+                batch_entries.append({
+                    "relative_path": str(relative),
+                    "status": "failed",
+                    "changes": changes,
+                    "elapsed_seconds": result.get("elapsed_seconds", 0),
+                    "stage_counts": stage_counts,
+                    "records": records,
+                    "output": str(result["output"]["markdown"]),
+                    "error": pipeline_error,
+                })
+                print(f"ERROR: {file}: {pipeline_error}", file=sys.stderr)
+                if not args.continue_on_error:
+                    summary_path = _write_batch_summary(
+                        output_root,
+                        source_root=source,
+                        entries=batch_entries,
+                        report_name=args.batch_report_name,
+                    )
+                    print(f"Batch summary: {summary_path}")
+                    return 2
+            else:
+                succeeded += 1
+                batch_entries.append({
+                    "relative_path": str(relative),
+                    "status": "success",
+                    "changes": changes,
+                    "elapsed_seconds": result.get("elapsed_seconds", 0),
+                    "stage_counts": stage_counts,
+                    "records": records,
+                    "output": str(result["output"]["markdown"]),
+                })
+                print(f"Output: {result['output']['markdown']}")
         except Exception as exc:  # CLI boundary: report error and decide policy.
             failed += 1
+            batch_entries.append({
+                "relative_path": str(relative),
+                "status": "failed",
+                "changes": 0,
+                "elapsed_seconds": 0,
+                "stage_counts": {},
+                "records": [],
+                "output": None,
+                "error": str(exc),
+            })
             print(f"ERROR: {file}: {exc}", file=sys.stderr)
             if not args.continue_on_error:
+                summary_path = _write_batch_summary(
+                    output_root,
+                    source_root=source,
+                    entries=batch_entries,
+                    report_name=args.batch_report_name,
+                )
+                print(f"Batch summary: {summary_path}")
                 return 2
+
+    summary_path = _write_batch_summary(
+        output_root,
+        source_root=source,
+        entries=batch_entries,
+        report_name=args.batch_report_name,
+    )
 
     print("\nBatch completed")
     print(f"Succeeded: {succeeded}")
     print(f"Failed: {failed}")
     print(f"Total changes logged: {total_changes}")
     print(f"Output directory: {output_root}")
+    print(f"Batch summary: {summary_path}")
     return 0 if failed == 0 else 2
 
 
