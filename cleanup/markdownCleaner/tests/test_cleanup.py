@@ -1,3 +1,4 @@
+from markdownCleaner.modules.cleanup.document import DECORATIVE_SEPARATOR_LINE
 """Basic regression tests for the destructive OCR and structure bugs."""
 from markdownCleaner.modules.cleanup.document import DocumentCleanupStage
 from markdownCleaner.modules.regex.constants import OCR_CHARACTER_REPLACEMENTS
@@ -141,7 +142,7 @@ def test_afterword_is_hard_back_matter_cutoff(tmp_path):
     assert "The actual ending." in cleaned
     assert "Afterword" not in cleaned
     assert "Thanks for reading." not in cleaned
-    assert "Character Profiles" in cleaned
+    assert "Character Profiles" not in cleaned
 
 
 def test_cli_folder_file_discovery(tmp_path):
@@ -339,3 +340,191 @@ def test_batch_summary_combines_files_stage_totals_and_change_records(tmp_path):
     assert "### sub/b.md" in text
     assert "Chapter 1 | Start" in text
     assert "joined text" in text
+
+def test_decorative_diamond_separator_is_removed():
+    text = """Paragraph one.
+
+◆◇◆◇◆
+
+Paragraph two.
+"""
+    cleaned = DECORATIVE_SEPARATOR_LINE.sub("", text)
+    assert "◆◇◆◇◆" not in cleaned
+    assert "Paragraph one." in cleaned
+    assert "Paragraph two." in cleaned
+
+
+def test_plain_copyright_section_is_removed_until_next_narrative_heading():
+    text = """Copyright
+Example Book
+This book is a work of fiction.
+Yen Press, LLC supports the right to free expression.
+
+Contents
+Cover
+Copyright
+Chapter 0: Prologue
+
+Story begins here.
+"""
+    cleaned = DocumentCleanupStage._remove_local_metadata(text)
+    assert "Copyright" not in cleaned
+    assert "Yen Press" not in cleaned
+    assert "Story begins here." in cleaned
+
+
+def test_metadata_heavy_overlord_style_prefix_is_removed():
+    text = """vy SS a 4 D > random cover OCR
+Illustration by so-bin OVERLORD2 Kugane Maruyama
+Begin Reading Table of Contents Insert Yen Newsleter Copyright Page
+Yen Press, LLC supports the right to free expression and the value of copyright.
+The scanning, uploading, and distribution of this book without permission is a theft.
+OVERLORD Volume 2: The Dark Warrior
+Kugane Maruyama | Illustration by so-bin
+
+#### Prologue
+
+Real story text.
+"""
+    cleaned = DocumentCleanupStage._remove_leading_front_matter(text)
+    assert cleaned.lstrip().startswith("#### Prologue")
+    assert "vy SS" not in cleaned
+    assert "Begin Reading" not in cleaned
+    assert "Real story text." in cleaned
+
+def test_front_matter_skips_concatenated_toc_heading_and_starts_at_real_chapter():
+    text = """Copyright
+Publisher metadata
+Contents
+Chapter 6 Intro Chapter 7 Attack Preparations
+Chapter 8 The Six Arms
+random picture OCR
+
+Chapter 6 | Disturbance in the Royal Capital: Introduction
+
+Real story.
+"""
+    cleaned = DocumentCleanupStage._remove_leading_front_matter(text)
+    assert cleaned.lstrip().startswith("Chapter 6 | Disturbance")
+    assert "Chapter 6 Intro Chapter 7" not in cleaned
+    assert "random picture OCR" not in cleaned
+
+
+def test_picture_ocr_character_profiles_marker_becomes_excludable_heading():
+    text = """Story ending.
+
+<!-- Start of picture text -->
+OVERLORD<br>Character Profiles<br>noise
+<!-- End of picture text -->
+
+Profile prose that should be removed.
+
+# Bonus Short Stories
+
+Keep this.
+"""
+    filtered, _, _ = DocumentCleanupStage._filter_picture_ocr(
+        text,
+        mode="safe",
+        excluded_sections=["Character Profiles"],
+    )
+    cleaned, removed = DocumentCleanupStage._remove_named_sections(
+        filtered,
+        ["Character Profiles"],
+    )
+    assert "Profile prose that should be removed." not in cleaned
+    assert "# Bonus Short Stories" in cleaned
+    assert "Keep this." in cleaned
+    assert removed
+
+def test_series_prefixed_character_profiles_heading_is_excluded():
+    text = """# Epilogue
+
+Ending.
+
+OVERLORD Character Profiles
+
+Profile data.
+
+# Bonus Short Stories
+
+Keep this.
+"""
+    cleaned, removed = DocumentCleanupStage._remove_named_sections(
+        text,
+        ["Character Profiles"],
+    )
+    assert "Profile data." not in cleaned
+    assert "Bonus Short Stories" in cleaned
+    assert "Keep this." in cleaned
+    assert removed
+
+
+def test_next_volume_coming_soon_promotional_tail_is_removed():
+    text = """# Epilogue
+
+Actual ending.
+
+# Volume 7: The Next Book
+Illustration by Someone
+Coming soon from Publisher
+
+# Prologue
+Preview content.
+"""
+    cleaned = DocumentCleanupStage._remove_promotional_tail(text)
+    assert "Actual ending." in cleaned
+    assert "Volume 7" not in cleaned
+    assert "Preview content." not in cleaned
+
+def test_picture_ocr_with_one_heading_line_and_many_noise_lines_is_removed():
+    block = """<!-- Start of picture text -->
+=.
+-
+. =
+SS f gz -> <n (
+-
+fx
+.
+a
+f
+.Ss
+x ted
+Le - ZAM
+ge y
+J we
+Chapter2 Journey
+<!-- End of picture text -->"""
+    filtered, removed, preserved = DocumentCleanupStage._filter_picture_ocr(
+        block,
+        mode="safe",
+        excluded_sections=[],
+    )
+    assert "Chapter2 Journey" not in filtered
+    assert removed == 1
+    assert preserved == 0
+
+
+def test_tanya_explicit_chapter_marker_wins_over_contents_entries():
+    text = """Copyright
+Publisher
+Contents
+Chapter 0: Prologue
+Chapter I: End of the Beginning
+Afterword
+[chapter] 0 Prologue
+REAL STORY
+"""
+    cleaned = DocumentCleanupStage._remove_leading_front_matter(text)
+    assert cleaned.startswith("[chapter] 0 Prologue")
+    assert "Contents" not in cleaned
+    assert "REAL STORY" in cleaned
+
+
+def test_overlong_reconstructed_paragraphs_are_split_without_losing_text():
+    text = ("This is a sentence. " * 250).strip()
+    chunks = DocumentCleanupStage._split_overlong_paragraph(text, max_chars=500)
+    assert len(chunks) > 1
+    assert all(len(chunk) <= 550 for chunk in chunks)
+    assert " ".join(chunks) == text
+

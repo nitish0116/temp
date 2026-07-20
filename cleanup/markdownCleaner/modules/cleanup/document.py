@@ -52,6 +52,7 @@ NUMBERED_HEADING = re.compile(
 NAMED_HEADING = re.compile(
     r"^(prologue|epilogue|prelude|introduction|interlude|appendix|"
     r"afterword|foreword|acknowledg(?:e)?ments?|character\s+profiles?|glossary|"
+    r"bonus\s+short\s+stories|short\s+stories|side\s+stories|extras?|"
     r"notes|references|bibliography)(?:\s*[|:\-–—]\s*(.+))?$",
     re.IGNORECASE,
 )
@@ -80,6 +81,35 @@ METADATA_LINE_PATTERNS = [
 ]
 
 
+# Standalone ornamental scene separators. Remove only when the entire line is
+# composed of decorative glyphs (optionally separated by whitespace).
+DECORATIVE_SEPARATOR_LINE = re.compile(
+    r"(?m)^[ \t]*(?:[◆◇■□●○♦♢✦✧❖◈※＊*•·~_=+\-][ \t]*){3,}$"
+)
+
+# Strong indicators that text before the first real narrative section is
+# publication/cover/navigation material rather than story prose.
+FRONT_MATTER_SIGNALS = [
+    re.compile(r"\bcopyright\b", re.I),
+    re.compile(r"\btable of contents\b|\bcontents\b", re.I),
+    re.compile(r"\bbegin reading\b", re.I),
+    re.compile(r"\byen (?:press|on)\b", re.I),
+    re.compile(r"\bj-novel club\b", re.I),
+    re.compile(r"\billustration by\b|\bcover art by\b", re.I),
+    re.compile(r"\btranslation by\b", re.I),
+    re.compile(r"\bisbn\b|\blccn\b|cataloging-in-publication", re.I),
+    re.compile(r"\ball rights reserved\b", re.I),
+    re.compile(r"\bscanning, uploading\b|\bdistribution of this book\b", re.I),
+    re.compile(r"\bpublisher\b", re.I),
+]
+
+NARRATIVE_SECTION = re.compile(
+    r"^(?:prologue|prelude|introduction|interlude|epilogue|"
+    r"(?:chapter|story|part|book|act|section)\s+(?:\d+|[ivxlcdm]+)\b)",
+    re.I,
+)
+
+
 @dataclass
 class _Change:
     reason: str
@@ -98,11 +128,27 @@ class DocumentCleanupStage(PipelineStage):
         text = context.current_markdown or context.original_markdown
         changes: list[_Change] = []
 
+        excluded = self.config.get(
+            "cleanup.excluded_sections",
+            [
+                "Afterword",
+                "Aferword",
+                "Character Profiles",
+                "Character Profile",
+                "Character Profles",
+                "Character Profle",
+            ],
+        )
+
         picture_mode = str(self.config.get("cleanup.picture_ocr_mode", "safe")).lower()
         # Backward compatibility with the old boolean option.
         if not self.config.get("cleanup.remove_picture_ocr", True):
             picture_mode = "keep"
-        text, removed_count, preserved_count = self._filter_picture_ocr(text, mode=picture_mode)
+        text, removed_count, preserved_count = self._filter_picture_ocr(
+            text,
+            mode=picture_mode,
+            excluded_sections=excluded,
+        )
         if removed_count:
             changes.append(_Change(
                 "Removed likely picture-OCR noise",
@@ -123,6 +169,17 @@ class DocumentCleanupStage(PipelineStage):
 
         if self.config.get("cleanup.remove_front_matter", True):
             before = text
+            text = self._remove_leading_front_matter(text)
+            if text != before:
+                changes.append(_Change(
+                    "Removed strongly identified leading cover/publication front matter",
+                    "cover/navigation/publication prefix",
+                    "",
+                    98.0,
+                ))
+
+        if self.config.get("cleanup.remove_front_matter", True):
+            before = text
             text = self._remove_local_metadata(text)
             if text != before:
                 changes.append(_Change(
@@ -132,7 +189,6 @@ class DocumentCleanupStage(PipelineStage):
                     96.0,
                 ))
 
-        excluded = self.config.get("cleanup.excluded_sections", ["Afterword", "Aferword"])
         if excluded:
             before = text
             text, removed_sections = self._remove_named_sections(text, excluded)
@@ -143,6 +199,27 @@ class DocumentCleanupStage(PipelineStage):
                     "",
                     99.0,
                 ))
+
+        if self.config.get("cleanup.remove_promotional_tail", True):
+            before = text
+            text = self._remove_promotional_tail(text)
+            if text != before:
+                changes.append(_Change(
+                    "Removed publisher next-volume promotional tail",
+                    "coming-soon preview",
+                    "",
+                    98.0,
+                ))
+
+        before_decorative = text
+        text = DECORATIVE_SEPARATOR_LINE.sub("", text)
+        if text != before_decorative:
+            changes.append(_Change(
+                "Removed standalone decorative separator lines",
+                "ornamental symbol separators",
+                "",
+                99.0,
+            ))
 
         if self.config.get("cleanup.remove_footnotes", True):
             new, count = FOOTNOTE_DEFINITION.subn("", text)
@@ -229,6 +306,28 @@ class DocumentCleanupStage(PipelineStage):
         alnum_ratio = alnum / len(chars)
         words = re.findall(r"[A-Za-z][A-Za-z'’\-]{1,}", text)
         meaningful = [w for w in words if len(w) >= 3]
+        nonempty_lines = [line.strip() for line in text.splitlines() if line.strip()]
+
+        # Reject multiline OCR blocks dominated by punctuation, isolated letters,
+        # and tiny fragments. A single readable phrase such as "Chapter2 Journey"
+        # must not rescue an otherwise garbage-heavy image OCR block.
+        if len(nonempty_lines) >= 8:
+            language_like_lines = 0
+            noisy_lines = 0
+            for line in nonempty_lines:
+                line_words = re.findall(r"[A-Za-z][A-Za-z'’\-]{1,}", line)
+                line_chars = [c for c in line if not c.isspace()]
+                line_alpha = sum(c.isalpha() for c in line_chars)
+                line_alpha_ratio = line_alpha / len(line_chars) if line_chars else 0.0
+                if len(line_words) >= 3 and line_alpha_ratio >= 0.55:
+                    language_like_lines += 1
+                if len(line_words) <= 1 or line_alpha_ratio < 0.35:
+                    noisy_lines += 1
+
+            if noisy_lines / len(nonempty_lines) >= 0.50:
+                return False
+            if language_like_lines / len(nonempty_lines) < 0.25:
+                return False
 
         # A small caption or label can still be useful.
         if len(meaningful) >= 3 and alpha_ratio >= 0.45:
@@ -239,7 +338,12 @@ class DocumentCleanupStage(PipelineStage):
         return False
 
     @classmethod
-    def _filter_picture_ocr(cls, text: str, mode: str = "safe") -> tuple[str, int, int]:
+    def _filter_picture_ocr(
+        cls,
+        text: str,
+        mode: str = "safe",
+        excluded_sections: Iterable[str] | None = None,
+    ) -> tuple[str, int, int]:
         """Filter picture OCR without relying on document sequence.
 
         Modes:
@@ -251,6 +355,22 @@ class DocumentCleanupStage(PipelineStage):
         if mode not in {"keep", "remove", "safe"}:
             mode = "safe"
 
+        def section_key(value: str) -> str:
+            value = UNDERLINE_TAG.sub("", str(value))
+            value = re.sub(r"^#{1,6}\\s*", "", value.strip())
+            value = re.sub(r"[*_`]+", "", value)
+            value = re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
+            value = re.sub(r"\\bprofles\\b", "profiles", value)
+            value = re.sub(r"\\bprofle\\b", "profile", value)
+            value = re.sub(r"^[a-z0-9 ]+\\s+character profiles$", "character profiles", value)
+            return re.sub(r"\\s+", " ", value)
+
+        excluded_keys = {
+            section_key(name)
+            for name in (excluded_sections or [])
+            if str(name).strip()
+        }
+
         removed = 0
         preserved = 0
         pieces: list[str] = []
@@ -260,12 +380,33 @@ class DocumentCleanupStage(PipelineStage):
             cleaned = cls._clean_picture_block(match.group(0))
             if cleaned:
                 cleaned = cls._normalize_headings(cleaned)
-            keep = mode == "keep" or (mode == "safe" and cls._picture_text_is_readable(cleaned))
-            if keep and cleaned:
+            # Some excluded sections (notably image-heavy Character Profiles)
+            # announce themselves inside a picture-OCR block. Preserve only a
+            # synthetic section marker so the later local section remover can
+            # discard the whole section, including prose between image blocks.
+            marker = None
+            if cleaned and excluded_keys:
+                cleaned_lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+                for line in cleaned_lines:
+                    key = section_key(line)
+                    if key in excluded_keys:
+                        marker = line
+                        break
+                if marker is None and len(cleaned_lines) >= 2:
+                    combined = section_key(" ".join(cleaned_lines[:2]))
+                    if combined in excluded_keys:
+                        marker = " ".join(cleaned_lines[:2])
+
+            if marker:
                 preserved += 1
-                pieces.append("\n\n" + cleaned + "\n\n")
+                pieces.append("\n\n# " + marker + "\n\n")
             else:
-                removed += 1
+                keep = mode == "keep" or (mode == "safe" and cls._picture_text_is_readable(cleaned))
+                if keep and cleaned:
+                    preserved += 1
+                    pieces.append("\n\n" + cleaned + "\n\n")
+                else:
+                    removed += 1
             cursor = match.end()
         pieces.append(text[cursor:])
         return "".join(pieces), removed, preserved
@@ -280,6 +421,16 @@ class DocumentCleanupStage(PipelineStage):
         body = atx.group(2).strip() if atx else raw
         body = UNDERLINE_TAG.sub("", body)
         body = re.sub(r"^[*_]+|[*_]+$", "", body).strip()
+
+        # Image/OCR conversions often prefix the profile section with the series
+        # title, e.g. "OVERLORD Character Profiles", or misspell "Profiles".
+        if re.fullmatch(
+            r"(?:[A-Z][A-Z0-9 _'’:\-]{2,}\s+)?character\s+prof(?:iles?|les?)",
+            body,
+            flags=re.I,
+        ):
+            return "Character Profiles"
+
         if atx or NAMED_HEADING.match(body) or NUMBERED_HEADING.match(body):
             return body
         # Generic short title-like plain headings are deliberately not assumed;
@@ -287,18 +438,121 @@ class DocumentCleanupStage(PipelineStage):
         return None
 
     @classmethod
+    def _remove_leading_front_matter(cls, text: str) -> str:
+        """Remove a leading cover/publication prefix only when evidence is strong.
+
+        This never truncates content after the first real narrative section. It
+        exists for OCR/ebook conversions where cover text, reader navigation,
+        copyright boilerplate, and publisher data appear before the first
+        Prologue/Chapter/Story heading without clean Markdown section markers.
+        """
+        lines = text.splitlines()
+        first_narrative: int | None = None
+
+        # Some ebook conversions use explicit markers such as
+        # "[chapter] 0 Prologue". These are much stronger evidence than chapter
+        # names listed inside a preceding table of contents.
+        for idx, line in enumerate(lines):
+            if re.match(r"^\s*\[chapter\]\s*\S+", line, flags=re.I):
+                first_narrative = idx
+                break
+
+        if first_narrative is None:
+            narrative_iter = enumerate(lines)
+        else:
+            narrative_iter = ()
+
+        for idx, line in narrative_iter:
+            heading = cls._plain_heading_text(line)
+            candidate = heading or UNDERLINE_TAG.sub("", line).strip()
+            candidate = re.sub(r"^[*_`]+|[*_`]+$", "", candidate).strip()
+            candidate = re.sub(r"^#{1,6}\s*", "", candidate).strip()
+            if NARRATIVE_SECTION.match(candidate):
+                section_mentions = re.findall(
+                    r"\b(?:chapter|story|part|book|act|section)\s+(?:\d+|[ivxlcdm]+)\b",
+                    candidate,
+                    flags=re.I,
+                )
+                # TOC lines often concatenate several entries or list a single
+                # plain "Chapter 8 Title" item. Treat a numbered line as a strong
+                # narrative start only when it is an actual Markdown heading or
+                # uses an explicit title delimiter (:, |, dash).
+                raw_stripped = line.strip()
+                is_atx = bool(ATX_HEADING.match(raw_stripped))
+                has_title_delimiter = bool(re.match(
+                    r"^(?:chapter|story|part|book|act|section)\s+"
+                    r"(?:\d+|[ivxlcdm]+)\s*[|:\-–—]\s*\S",
+                    candidate,
+                    flags=re.I,
+                ))
+                is_named = bool(re.match(
+                    r"^(?:prologue|prelude|introduction|interlude|epilogue)\s*$",
+                    candidate,
+                    flags=re.I,
+                ))
+                if (
+                    len(section_mentions) > 1
+                    or len(candidate) > 180
+                    or (not is_named and not is_atx and not has_title_delimiter)
+                ):
+                    continue
+                first_narrative = idx
+                break
+
+        if first_narrative is None or first_narrative == 0:
+            return text
+
+        prefix = "\n".join(lines[:first_narrative])
+        signal_count = sum(bool(pattern.search(prefix)) for pattern in FRONT_MATTER_SIGNALS)
+
+        # Two independent publication signals are enough. This is deliberately
+        # stricter than relying on position alone, so ordinary prefaces/epigraphs
+        # are preserved unless they also look like publication metadata.
+        if signal_count < 2:
+            return text
+
+        return "\n".join(lines[first_narrative:]).lstrip()
+
+    @classmethod
     def _remove_local_metadata(cls, text: str) -> str:
-        """Remove only clearly identified metadata blocks/lines in place."""
+        """Remove clearly identified metadata sections/lines wherever they occur.
+
+        Plain headings such as ``Copyright`` and ``Contents`` are recognized even
+        when the converter did not emit Markdown heading markers.
+        """
         lines = text.splitlines()
         out: list[str] = []
         i = 0
+
+        def normalized_label(line: str) -> str:
+            value = UNDERLINE_TAG.sub("", line).strip()
+            value = re.sub(r"^#{1,6}\s*", "", value)
+            value = re.sub(r"^[*_`]+|[*_`]+$", "", value).strip()
+            return re.sub(r"\s+", " ", value).casefold().strip(" :")
+
         while i < len(lines):
             heading = cls._plain_heading_text(lines[i])
-            normalized = heading.casefold().strip(" :") if heading else ""
+            normalized = (
+                heading.casefold().strip(" :")
+                if heading
+                else normalized_label(lines[i])
+            )
+
             if normalized in LOCAL_METADATA_HEADINGS:
-                # Remove this metadata section only until the next recognized heading.
+                # Remove the metadata section locally. Resume at the next genuine
+                # structural section, whether Markdown-marked or plain text.
                 i += 1
-                while i < len(lines) and cls._plain_heading_text(lines[i]) is None:
+                while i < len(lines):
+                    next_heading = cls._plain_heading_text(lines[i])
+                    next_plain = normalized_label(lines[i])
+                    structural = bool(
+                        next_heading
+                        and normalized_label(next_heading) not in LOCAL_METADATA_HEADINGS
+                    )
+                    if not structural and NARRATIVE_SECTION.match(next_plain):
+                        structural = True
+                    if structural:
+                        break
                     i += 1
                 continue
 
@@ -307,18 +561,27 @@ class DocumentCleanupStage(PipelineStage):
             if any(pattern.search(stripped) for pattern in METADATA_LINE_PATTERNS):
                 i += 1
                 continue
+
             out.append(line)
             i += 1
+
         return "\n".join(out)
 
     @classmethod
     def _remove_named_sections(cls, text: str, names: Iterable[str]) -> tuple[str, list[str]]:
-        """Remove explicitly named sections in place, regardless of their order.
+        """Remove explicitly named sections locally, regardless of document order."""
 
-        Crucially, this does *not* truncate the rest of the document. If another
-        recognized section follows, processing resumes there.
-        """
-        targets = {str(name).casefold().strip() for name in names if str(name).strip()}
+        def section_key(value: str) -> str:
+            value = UNDERLINE_TAG.sub("", str(value))
+            value = re.sub(r"^#{1,6}\s*", "", value.strip())
+            value = re.sub(r"[*_`]+", "", value)
+            value = re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
+            value = re.sub(r"\bprofles\b", "profiles", value)
+            value = re.sub(r"\bprofle\b", "profile", value)
+            value = re.sub(r"^[a-z0-9 ]+\s+character profiles$", "character profiles", value)
+            return re.sub(r"\s+", " ", value)
+
+        targets = {section_key(name) for name in names if str(name).strip()}
         if not targets:
             return text, []
 
@@ -326,20 +589,60 @@ class DocumentCleanupStage(PipelineStage):
         out: list[str] = []
         removed: list[str] = []
         i = 0
+
         while i < len(lines):
             heading = cls._plain_heading_text(lines[i])
-            if heading and heading.casefold().strip(" :") in targets:
+            if heading and section_key(heading) in targets:
                 removed.append(heading)
                 i += 1
                 while i < len(lines):
                     next_heading = cls._plain_heading_text(lines[i])
                     if next_heading:
+                        # Duplicate/profile page headers are still part of the
+                        # excluded section; only stop at a different section.
+                        if section_key(next_heading) in targets:
+                            i += 1
+                            continue
                         break
                     i += 1
                 continue
+
             out.append(lines[i])
             i += 1
+
         return "\n".join(out), removed
+
+    @classmethod
+    def _remove_promotional_tail(cls, text: str) -> str:
+        """Remove a next-volume promotional tail identified by strong local evidence.
+
+        A normal use of the phrase "coming soon" in story prose is untouched.
+        Removal only happens when a Volume heading is followed within a few lines
+        by publisher-style "Coming soon" text, which is characteristic of ebook
+        previews appended after the actual novel.
+        """
+        lines = text.splitlines()
+        for i, line in enumerate(lines):
+            heading = cls._plain_heading_text(line)
+            candidate = heading or UNDERLINE_TAG.sub("", line).strip()
+            candidate = re.sub(r"^#{1,6}\s*", "", candidate).strip()
+            if not re.match(r"^volume\s+\d+\b", candidate, flags=re.I):
+                continue
+
+            window = "\n".join(lines[i:min(len(lines), i + 5)])
+            if re.search(r"\bcoming\s+soon\b", window, flags=re.I):
+                return "\n".join(lines[:i]).rstrip()
+
+        # Some converters merge the volume title and Coming soon onto one line
+        # without producing a clean heading.
+        for i, line in enumerate(lines):
+            if (
+                re.search(r"\bvolume\s+\d+\b", line, flags=re.I)
+                and re.search(r"\bcoming\s+soon\b", line, flags=re.I)
+            ):
+                return "\n".join(lines[:i]).rstrip()
+
+        return text
 
     # ------------------------------------------------------------------
     # Heading normalization
@@ -355,6 +658,18 @@ class DocumentCleanupStage(PipelineStage):
             body = UNDERLINE_TAG.sub("", body).strip()
             body = re.sub(r"^\*\*(.*?)\*\*$", r"\1", body)
             body = re.sub(r"^__(.*?)__$", r"\1", body).strip()
+
+            chapter_marker = re.match(
+                r"^\[chapter\]\s*([\divxlcdm]+)(?:\s*[|:\-–—]?\s*)(.*)$",
+                body,
+                flags=re.I,
+            )
+            if chapter_marker:
+                number, title = chapter_marker.groups()
+                number = number.upper() if re.fullmatch(r"[ivxlcdm]+", number, re.I) else number
+                title = title.strip()
+                out.append(f"# Chapter {number}" + (f": {title}" if title else ""))
+                continue
 
             numbered = NUMBERED_HEADING.match(body)
             named = NAMED_HEADING.match(body)
@@ -462,9 +777,58 @@ class DocumentCleanupStage(PipelineStage):
             return True
         if l.endswith("—") and r.startswith("—"):
             return True
-        if not re.search(r"[.!?…\"'’”)]$", l) and re.match(r"^[a-z]", r):
+        if (
+            len(l) <= 320
+            and len(r) <= 1200
+            and len(l) + len(r) <= 1400
+            and not re.search(r"[.!?…\"'’”)]$", l)
+            and re.match(r"^[a-z]", r)
+        ):
             return True
         return False
+
+    @staticmethod
+    def _split_overlong_paragraph(text: str, max_chars: int = 1800) -> list[str]:
+        """Split exceptionally long reconstructed prose at sentence boundaries.
+
+        This is a safety valve for OCR sources that contain thousands of words
+        with no blank paragraph separators. Normal-sized paragraphs are left
+        untouched. No text is discarded.
+        """
+        if len(text) <= max_chars or text.startswith("#"):
+            return [text]
+
+        sentences = re.split(r'(?<=[.!?…])\s+(?=["\'“‘(A-Z0-9])', text)
+        if len(sentences) <= 1:
+            # Fall back to a hard whitespace boundary rather than emitting one
+            # enormous line, but never split inside a word.
+            chunks: list[str] = []
+            remaining = text
+            while len(remaining) > max_chars:
+                cut = remaining.rfind(" ", 0, max_chars)
+                if cut < max_chars // 2:
+                    cut = max_chars
+                chunks.append(remaining[:cut].strip())
+                remaining = remaining[cut:].strip()
+            if remaining:
+                chunks.append(remaining)
+            return chunks
+
+        chunks: list[str] = []
+        current = ""
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+            proposed = sentence if not current else current + " " + sentence
+            if current and len(proposed) > max_chars:
+                chunks.append(current)
+                current = sentence
+            else:
+                current = proposed
+        if current:
+            chunks.append(current)
+        return chunks
 
     @classmethod
     def _reconstruct_paragraphs(cls, text: str) -> str:
@@ -504,7 +868,13 @@ class DocumentCleanupStage(PipelineStage):
                     merged.append(left + " " + block.lstrip())
             else:
                 merged.append(block)
-        return "\n\n".join(merged)
+        bounded: list[str] = []
+        for block in merged:
+            if cls._is_heading(block) or cls._is_list_or_special(block):
+                bounded.append(block)
+            else:
+                bounded.extend(cls._split_overlong_paragraph(block))
+        return "\n\n".join(bounded)
 
     @staticmethod
     def _strip_markdown_emphasis(text: str) -> str:
