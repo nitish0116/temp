@@ -1,6 +1,9 @@
-from markdownCleaner.modules.cleanup.document import DECORATIVE_SEPARATOR_LINE
 """Basic regression tests for the destructive OCR and structure bugs."""
-from markdownCleaner.modules.cleanup.document import DocumentCleanupStage
+
+from markdownCleaner.modules.cleanup.document import (
+    DECORATIVE_SEPARATOR_LINE,
+    DocumentCleanupStage,
+)
 from markdownCleaner.modules.regex.constants import OCR_CHARACTER_REPLACEMENTS
 
 
@@ -521,10 +524,61 @@ REAL STORY
     assert "REAL STORY" in cleaned
 
 
+def test_tanya_volume_13_full_copyright_and_contents_prefix_is_removed():
+    text = """Copyright
+The Saga of Tanya the Evil, Vol. 13
+Carlo Zen
+Translation by James Balzer
+Cover art by Shinobu Shinotsuki
+This book is a work of fiction. Names, characters, places, and incidents are the
+product of the author's imagination or are used fictitiously.
+YOJO SENKI Vol. 13 Dum Spiro, Spero JO
+©Carlo Zen 2023
+First published in Japan in 2023 by KADOKAWA CORPORATION, Tokyo.
+English translation © 2024 by Yen Press, LLC
+Yen Press, LLC supports the right to free expression and the value of copyright.
+The scanning, uploading, and distribution of this book without permission is a
+theft of the author's intellectual property.
+```
+material from the book, please contact the publisher.
+```
+Yen On
+150 West 30th Street, 19th Floor
+New York, NY 10001
+First Yen On Edition: December 2024
+Library of Congress Cataloging-in-Publication Data
+```
+ISBNs: 979-8-8554-0287-2 (paperback) 979-8-8554-0288-9 (ebook)
+```
+E3-20241126-JV-NF-ORI
+Contents
+Cover
+Insert
+Title Page
+Copyright
+Chapter 0: Prologue
+Chapter I: End of the Beginning
+Chapter II: House of Cards
+Afterword
+Yen Newsletter
+[chapter] 0 Prologue
+JANUARY 15, UNIFIED YEAR 1928, THE GENERAL STAFF OFFICE
+Real story text.
+"""
+    cleaned = DocumentCleanupStage._remove_leading_front_matter(text)
+
+    assert cleaned.startswith("[chapter] 0 Prologue")
+    assert "The Saga of Tanya the Evil, Vol. 13" not in cleaned
+    assert "Yen Press, LLC" not in cleaned
+    assert "ISBNs:" not in cleaned
+    assert "\nContents\n" not in cleaned
+    assert "Chapter I: End of the Beginning" not in cleaned
+    assert "Real story text." in cleaned
+
+
 def test_overlong_reconstructed_paragraphs_are_split_without_losing_text():
     text = ("This is a sentence. " * 250).strip()
     chunks = DocumentCleanupStage._split_overlong_paragraph(text, max_chars=500)
     assert len(chunks) > 1
     assert all(len(chunk) <= 550 for chunk in chunks)
     assert " ".join(chunks) == text
-
