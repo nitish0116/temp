@@ -48,7 +48,7 @@ class BackupManager:
 
             raise FileNotFoundError(source)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
         backup_dir = self.backup_root / timestamp
 

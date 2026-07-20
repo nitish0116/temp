@@ -85,3 +85,81 @@ def test_safe_symspell_corrects_typo_and_preserves_protected_name(tmp_path):
     assert result.success
     assert result.changes == 1
     assert context.get_markdown().strip() == "because Yggdrasil"
+
+
+def test_false_atx_heading_is_demoted_and_context_rejoined():
+    source = "And\n\n## then—\n\n\"A scream?\""
+    normalized = DocumentCleanupStage._normalize_headings(source)
+    assert "## then—" not in normalized
+    result = DocumentCleanupStage._reconstruct_paragraphs(normalized)
+    assert 'And then—\n\n“A scream?”' in result or 'And then—\n\n"A scream?"' in result
+
+
+def test_plain_underlined_chapter_heading_is_promoted():
+    # In the real source, legacy <u> tags are removed just before heading normalization.
+    source = "Chapter 2 | The Floor Guardians"
+    assert DocumentCleanupStage._normalize_headings(source) == "# Chapter 2: The Floor Guardians"
+
+
+def test_nonstructural_converter_headings_are_demoted():
+    source = "## Carne.\n\n## 0:00:38…\n\n## “A message maybe?”"
+    result = DocumentCleanupStage._normalize_headings(source)
+    assert result == "Carne.\n\n0:00:38…\n\n“A message maybe?”"
+
+
+def test_duplicate_structural_headings_are_collapsed():
+    source = "Epilogue\n### Epilogue"
+    assert DocumentCleanupStage._normalize_headings(source) == "# Epilogue"
+
+
+
+def test_afterword_is_hard_back_matter_cutoff(tmp_path):
+    from markdownCleaner.modules.core.config import PipelineConfig
+    from markdownCleaner.modules.core.context import ProcessingContext
+
+    source = tmp_path / "novel.md"
+    source.write_text(
+        "# Epilogue\n\nThe actual ending.\n\n<u>Afterword</u>\n\nThanks for reading.\n\nCharacter Profiles\nSecret data.",
+        encoding="utf-8",
+    )
+    config = PipelineConfig({
+        "paths": {"output_directory": str(tmp_path / "out")},
+        "backup": {"enabled": False},
+        "cleanup": {
+            "remove_picture_ocr": True,
+            "remove_front_matter": False,
+            "remove_back_matter": True,
+            "remove_footnotes": True,
+            "strip_markdown_emphasis": True,
+        },
+    })
+    context = ProcessingContext(config)
+    context.load_markdown(source)
+    result = DocumentCleanupStage(config).execute(context)
+    assert result.success
+    cleaned = context.get_markdown()
+    assert "The actual ending." in cleaned
+    assert "Afterword" not in cleaned
+    assert "Thanks for reading." not in cleaned
+    assert "Character Profiles" not in cleaned
+
+
+def test_cli_folder_file_discovery(tmp_path):
+    from markdownCleaner.cli import _markdown_files
+
+    (tmp_path / "one.md").write_text("one", encoding="utf-8")
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    (nested / "two.md").write_text("two", encoding="utf-8")
+    (nested / "ignore.txt").write_text("x", encoding="utf-8")
+
+    assert [p.name for p in _markdown_files(tmp_path, recursive=False)] == ["one.md"]
+    assert [p.name for p in _markdown_files(tmp_path, recursive=True)] == ["two.md", "one.md"] or \
+           [p.name for p in _markdown_files(tmp_path, recursive=True)] == ["one.md", "two.md"]
+
+
+
+def test_ocr_misspelled_aferword_and_character_profiles_are_back_matter_cutoffs():
+    from markdownCleaner.modules.cleanup.document import BACK_MATTER_HEADING
+    assert BACK_MATTER_HEADING.search("# _<u>Aferword</u>_\n")
+    assert BACK_MATTER_HEADING.search("OVERLORD Character Profiles\n")

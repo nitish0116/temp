@@ -29,13 +29,21 @@ START_HEADING = re.compile(
 )
 
 # Common post-book material not useful for novel TTS.
+# Match standalone heading-like lines even when the converter omitted Markdown
+# markers, wrapped the heading in emphasis/underline tags, or OCR introduced
+# common errors such as ``Aferword``/``Profle``.  The first match is a hard
+# cutoff: everything from that line to EOF is discarded.
 BACK_MATTER_HEADING = re.compile(
-    r"(?im)^\s*#{1,6}\s*(?:<u>)?\s*(?:"
-    r"afterword|author(?:'s)?\s+note|translator(?:'s)?\s+note|"
-    r"character\s+profiles?|profile|yen\s+newsletter|newsletter|"
+    r"(?im)^\s*(?:#{1,6}\s*)?[_*\s]*(?:<u>\s*)?[_*\s]*(?:"
+    r"a(?:fter|fer)word|"
+    r"(?:overlord\s+)?character\s+prof(?:i)?les?|"
+    r"author(?:'s)?\s+(?:note|prof(?:i)?le)|"
+    r"translator(?:'s)?\s+note|"
+    r"prof(?:i)?le|yen\s+news(?:letter|leter)|newsletter|newsleter|"
     r"about\s+the\s+author|copyright"
-    r")\b.*$"
+    r")[_*\s]*(?:</u>)?[_*\s]*$"
 )
+
 
 FOOTNOTE_DEFINITION = re.compile(r"(?m)^\s*\[\^[^\]]+\]:.*(?:\n(?: {2,}|\t).*)*\n?")
 FOOTNOTE_REFERENCE = re.compile(r"\[\^[^\]]+\]")
@@ -150,33 +158,76 @@ class DocumentCleanupStage(PipelineStage):
 
     @staticmethod
     def _normalize_headings(text: str) -> str:
-        out: list[str] = []
-        for raw in text.splitlines():
-            line = UNDERLINE_TAG.sub("", raw).strip()
-            match = ATX_HEADING.match(line)
-            if not match:
-                out.append(raw.rstrip())
-                continue
+        """Normalize only *strong* structural novel headings.
 
-            body = match.group(2).strip()
+        PDF/ebook converters sometimes add ``##`` to arbitrary short prose
+        fragments (for example ``## then—`` or ``## Carne.``), while genuine
+        chapter lines may arrive with only ``<u>...</u>`` and no Markdown
+        heading marker at all.  Classification therefore uses the heading text,
+        not the source Markdown level.
+        """
+        out: list[str] = []
+
+        strong_heading = re.compile(
+            r"^(?:"
+            r"chapter\s+(?:\d+|[ivxlcdm]+)(?:\s*[|:\-–—]\s*|\s+).+|"
+            r"(?:prologue|epilogue|prelude|introduction|interlude)\b.*|"
+            r"part\s+(?:\d+|[ivxlcdm]+)(?:\s*[|:\-–—]\s*|\s+.*)?"
+            r")$",
+            re.IGNORECASE,
+        )
+
+        for raw in text.splitlines():
+            stripped_raw = raw.strip()
+            atx = ATX_HEADING.match(stripped_raw)
+            body = atx.group(2).strip() if atx else stripped_raw
+
+            # Remove presentational wrappers before classifying the content.
+            body = UNDERLINE_TAG.sub("", body).strip()
             body = re.sub(r"^\*\*(.*?)\*\*$", r"\1", body)
             body = re.sub(r"^__(.*?)__$", r"\1", body)
-            body = UNDERLINE_TAG.sub("", body).strip()
+            body = body.strip()
 
-            chapter = CHAPTER_HEADING.match(body)
-            if chapter:
-                number, title = chapter.groups()
-                number = number.upper() if re.fullmatch(r"[ivxlcdm]+", number, re.I) else number
-                body = f"Chapter {number}: {title.strip()}"
-            elif re.match(r"^(prologue|epilogue|prelude|introduction)\b", body, re.I):
-                body = body[:1].upper() + body[1:]
-
-            # Narrative headings are promoted to H1 for simple TTS Markdown.
-            if re.match(r"^(chapter\b|prologue\b|epilogue\b|prelude\b|part\b|introduction\b)", body, re.I):
+            if strong_heading.match(body):
+                chapter = CHAPTER_HEADING.match(body)
+                if chapter:
+                    number, title = chapter.groups()
+                    number = number.upper() if re.fullmatch(r"[ivxlcdm]+", number, re.I) else number
+                    body = f"Chapter {number}: {title.strip()}"
+                elif re.match(r"^(prologue|epilogue|prelude|introduction|interlude)\b", body, re.I):
+                    body = body[:1].upper() + body[1:]
                 out.append(f"# {body}")
+                continue
+
+            # A pre-existing ATX marker on non-structural prose is considered a
+            # converter artifact. Demote it to ordinary text so paragraph
+            # reconstruction can restore surrounding context.
+            if atx:
+                out.append(body)
             else:
-                out.append(f"## {body}")
-        return "\n".join(out)
+                out.append(raw.rstrip())
+
+        # Drop duplicate adjacent structural headings. Some conversions emit
+        # both a plain heading and an ATX/underlined copy (for example two
+        # consecutive ``Epilogue`` lines).
+        deduped: list[str] = []
+        for line in out:
+            if line.startswith("# "):
+                # Find the previous non-blank output line so duplicated source
+                # headings separated only by whitespace are still collapsed.
+                previous_nonblank = next(
+                    (item for item in reversed(deduped) if item.strip()),
+                    None,
+                )
+                if (
+                    previous_nonblank
+                    and previous_nonblank.startswith("# ")
+                    and line.casefold() == previous_nonblank.casefold()
+                ):
+                    continue
+            deduped.append(line)
+
+        return "\n".join(deduped)
 
     @staticmethod
     def _is_heading(block: str) -> bool:
