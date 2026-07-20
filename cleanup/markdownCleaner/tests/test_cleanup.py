@@ -5,6 +5,30 @@ from markdownCleaner.modules.cleanup.document import (
     DocumentCleanupStage,
 )
 from markdownCleaner.modules.regex.constants import OCR_CHARACTER_REPLACEMENTS
+from markdownCleaner.modules.report.exporter import meaningful_output_name
+from markdownCleaner.cli import _unique_batch_output_name
+
+
+def test_output_filename_is_readable_and_drops_release_tags():
+    source = (
+        "The Saga of Tanya the Evil - Volume 13 "
+        "[Yen Press][Kobo_LNWNCentral].md"
+    )
+    assert meaningful_output_name(source) == (
+        "The Saga of Tanya the Evil - Volume 13 - Cleaned.md"
+    )
+
+
+def test_output_filename_does_not_accumulate_clean_suffixes():
+    source = "Hell_Mode_-_Volume_01__clean.md"
+    assert meaningful_output_name(source) == "Hell Mode - Volume 01 - Cleaned.md"
+
+
+def test_meaningful_batch_names_remain_collision_safe():
+    used: set[str] = set()
+    name = "Book - Volume 1 - Cleaned.md"
+    assert _unique_batch_output_name(name, used) == name
+    assert _unique_batch_output_name(name, used) == "Book - Volume 1 - Cleaned (2).md"
 
 
 def test_unsafe_rn_replacement_is_disabled():

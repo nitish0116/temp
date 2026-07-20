@@ -1,9 +1,38 @@
 """Final pipeline output exporter."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from .summary import SummaryReporter
+
+
+def meaningful_output_name(source_file: str | Path) -> str:
+    """Return a readable, filesystem-safe name for a cleaned Markdown file.
+
+    Release/source tags such as ``[Yen Press][Kobo]`` are useful on input files
+    but make poor output names. Keep the actual book title and volume, use normal
+    spaces, and make the generated-file status explicit.
+    """
+    source = Path(source_file)
+    name = source.stem
+
+    # Do not accumulate generated suffixes when an output is cleaned again.
+    name = re.sub(r"(?i)(?:[ _-]+)(?:clean|cleaned)$", "", name)
+    # Drop trailing release/source tags while retaining brackets that are part of
+    # an actual title elsewhere in the name.
+    name = re.sub(r"(?:\s*\[[^\[\]]+\])+\s*$", "", name)
+    name = name.replace("_", " ")
+    name = re.sub(r"\s*[-–—]\s*", " - ", name)
+    name = re.sub(r"\s+", " ", name).strip(" .-_")
+
+    # Windows-invalid filename characters and control characters.
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", name)
+    name = re.sub(r"\s+", " ", name).strip(" .")
+    if not name:
+        name = "Cleaned document"
+
+    return f"{name} - Cleaned.md"
 
 
 class ReportExporter:
@@ -24,7 +53,7 @@ class ReportExporter:
         self._create_directories()
 
         source = Path(source_file)
-        filename = output_name or (source.stem.replace(" ", "_") + "_clean.md")
+        filename = output_name or meaningful_output_name(source)
         markdown_path = self.output_directory / filename
         markdown_path.write_text(cleaned_markdown, encoding="utf-8")
 

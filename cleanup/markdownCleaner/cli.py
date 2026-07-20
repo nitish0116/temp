@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from markdownCleaner.pipeline import OCRPipeline
+from markdownCleaner.modules.report.exporter import meaningful_output_name
 
 
 def _markdown_files(root: Path, recursive: bool) -> list[Path]:
@@ -18,7 +19,21 @@ def _markdown_files(root: Path, recursive: bool) -> list[Path]:
 
 def _safe_report_name(relative_file: Path) -> Path:
     """Create a collision-free report folder while retaining folder context."""
-    return Path("reports") / relative_file.stem.replace(" ", "_")
+    readable = Path(meaningful_output_name(relative_file)).stem
+    readable = readable.removesuffix(" - Cleaned")
+    return Path("reports") / readable
+
+
+def _unique_batch_output_name(filename: str, used_names: set[str]) -> str:
+    """Avoid overwrites when different tagged inputs simplify to the same name."""
+    path = Path(filename)
+    candidate = path.name
+    number = 2
+    while candidate.casefold() in used_names:
+        candidate = f"{path.stem} ({number}){path.suffix}"
+        number += 1
+    used_names.add(candidate.casefold())
+    return candidate
 
 
 def _run_one(
@@ -247,13 +262,18 @@ def main(argv: list[str] | None = None) -> int:
     failed = 0
     total_changes = 0
     batch_entries: list[dict] = []
+    used_output_names: dict[Path, set[str]] = {}
 
     print(f"Found {len(files)} Markdown file(s).")
     for index, file in enumerate(files, 1):
         relative = file.relative_to(source)
         target_dir = output_root / relative.parent
         report_dir = _safe_report_name(relative)
-        output_name = file.stem.replace(" ", "_") + "_clean.md"
+        directory_names = used_output_names.setdefault(target_dir, set())
+        output_name = _unique_batch_output_name(
+            meaningful_output_name(file),
+            directory_names,
+        )
 
         print(f"\n[{index}/{len(files)}] {relative}")
         try:
