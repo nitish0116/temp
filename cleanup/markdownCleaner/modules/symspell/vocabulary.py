@@ -1,4 +1,5 @@
 """Report-only discovery and explicit approval of domain vocabulary."""
+
 from __future__ import annotations
 
 from collections import Counter, defaultdict
@@ -40,7 +41,9 @@ def merge_approved_words(path: str | Path, words: list[str]) -> list[str]:
 
     target.parent.mkdir(parents=True, exist_ok=True)
     values = sorted(by_key.values(), key=str.casefold)
-    target.write_text(json.dumps(values, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    target.write_text(
+        json.dumps(values, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     return added
 
 
@@ -56,8 +59,12 @@ class VocabularyCandidateStage(PipelineStage):
             dictionary_path=context.config.resolve_path(
                 context.config.get("symspell.dictionary", "builtin:en-82k")
             ),
-            glossary_path=context.config.resolve_path(context.config.get("symspell.glossary")),
-            learned_path=context.config.resolve_path(context.config.get("symspell.learned")),
+            glossary_path=context.config.resolve_path(
+                context.config.get("symspell.glossary")
+            ),
+            learned_path=context.config.resolve_path(
+                context.config.get("symspell.learned")
+            ),
         )
         manager.load()
         for word in context.config.get("symspell.protected", []) or []:

@@ -99,22 +99,14 @@ class PipelineStage(ABC):
 
         except Exception as error:
 
-            get_logger().exception(
-    f"{self.name} failed."
-)
-            
+            get_logger().exception(f"{self.name} failed.")
+
             result = StageResult(
-
                 stage=self.name,
-
                 success=False,
-
                 error=str(error),
-
                 started=started,
-
                 finished=datetime.now().isoformat(),
-
             )
 
             context.add_stat(
@@ -208,21 +200,17 @@ class PipelineStage(ABC):
         """
 
         self.context.tracker.add(
-
             stage=self.name,
-
             block_index=getattr(
                 segment,
                 "block_index",
                 0,
             ),
-
             segment_index=getattr(
                 segment,
                 "segment_index",
                 0,
             ),
-
             line=getattr(
                 segment,
                 "start_line",
@@ -232,15 +220,10 @@ class PipelineStage(ABC):
                     0,
                 ),
             ),
-
             before=before,
-
             after=after,
-
             confidence=confidence,
-
             reason=reason,
-
         )
 
     # ---------------------------------------------------------

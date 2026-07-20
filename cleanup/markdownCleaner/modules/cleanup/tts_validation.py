@@ -1,4 +1,5 @@
 """Optional report-only validation of cleaned text for TTS consumption."""
+
 from __future__ import annotations
 
 import re

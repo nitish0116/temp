@@ -1,4 +1,5 @@
 """Correction candidate used by the local SymSpell lookup engine."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

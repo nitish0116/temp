@@ -132,7 +132,7 @@ class MarkdownBlock:
             f"editable={self.editable} "
             f"text='{preview}'>"
         )
-    
+
     def __post_init__(self):
         if not self.current_text:
             self.current_text = self.text
@@ -196,10 +196,7 @@ class MarkdownDocument:
         Reconstruct markdown exactly as stored.
         """
 
-        return "\n".join(
-        block.current_text
-        for block in self.blocks
-    )
+        return "\n".join(block.current_text for block in self.blocks)
 
     def statistics(self):
 
@@ -219,10 +216,8 @@ class MarkdownDocument:
         """
         # Blocks are parsed from ``splitlines()`` (without line endings),
         # so a newline must be reinserted between adjacent blocks.
-        return "\n".join(
-            block.current_text
-            for block in self.blocks
-        )
+        return "\n".join(block.current_text for block in self.blocks)
+
 
 # ==========================================================
 # Parser Skeleton
@@ -437,7 +432,11 @@ class MarkdownParser:
             # ======================================================
             # Setext heading (previous line + underline)
             # ======================================================
-            if i + 1 < total and lines[i].strip() != "" and HEADING_SETEXT.match(lines[i + 1]):
+            if (
+                i + 1 < total
+                and lines[i].strip() != ""
+                and HEADING_SETEXT.match(lines[i + 1])
+            ):
 
                 document.add(
                     MarkdownBlock(
@@ -540,7 +539,11 @@ class MarkdownParser:
             # ======================================================
             # Table block
             # ======================================================
-            if i + 1 < total and TABLE_ROW.match(line) and TABLE_SEPARATOR.match(lines[i + 1]):
+            if (
+                i + 1 < total
+                and TABLE_ROW.match(line)
+                and TABLE_SEPARATOR.match(lines[i + 1])
+            ):
 
                 start = i
                 rows = [line, lines[i + 1]]
@@ -574,7 +577,9 @@ class MarkdownParser:
 
                 i += 1
 
-                while i < total and (lines[i].startswith("    ") or lines[i].startswith("\t")):
+                while i < total and (
+                    lines[i].startswith("    ") or lines[i].startswith("\t")
+                ):
 
                     foot.append(lines[i])
                     i += 1
@@ -663,7 +668,11 @@ class MarkdownParser:
                 if HEADING_ATX.match(current):
                     break
 
-                if i + 1 < total and lines[i].strip() != "" and HEADING_SETEXT.match(lines[i + 1]):
+                if (
+                    i + 1 < total
+                    and lines[i].strip() != ""
+                    and HEADING_SETEXT.match(lines[i + 1])
+                ):
                     break
 
                 if HORIZONTAL_RULE.match(current):
@@ -707,14 +716,14 @@ class MarkdownParser:
                 i += 1
 
             document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.PARAGRAPH,
-                        text="\n".join(paragraph),
-                        start_line=start + 1,
-                        end_line=i,
-                        editable=True,
-                    )
+                MarkdownBlock(
+                    block_type=BlockType.PARAGRAPH,
+                    text="\n".join(paragraph),
+                    start_line=start + 1,
+                    end_line=i,
+                    editable=True,
                 )
+            )
 
         return document
 

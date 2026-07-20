@@ -103,7 +103,6 @@ class RegexStage(PipelineStage):
 
                 processor.process(segment)
 
-
         total_changes = context.total_changes - start_changes
 
         return StageResult(

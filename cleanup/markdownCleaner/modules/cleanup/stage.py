@@ -28,4 +28,6 @@ class NovelCleanupStage(PipelineStage):
         for segment in context.iter_segments():
             for processor in self.processors:
                 processor.process(segment)
-        return StageResult(stage=self.name, changes=context.total_changes - start_changes)
+        return StageResult(
+            stage=self.name, changes=context.total_changes - start_changes
+        )

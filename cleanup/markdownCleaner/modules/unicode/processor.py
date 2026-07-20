@@ -42,8 +42,7 @@ class UnicodeProcessor(ABC):
         fixes = unicode_config.get("fixes", {})
 
         return fixes.get(key, default)
-    
-    
+
     @abstractmethod
     def process(
         self,

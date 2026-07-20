@@ -1,4 +1,5 @@
 """Conservative dictionary-based OCR correction stage."""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -27,8 +28,12 @@ class SymSpellStage(PipelineStage):
             dictionary_path=context.config.resolve_path(
                 context.config.get("symspell.dictionary", "builtin:en-82k")
             ),
-            glossary_path=context.config.resolve_path(context.config.get("symspell.glossary")),
-            learned_path=context.config.resolve_path(context.config.get("symspell.learned")),
+            glossary_path=context.config.resolve_path(
+                context.config.get("symspell.glossary")
+            ),
+            learned_path=context.config.resolve_path(
+                context.config.get("symspell.learned")
+            ),
         )
         self.dictionary.load()
 
@@ -53,7 +58,9 @@ class SymSpellStage(PipelineStage):
 
     def _protect_document_terms(self, text: str) -> None:
         assert self.dictionary is not None
-        min_occurrences = int(self.config.get("symspell.proper_noun_min_occurrences", 2))
+        min_occurrences = int(
+            self.config.get("symspell.proper_noun_min_occurrences", 2)
+        )
         tokens = self.WORD_PATTERN.findall(text)
         counts = Counter(tokens)
         for token, count in counts.items():
@@ -73,7 +80,9 @@ class SymSpellStage(PipelineStage):
         threshold = float(self.get_config("confidence_threshold", 92))
         for segment in context.iter_segments():
             segment.current_text = self._process_text(segment, threshold)
-        return StageResult(stage=self.name, changes=context.total_changes - start_changes)
+        return StageResult(
+            stage=self.name, changes=context.total_changes - start_changes
+        )
 
     def _process_text(self, segment, threshold: float) -> str:
         return self.WORD_PATTERN.sub(
@@ -107,7 +116,8 @@ class SymSpellStage(PipelineStage):
         max_auto_distance = int(self.get_config("max_auto_edit_distance", 1))
         min_frequency = int(self.get_config("minimum_candidate_frequency", 1000))
         candidates = [
-            c for c in candidates
+            c
+            for c in candidates
             if c.distance <= max_auto_distance and c.frequency >= min_frequency
         ]
         # Specialist dictionaries often contain a singular but omit its regular
@@ -130,7 +140,10 @@ class SymSpellStage(PipelineStage):
 
         # Reject ambiguous corrections where the runner-up is almost as good.
         ambiguity_margin = float(self.get_config("ambiguity_margin", 2.0))
-        if len(candidates) > 1 and (best.confidence - candidates[1].confidence) < ambiguity_margin:
+        if (
+            len(candidates) > 1
+            and (best.confidence - candidates[1].confidence) < ambiguity_margin
+        ):
             return word
 
         corrected = self._match_case(word, best.corrected)

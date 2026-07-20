@@ -101,6 +101,8 @@ class UnicodeNormalizer(UnicodeProcessor):
             "normalized",
         )
 
-        self.logger.debug(f"{self.name}: normalized " f"segment {segment.segment_index}")
+        self.logger.debug(
+            f"{self.name}: normalized " f"segment {segment.segment_index}"
+        )
 
         return True

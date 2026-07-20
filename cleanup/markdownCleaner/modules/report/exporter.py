@@ -1,4 +1,5 @@
 """Final pipeline output exporter."""
+
 from __future__ import annotations
 
 import re
@@ -67,7 +68,8 @@ class ReportExporter:
 
         candidates_path = self.report_directory / "glossary_candidates.json"
         candidates_path.write_text(
-            json.dumps(vocabulary_candidates or [], indent=2, ensure_ascii=False) + "\n",
+            json.dumps(vocabulary_candidates or [], indent=2, ensure_ascii=False)
+            + "\n",
             encoding="utf-8",
         )
 

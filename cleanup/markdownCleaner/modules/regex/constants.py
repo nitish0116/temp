@@ -37,7 +37,6 @@ OCR_CHARACTER_REPLACEMENTS = {
 }
 
 
-
 OCR_CHARACTER_CONFIDENCE = {
     "rn": 90.0,
     "vv": 85.0,

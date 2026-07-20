@@ -8,6 +8,7 @@ Design goals
 * Allow explicit section exclusion by heading name without deleting later sections.
 * Remove picture OCR only when it is very likely to be extraction noise.
 """
+
 from __future__ import annotations
 
 import re
@@ -28,9 +29,7 @@ ATX_HEADING = re.compile(r"^(\s*#{1,6})\s+(.+?)\s*$")
 SECTION_NUMBER = re.compile(r"^_?(\d+)_?$")
 FOOTNOTE_DEFINITION = re.compile(r"(?m)^\s*\[\^[^\]]+\]:.*(?:\n(?: {2,}|\t).*)*\n?")
 FOOTNOTE_REFERENCE = re.compile(r"\[\^[^\]]+\]")
-GLOSSARY_FOOTNOTE = re.compile(
-    r"^\s*>?\s*\d+\s+\*\*\S(?:.*?\S)?\*\*(?:\s+.*)?$"
-)
+GLOSSARY_FOOTNOTE = re.compile(r"^\s*>?\s*\d+\s+\*\*\S(?:.*?\S)?\*\*(?:\s+.*)?$")
 SIGNUP_OR_NEWSLETTER = re.compile(
     r"(?:\bsign\s*up\b.*\bnewsletter\b|"
     r"\bnewsletter\s+sign\s*up\b|"
@@ -165,19 +164,23 @@ class DocumentCleanupStage(PipelineStage):
             excluded_sections=excluded,
         )
         if removed_count:
-            changes.append(_Change(
-                "Removed likely picture-OCR noise",
-                f"{removed_count} noisy picture OCR block(s)",
-                "",
-                97.0,
-            ))
+            changes.append(
+                _Change(
+                    "Removed likely picture-OCR noise",
+                    f"{removed_count} noisy picture OCR block(s)",
+                    "",
+                    97.0,
+                )
+            )
         if preserved_count:
-            changes.append(_Change(
-                "Preserved readable picture-OCR content",
-                f"{preserved_count} readable picture OCR block(s)",
-                "text retained",
-                99.0,
-            ))
+            changes.append(
+                _Change(
+                    "Preserved readable picture-OCR content",
+                    f"{preserved_count} readable picture OCR block(s)",
+                    "text retained",
+                    99.0,
+                )
+            )
 
         # Residual non-picture comments are converter markup, not content.
         text = HTML_COMMENT.sub("", text)
@@ -186,83 +189,104 @@ class DocumentCleanupStage(PipelineStage):
             before = text
             text = self._remove_leading_front_matter(text)
             if text != before:
-                changes.append(_Change(
-                    "Removed strongly identified leading cover/publication front matter",
-                    "cover/navigation/publication prefix",
-                    "",
-                    98.0,
-                ))
+                changes.append(
+                    _Change(
+                        "Removed strongly identified leading cover/publication front matter",
+                        "cover/navigation/publication prefix",
+                        "",
+                        98.0,
+                    )
+                )
 
         if self.config.get("cleanup.remove_front_matter", True):
             before = text
             text = self._remove_local_metadata(text)
             if text != before:
-                changes.append(_Change(
-                    "Removed local publication metadata without sequence-based truncation",
-                    "metadata blocks/lines",
-                    "",
-                    96.0,
-                ))
+                changes.append(
+                    _Change(
+                        "Removed local publication metadata without sequence-based truncation",
+                        "metadata blocks/lines",
+                        "",
+                        96.0,
+                    )
+                )
 
         if excluded:
             before = text
             text, removed_sections = self._remove_named_sections(text, excluded)
             if removed_sections:
-                changes.append(_Change(
-                    "Removed explicitly configured sections only",
-                    ", ".join(removed_sections),
-                    "",
-                    99.0,
-                ))
+                changes.append(
+                    _Change(
+                        "Removed explicitly configured sections only",
+                        ", ".join(removed_sections),
+                        "",
+                        99.0,
+                    )
+                )
 
         if self.config.get("cleanup.remove_promotional_tail", True):
             before = text
             text = self._remove_promotional_tail(text)
             if text != before:
-                changes.append(_Change(
-                    "Removed publisher next-volume promotional tail",
-                    "coming-soon preview",
-                    "",
-                    98.0,
-                ))
+                changes.append(
+                    _Change(
+                        "Removed publisher next-volume promotional tail",
+                        "coming-soon preview",
+                        "",
+                        98.0,
+                    )
+                )
 
         if self.config.get("cleanup.remove_glossary_footnotes", True):
             before = text
             text, removed_glossary = self._remove_bounded_glossary_footnotes(text)
             if removed_glossary:
-                changes.append(_Change(
-                    "Removed bounded bare/blockquoted glossary footnotes",
-                    f"{removed_glossary} glossary footnote block(s)",
-                    "",
-                    98.0,
-                ))
+                changes.append(
+                    _Change(
+                        "Removed bounded bare/blockquoted glossary footnotes",
+                        f"{removed_glossary} glossary footnote block(s)",
+                        "",
+                        98.0,
+                    )
+                )
 
         if self.config.get("cleanup.remove_publisher_tail", True):
             before = text
             text, tail_kind = self._remove_generic_publisher_tail(text)
             if tail_kind:
-                changes.append(_Change(
-                    f"Removed trailing {tail_kind}",
-                    "publisher/navigation tail",
-                    "",
-                    98.0,
-                ))
+                changes.append(
+                    _Change(
+                        f"Removed trailing {tail_kind}",
+                        "publisher/navigation tail",
+                        "",
+                        98.0,
+                    )
+                )
 
         before_decorative = text
         text = DECORATIVE_SEPARATOR_LINE.sub("", text)
         if text != before_decorative:
-            changes.append(_Change(
-                "Removed standalone decorative separator lines",
-                "ornamental symbol separators",
-                "",
-                99.0,
-            ))
+            changes.append(
+                _Change(
+                    "Removed standalone decorative separator lines",
+                    "ornamental symbol separators",
+                    "",
+                    99.0,
+                )
+            )
 
         if self.config.get("cleanup.remove_footnotes", True):
             new, count = FOOTNOTE_DEFINITION.subn("", text)
             new = FOOTNOTE_REFERENCE.sub("", new)
             if count or new != text:
-                changes.append(_Change("Removed Markdown footnotes", "footnotes present", "footnotes removed", 95.0))
+                changes.append(
+                    _Change(
+                        "Removed Markdown footnotes",
+                        "footnotes present",
+                        "footnotes removed",
+                        95.0,
+                    )
+                )
                 text = new
 
         before_markup = text
@@ -271,28 +295,59 @@ class DocumentCleanupStage(PipelineStage):
         text = HTML_COMMENT.sub("", text)
         text = re.sub(r"[ \t]+", " ", text)
         if text != before_markup:
-            changes.append(_Change("Normalized residual HTML/Markdown markup", "legacy inline markup", "normalized markup"))
+            changes.append(
+                _Change(
+                    "Normalized residual HTML/Markdown markup",
+                    "legacy inline markup",
+                    "normalized markup",
+                )
+            )
 
         before_headings = text
         text = self._normalize_headings(text)
         if text != before_headings:
-            changes.append(_Change("Normalized structural headings", "irregular headings", "normalized Markdown headings"))
+            changes.append(
+                _Change(
+                    "Normalized structural headings",
+                    "irregular headings",
+                    "normalized Markdown headings",
+                )
+            )
 
         before_paragraphs = text
         text = self._reconstruct_paragraphs(text)
         if text != before_paragraphs:
-            changes.append(_Change("Reconstructed PDF/OCR wrapped paragraphs", "split paragraph lines", "joined prose paragraphs", 96.0))
+            changes.append(
+                _Change(
+                    "Reconstructed PDF/OCR wrapped paragraphs",
+                    "split paragraph lines",
+                    "joined prose paragraphs",
+                    96.0,
+                )
+            )
 
         if self.config.get("cleanup.strip_markdown_emphasis", True):
             before_emphasis = text
             text = self._strip_markdown_emphasis(text)
             if text != before_emphasis:
-                changes.append(_Change("Removed Markdown emphasis markers for TTS", "Markdown emphasis", "plain text"))
+                changes.append(
+                    _Change(
+                        "Removed Markdown emphasis markers for TTS",
+                        "Markdown emphasis",
+                        "plain text",
+                    )
+                )
 
         before_space = text
         text = self._normalize_spacing(text)
         if text != before_space:
-            changes.append(_Change("Normalized whitespace and blank lines", "irregular whitespace", "normalized whitespace"))
+            changes.append(
+                _Change(
+                    "Normalized whitespace and blank lines",
+                    "irregular whitespace",
+                    "normalized whitespace",
+                )
+            )
 
         if text != context.current_markdown:
             context.replace_markdown(text)
@@ -334,8 +389,12 @@ class DocumentCleanupStage(PipelineStage):
     # ------------------------------------------------------------------
     @staticmethod
     def _clean_picture_block(block: str) -> str:
-        inner = re.sub(r"^<!--\s*Start of picture text\s*-->", "", block, flags=re.I).strip()
-        inner = re.sub(r"<!--\s*End of picture text\s*-->$", "", inner, flags=re.I).strip()
+        inner = re.sub(
+            r"^<!--\s*Start of picture text\s*-->", "", block, flags=re.I
+        ).strip()
+        inner = re.sub(
+            r"<!--\s*End of picture text\s*-->$", "", inner, flags=re.I
+        ).strip()
         inner = HTML_BREAK.sub("\n", inner)
         inner = HTML_COMMENT.sub("", inner)
         inner = UNDERLINE_TAG.sub("", inner)
@@ -417,13 +476,13 @@ class DocumentCleanupStage(PipelineStage):
             value = re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
             value = re.sub(r"\\bprofles\\b", "profiles", value)
             value = re.sub(r"\\bprofle\\b", "profile", value)
-            value = re.sub(r"^[a-z0-9 ]+\\s+character profiles$", "character profiles", value)
+            value = re.sub(
+                r"^[a-z0-9 ]+\\s+character profiles$", "character profiles", value
+            )
             return re.sub(r"\\s+", " ", value)
 
         excluded_keys = {
-            section_key(name)
-            for name in (excluded_sections or [])
-            if str(name).strip()
+            section_key(name) for name in (excluded_sections or []) if str(name).strip()
         }
 
         removed = 0
@@ -431,7 +490,7 @@ class DocumentCleanupStage(PipelineStage):
         pieces: list[str] = []
         cursor = 0
         for match in PICTURE_BLOCK.finditer(text):
-            pieces.append(text[cursor:match.start()])
+            pieces.append(text[cursor : match.start()])
             cleaned = cls._clean_picture_block(match.group(0))
             if cleaned:
                 cleaned = cls._normalize_headings(cleaned)
@@ -441,7 +500,9 @@ class DocumentCleanupStage(PipelineStage):
             # discard the whole section, including prose between image blocks.
             marker = None
             if cleaned and excluded_keys:
-                cleaned_lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+                cleaned_lines = [
+                    line.strip() for line in cleaned.splitlines() if line.strip()
+                ]
                 for line in cleaned_lines:
                     key = section_key(line)
                     if key in excluded_keys:
@@ -456,7 +517,9 @@ class DocumentCleanupStage(PipelineStage):
                 preserved += 1
                 pieces.append("\n\n# " + marker + "\n\n")
             else:
-                keep = mode == "keep" or (mode == "safe" and cls._picture_text_is_readable(cleaned))
+                keep = mode == "keep" or (
+                    mode == "safe" and cls._picture_text_is_readable(cleaned)
+                )
                 if keep and cleaned:
                     preserved += 1
                     pieces.append("\n\n" + cleaned + "\n\n")
@@ -534,17 +597,21 @@ class DocumentCleanupStage(PipelineStage):
                 # uses an explicit title delimiter (:, |, dash).
                 raw_stripped = line.strip()
                 is_atx = bool(ATX_HEADING.match(raw_stripped))
-                has_title_delimiter = bool(re.match(
-                    r"^(?:chapter|story|part|book|act|section)\s+"
-                    r"(?:\d+|[ivxlcdm]+)\s*[|:\-–—]\s*\S",
-                    candidate,
-                    flags=re.I,
-                ))
-                is_named = bool(re.match(
-                    r"^(?:prologue|prelude|introduction|interlude|epilogue)\s*$",
-                    candidate,
-                    flags=re.I,
-                ))
+                has_title_delimiter = bool(
+                    re.match(
+                        r"^(?:chapter|story|part|book|act|section)\s+"
+                        r"(?:\d+|[ivxlcdm]+)\s*[|:\-–—]\s*\S",
+                        candidate,
+                        flags=re.I,
+                    )
+                )
+                is_named = bool(
+                    re.match(
+                        r"^(?:prologue|prelude|introduction|interlude|epilogue)\s*$",
+                        candidate,
+                        flags=re.I,
+                    )
+                )
                 if (
                     len(section_mentions) > 1
                     or len(candidate) > 180
@@ -558,7 +625,9 @@ class DocumentCleanupStage(PipelineStage):
             return text
 
         prefix = "\n".join(lines[:first_narrative])
-        signal_count = sum(bool(pattern.search(prefix)) for pattern in FRONT_MATTER_SIGNALS)
+        signal_count = sum(
+            bool(pattern.search(prefix)) for pattern in FRONT_MATTER_SIGNALS
+        )
 
         # Two independent publication signals are enough. This is deliberately
         # stricter than relying on position alone, so ordinary prefaces/epigraphs
@@ -602,7 +671,8 @@ class DocumentCleanupStage(PipelineStage):
                     next_plain = normalized_label(lines[i])
                     structural = bool(
                         next_heading
-                        and normalized_label(next_heading) not in LOCAL_METADATA_HEADINGS
+                        and normalized_label(next_heading)
+                        not in LOCAL_METADATA_HEADINGS
                     )
                     if not structural and NARRATIVE_SECTION.match(next_plain):
                         structural = True
@@ -623,7 +693,9 @@ class DocumentCleanupStage(PipelineStage):
         return "\n".join(out)
 
     @classmethod
-    def _remove_named_sections(cls, text: str, names: Iterable[str]) -> tuple[str, list[str]]:
+    def _remove_named_sections(
+        cls, text: str, names: Iterable[str]
+    ) -> tuple[str, list[str]]:
         """Remove explicitly named sections locally, regardless of document order."""
 
         def section_key(value: str) -> str:
@@ -633,7 +705,9 @@ class DocumentCleanupStage(PipelineStage):
             value = re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
             value = re.sub(r"\bprofles\b", "profiles", value)
             value = re.sub(r"\bprofle\b", "profile", value)
-            value = re.sub(r"^[a-z0-9 ]+\s+character profiles$", "character profiles", value)
+            value = re.sub(
+                r"^[a-z0-9 ]+\s+character profiles$", "character profiles", value
+            )
             return re.sub(r"\s+", " ", value)
 
         targets = {section_key(name) for name in names if str(name).strip()}
@@ -684,16 +758,15 @@ class DocumentCleanupStage(PipelineStage):
             if not re.match(r"^volume\s+\d+\b", candidate, flags=re.I):
                 continue
 
-            window = "\n".join(lines[i:min(len(lines), i + 5)])
+            window = "\n".join(lines[i : min(len(lines), i + 5)])
             if re.search(r"\bcoming\s+soon\b", window, flags=re.I):
                 return "\n".join(lines[:i]).rstrip()
 
         # Some converters merge the volume title and Coming soon onto one line
         # without producing a clean heading.
         for i, line in enumerate(lines):
-            if (
-                re.search(r"\bvolume\s+\d+\b", line, flags=re.I)
-                and re.search(r"\bcoming\s+soon\b", line, flags=re.I)
+            if re.search(r"\bvolume\s+\d+\b", line, flags=re.I) and re.search(
+                r"\bcoming\s+soon\b", line, flags=re.I
             ):
                 return "\n".join(lines[:i]).rstrip()
 
@@ -732,7 +805,8 @@ class DocumentCleanupStage(PipelineStage):
                 return prefix, "publisher signup/newsletter tail"
 
         matches = [
-            i for i in range(search_start, len(lines))
+            i
+            for i in range(search_start, len(lines))
             if TRAILING_TOC_ITEM.match(lines[i])
         ]
         # Require at least two nearby entries so an ordinary numbered sentence
@@ -795,7 +869,11 @@ class DocumentCleanupStage(PipelineStage):
             )
             if chapter_marker:
                 number, title = chapter_marker.groups()
-                number = number.upper() if re.fullmatch(r"[ivxlcdm]+", number, re.I) else number
+                number = (
+                    number.upper()
+                    if re.fullmatch(r"[ivxlcdm]+", number, re.I)
+                    else number
+                )
                 title = title.strip()
                 out.append(f"# Chapter {number}" + (f": {title}" if title else ""))
                 continue
@@ -806,7 +884,11 @@ class DocumentCleanupStage(PipelineStage):
             if numbered:
                 kind, number, title = numbered.groups()
                 kind = kind[:1].upper() + kind[1:].lower()
-                number = number.upper() if re.fullmatch(r"[ivxlcdm]+", number, re.I) else number
+                number = (
+                    number.upper()
+                    if re.fullmatch(r"[ivxlcdm]+", number, re.I)
+                    else number
+                )
                 out.append(f"# {kind} {number}: {title.strip()}")
                 continue
 
@@ -837,8 +919,14 @@ class DocumentCleanupStage(PipelineStage):
         deduped: list[str] = []
         for line in out:
             if line.startswith("#"):
-                previous_nonblank = next((x for x in reversed(deduped) if x.strip()), None)
-                if previous_nonblank and previous_nonblank.startswith("#") and line.casefold() == previous_nonblank.casefold():
+                previous_nonblank = next(
+                    (x for x in reversed(deduped) if x.strip()), None
+                )
+                if (
+                    previous_nonblank
+                    and previous_nonblank.startswith("#")
+                    and line.casefold() == previous_nonblank.casefold()
+                ):
                     continue
             deduped.append(line)
         return "\n".join(deduped)
@@ -886,7 +974,10 @@ class DocumentCleanupStage(PipelineStage):
         if len(lines) < 2:
             return False
         short = sum(len(line) <= 48 for line in lines)
-        labelish = sum(bool(re.match(r"^[A-Z][A-Za-z0-9 /&()'’+\-]{0,40}:?$", line)) for line in lines)
+        labelish = sum(
+            bool(re.match(r"^[A-Z][A-Za-z0-9 /&()'’+\-]{0,40}:?$", line))
+            for line in lines
+        )
         colon_labels = sum(":" in line[:30] for line in lines)
         return (short / len(lines) >= 0.75 and labelish >= 2) or colon_labels >= 2
 

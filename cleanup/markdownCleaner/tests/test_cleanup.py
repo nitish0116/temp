@@ -17,8 +17,7 @@ from markdownCleaner.modules.symspell.vocabulary import (
 
 def test_output_filename_is_readable_and_drops_release_tags():
     source = (
-        "The Saga of Tanya the Evil - Volume 13 "
-        "[Yen Press][Kobo_LNWNCentral].md"
+        "The Saga of Tanya the Evil - Volume 13 " "[Yen Press][Kobo_LNWNCentral].md"
     )
     assert meaningful_output_name(source) == (
         "The Saga of Tanya the Evil - Volume 13 - Cleaned.md"
@@ -133,6 +132,7 @@ def test_explicit_glossary_approval_merges_without_duplicates(tmp_path):
     )
 
     import json
+
     values = json.loads(glossary.read_text(encoding="utf-8"))
     assert added == ["noncoms", "Degurechaff"]
     assert sum(word.casefold() == "sitrep" for word in values) == 1
@@ -154,20 +154,22 @@ def test_vocabulary_candidates_are_discovered_without_mutating_glossary(tmp_path
         "Degurechaff reported. Degurechaff replied. Degurechaff nodded.",
         encoding="utf-8",
     )
-    config = PipelineConfig({
-        "paths": {"output_directory": str(tmp_path / "out")},
-        "backup": {"enabled": False},
-        "symspell": {
-            "dictionary": str(dictionary),
-            "glossary": str(glossary),
-            "max_edit_distance": 1,
-        },
-        "vocabulary_candidates": {
-            "enabled": True,
-            "minimum_occurrences": 3,
-            "report_limit": 20,
-        },
-    })
+    config = PipelineConfig(
+        {
+            "paths": {"output_directory": str(tmp_path / "out")},
+            "backup": {"enabled": False},
+            "symspell": {
+                "dictionary": str(dictionary),
+                "glossary": str(glossary),
+                "max_edit_distance": 1,
+            },
+            "vocabulary_candidates": {
+                "enabled": True,
+                "minimum_occurrences": 3,
+                "report_limit": 20,
+            },
+        }
+    )
     context = ProcessingContext(config)
     context.load_markdown(source)
 
@@ -194,7 +196,9 @@ def test_paragraph_wrap_reconstruction():
 
 def test_heading_normalization():
     source = "### <u>Chapter 1 | The Beginning</u>"
-    assert DocumentCleanupStage._normalize_headings(source) == "# Chapter 1: The Beginning"
+    assert (
+        DocumentCleanupStage._normalize_headings(source) == "# Chapter 1: The Beginning"
+    )
 
 
 def test_markdown_emphasis_removed_for_tts():
@@ -202,13 +206,19 @@ def test_markdown_emphasis_removed_for_tts():
     result = DocumentCleanupStage._strip_markdown_emphasis(source)
     assert result == "Yggdrasil, Ba-ding!, because, bold, strong"
 
+
 def test_internal_underscores_are_preserved():
     source = "file_name and snake_case"
     assert DocumentCleanupStage._strip_markdown_emphasis(source) == source
 
 
 def test_legacy_markup_cleanup_is_merged_into_document_stage():
-    from markdownCleaner.modules.cleanup.document import HTML_BREAK, UNDERLINE_TAG, HTML_COMMENT
+    from markdownCleaner.modules.cleanup.document import (
+        HTML_BREAK,
+        UNDERLINE_TAG,
+        HTML_COMMENT,
+    )
+
     source = "Hello<br>world <u>name</u><!-- empty -->"
     result = HTML_BREAK.sub("\n", source)
     result = UNDERLINE_TAG.sub("", result)
@@ -218,12 +228,14 @@ def test_legacy_markup_cleanup_is_merged_into_document_stage():
 
 def test_symspell_one_edit_confidence_can_reach_safe_threshold():
     from markdownCleaner.modules.symspell.candidate import CorrectionCandidate
+
     candidate = CorrectionCandidate("retum", "return", 1, 1_000_000)
     assert candidate.calculate_confidence() >= 92
 
 
 def test_symspell_two_edit_candidate_stays_below_safe_threshold():
     from markdownCleaner.modules.symspell.candidate import CorrectionCandidate
+
     candidate = CorrectionCandidate("abcdef", "abxyef", 2, 10_000_000)
     assert candidate.calculate_confidence() < 92
 
@@ -240,23 +252,25 @@ def test_safe_symspell_corrects_typo_and_preserves_protected_name(tmp_path):
     source = tmp_path / "sample.md"
     source.write_text("becuse Yggdrasil", encoding="utf-8")
 
-    config = PipelineConfig({
-        "paths": {"output_directory": str(tmp_path / "out")},
-        "backup": {"enabled": False},
-        "symspell": {
-            "enabled": True,
-            "dictionary": str(dictionary),
-            "glossary": str(glossary),
-            "max_edit_distance": 2,
-            "max_auto_edit_distance": 1,
-            "confidence_threshold": 92,
-            "minimum_word_length": 4,
-            "minimum_candidate_frequency": 1000,
-            "ambiguity_margin": 2,
-            "auto_protect_proper_nouns": True,
-            "proper_noun_min_occurrences": 2,
-        },
-    })
+    config = PipelineConfig(
+        {
+            "paths": {"output_directory": str(tmp_path / "out")},
+            "backup": {"enabled": False},
+            "symspell": {
+                "enabled": True,
+                "dictionary": str(dictionary),
+                "glossary": str(glossary),
+                "max_edit_distance": 2,
+                "max_auto_edit_distance": 1,
+                "confidence_threshold": 92,
+                "minimum_word_length": 4,
+                "minimum_candidate_frequency": 1000,
+                "ambiguity_margin": 2,
+                "auto_protect_proper_nouns": True,
+                "proper_noun_min_occurrences": 2,
+            },
+        }
+    )
     context = ProcessingContext(config)
     context.load_markdown(source)
     result = SymSpellStage(config).execute(context)
@@ -274,21 +288,23 @@ def test_symspell_does_not_convert_regular_plural_to_singular(tmp_path):
     dictionary.write_text("noncom 10000000\n", encoding="utf-8")
     source = tmp_path / "sample.md"
     source.write_text("The noncoms submitted their reports.", encoding="utf-8")
-    config = PipelineConfig({
-        "paths": {"output_directory": str(tmp_path / "out")},
-        "backup": {"enabled": False},
-        "symspell": {
-            "enabled": True,
-            "dictionary": str(dictionary),
-            "max_edit_distance": 2,
-            "max_auto_edit_distance": 1,
-            "confidence_threshold": 92,
-            "minimum_word_length": 4,
-            "minimum_candidate_frequency": 1000,
-            "ambiguity_margin": 2,
-            "auto_protect_proper_nouns": False,
-        },
-    })
+    config = PipelineConfig(
+        {
+            "paths": {"output_directory": str(tmp_path / "out")},
+            "backup": {"enabled": False},
+            "symspell": {
+                "enabled": True,
+                "dictionary": str(dictionary),
+                "max_edit_distance": 2,
+                "max_auto_edit_distance": 1,
+                "confidence_threshold": 92,
+                "minimum_word_length": 4,
+                "minimum_candidate_frequency": 1000,
+                "ambiguity_margin": 2,
+                "auto_protect_proper_nouns": False,
+            },
+        }
+    )
     context = ProcessingContext(config)
     context.load_markdown(source)
 
@@ -300,17 +316,20 @@ def test_symspell_does_not_convert_regular_plural_to_singular(tmp_path):
 
 
 def test_false_atx_heading_is_demoted_and_context_rejoined():
-    source = "And\n\n## then—\n\n\"A scream?\""
+    source = 'And\n\n## then—\n\n"A scream?"'
     normalized = DocumentCleanupStage._normalize_headings(source)
     assert "## then—" not in normalized
     result = DocumentCleanupStage._reconstruct_paragraphs(normalized)
-    assert 'And then—\n\n“A scream?”' in result or 'And then—\n\n"A scream?"' in result
+    assert "And then—\n\n“A scream?”" in result or 'And then—\n\n"A scream?"' in result
 
 
 def test_plain_underlined_chapter_heading_is_promoted():
     # In the real source, legacy <u> tags are removed just before heading normalization.
     source = "Chapter 2 | The Floor Guardians"
-    assert DocumentCleanupStage._normalize_headings(source) == "# Chapter 2: The Floor Guardians"
+    assert (
+        DocumentCleanupStage._normalize_headings(source)
+        == "# Chapter 2: The Floor Guardians"
+    )
 
 
 def test_nonstructural_converter_headings_are_demoted():
@@ -324,7 +343,6 @@ def test_duplicate_structural_headings_are_collapsed():
     assert DocumentCleanupStage._normalize_headings(source) == "# Epilogue"
 
 
-
 def test_afterword_is_hard_back_matter_cutoff(tmp_path):
     from markdownCleaner.modules.core.config import PipelineConfig
     from markdownCleaner.modules.core.context import ProcessingContext
@@ -334,17 +352,19 @@ def test_afterword_is_hard_back_matter_cutoff(tmp_path):
         "# Epilogue\n\nThe actual ending.\n\nCharacter Profiles\nSecret data.\nn\n<u>Afterword</u>\n\nThanks for reading.",
         encoding="utf-8",
     )
-    config = PipelineConfig({
-        "paths": {"output_directory": str(tmp_path / "out")},
-        "backup": {"enabled": False},
-        "cleanup": {
-            "remove_picture_ocr": True,
-            "remove_front_matter": False,
-            "remove_back_matter": True,
-            "remove_footnotes": True,
-            "strip_markdown_emphasis": True,
-        },
-    })
+    config = PipelineConfig(
+        {
+            "paths": {"output_directory": str(tmp_path / "out")},
+            "backup": {"enabled": False},
+            "cleanup": {
+                "remove_picture_ocr": True,
+                "remove_front_matter": False,
+                "remove_back_matter": True,
+                "remove_footnotes": True,
+                "strip_markdown_emphasis": True,
+            },
+        }
+    )
     context = ProcessingContext(config)
     context.load_markdown(source)
     result = DocumentCleanupStage(config).execute(context)
@@ -366,18 +386,24 @@ def test_cli_folder_file_discovery(tmp_path):
     (nested / "ignore.txt").write_text("x", encoding="utf-8")
 
     assert [p.name for p in _markdown_files(tmp_path, recursive=False)] == ["one.md"]
-    assert [p.name for p in _markdown_files(tmp_path, recursive=True)] == ["two.md", "one.md"] or \
-           [p.name for p in _markdown_files(tmp_path, recursive=True)] == ["one.md", "two.md"]
-
+    assert [p.name for p in _markdown_files(tmp_path, recursive=True)] == [
+        "two.md",
+        "one.md",
+    ] or [p.name for p in _markdown_files(tmp_path, recursive=True)] == [
+        "one.md",
+        "two.md",
+    ]
 
 
 def test_ocr_misspelled_aferword_is_back_matter_cutoff():
     from markdownCleaner.modules.cleanup.document import BACK_MATTER_HEADING
+
     assert BACK_MATTER_HEADING.search("# _<u>Aferword</u>_\n")
 
 
 def test_character_profiles_are_not_back_matter_cutoff():
     from markdownCleaner.modules.cleanup.document import BACK_MATTER_HEADING
+
     assert BACK_MATTER_HEADING.search("Character Profiles\n") is None
     assert BACK_MATTER_HEADING.search("OVERLORD Character Profiles\n") is None
     assert BACK_MATTER_HEADING.search("# _<u>Aferword</u>_\n")
@@ -385,11 +411,17 @@ def test_character_profiles_are_not_back_matter_cutoff():
 
 def test_story_heading_is_promoted():
     source = "Story 1 | Enri’s Hectc, Eventul Life"
-    assert DocumentCleanupStage._normalize_headings(source) == "# Story 1: Enri’s Hectc, Eventul Life"
+    assert (
+        DocumentCleanupStage._normalize_headings(source)
+        == "# Story 1: Enri’s Hectc, Eventul Life"
+    )
 
 
 def test_character_profiles_heading_is_promoted():
-    assert DocumentCleanupStage._normalize_headings("Character Profiles") == "# Character Profiles"
+    assert (
+        DocumentCleanupStage._normalize_headings("Character Profiles")
+        == "# Character Profiles"
+    )
 
 
 def test_profile_picture_ocr_is_preserved_until_afterword():
@@ -424,8 +456,12 @@ def test_profile_data_line_is_not_promoted_to_section_heading():
 
 def test_start_heading_finds_plain_story_with_separator_but_not_toc_item():
     from markdownCleaner.modules.cleanup.document import START_HEADING
+
     assert START_HEADING.search("<u>Story 1 | A Day Inside Nazarick</u>")
-    assert START_HEADING.search("<u>Story 1 A Day Inside Nazarick Story 2 Other</u>") is None
+    assert (
+        START_HEADING.search("<u>Story 1 A Day Inside Nazarick Story 2 Other</u>")
+        is None
+    )
 
 
 def test_profile_reconstruction_preserves_internal_lines():
@@ -451,7 +487,9 @@ def test_unknown_existing_heading_is_preserved():
 
 def test_readable_picture_ocr_is_preserved_without_profile_sequence():
     source = "<!-- Start of picture text -->Map of the Northern Kingdom<br>Capital City<br>River Gate<!-- End of picture text -->"
-    result, removed, preserved = DocumentCleanupStage._filter_picture_ocr(source, mode="safe")
+    result, removed, preserved = DocumentCleanupStage._filter_picture_ocr(
+        source, mode="safe"
+    )
     assert preserved == 1
     assert removed == 0
     assert "Northern Kingdom" in result
@@ -459,7 +497,9 @@ def test_readable_picture_ocr_is_preserved_without_profile_sequence():
 
 def test_gibberish_picture_ocr_is_removed_in_safe_mode():
     source = "<!-- Start of picture text -->\\ \\ / } i : ~~ 2) sl Pe yr XS ny P \\Y H f ; Z<!-- End of picture text -->"
-    result, removed, preserved = DocumentCleanupStage._filter_picture_ocr(source, mode="safe")
+    result, removed, preserved = DocumentCleanupStage._filter_picture_ocr(
+        source, mode="safe"
+    )
     assert removed == 1
     assert preserved == 0
 
@@ -552,6 +592,7 @@ def test_batch_summary_combines_files_stage_totals_and_change_records(tmp_path):
     assert "Chapter 1 | Start" in text
     assert "joined text" in text
 
+
 def test_decorative_diamond_separator_is_removed():
     text = """Paragraph one.
 
@@ -603,6 +644,7 @@ Real story text.
     assert "Begin Reading" not in cleaned
     assert "Real story text." in cleaned
 
+
 def test_front_matter_skips_concatenated_toc_heading_and_starts_at_real_chapter():
     text = """Copyright
 Publisher metadata
@@ -648,6 +690,7 @@ Keep this.
     assert "Keep this." in cleaned
     assert removed
 
+
 def test_series_prefixed_character_profiles_heading_is_excluded():
     text = """# Epilogue
 
@@ -687,6 +730,7 @@ Preview content.
     assert "Actual ending." in cleaned
     assert "Volume 7" not in cleaned
     assert "Preview content." not in cleaned
+
 
 def test_picture_ocr_with_one_heading_line_and_many_noise_lines_is_removed():
     block = """<!-- Start of picture text -->

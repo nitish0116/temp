@@ -1,4 +1,5 @@
 """Dictionary loading for safe SymSpell correction."""
+
 from __future__ import annotations
 
 import json
@@ -86,7 +87,11 @@ class DictionaryManager:
         if not path.exists():
             return
         data = json.loads(path.read_text(encoding="utf-8"))
-        words = data.keys() if isinstance(data, dict) else data if isinstance(data, list) else []
+        words = (
+            data.keys()
+            if isinstance(data, dict)
+            else data if isinstance(data, list) else []
+        )
         for word in words:
             self.add_word(str(word), frequency=1, protected=True)
 

@@ -155,9 +155,7 @@ class ProcessingContext:
 
         for segment in self.segments:
 
-            self.document.blocks[segment.block_index].content = (
-                segment.current_text
-            )
+            self.document.blocks[segment.block_index].content = segment.current_text
 
         #
         # Rebuild markdown
@@ -199,9 +197,7 @@ class ProcessingContext:
 
     def increment(self, name, amount=1):
 
-        self.statistics[name] = (
-            self.statistics.get(name, 0) + amount
-        )
+        self.statistics[name] = self.statistics.get(name, 0) + amount
 
     # -------------------------------------------------------------
 

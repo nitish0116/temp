@@ -17,6 +17,7 @@ SymSpellStage
     |
 Export Reports
 """
+
 from __future__ import annotations
 
 
@@ -82,7 +83,7 @@ class OCRPipeline:
         self.config.apply_environment()
 
         self.config.validate()
-        
+
         initialize(
             self.config.get(
                 "logging.directory",
@@ -93,9 +94,7 @@ class OCRPipeline:
             # else logging.INFO
         )
 
-        get_logger().info(
-    "OCR Cleanup Pipeline started."
-)
+        get_logger().info("OCR Cleanup Pipeline started.")
 
         self.context = None
 
@@ -174,21 +173,17 @@ class OCRPipeline:
 
         logger = get_logger()
 
-        logger.info(
-            f"Processing: {input_file}"
-        )
-        
+        logger.info(f"Processing: {input_file}")
+
         backup_path = None
 
         if self.config.get(
             "backup.enabled",
             True,
-            ):
+        ):
             backup_path = self.backup(input_file)
 
-            print(
-        f"Backup created: {backup_path}"
-    )
+            print(f"Backup created: {backup_path}")
 
         #
         # Initialize
@@ -206,32 +201,25 @@ class OCRPipeline:
 
             result = stage.execute(self.context)
 
-            logger.info(
-    f"{stage.name}: {result.changes} changes"
-)
+            logger.info(f"{stage.name}: {result.changes} changes")
 
             results.append(result)
 
             if result.success:
 
-                print(
-                    f"✓ {stage.name}: "
-                    f"{result.changes} changes"
-                )
+                print(f"✓ {stage.name}: " f"{result.changes} changes")
 
             else:
-            
-                print(
-                    f"✗ {stage.name}: "
-                    f"{result.error}"
-                )
+
+                print(f"✗ {stage.name}: " f"{result.error}")
 
         #
         # Export output
         #
-        
+
         exporter = ReportExporter(
-            output_directory or self.config.get(
+            output_directory
+            or self.config.get(
                 "paths.output_directory",
                 "output",
             ),
@@ -253,8 +241,9 @@ class OCRPipeline:
             "stages": results,
             "output": export_result,
             "elapsed_seconds": round(
-        elapsed,
-        2,),
+                elapsed,
+                2,
+            ),
         }
 
 
@@ -271,7 +260,9 @@ if __name__ == "__main__":
 
     parser.add_argument("input", help="Input markdown file")
 
-    parser.add_argument("--config", default="config.yaml", help="Pipeline configuration")
+    parser.add_argument(
+        "--config", default="config.yaml", help="Pipeline configuration"
+    )
 
     args = parser.parse_args()
 
@@ -283,12 +274,6 @@ if __name__ == "__main__":
 
     print("\nPipeline completed.")
 
-    print(
-        f"Total corrections: "
-        f"{pipeline.context.total_changes}"
-    )
+    print(f"Total corrections: " f"{pipeline.context.total_changes}")
 
-    print(
-        f"Output directory: "
-        f"{result['output']['markdown']}"
-    )
+    print(f"Output directory: " f"{result['output']['markdown']}")

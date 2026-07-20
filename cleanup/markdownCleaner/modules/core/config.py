@@ -131,7 +131,6 @@ class PipelineConfig:
 
         target[parts[-1]] = value
 
-
     def resolve_path(self, value):
         """Resolve a config-relative path without changing special URI-like values."""
         if value is None:

@@ -1,4 +1,5 @@
 """Command-line interface for single-file and folder batch cleanup."""
+
 from __future__ import annotations
 
 import argparse
@@ -61,7 +62,6 @@ def _run_one(
     return result, pipeline.context.total_changes, records
 
 
-
 def _md_code(value: object) -> str:
     """Return text safe for a fenced Markdown code block."""
     text = "" if value is None else str(value)
@@ -115,13 +115,15 @@ def _write_batch_summary(
     else:
         lines.append("| — | 0 |")
 
-    lines.extend([
-        "",
-        "## Per-file results",
-        "",
-        "| File | Status | Changes | Time (s) | Output |",
-        "|---|---|---:|---:|---|",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Per-file results",
+            "",
+            "| File | Status | Changes | Time (s) | Output |",
+            "|---|---|---:|---:|---|",
+        ]
+    )
 
     for item in entries:
         output = item.get("output") or "—"
@@ -185,6 +187,7 @@ def _write_batch_summary(
     report_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
     return report_path
 
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Clean OCR/PDF-extracted novel Markdown for TTS. Input may be a file or folder.",
@@ -196,13 +199,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Input Markdown file or a folder containing .md files",
     )
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         type=Path,
         default=None,
         help="Output directory. Defaults to paths.output_directory from config.yaml",
     )
     parser.add_argument(
-        "-r", "--recursive",
+        "-r",
+        "--recursive",
         action="store_true",
         help="When input is a folder, process .md files in all subfolders",
     )
@@ -249,9 +254,11 @@ def main(argv: list[str] | None = None) -> int:
         glossary = (
             args.glossary_file.resolve()
             if args.glossary_file
-            else Path(loaded_config.resolve_path(
-                loaded_config.get("symspell.glossary", "data/custom_words.json")
-            ))
+            else Path(
+                loaded_config.resolve_path(
+                    loaded_config.get("symspell.glossary", "data/custom_words.json")
+                )
+            )
         )
         try:
             added = merge_approved_words(glossary, args.approve_words)
@@ -295,7 +302,9 @@ def main(argv: list[str] | None = None) -> int:
     # be preserved across all files.
     if output_root is None:
         probe = OCRPipeline(config)
-        output_root = Path(probe.config.get("paths.output_directory", "output")).resolve()
+        output_root = Path(
+            probe.config.get("paths.output_directory", "output")
+        ).resolve()
 
     succeeded = 0
     failed = 0
@@ -328,16 +337,18 @@ def main(argv: list[str] | None = None) -> int:
             pipeline_error = result.get("pipeline_error")
             if pipeline_error:
                 failed += 1
-                batch_entries.append({
-                    "relative_path": str(relative),
-                    "status": "failed",
-                    "changes": changes,
-                    "elapsed_seconds": result.get("elapsed_seconds", 0),
-                    "stage_counts": stage_counts,
-                    "records": records,
-                    "output": str(result["output"]["markdown"]),
-                    "error": pipeline_error,
-                })
+                batch_entries.append(
+                    {
+                        "relative_path": str(relative),
+                        "status": "failed",
+                        "changes": changes,
+                        "elapsed_seconds": result.get("elapsed_seconds", 0),
+                        "stage_counts": stage_counts,
+                        "records": records,
+                        "output": str(result["output"]["markdown"]),
+                        "error": pipeline_error,
+                    }
+                )
                 print(f"ERROR: {file}: {pipeline_error}", file=sys.stderr)
                 if not args.continue_on_error:
                     summary_path = _write_batch_summary(
@@ -350,28 +361,32 @@ def main(argv: list[str] | None = None) -> int:
                     return 2
             else:
                 succeeded += 1
-                batch_entries.append({
-                    "relative_path": str(relative),
-                    "status": "success",
-                    "changes": changes,
-                    "elapsed_seconds": result.get("elapsed_seconds", 0),
-                    "stage_counts": stage_counts,
-                    "records": records,
-                    "output": str(result["output"]["markdown"]),
-                })
+                batch_entries.append(
+                    {
+                        "relative_path": str(relative),
+                        "status": "success",
+                        "changes": changes,
+                        "elapsed_seconds": result.get("elapsed_seconds", 0),
+                        "stage_counts": stage_counts,
+                        "records": records,
+                        "output": str(result["output"]["markdown"]),
+                    }
+                )
                 print(f"Output: {result['output']['markdown']}")
         except Exception as exc:  # CLI boundary: report error and decide policy.
             failed += 1
-            batch_entries.append({
-                "relative_path": str(relative),
-                "status": "failed",
-                "changes": 0,
-                "elapsed_seconds": 0,
-                "stage_counts": {},
-                "records": [],
-                "output": None,
-                "error": str(exc),
-            })
+            batch_entries.append(
+                {
+                    "relative_path": str(relative),
+                    "status": "failed",
+                    "changes": 0,
+                    "elapsed_seconds": 0,
+                    "stage_counts": {},
+                    "records": [],
+                    "output": None,
+                    "error": str(exc),
+                }
+            )
             print(f"ERROR: {file}: {exc}", file=sys.stderr)
             if not args.continue_on_error:
                 summary_path = _write_batch_summary(
