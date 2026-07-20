@@ -152,6 +152,10 @@ class OCRPipeline:
     def run(
         self,
         input_file,
+        *,
+        output_directory=None,
+        output_name=None,
+        report_subdirectory="reports",
     ):
         """
         Execute complete pipeline.
@@ -223,16 +227,18 @@ class OCRPipeline:
         #
         
         exporter = ReportExporter(
-            self.config.get(
+            output_directory or self.config.get(
                 "paths.output_directory",
                 "output",
-            )
+            ),
+            report_subdirectory=report_subdirectory,
         )
 
         export_result = exporter.export(
             cleaned_markdown=self.context.get_markdown(),
             source_file=input_file,
             change_log=self.context.tracker,
+            output_name=output_name,
         )
 
         elapsed = perf_counter() - start
