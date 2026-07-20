@@ -110,6 +110,16 @@ class SymSpellStage(PipelineStage):
             c for c in candidates
             if c.distance <= max_auto_distance and c.frequency >= min_frequency
         ]
+        # Specialist dictionaries often contain a singular but omit its regular
+        # plural. A trailing plural "s" is not an OCR error: for example,
+        # "noncoms" must not be changed to "noncom".
+        lowered = word.lower()
+        if lowered.endswith("s") and len(lowered) > 3:
+            candidates = [
+                candidate
+                for candidate in candidates
+                if candidate.corrected.lower() != lowered[:-1]
+            ]
         if not candidates:
             return word
 

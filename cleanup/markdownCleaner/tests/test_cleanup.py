@@ -203,6 +203,40 @@ def test_safe_symspell_corrects_typo_and_preserves_protected_name(tmp_path):
     assert context.get_markdown().strip() == "because Yggdrasil"
 
 
+def test_symspell_does_not_convert_regular_plural_to_singular(tmp_path):
+    from markdownCleaner.modules.core.config import PipelineConfig
+    from markdownCleaner.modules.core.context import ProcessingContext
+    from markdownCleaner.modules.symspell.stage import SymSpellStage
+
+    dictionary = tmp_path / "freq.txt"
+    dictionary.write_text("noncom 10000000\n", encoding="utf-8")
+    source = tmp_path / "sample.md"
+    source.write_text("The noncoms submitted their reports.", encoding="utf-8")
+    config = PipelineConfig({
+        "paths": {"output_directory": str(tmp_path / "out")},
+        "backup": {"enabled": False},
+        "symspell": {
+            "enabled": True,
+            "dictionary": str(dictionary),
+            "max_edit_distance": 2,
+            "max_auto_edit_distance": 1,
+            "confidence_threshold": 92,
+            "minimum_word_length": 4,
+            "minimum_candidate_frequency": 1000,
+            "ambiguity_margin": 2,
+            "auto_protect_proper_nouns": False,
+        },
+    })
+    context = ProcessingContext(config)
+    context.load_markdown(source)
+
+    result = SymSpellStage(config).execute(context)
+
+    assert result.success
+    assert result.changes == 0
+    assert "noncoms" in context.get_markdown()
+
+
 def test_false_atx_heading_is_demoted_and_context_rejoined():
     source = "And\n\n## then—\n\n\"A scream?\""
     normalized = DocumentCleanupStage._normalize_headings(source)
