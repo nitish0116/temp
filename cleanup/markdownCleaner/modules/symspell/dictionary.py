@@ -126,11 +126,12 @@ class DictionaryManager:
         if not path.exists():
             return
         data = json.loads(path.read_text(encoding="utf-8"))
-        words = (
-            data.keys()
-            if isinstance(data, dict)
-            else data if isinstance(data, list) else []
-        )
+        if isinstance(data, dict) and "words" in data:
+            words = data["words"] if isinstance(data["words"], list) else []
+        elif isinstance(data, dict):
+            words = [word for word in data if not str(word).startswith("_")]
+        else:
+            words = data if isinstance(data, list) else []
         for word in words:
             self.add_word(str(word), frequency=1, protected=True)
 

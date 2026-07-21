@@ -6,6 +6,7 @@ Typical calls::
     python -m markdownCleaner.cli novel.md --output cleaned
     python -m markdownCleaner.cli books --recursive --continue-on-error
     python -m markdownCleaner.cli --approve-words sitrep noncoms
+    python -m markdownCleaner.cli --learn-words sitrep noncoms
 
 The first two forms process one file, the third performs a folder batch, and
 the final form updates the configured glossary without running cleanup.
@@ -23,7 +24,10 @@ from pathlib import Path
 from markdownCleaner.pipeline import OCRPipeline
 from markdownCleaner.modules.report.exporter import meaningful_output_name
 from markdownCleaner.modules.core.config import PipelineConfig
-from markdownCleaner.modules.symspell.vocabulary import merge_approved_words
+from markdownCleaner.modules.symspell.vocabulary import (
+    merge_approved_words,
+    merge_learned_words,
+)
 
 
 def _markdown_files(root: Path, recursive: bool) -> list[Path]:
@@ -236,6 +240,7 @@ def build_parser() -> argparse.ArgumentParser:
         markdownCleaner INPUT.md [--output DIR] [--config FILE]
         markdownCleaner INPUT_DIR [--recursive] [--continue-on-error]
         markdownCleaner --approve-words WORD [WORD ...] [--glossary-file FILE]
+        markdownCleaner --learn-words WORD [WORD ...] [--learned-file FILE]
 
     ``python -m markdownCleaner.cli`` can replace ``markdownCleaner`` when the
     project is run directly from source.
@@ -290,6 +295,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Glossary to update with --approve-words (defaults to symspell.glossary)",
     )
+    parser.add_argument(
+        "--learn-words",
+        nargs="+",
+        metavar="WORD",
+        help="Safely add reviewed terms to learned_words.json, then exit",
+    )
+    parser.add_argument(
+        "--learned-file",
+        type=Path,
+        default=None,
+        help="File to update with --learn-words (defaults to symspell.learned)",
+    )
     return parser
 
 
@@ -317,27 +334,48 @@ def main(argv: list[str] | None = None) -> int:
     if not config.exists():
         parser.error(f"Config file not found: {config}")
 
-    if args.approve_words:
+    if args.approve_words and args.learn_words:
+        parser.error("--approve-words and --learn-words cannot be used together")
+
+    if args.approve_words or args.learn_words:
         loaded_config = PipelineConfig.load(config)
-        glossary = (
-            args.glossary_file.resolve()
-            if args.glossary_file
-            else Path(
-                loaded_config.resolve_path(
-                    loaded_config.get("symspell.glossary", "data/custom_words.json")
+        learning = bool(args.learn_words)
+        target = (
+            args.learned_file.resolve()
+            if learning and args.learned_file
+            else (
+                args.glossary_file.resolve()
+                if not learning and args.glossary_file
+                else Path(
+                    loaded_config.resolve_path(
+                        loaded_config.get(
+                            "symspell.learned" if learning else "symspell.glossary",
+                            (
+                                "data/learned_words.json"
+                                if learning
+                                else "data/custom_words.json"
+                            ),
+                        )
+                    )
                 )
             )
         )
         try:
-            added = merge_approved_words(glossary, args.approve_words)
+            added = (
+                merge_learned_words(target, args.learn_words)
+                if learning
+                else merge_approved_words(target, args.approve_words)
+            )
         except (ValueError, OSError) as exc:
             parser.error(str(exc))
-        print(f"Glossary: {glossary}")
+        print(f"{'Learned words' if learning else 'Glossary'}: {target}")
         print(f"Added {len(added)} term(s): {', '.join(added) if added else 'none'}")
         return 0
 
     if args.input is None:
-        parser.error("input is required unless --approve-words is used")
+        parser.error(
+            "input is required unless --approve-words or --learn-words is used"
+        )
     source = args.input.resolve()
     output_root = args.output.resolve() if args.output else None
 

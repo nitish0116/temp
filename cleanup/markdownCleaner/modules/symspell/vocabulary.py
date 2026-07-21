@@ -14,6 +14,69 @@ from .engine import SymSpellEngine
 
 WORD = re.compile(r"[A-Za-z]+(?:['’][A-Za-z]+|-[A-Za-z]+)*")
 TERM = re.compile(rf"{WORD.pattern}(?:\s+{WORD.pattern})*")
+LEARNED_DESCRIPTION = (
+    "Words explicitly reviewed by the user. Add entries with "
+    "`python -m markdownCleaner.cli --learn-words WORD ...`."
+)
+
+
+def _word_list(data, *, label: str) -> list[str]:
+    """Extract words from legacy or structured vocabulary JSON.
+
+    Example:
+        ``_word_list({"words": ["sitrep"]}, label="Learned words")`` returns
+        ``["sitrep"]``. Legacy JSON lists and word-keyed objects remain valid.
+    """
+    if isinstance(data, list):
+        return [str(word) for word in data]
+    if isinstance(data, dict):
+        if "words" in data:
+            words = data["words"]
+            if not isinstance(words, list):
+                raise ValueError(f"{label} JSON field 'words' must be a list.")
+            return [str(word) for word in words]
+        return [str(word) for word in data if not str(word).startswith("_")]
+    raise ValueError(f"{label} JSON must contain a list or object.")
+
+
+def _merge_words(path: str | Path, words: list[str], *, structured: bool) -> list[str]:
+    """Validate, deduplicate, sort, and persist reviewed vocabulary.
+
+    Example:
+        ``_merge_words(path, ["sitrep"], structured=True)`` writes a readable
+        object containing instructions and a sorted ``words`` list.
+    """
+    target = Path(path)
+    existing: list[str] = []
+    if target.exists():
+        try:
+            data = json.loads(target.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"Invalid JSON in {target}: line {exc.lineno}, column {exc.colno}. "
+                "Use --learn-words to update this file safely."
+            ) from exc
+        existing = _word_list(data, label="Vocabulary")
+
+    by_key = {word.casefold(): word for word in existing if word.strip()}
+    added: list[str] = []
+    for raw in words:
+        word = str(raw).strip()
+        if not TERM.fullmatch(word) or len(word) < 2:
+            raise ValueError(f"Invalid vocabulary word: {raw!r}")
+        if word.casefold() not in by_key:
+            by_key[word.casefold()] = word
+            added.append(word)
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    values = sorted(by_key.values(), key=str.casefold)
+    data = (
+        {"_description": LEARNED_DESCRIPTION, "words": values} if structured else values
+    )
+    target.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    return added
 
 
 def merge_approved_words(path: str | Path, words: list[str]) -> list[str]:
@@ -35,33 +98,17 @@ def merge_approved_words(path: str | Path, words: list[str]) -> list[str]:
     Raises:
         ValueError: If the glossary shape or an approved term is invalid.
     """
-    target = Path(path)
-    existing: list[str] = []
-    if target.exists():
-        data = json.loads(target.read_text(encoding="utf-8"))
-        if isinstance(data, dict):
-            existing = [str(word) for word in data]
-        elif isinstance(data, list):
-            existing = [str(word) for word in data]
-        else:
-            raise ValueError("Glossary JSON must contain a list or object.")
+    return _merge_words(path, words, structured=False)
 
-    by_key = {word.casefold(): word for word in existing if word.strip()}
-    added: list[str] = []
-    for raw in words:
-        word = str(raw).strip()
-        if not TERM.fullmatch(word) or len(word) < 2:
-            raise ValueError(f"Invalid glossary word: {raw!r}")
-        if word.casefold() not in by_key:
-            by_key[word.casefold()] = word
-            added.append(word)
 
-    target.parent.mkdir(parents=True, exist_ok=True)
-    values = sorted(by_key.values(), key=str.casefold)
-    target.write_text(
-        json.dumps(values, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
-    return added
+def merge_learned_words(path: str | Path, words: list[str]) -> list[str]:
+    """Safely add reviewed terms to the structured learned-word file.
+
+    Example:
+        ``merge_learned_words("data/learned_words.json", ["sitrep", "noncoms"])``
+        validates and adds only terms that are not already present.
+    """
+    return _merge_words(path, words, structured=True)
 
 
 class VocabularyCandidateStage(PipelineStage):

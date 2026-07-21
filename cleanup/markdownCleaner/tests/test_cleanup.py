@@ -12,6 +12,7 @@ from md_to_audio import escape_ssml_text, is_speakable_chunk
 from markdownCleaner.modules.symspell.vocabulary import (
     VocabularyCandidateStage,
     merge_approved_words,
+    merge_learned_words,
 )
 
 
@@ -150,6 +151,66 @@ def test_explicit_glossary_approval_merges_without_duplicates(tmp_path):
     assert "noncoms" in values
     assert "Degurechaff" in values
     assert "Ainz Ooal Gown" in values
+
+
+def test_learned_words_use_readable_structured_format(tmp_path):
+    """Write learned terms with instructions, sorting, and safe deduplication."""
+    import json
+
+    learned = tmp_path / "learned_words.json"
+    learned.write_text('["sitrep", "Hmph"]\n', encoding="utf-8")
+
+    added = merge_learned_words(learned, ["SITREP", "noncoms"])
+    data = json.loads(learned.read_text(encoding="utf-8"))
+
+    assert added == ["noncoms"]
+    assert "--learn-words" in data["_description"]
+    assert data["words"] == ["Hmph", "noncoms", "sitrep"]
+
+
+def test_dictionary_loads_structured_learned_words(tmp_path):
+    """Load only the words list from the structured learned-word object."""
+    from markdownCleaner.modules.symspell.dictionary import DictionaryManager
+
+    learned = tmp_path / "learned_words.json"
+    learned.write_text(
+        '{"_description": "instructions", "words": ["sitrep", "noncoms"]}\n',
+        encoding="utf-8",
+    )
+    manager = DictionaryManager(learned_path=learned)
+    manager.load()
+
+    assert manager.is_protected("sitrep")
+    assert manager.is_protected("noncoms")
+    assert not manager.contains("_description")
+
+
+def test_cli_can_update_learned_words_without_manual_json_editing(tmp_path):
+    """Provide a safe CLI workflow for adding reviewed learned terms."""
+    import json
+    from markdownCleaner.cli import main
+
+    learned = tmp_path / "learned_words.json"
+    config = tmp_path / "config.yaml"
+    config.write_text("paths: {}\nbackup: {}\n", encoding="utf-8")
+
+    result = main(
+        [
+            "--config",
+            str(config),
+            "--learn-words",
+            "sitrep",
+            "noncoms",
+            "--learned-file",
+            str(learned),
+        ]
+    )
+
+    assert result == 0
+    assert json.loads(learned.read_text(encoding="utf-8"))["words"] == [
+        "noncoms",
+        "sitrep",
+    ]
 
 
 def test_vocabulary_candidates_are_discovered_without_mutating_glossary(tmp_path):
