@@ -18,6 +18,11 @@ LEARNED_DESCRIPTION = (
     "Words explicitly reviewed by the user. Add entries with "
     "`python -m markdownCleaner.cli --learn-words WORD ...`."
 )
+REJECTED_DESCRIPTION = (
+    "Reviewed terms intentionally excluded from glossary candidate reports. "
+    "They are not protected from SymSpell correction. Add entries with "
+    "`python -m markdownCleaner.cli --reject-words WORD ...`."
+)
 
 
 def _word_list(data, *, label: str) -> list[str]:
@@ -39,7 +44,13 @@ def _word_list(data, *, label: str) -> list[str]:
     raise ValueError(f"{label} JSON must contain a list or object.")
 
 
-def _merge_words(path: str | Path, words: list[str], *, structured: bool) -> list[str]:
+def _merge_words(
+    path: str | Path,
+    words: list[str],
+    *,
+    structured: bool,
+    description: str = LEARNED_DESCRIPTION,
+) -> list[str]:
     """Validate, deduplicate, sort, and persist reviewed vocabulary.
 
     Example:
@@ -54,7 +65,7 @@ def _merge_words(path: str | Path, words: list[str], *, structured: bool) -> lis
         except json.JSONDecodeError as exc:
             raise ValueError(
                 f"Invalid JSON in {target}: line {exc.lineno}, column {exc.colno}. "
-                "Use --learn-words to update this file safely."
+                "Use the appropriate CLI word-review command to update it safely."
             ) from exc
         existing = _word_list(data, label="Vocabulary")
 
@@ -70,9 +81,7 @@ def _merge_words(path: str | Path, words: list[str], *, structured: bool) -> lis
 
     target.parent.mkdir(parents=True, exist_ok=True)
     values = sorted(by_key.values(), key=str.casefold)
-    data = (
-        {"_description": LEARNED_DESCRIPTION, "words": values} if structured else values
-    )
+    data = {"_description": description, "words": values} if structured else values
     target.write_text(
         json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
@@ -109,6 +118,42 @@ def merge_learned_words(path: str | Path, words: list[str]) -> list[str]:
         validates and adds only terms that are not already present.
     """
     return _merge_words(path, words, structured=True)
+
+
+def merge_rejected_words(path: str | Path, words: list[str]) -> list[str]:
+    """Persist terms that should not reappear as glossary candidates.
+
+    Example:
+        ``merge_rejected_words("data/rejected_words.json", ["offense"])``
+        suppresses ``offense`` from future candidate reports without protecting
+        it from SymSpell correction.
+    """
+    return _merge_words(
+        path,
+        words,
+        structured=True,
+        description=REJECTED_DESCRIPTION,
+    )
+
+
+def load_reviewed_words(path: str | Path | None) -> set[str]:
+    """Load a reviewed-word file as normalized, case-insensitive keys.
+
+    Example:
+        ``load_reviewed_words("data/rejected_words.json")`` returns a set such
+        as ``{"offense", "humor"}``; a missing path returns an empty set.
+    """
+    if not path:
+        return set()
+    target = Path(path)
+    if not target.exists():
+        return set()
+    data = json.loads(target.read_text(encoding="utf-8"))
+    return {
+        word.strip().casefold()
+        for word in _word_list(data, label="Reviewed words")
+        if word.strip()
+    }
 
 
 class VocabularyCandidateStage(PipelineStage):
@@ -158,6 +203,15 @@ class VocabularyCandidateStage(PipelineStage):
         for word in context.config.get("symspell.protected", []) or []:
             manager.protect(str(word))
 
+        rejected = load_reviewed_words(
+            context.config.resolve_path(
+                context.config.get(
+                    "vocabulary_candidates.rejected",
+                    "data/rejected_words.json",
+                )
+            )
+        )
+
         counts: Counter[str] = Counter()
         forms: dict[str, Counter[str]] = defaultdict(Counter)
         lines: dict[str, list[int]] = defaultdict(list)
@@ -186,7 +240,12 @@ class VocabularyCandidateStage(PipelineStage):
             context.metadata["glossary_candidates"] = candidates
             return StageResult(stage=self.name, changes=0)
         for key, count in counts.most_common():
-            if count < minimum or manager.contains(key) or manager.is_protected(key):
+            if (
+                count < minimum
+                or key in rejected
+                or manager.contains(key)
+                or manager.is_protected(key)
+            ):
                 continue
             if len(key) < 4 or not key.isalpha():
                 continue

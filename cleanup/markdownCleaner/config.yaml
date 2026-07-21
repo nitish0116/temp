@@ -94,6 +94,8 @@ vocabulary_candidates:
   enabled: true
   minimum_occurrences: 3
   report_limit: 200
+  # Reviewed terms that should no longer appear as pending candidates.
+  rejected: "data/rejected_words.json"
 
 report:
   enabled: true

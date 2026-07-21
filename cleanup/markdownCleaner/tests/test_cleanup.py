@@ -13,6 +13,7 @@ from markdownCleaner.modules.symspell.vocabulary import (
     VocabularyCandidateStage,
     merge_approved_words,
     merge_learned_words,
+    merge_rejected_words,
 )
 
 
@@ -213,6 +214,44 @@ def test_cli_can_update_learned_words_without_manual_json_editing(tmp_path):
     ]
 
 
+def test_cli_can_persistently_reject_glossary_candidates(tmp_path):
+    """Store rejected candidates through the CLI without protecting them."""
+    import json
+    from markdownCleaner.cli import main
+
+    rejected = tmp_path / "rejected_words.json"
+    config = tmp_path / "config.yaml"
+    config.write_text("paths: {}\nbackup: {}\n", encoding="utf-8")
+
+    result = main(
+        [
+            "--config",
+            str(config),
+            "--reject-words",
+            "offense",
+            "humor",
+            "grueling",
+            "labor",
+            "practiced",
+            "armored",
+            "afterward",
+            "--rejected-file",
+            str(rejected),
+        ]
+    )
+
+    assert result == 0
+    assert json.loads(rejected.read_text(encoding="utf-8"))["words"] == [
+        "afterward",
+        "armored",
+        "grueling",
+        "humor",
+        "labor",
+        "offense",
+        "practiced",
+    ]
+
+
 def test_vocabulary_candidates_are_discovered_without_mutating_glossary(tmp_path):
     """Discover repeated unknown terms without silently changing the glossary."""
     from markdownCleaner.modules.core.config import PipelineConfig
@@ -254,6 +293,17 @@ def test_vocabulary_candidates_are_discovered_without_mutating_glossary(tmp_path
         for item in context.metadata["glossary_candidates"]
     )
     assert glossary.read_text(encoding="utf-8") == "[]\n"
+
+    rejected = tmp_path / "rejected_words.json"
+    merge_rejected_words(rejected, ["Degurechaff"])
+    config.set("vocabulary_candidates.rejected", str(rejected))
+    rejected_context = ProcessingContext(config)
+    rejected_context.load_markdown(source)
+
+    rejected_result = VocabularyCandidateStage(config).execute(rejected_context)
+
+    assert rejected_result.success
+    assert rejected_context.metadata["glossary_candidates"] == []
 
 
 def test_unsafe_rn_replacement_is_disabled():

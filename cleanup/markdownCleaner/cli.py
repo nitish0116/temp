@@ -7,6 +7,7 @@ Typical calls::
     python -m markdownCleaner.cli books --recursive --continue-on-error
     python -m markdownCleaner.cli --approve-words sitrep noncoms
     python -m markdownCleaner.cli --learn-words sitrep noncoms
+    python -m markdownCleaner.cli --reject-words offense humor
 
 The first two forms process one file, the third performs a folder batch, and
 the final form updates the configured glossary without running cleanup.
@@ -27,6 +28,7 @@ from markdownCleaner.modules.core.config import PipelineConfig
 from markdownCleaner.modules.symspell.vocabulary import (
     merge_approved_words,
     merge_learned_words,
+    merge_rejected_words,
 )
 
 
@@ -241,6 +243,7 @@ def build_parser() -> argparse.ArgumentParser:
         markdownCleaner INPUT_DIR [--recursive] [--continue-on-error]
         markdownCleaner --approve-words WORD [WORD ...] [--glossary-file FILE]
         markdownCleaner --learn-words WORD [WORD ...] [--learned-file FILE]
+        markdownCleaner --reject-words WORD [WORD ...] [--rejected-file FILE]
 
     ``python -m markdownCleaner.cli`` can replace ``markdownCleaner`` when the
     project is run directly from source.
@@ -307,6 +310,21 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="File to update with --learn-words (defaults to symspell.learned)",
     )
+    parser.add_argument(
+        "--reject-words",
+        nargs="+",
+        metavar="WORD",
+        help="Suppress reviewed terms from future glossary candidate reports",
+    )
+    parser.add_argument(
+        "--rejected-file",
+        type=Path,
+        default=None,
+        help=(
+            "File to update with --reject-words "
+            "(defaults to vocabulary_candidates.rejected)"
+        ),
+    )
     return parser
 
 
@@ -334,48 +352,61 @@ def main(argv: list[str] | None = None) -> int:
     if not config.exists():
         parser.error(f"Config file not found: {config}")
 
-    if args.approve_words and args.learn_words:
-        parser.error("--approve-words and --learn-words cannot be used together")
+    review_actions = [args.approve_words, args.learn_words, args.reject_words]
+    if sum(bool(action) for action in review_actions) > 1:
+        parser.error(
+            "--approve-words, --learn-words, and --reject-words are mutually exclusive"
+        )
 
-    if args.approve_words or args.learn_words:
+    if any(review_actions):
         loaded_config = PipelineConfig.load(config)
         learning = bool(args.learn_words)
+        rejecting = bool(args.reject_words)
+        explicit_file = (
+            args.rejected_file
+            if rejecting
+            else args.learned_file if learning else args.glossary_file
+        )
+        config_key = (
+            "vocabulary_candidates.rejected"
+            if rejecting
+            else "symspell.learned" if learning else "symspell.glossary"
+        )
+        default_file = (
+            "data/rejected_words.json"
+            if rejecting
+            else "data/learned_words.json" if learning else "data/custom_words.json"
+        )
         target = (
-            args.learned_file.resolve()
-            if learning and args.learned_file
-            else (
-                args.glossary_file.resolve()
-                if not learning and args.glossary_file
-                else Path(
-                    loaded_config.resolve_path(
-                        loaded_config.get(
-                            "symspell.learned" if learning else "symspell.glossary",
-                            (
-                                "data/learned_words.json"
-                                if learning
-                                else "data/custom_words.json"
-                            ),
-                        )
-                    )
-                )
+            explicit_file.resolve()
+            if explicit_file
+            else Path(
+                loaded_config.resolve_path(loaded_config.get(config_key, default_file))
             )
         )
         try:
             added = (
-                merge_learned_words(target, args.learn_words)
-                if learning
-                else merge_approved_words(target, args.approve_words)
+                merge_rejected_words(target, args.reject_words)
+                if rejecting
+                else (
+                    merge_learned_words(target, args.learn_words)
+                    if learning
+                    else merge_approved_words(target, args.approve_words)
+                )
             )
         except (ValueError, OSError) as exc:
             parser.error(str(exc))
-        print(f"{'Learned words' if learning else 'Glossary'}: {target}")
+        label = (
+            "Rejected words"
+            if rejecting
+            else "Learned words" if learning else "Glossary"
+        )
+        print(f"{label}: {target}")
         print(f"Added {len(added)} term(s): {', '.join(added) if added else 'none'}")
         return 0
 
     if args.input is None:
-        parser.error(
-            "input is required unless --approve-words or --learn-words is used"
-        )
+        parser.error("input is required unless a word-review command is used")
     source = args.input.resolve()
     output_root = args.output.resolve() if args.output else None
 
