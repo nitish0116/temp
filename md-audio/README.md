@@ -65,6 +65,9 @@ python md_to_audio.py "book.md" "output.mp3"
 
 # Write batch output to a different folder
 python md_to_audio.py ".\books" ".\audio-output"
+
+# Estimate playback time without creating audio
+python md_to_audio.py --estimate-duration "book.md"
 ```
 
 ---
@@ -90,6 +93,8 @@ python md_to_audio.py [input_path] [output_path] [options]
 | `--chapter-marker-duration SECONDS` | Duration of silence at chapter endings (default `2.0` seconds). |
 | `--keep-intermediate-wav` | Keep the temporary WAV when producing MP3 output (SAPI only). |
 | `--chunk-size N` | Max characters per speech chunk (default 2500). |
+| `--estimate-duration` | Print expected playback time and exit without creating audio. |
+| `--words-per-minute N` | Speaking rate for duration estimates (default `150`). |
 
 ---
 

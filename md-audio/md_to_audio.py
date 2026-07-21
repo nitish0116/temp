@@ -71,6 +71,7 @@ EDGE_RECOMMENDED_VOICES = [
 QUIET = False
 EDGE_RETRY_ATTEMPTS = 7
 MIN_SPEAKABLE_ALPHA = 4
+DEFAULT_NARRATION_WORDS_PER_MINUTE = 150.0
 
 
 def is_speakable_chunk(text: str, minimum_alpha: int = MIN_SPEAKABLE_ALPHA) -> bool:
@@ -202,6 +203,17 @@ def parse_args() -> argparse.Namespace:
             "into a YouTube video description."
         ),
     )
+    parser.add_argument(
+        "--estimate-duration",
+        action="store_true",
+        help="Print the expected MP3 playback time and exit without creating audio.",
+    )
+    parser.add_argument(
+        "--words-per-minute",
+        type=float,
+        default=DEFAULT_NARRATION_WORDS_PER_MINUTE,
+        help="Narration speed used by --estimate-duration (default: 150 WPM).",
+    )
     return parser.parse_args()
 
 
@@ -262,6 +274,83 @@ def choose_chunk_size_and_chunks(
     if not quiet:
         print(f"[STEP] Auto-selected chunk size: {size} (chunks: {chunk_count})")
     return size, chunks
+
+
+def estimate_mp3_duration(
+    markdown: str | Path,
+    words_per_minute: float = DEFAULT_NARRATION_WORDS_PER_MINUTE,
+    chapter_markers: bool = False,
+    chapter_marker_duration: float = 2.0,
+) -> float:
+    """Return the expected MP3 playback duration in seconds.
+
+    ``markdown`` may be Markdown text or a path to a UTF-8 Markdown file. Only
+    text that survives normal narration preparation is counted. Optional
+    chapter-marker silence is included in the result.
+    """
+    if words_per_minute <= 0:
+        raise ValueError("words_per_minute must be greater than zero")
+    if chapter_marker_duration < 0:
+        raise ValueError("chapter_marker_duration cannot be negative")
+
+    markdown_text = (
+        markdown.read_text(encoding="utf-8")
+        if isinstance(markdown, Path)
+        else markdown
+    )
+    chunks = narration_paragraphs(
+        markdown_text,
+        chunk_size=6000,
+        chapter_markers=chapter_markers,
+    )
+    spoken_words = sum(
+        len(re.findall(r"\b[^\W_]+(?:['’][^\W_]+)*\b", chunk, re.UNICODE))
+        for chunk in chunks
+        if chunk != "[CHAPTER_END]"
+    )
+    marker_count = sum(chunk == "[CHAPTER_END]" for chunk in chunks)
+    return (
+        spoken_words / words_per_minute * 60.0
+        + marker_count * chapter_marker_duration
+    )
+
+
+def format_duration(seconds: float) -> str:
+    """Format a duration as ``H:MM:SS`` using nearest-second rounding."""
+    total_seconds = max(0, round(seconds))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours}:{minutes:02d}:{seconds:02d}"
+
+
+def print_duration_estimates(args: argparse.Namespace) -> int:
+    """Print duration estimates for the selected Markdown file or folder."""
+    if args.words_per_minute <= 0:
+        raise SystemExit("--words-per-minute must be greater than zero.")
+
+    input_path = (
+        Path(args.input_path).expanduser().resolve()
+        if args.input_path
+        else default_input_path(Path(__file__))
+    )
+    input_paths = collect_input_paths(input_path)
+    total_seconds = 0.0
+    for path in input_paths:
+        seconds = estimate_mp3_duration(
+            path,
+            words_per_minute=args.words_per_minute,
+            chapter_markers=args.chapter_markers,
+            chapter_marker_duration=args.chapter_marker_duration,
+        )
+        total_seconds += seconds
+        print(f"{path.name}: {format_duration(seconds)} ({seconds / 60:.1f} minutes)")
+
+    if len(input_paths) > 1:
+        print(
+            f"Total: {format_duration(total_seconds)} "
+            f"({total_seconds / 60:.1f} minutes)"
+        )
+    return 0
 
 
 def write_error_log(
@@ -2165,6 +2254,8 @@ def main() -> int:
     global QUIET
     args = parse_args()
     QUIET = args.quiet
+    if args.estimate_duration:
+        return print_duration_estimates(args)
     if args.backend == "edge":
         log_step("Backend selected: Edge TTS")
         if args.list_voices:

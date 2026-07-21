@@ -9,6 +9,8 @@ from md_to_audio import (
     default_output_path,
     escape_ssml_text,
     estimate_chunk_durations_ms,
+    estimate_mp3_duration,
+    format_duration,
     is_speakable_chunk,
     narration_paragraphs,
     source_output_stem,
@@ -49,6 +51,23 @@ def test_chunk_splitting_and_duration_estimation_preserve_totals():
     durations = estimate_chunk_durations_ms(chunks, 10_000)
     assert sum(durations) == 10_000
     assert estimate_chunk_durations_ms([], 0) == []
+
+
+def test_mp3_duration_estimate_uses_speakable_words_and_chapter_silence(tmp_path):
+    markdown = "# Chapter 1\n\nOne two three four five.\n\n# Chapter 2\n\nSix seven eight nine ten."
+    source = tmp_path / "book.md"
+    source.write_text(markdown, encoding="utf-8")
+
+    assert estimate_mp3_duration(markdown, words_per_minute=60) == 14.0
+    assert estimate_mp3_duration(source, words_per_minute=60) == 14.0
+    adjacent_headings = "# Chapter 1\n# Chapter 2\n\nOne two three four five."
+    assert estimate_mp3_duration(
+        adjacent_headings,
+        words_per_minute=60,
+        chapter_markers=True,
+        chapter_marker_duration=2.0,
+    ) == 11.0
+    assert format_duration(3661) == "1:01:01"
 
 
 def test_audio_input_discovery_and_output_naming(tmp_path):
