@@ -98,6 +98,27 @@ def test_batch_glossary_candidates_merge_words_and_preserve_sources(tmp_path):
     ]
 
 
+def test_change_log_timestamps_are_timezone_aware_utc():
+    """Record changes with non-deprecated, timezone-aware UTC timestamps."""
+    from datetime import UTC, datetime
+    from markdownCleaner.modules.report.change_log import ChangeLog
+
+    log = ChangeLog()
+    log.add(
+        stage="RegexOCR",
+        block_index=0,
+        segment_index=0,
+        line=1,
+        before="teh",
+        after="the",
+        confidence=98.0,
+        reason="Safe correction",
+    )
+
+    timestamp = datetime.fromisoformat(log.records[0].timestamp)
+    assert timestamp.utcoffset() == UTC.utcoffset(timestamp)
+
+
 def test_bounded_bare_and_blockquoted_glossary_footnotes_are_removed():
     """Remove bounded glossary notes in plain and blockquoted forms."""
     text = """Narrative ending.

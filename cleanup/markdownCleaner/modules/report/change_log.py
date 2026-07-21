@@ -15,7 +15,7 @@ from dataclasses import (
 
 from pathlib import Path
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 @dataclass
@@ -94,7 +94,7 @@ class ChangeLog:
             after=after,
             confidence=confidence,
             reason=reason,
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
 
         self.records.append(record)
