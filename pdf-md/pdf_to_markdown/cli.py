@@ -19,6 +19,11 @@ DEFAULT_OUTPUT_DIRECTORY = PROJECT_ROOT / "output"
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build and return the command-line argument parser.
+
+    Returns:
+        A parser configured for single-file and batch PDF/EPUB conversion.
+    """
     parser = argparse.ArgumentParser(
         description=(
             "Convert a PDF/EPUB file or a folder of documents into structured Markdown."
@@ -66,6 +71,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _document_files(root: Path, recursive: bool) -> list[Path]:
+    """Discover supported documents beneath a directory.
+
+    Args:
+        root: Directory in which to search.
+        recursive: Whether to include documents in nested directories.
+
+    Returns:
+        Sorted PDF and EPUB paths found under ``root``.
+    """
     iterator = root.rglob("*") if recursive else root.glob("*")
     return sorted(
         path
@@ -75,6 +89,15 @@ def _document_files(root: Path, recursive: bool) -> list[Path]:
 
 
 def _unique_name(name: str, used: set[str]) -> str:
+    """Reserve a case-insensitively unique filename for one output directory.
+
+    Args:
+        name: Preferred output filename.
+        used: Case-folded names already reserved in the directory.
+
+    Returns:
+        The original name or a collision-safe variant with a numeric suffix.
+    """
     path = Path(name)
     candidate = path.name
     number = 2
@@ -86,6 +109,16 @@ def _unique_name(name: str, used: set[str]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run PDF/EPUB conversion from command-line arguments.
+
+    Args:
+        argv: Optional argument list. When omitted, arguments come from
+            ``sys.argv``.
+
+    Returns:
+        Process exit code: zero for success, one when no documents are found,
+        or two when conversion fails.
+    """
     parser = build_parser()
     args = parser.parse_args(argv)
     source = args.input.resolve()

@@ -12,8 +12,22 @@ from time import perf_counter
 SUPPORTED_EXTENSIONS = {".pdf", ".epub"}
 
 
+def normalize_discretionary_hyphens(markdown: str) -> str:
+    """Rejoin words split by EPUB/PDF discretionary soft hyphens.
+
+    A U+00AD soft hyphen marks a legal display-time wrapping point; it is not
+    part of the word. Extractors may preserve it immediately before a newline,
+    producing text such as ``bodi\u00ad\nly``. Remove the marker and that one
+    physical line break while leaving visible ASCII hyphens untouched.
+    """
+    markdown = re.sub(r"\u00ad[ \t]*\r?\n[ \t]*(?=[A-Za-z])", "", markdown)
+    return markdown.replace("\u00ad", "")
+
+
 @dataclass(slots=True)
 class ConversionOptions:
+    """User-selectable extraction, OCR, image, and page-range settings."""
+
     layout_mode: str = "fast"
     ocr_mode: str = "auto"
     ocr_language: str = "eng"
@@ -25,6 +39,7 @@ class ConversionOptions:
     show_progress: bool = True
 
     def __post_init__(self):
+        """Validate option values immediately after dataclass initialization."""
         if self.layout_mode not in {"fast", "smart"}:
             raise ValueError("layout_mode must be one of: fast, smart")
         if self.ocr_mode not in {"auto", "off", "force"}:
@@ -35,6 +50,8 @@ class ConversionOptions:
 
 @dataclass(slots=True)
 class ConversionResult:
+    """Paths, metrics, and effective settings produced by one conversion."""
+
     source: str
     markdown: str
     report: str
@@ -79,11 +96,26 @@ def readable_output_name(source: str | Path) -> str:
 
 
 class PDFToMarkdownConverter:
+    """Convert PDF and EPUB documents into Markdown and JSON reports."""
+
     def __init__(self, options: ConversionOptions | None = None):
+        """Initialize a converter with explicit or default options.
+
+        Args:
+            options: Conversion settings. Defaults are used when omitted.
+        """
         self.options = options or ConversionOptions()
 
     @staticmethod
     def _dependencies():
+        """Import and return optional PDF conversion dependencies.
+
+        Returns:
+            A ``(pymupdf, pymupdf4llm)`` module tuple.
+
+        Raises:
+            RuntimeError: If the optional dependencies are not installed.
+        """
         try:
             import pymupdf
             import pymupdf4llm
@@ -95,6 +127,20 @@ class PDFToMarkdownConverter:
         return pymupdf, pymupdf4llm
 
     def convert(self, source: str | Path, output: str | Path) -> ConversionResult:
+        """Convert one PDF or EPUB document and write its conversion report.
+
+        Args:
+            source: Input PDF or EPUB path.
+            output: Destination Markdown path.
+
+        Returns:
+            Conversion paths, metrics, and effective settings.
+
+        Raises:
+            ValueError: If the input is missing, unsupported, or a requested
+                page lies outside the document.
+            RuntimeError: If required conversion dependencies are unavailable.
+        """
         source_path = Path(source).resolve()
         output_path = Path(output).resolve()
         extension = source_path.suffix.casefold()
@@ -166,6 +212,7 @@ class PDFToMarkdownConverter:
                 )
                 markdown = pymupdf4llm.to_markdown(document, **arguments)
 
+        markdown = normalize_discretionary_hyphens(markdown)
         markdown = markdown.strip() + "\n" if markdown.strip() else ""
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(markdown, encoding="utf-8")

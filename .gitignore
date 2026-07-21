@@ -7,6 +7,9 @@ md_python/**/*.md
 mp3ToYT/**/*.md
 Library/**/*.md
 Library/**/*.txt
+Library/**/*.epub
+pdf-md/**/*.md
+pdf-md/**/*.epub
 *.log
 *.cue
 cleanup/**/*.txt
