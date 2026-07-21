@@ -168,12 +168,15 @@ Representative matches include ``ISBN: 978...``, ``LCCN 2017044721``,
 # Standalone ornamental scene separators. Remove only when the entire line is
 # composed of decorative glyphs (optionally separated by whitespace).
 DECORATIVE_SEPARATOR_LINE = re.compile(
-    r"(?m)^[ \t]*(?:[◆◇■□●○♦♢✦✧❖◈※＊*•·~_=+\-][ \t]*){3,}" r"[.,;:!?]?[ \t]*$"
+    r"(?m)^[ \t]*(?:#{1,6}[ \t]+)?"
+    r"(?:[◆◇■□●○♦♢✦✧❖◈※＊*•·~_=+\-][ \t]*){3,}"
+    r"[.,;:!?]?[ \t]*$"
 )
 """Match a whole line made from at least three ornamental separator glyphs.
 
-Examples include ``***`` and ``◆ ◆ ◆``. A hyphen inside ordinary prose cannot
-match because the entire line must consist only of supported decorations.
+Examples include ``***``, ``◆ ◆ ◆``, and ``## ◆◇◆◇◆``. A hyphen inside
+ordinary prose cannot match because the entire line must consist only of an
+optional ATX heading marker followed by supported decorations.
 """
 
 # Strong indicators that text before the first real narrative section is

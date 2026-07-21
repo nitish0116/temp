@@ -886,6 +886,11 @@ Paragraph two.
 
     wrapped = "Before.\n**◆◇◆◇◆,\nAfter."
     assert "◆" not in DECORATIVE_SEPARATOR_LINE.sub("", wrapped)
+    heading_wrapped = "Before.\n## ◆◇◆◇◆\n### ◆◇◆◇◆ \nAfter."
+    heading_cleaned = DECORATIVE_SEPARATOR_LINE.sub("", heading_wrapped)
+    assert "◆" not in heading_cleaned
+    assert "##" not in heading_cleaned
+    assert "###" not in heading_cleaned
     assert "Paragraph one." in cleaned
     assert "Paragraph two." in cleaned
 
