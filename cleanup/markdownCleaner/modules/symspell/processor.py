@@ -14,8 +14,11 @@ from ..core.context import ProcessingContext
 
 
 class SymSpellProcessor(ABC):
-    """
-    Base class for dictionary-based correction.
+    """Base class for dictionary-based correction.
+
+    Example:
+        ``instance = SymSpellProcessor(context)``
+        Expected behavior: Base class for dictionary-based correction.
     """
 
     name = "SymSpell"
@@ -24,6 +27,12 @@ class SymSpellProcessor(ABC):
         self,
         context: ProcessingContext,
     ):
+        """Bind shared context and construct the configured SymSpell engine.
+
+        Example:
+            ``instance = SymSpellProcessor(context)``
+            Expected behavior: Bind shared context and construct the configured SymSpell engine.
+        """
 
         self.context = context
 
@@ -40,11 +49,14 @@ class SymSpellProcessor(ABC):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Process a text segment.
+        """Process a text segment.
 
         Returns:
             True if modified.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Process a text segment.
         """
 
         raise NotImplementedError
@@ -60,8 +72,11 @@ class SymSpellProcessor(ABC):
         confidence,
         reason,
     ):
-        """
-        Record dictionary correction.
+        """Record dictionary correction.
+
+        Example:
+            ``instance.record_change(segment=segment, before="teh", after="the", confidence=98.0, reason="Safe correction")``
+            Expected behavior: Record dictionary correction.
         """
 
         if before == after:

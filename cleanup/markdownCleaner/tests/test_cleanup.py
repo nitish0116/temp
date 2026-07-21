@@ -16,6 +16,7 @@ from markdownCleaner.modules.symspell.vocabulary import (
 
 
 def test_output_filename_is_readable_and_drops_release_tags():
+    """Ensure output names retain the title while discarding release tags."""
     source = (
         "The Saga of Tanya the Evil - Volume 13 " "[Yen Press][Kobo_LNWNCentral].md"
     )
@@ -25,11 +26,13 @@ def test_output_filename_is_readable_and_drops_release_tags():
 
 
 def test_output_filename_does_not_accumulate_clean_suffixes():
+    """Ensure repeated cleanup runs do not accumulate cleanup suffixes."""
     source = "Hell_Mode_-_Volume_01__clean.md"
     assert meaningful_output_name(source) == "Hell Mode - Volume 01 - Cleaned.md"
 
 
 def test_meaningful_batch_names_remain_collision_safe():
+    """Ensure colliding batch outputs receive a readable numeric suffix."""
     used: set[str] = set()
     name = "Book - Volume 1 - Cleaned.md"
     assert _unique_batch_output_name(name, used) == name
@@ -37,6 +40,7 @@ def test_meaningful_batch_names_remain_collision_safe():
 
 
 def test_bounded_bare_and_blockquoted_glossary_footnotes_are_removed():
+    """Remove bounded glossary notes in plain and blockquoted forms."""
     text = """Narrative ending.
 
 1 **Heimat** A homeland or native country.
@@ -57,6 +61,7 @@ Content that must remain.
 
 
 def test_ordinary_numbered_prose_is_not_treated_as_glossary_footnote():
+    """Preserve numbered prose that does not match a glossary note."""
     text = "1. This is an ordinary numbered instruction.\n"
     cleaned, removed = DocumentCleanupStage._remove_bounded_glossary_footnotes(text)
     assert removed == 0
@@ -64,6 +69,7 @@ def test_ordinary_numbered_prose_is_not_treated_as_glossary_footnote():
 
 
 def test_generic_newsletter_tail_is_removed():
+    """Remove a publisher newsletter solicitation from the document tail."""
     text = """# Epilogue
 
 The story ends.
@@ -78,6 +84,7 @@ Visit yenpress.com/newsletter for updates.
 
 
 def test_trailing_numbered_contents_appendix_is_removed():
+    """Remove a numbered table-of-contents appendix at the document tail."""
     text = """# Epilogue
 
 The story ends.
@@ -94,6 +101,7 @@ The story ends.
 
 
 def test_ocr_noise_detection_is_conservative_and_report_only():
+    """Report obvious OCR noise without modifying surrounding prose."""
     text = """Normal narrative text remains here.
 bcdfghjklmnpqrstvwxyz
 The year was 1928.
@@ -106,6 +114,7 @@ The year was 1928.
 
 
 def test_tts_validation_reports_xml_ampersand_and_low_alpha():
+    """Report unsafe XML characters and chunks with too little speech text."""
     assert TTSValidationStage.issues("& < >", minimum_alpha=4) == [
         "LOW_ALPHA(0)",
         "XML_BRACKETS",
@@ -115,6 +124,7 @@ def test_tts_validation_reports_xml_ampersand_and_low_alpha():
 
 
 def test_audio_boundary_escapes_ssml_once_and_skips_invalid_chunks():
+    """Escape SSML once and reject chunks unsuitable for audio generation."""
     assert escape_ssml_text("R&D <test> &amp; done") == (
         "R&amp;D &lt;test&gt; &amp; done"
     )
@@ -123,6 +133,7 @@ def test_audio_boundary_escapes_ssml_once_and_skips_invalid_chunks():
 
 
 def test_explicit_glossary_approval_merges_without_duplicates(tmp_path):
+    """Merge approved terms without case-insensitive glossary duplicates."""
     glossary = tmp_path / "custom_words.json"
     glossary.write_text('["sitrep", "Ainz Ooal Gown"]\n', encoding="utf-8")
 
@@ -142,6 +153,7 @@ def test_explicit_glossary_approval_merges_without_duplicates(tmp_path):
 
 
 def test_vocabulary_candidates_are_discovered_without_mutating_glossary(tmp_path):
+    """Discover repeated unknown terms without silently changing the glossary."""
     from markdownCleaner.modules.core.config import PipelineConfig
     from markdownCleaner.modules.core.context import ProcessingContext
 
@@ -184,10 +196,12 @@ def test_vocabulary_candidates_are_discovered_without_mutating_glossary(tmp_path
 
 
 def test_unsafe_rn_replacement_is_disabled():
+    """Ensure the ambiguous OCR replacement from 'rn' remains disabled."""
     assert "rn" not in OCR_CHARACTER_REPLACEMENTS
 
 
 def test_paragraph_wrap_reconstruction():
+    """Join wrapped fragments while retaining genuine paragraph boundaries."""
     source = "A curious\n\nsight appeared.\n\nA new paragraph."
     result = DocumentCleanupStage._reconstruct_paragraphs(source)
     assert "A curious sight appeared." in result
@@ -195,6 +209,7 @@ def test_paragraph_wrap_reconstruction():
 
 
 def test_heading_normalization():
+    """Normalize converter-specific heading markup into standard Markdown."""
     source = "### <u>Chapter 1 | The Beginning</u>"
     assert (
         DocumentCleanupStage._normalize_headings(source) == "# Chapter 1: The Beginning"
@@ -202,17 +217,20 @@ def test_heading_normalization():
 
 
 def test_markdown_emphasis_removed_for_tts():
+    """Strip Markdown emphasis markers before text-to-speech processing."""
     source = "_Yggdrasil_, _Ba-ding!_, _because_, **bold**, __strong__"
     result = DocumentCleanupStage._strip_markdown_emphasis(source)
     assert result == "Yggdrasil, Ba-ding!, because, bold, strong"
 
 
 def test_internal_underscores_are_preserved():
+    """Preserve underscores that form part of identifiers rather than emphasis."""
     source = "file_name and snake_case"
     assert DocumentCleanupStage._strip_markdown_emphasis(source) == source
 
 
 def test_legacy_markup_cleanup_is_merged_into_document_stage():
+    """Confirm legacy markup rules are handled by the unified document stage."""
     from markdownCleaner.modules.cleanup.document import (
         HTML_BREAK,
         UNDERLINE_TAG,
@@ -227,6 +245,7 @@ def test_legacy_markup_cleanup_is_merged_into_document_stage():
 
 
 def test_symspell_one_edit_confidence_can_reach_safe_threshold():
+    """Allow a strong one-edit spelling candidate to reach the safe threshold."""
     from markdownCleaner.modules.symspell.candidate import CorrectionCandidate
 
     candidate = CorrectionCandidate("retum", "return", 1, 1_000_000)
@@ -234,6 +253,7 @@ def test_symspell_one_edit_confidence_can_reach_safe_threshold():
 
 
 def test_symspell_two_edit_candidate_stays_below_safe_threshold():
+    """Keep a riskier two-edit spelling candidate below the safe threshold."""
     from markdownCleaner.modules.symspell.candidate import CorrectionCandidate
 
     candidate = CorrectionCandidate("abcdef", "abxyef", 2, 10_000_000)
@@ -241,6 +261,7 @@ def test_symspell_two_edit_candidate_stays_below_safe_threshold():
 
 
 def test_safe_symspell_corrects_typo_and_preserves_protected_name(tmp_path):
+    """Correct a safe typo without altering a protected proper name."""
     from markdownCleaner.modules.core.config import PipelineConfig
     from markdownCleaner.modules.core.context import ProcessingContext
     from markdownCleaner.modules.symspell.stage import SymSpellStage
@@ -280,6 +301,7 @@ def test_safe_symspell_corrects_typo_and_preserves_protected_name(tmp_path):
 
 
 def test_symspell_does_not_convert_regular_plural_to_singular(tmp_path):
+    """Prevent SymSpell from replacing an ordinary plural with its singular."""
     from markdownCleaner.modules.core.config import PipelineConfig
     from markdownCleaner.modules.core.context import ProcessingContext
     from markdownCleaner.modules.symspell.stage import SymSpellStage
@@ -316,6 +338,7 @@ def test_symspell_does_not_convert_regular_plural_to_singular(tmp_path):
 
 
 def test_false_atx_heading_is_demoted_and_context_rejoined():
+    """Demote a false ATX heading and rejoin it to its narrative context."""
     source = 'And\n\n## then—\n\n"A scream?"'
     normalized = DocumentCleanupStage._normalize_headings(source)
     assert "## then—" not in normalized
@@ -324,6 +347,7 @@ def test_false_atx_heading_is_demoted_and_context_rejoined():
 
 
 def test_plain_underlined_chapter_heading_is_promoted():
+    """Promote a plain underlined chapter label to a structural heading."""
     # In the real source, legacy <u> tags are removed just before heading normalization.
     source = "Chapter 2 | The Floor Guardians"
     assert (
@@ -333,17 +357,20 @@ def test_plain_underlined_chapter_heading_is_promoted():
 
 
 def test_nonstructural_converter_headings_are_demoted():
+    """Demote converter-created headings that are actually narrative text."""
     source = "## Carne.\n\n## 0:00:38…\n\n## “A message maybe?”"
     result = DocumentCleanupStage._normalize_headings(source)
     assert result == "Carne.\n\n0:00:38…\n\n“A message maybe?”"
 
 
 def test_duplicate_structural_headings_are_collapsed():
+    """Collapse adjacent duplicate structural headings into one heading."""
     source = "Epilogue\n### Epilogue"
     assert DocumentCleanupStage._normalize_headings(source) == "# Epilogue"
 
 
 def test_afterword_is_hard_back_matter_cutoff(tmp_path):
+    """Treat an Afterword heading as a definitive back-matter cutoff."""
     from markdownCleaner.modules.core.config import PipelineConfig
     from markdownCleaner.modules.core.context import ProcessingContext
 
@@ -377,6 +404,7 @@ def test_afterword_is_hard_back_matter_cutoff(tmp_path):
 
 
 def test_cli_folder_file_discovery(tmp_path):
+    """Discover Markdown inputs consistently for both files and folders."""
     from markdownCleaner.cli import _markdown_files
 
     (tmp_path / "one.md").write_text("one", encoding="utf-8")
@@ -396,12 +424,14 @@ def test_cli_folder_file_discovery(tmp_path):
 
 
 def test_ocr_misspelled_aferword_is_back_matter_cutoff():
+    """Recognize the common OCR misspelling of Afterword as back matter."""
     from markdownCleaner.modules.cleanup.document import BACK_MATTER_HEADING
 
     assert BACK_MATTER_HEADING.search("# _<u>Aferword</u>_\n")
 
 
 def test_character_profiles_are_not_back_matter_cutoff():
+    """Avoid treating character profiles as the general back-matter cutoff."""
     from markdownCleaner.modules.cleanup.document import BACK_MATTER_HEADING
 
     assert BACK_MATTER_HEADING.search("Character Profiles\n") is None
@@ -410,6 +440,7 @@ def test_character_profiles_are_not_back_matter_cutoff():
 
 
 def test_story_heading_is_promoted():
+    """Promote a plain story label to a standard Markdown heading."""
     source = "Story 1 | Enri’s Hectc, Eventul Life"
     assert (
         DocumentCleanupStage._normalize_headings(source)
@@ -418,6 +449,7 @@ def test_story_heading_is_promoted():
 
 
 def test_character_profiles_heading_is_promoted():
+    """Promote a plain character-profiles label to a structural heading."""
     assert (
         DocumentCleanupStage._normalize_headings("Character Profiles")
         == "# Character Profiles"
@@ -425,6 +457,7 @@ def test_character_profiles_heading_is_promoted():
 
 
 def test_profile_picture_ocr_is_preserved_until_afterword():
+    """Preserve readable profile image text while removing the Afterword tail."""
     source = (
         "<!-- Start of picture text -->cover noise<!-- End of picture text -->\n"
         "<u>Story 1 | Main Story</u>\n\nBody.\n\n"
@@ -442,6 +475,7 @@ def test_profile_picture_ocr_is_preserved_until_afterword():
 
 
 def test_false_heading_em_dash_continuation_rejoins():
+    """Rejoin an em-dash continuation incorrectly parsed as a heading."""
     source = "And then—\n\n## —something hard stopped it."
     normalized = DocumentCleanupStage._normalize_headings(source)
     result = DocumentCleanupStage._reconstruct_paragraphs(normalized)
@@ -449,12 +483,14 @@ def test_false_heading_em_dash_continuation_rejoins():
 
 
 def test_profile_data_line_is_not_promoted_to_section_heading():
+    """Keep profile record fields from becoming structural headings."""
     source = "Character Profiles 29\nCharacter 24+\nENTOMA"
     result = DocumentCleanupStage._normalize_headings(source)
     assert not result.startswith("# Character Profiles")
 
 
 def test_start_heading_finds_plain_story_with_separator_but_not_toc_item():
+    """Find a real story heading without selecting its contents entry."""
     from markdownCleaner.modules.cleanup.document import START_HEADING
 
     assert START_HEADING.search("<u>Story 1 | A Day Inside Nazarick</u>")
@@ -465,12 +501,14 @@ def test_start_heading_finds_plain_story_with_separator_but_not_toc_item():
 
 
 def test_profile_reconstruction_preserves_internal_lines():
+    """Preserve line structure inside character-profile records."""
     source = "# Character Profiles\n\nCharacter 1\nALICE\nHero\n\nBiography text."
     result = DocumentCleanupStage._reconstruct_paragraphs(source)
     assert "Character 1\nALICE\nHero" in result
 
 
 def test_sequence_independent_section_removal_preserves_following_content():
+    """Remove a named section without discarding unrelated following content."""
     source = "# Chapter 1: Start\n\nBody A.\n\n# Afterword\n\nRemove me.\n\n# Appendix\n\nKeep me."
     result, removed = DocumentCleanupStage._remove_named_sections(source, ["Afterword"])
     assert "Remove me." not in result
@@ -480,12 +518,14 @@ def test_sequence_independent_section_removal_preserves_following_content():
 
 
 def test_unknown_existing_heading_is_preserved():
+    """Preserve an existing heading even when its title is not predefined."""
     source = "## World Building Notes\n\nUseful content."
     result = DocumentCleanupStage._normalize_headings(source)
     assert result.startswith("## World Building Notes")
 
 
 def test_readable_picture_ocr_is_preserved_without_profile_sequence():
+    """Preserve readable image OCR even outside a character-profile sequence."""
     source = "<!-- Start of picture text -->Map of the Northern Kingdom<br>Capital City<br>River Gate<!-- End of picture text -->"
     result, removed, preserved = DocumentCleanupStage._filter_picture_ocr(
         source, mode="safe"
@@ -496,6 +536,7 @@ def test_readable_picture_ocr_is_preserved_without_profile_sequence():
 
 
 def test_gibberish_picture_ocr_is_removed_in_safe_mode():
+    """Remove clearly nonsensical image OCR during conservative cleanup."""
     source = "<!-- Start of picture text -->\\ \\ / } i : ~~ 2) sl Pe yr XS ny P \\Y H f ; Z<!-- End of picture text -->"
     result, removed, preserved = DocumentCleanupStage._filter_picture_ocr(
         source, mode="safe"
@@ -505,12 +546,14 @@ def test_gibberish_picture_ocr_is_removed_in_safe_mode():
 
 
 def test_structured_record_block_preserves_line_structure():
+    """Preserve individual lines in a structured appendix record."""
     source = "# Appendix\n\nName: Alice\nClass: Mage\nLevel: 20"
     result = DocumentCleanupStage._reconstruct_paragraphs(source)
     assert "Name: Alice\nClass: Mage\nLevel: 20" in result
 
 
 def test_content_before_first_narrative_heading_is_never_truncated_by_sequence():
+    """Retain custom content appearing before the first narrative heading."""
     source = "Preface-like custom content.\n\n# Custom Section\n\nKeep this.\n\n# Chapter 1: Start\n\nStory."
     normalized = DocumentCleanupStage._normalize_headings(source)
     assert "Preface-like custom content." in normalized
@@ -519,6 +562,7 @@ def test_content_before_first_narrative_heading_is_never_truncated_by_sequence()
 
 
 def test_explicit_section_removal_works_when_section_is_not_last():
+    """Remove a named middle section while preserving later sections."""
     source = "# Chapter 1: A\n\nOne.\n\n# Afterword\n\nRemove.\n\n# Character Profiles\n\nKeep profile.\n\n# Appendix\n\nKeep appendix."
     result, _ = DocumentCleanupStage._remove_named_sections(source, ["Afterword"])
     assert "Remove." not in result
@@ -527,6 +571,7 @@ def test_explicit_section_removal_works_when_section_is_not_last():
 
 
 def test_batch_summary_combines_files_stage_totals_and_change_records(tmp_path):
+    """Aggregate file outcomes, stage totals, and changes in the batch summary."""
     from markdownCleaner.cli import _write_batch_summary
 
     entries = [
@@ -594,6 +639,7 @@ def test_batch_summary_combines_files_stage_totals_and_change_records(tmp_path):
 
 
 def test_decorative_diamond_separator_is_removed():
+    """Remove a standalone decorative diamond separator between paragraphs."""
     text = """Paragraph one.
 
 ◆◇◆◇◆
@@ -607,6 +653,7 @@ Paragraph two.
 
 
 def test_plain_copyright_section_is_removed_until_next_narrative_heading():
+    """Remove plain copyright front matter up to the narrative heading."""
     text = """Copyright
 Example Book
 This book is a work of fiction.
@@ -626,6 +673,7 @@ Story begins here.
 
 
 def test_metadata_heavy_overlord_style_prefix_is_removed():
+    """Remove a noisy metadata-heavy prefix from an Overlord-style source."""
     text = """vy SS a 4 D > random cover OCR
 Illustration by so-bin OVERLORD2 Kugane Maruyama
 Begin Reading Table of Contents Insert Yen Newsleter Copyright Page
@@ -646,6 +694,7 @@ Real story text.
 
 
 def test_front_matter_skips_concatenated_toc_heading_and_starts_at_real_chapter():
+    """Skip concatenated contents text and begin at the actual chapter."""
     text = """Copyright
 Publisher metadata
 Contents
@@ -664,6 +713,7 @@ Real story.
 
 
 def test_picture_ocr_character_profiles_marker_becomes_excludable_heading():
+    """Convert an image-OCR profile marker into a removable heading."""
     text = """Story ending.
 
 <!-- Start of picture text -->
@@ -692,6 +742,7 @@ Keep this.
 
 
 def test_series_prefixed_character_profiles_heading_is_excluded():
+    """Exclude character-profile headings prefixed by the series title."""
     text = """# Epilogue
 
 Ending.
@@ -715,6 +766,7 @@ Keep this.
 
 
 def test_next_volume_coming_soon_promotional_tail_is_removed():
+    """Remove a next-volume promotion from the document tail."""
     text = """# Epilogue
 
 Actual ending.
@@ -733,6 +785,7 @@ Preview content.
 
 
 def test_picture_ocr_with_one_heading_line_and_many_noise_lines_is_removed():
+    """Remove image text dominated by OCR noise despite one heading."""
     block = """<!-- Start of picture text -->
 =.
 -
@@ -761,6 +814,7 @@ Chapter2 Journey
 
 
 def test_tanya_explicit_chapter_marker_wins_over_contents_entries():
+    """Prefer Tanya's explicit chapter marker over contents entries."""
     text = """Copyright
 Publisher
 Contents
@@ -777,6 +831,7 @@ REAL STORY
 
 
 def test_tanya_volume_13_full_copyright_and_contents_prefix_is_removed():
+    """Remove Tanya volume 13 copyright metadata and contents prefix."""
     text = """Copyright
 The Saga of Tanya the Evil, Vol. 13
 Carlo Zen
@@ -829,6 +884,7 @@ Real story text.
 
 
 def test_overlong_reconstructed_paragraphs_are_split_without_losing_text():
+    """Split overlong paragraphs without losing narrative text."""
     text = ("This is a sentence. " * 250).strip()
     chunks = DocumentCleanupStage._split_overlong_paragraph(text, max_chars=500)
     assert len(chunks) > 1

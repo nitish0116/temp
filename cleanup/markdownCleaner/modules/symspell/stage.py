@@ -11,18 +11,47 @@ from .dictionary import DictionaryManager
 
 
 class SymSpellStage(PipelineStage):
-    """Correct likely OCR misspellings while protecting fiction vocabulary."""
+    """Correct high-confidence misspellings while protecting fiction terms.
+
+    Workflow:
+        1. Load the frequency dictionary, custom glossary, and learned words.
+        2. Protect explicitly configured terms and repeated proper nouns.
+        3. Build the edit-distance lookup index from sufficiently frequent words.
+        4. Generate candidates for unknown tokens in editable segments.
+        5. Reject unsafe distance, frequency, plural, or ambiguity cases.
+        6. Apply only candidates meeting the configured confidence threshold.
+
+    For example, a frequent one-edit OCR typo may be corrected, while a name
+    such as ``Degurechaff`` and a specialist plural such as ``noncoms`` remain
+    unchanged. Every accepted correction is recorded with its evidence.
+    """
 
     name = "SymSpell"
     config_section = "symspell"
     WORD_PATTERN = re.compile(r"[A-Za-z]+(?:['’][A-Za-z]+|-[A-Za-z]+)*")
 
     def __init__(self, config):
+        """Initialize the correction stage before dictionaries are loaded.
+
+        Example:
+            ``instance = SymSpellStage(config)``
+            Expected behavior: Initialize the correction stage before dictionaries are loaded.
+        """
         super().__init__(config)
         self.dictionary: DictionaryManager | None = None
         self.engine: SymSpellEngine | None = None
 
     def initialize(self, context) -> None:
+        """Load vocabularies, protect document terms, and build the lookup index.
+
+        The dictionary sources are resolved relative to configuration. Entries
+        below ``minimum_dictionary_frequency`` remain known to the manager but
+        are omitted from the candidate-generating engine.
+
+        Example:
+            ``instance.initialize(context)``
+            Expected behavior: Load vocabularies, protect document terms, and build the lookup index.
+        """
         self.context = context
         self.dictionary = DictionaryManager(
             dictionary_path=context.config.resolve_path(
@@ -57,6 +86,12 @@ class SymSpellStage(PipelineStage):
                 self.engine.add_word(word, frequency)
 
     def _protect_document_terms(self, text: str) -> None:
+        """Protect repeated proper nouns and mixed-case document terms.
+
+        Example:
+            ``result = instance._protect_document_terms("Example text.")``
+            Expected behavior: Protect repeated proper nouns and mixed-case document terms.
+        """
         assert self.dictionary is not None
         min_occurrences = int(
             self.config.get("symspell.proper_noun_min_occurrences", 2)
@@ -73,6 +108,16 @@ class SymSpellStage(PipelineStage):
                 self.dictionary.protect(token)
 
     def process(self, context) -> StageResult:
+        """Apply conservative dictionary corrections to editable segments.
+
+        Known and protected words bypass candidate lookup. Accepted corrections
+        preserve the source token's capitalization and increment the shared
+        change tracker; rejected candidates never mutate the document.
+
+        Example:
+            ``result = instance.process(context)``
+            Expected behavior: Apply conservative dictionary corrections to editable segments.
+        """
         if self.dictionary is None or self.engine is None:
             self.initialize(context)
 
@@ -85,12 +130,24 @@ class SymSpellStage(PipelineStage):
         )
 
     def _process_text(self, segment, threshold: float) -> str:
+        """Correct eligible word tokens within one segment.
+
+        Example:
+            ``result = instance._process_text(segment, 92.0)``
+            Expected behavior: Correct eligible word tokens within one segment.
+        """
         return self.WORD_PATTERN.sub(
             lambda match: self._correct_word(match.group(0), segment, threshold),
             segment.current_text,
         )
 
     def _correct_word(self, word: str, segment, threshold: float) -> str:
+        """Return a safe correction or preserve the original word.
+
+        Example:
+            ``result = instance._correct_word("teh", segment, 92.0)``
+            Expected behavior: Return a safe correction or preserve the original word.
+        """
         assert self.dictionary is not None
         if self.dictionary.contains(word) or self.dictionary.is_protected(word):
             return word
@@ -158,6 +215,12 @@ class SymSpellStage(PipelineStage):
 
     @staticmethod
     def _match_case(original: str, corrected: str) -> str:
+        """Transfer uppercase or title-case style to a correction.
+
+        Examples:
+            ``_match_case("TEH", "the")`` returns ``"THE"`` and
+            ``_match_case("Teh", "the")`` returns ``"The"``.
+        """
         if original.isupper():
             return corrected.upper()
         if original[:1].isupper() and original[1:].islower():
@@ -165,6 +228,12 @@ class SymSpellStage(PipelineStage):
         return corrected
 
     def _generate_candidates(self, word: str):
+        """Return ranked edit-distance candidates from the active engine.
+
+        Example:
+            ``result = instance._generate_candidates("teh")``
+            Expected behavior: Return ranked edit-distance candidates from the active engine.
+        """
         if self.engine is None:
             return []
         return self.engine.lookup(word)

@@ -14,13 +14,47 @@ RAW_AMPERSAND = re.compile(
 
 
 class TTSValidationStage(PipelineStage):
-    """Report unsafe TTS chunks without modifying the cleaned Markdown."""
+    """Inspect final cleaned text for likely TTS/SSML boundary problems.
+
+    This final, optional stage is report-only. It divides Markdown into bounded
+    speech-sized chunks and flags insufficient alphabetic content, raw XML angle
+    brackets, unescaped ampersands, and unbalanced curly quotation marks. XML or
+    SSML escaping remains the responsibility of ``md_to_audio.py``.
+
+    Workflow::
+
+        cleaned Markdown -> paragraph chunks -> issue-code checks
+        -> bounded audit records -> unchanged Markdown
+
+    Example::
+
+        from unittest.mock import Mock
+        from markdownCleaner.modules.core.config import PipelineConfig
+
+        config = PipelineConfig({"tts_validation": {"minimum_alpha": 4}})
+        context = Mock(
+            current_markdown="R&D <draft>",
+            original_markdown="R&D <draft>",
+        )
+        result = TTSValidationStage(config).process(context)
+        assert result.changes == 1
+        context.tracker.add.assert_called_once()
+
+    ``context.current_markdown`` remains ``"R&D <draft>"`` after validation.
+    """
 
     name = "TTSValidation"
     config_section = "tts_validation"
 
     @staticmethod
     def validation_chunks(text: str, chunk_size: int = 2600) -> list[str]:
+        """Split Markdown into bounded paragraph chunks for TTS validation.
+
+        Heading markers are removed, blank paragraphs are ignored, and oversized
+        paragraphs prefer a nearby word boundary. For example,
+        ``validation_chunks("# Dawn\n\nThe story begins.")`` returns
+        ``["Dawn", "The story begins."]``.
+        """
         chunks: list[str] = []
         for paragraph in re.split(r"\n\s*\n+", text):
             value = re.sub(r"(?m)^\s*#{1,6}\s*", "", paragraph).strip()
@@ -38,6 +72,12 @@ class TTSValidationStage(PipelineStage):
 
     @staticmethod
     def issues(chunk: str, minimum_alpha: int = 4) -> list[str]:
+        """Return stable TTS-safety issue codes detected in one chunk.
+
+        Example:
+            ``issues("R&D <draft>")`` reports ``XML_BRACKETS`` and
+            ``RAW_AMPERSAND``. Already escaped ``&amp;`` is not reported as raw.
+        """
         found: list[str] = []
         alpha = sum(char.isalpha() for char in chunk)
         if alpha < minimum_alpha:
@@ -51,6 +91,31 @@ class TTSValidationStage(PipelineStage):
         return found
 
     def process(self, context) -> StageResult:
+        """Record bounded TTS warnings without modifying Markdown.
+
+        The result's ``changes`` count represents findings rather than edits.
+        Each audit record contains a shortened chunk preview and all applicable
+        issue codes so ``md_to_audio.py`` can skip or escape it appropriately.
+
+        Example::
+
+            from unittest.mock import Mock
+            from markdownCleaner.modules.core.config import PipelineConfig
+
+            config = PipelineConfig(
+                {"tts_validation": {"chunk_size": 2600, "report_limit": 10}}
+            )
+            context = Mock(
+                current_markdown="Safe narration.\n\nR&D <draft>",
+                original_markdown="",
+            )
+            result = TTSValidationStage(config).process(context)
+            assert result.changes == 1
+            assert context.current_markdown == "Safe narration.\n\nR&D <draft>"
+
+        Setting ``report_limit`` to zero returns a zero-finding result without
+        adding tracker records.
+        """
         text = context.current_markdown or context.original_markdown
         chunk_size = int(self.get_config("chunk_size", 2600))
         minimum_alpha = int(self.get_config("minimum_alpha", 4))

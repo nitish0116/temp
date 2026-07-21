@@ -1,4 +1,15 @@
-"""Command-line interface for single-file and folder batch cleanup."""
+"""Command-line interface for Markdown cleanup and glossary approval.
+
+Typical calls::
+
+    python -m markdownCleaner.cli novel.md
+    python -m markdownCleaner.cli novel.md --output cleaned
+    python -m markdownCleaner.cli books --recursive --continue-on-error
+    python -m markdownCleaner.cli --approve-words sitrep noncoms
+
+The first two forms process one file, the third performs a folder batch, and
+the final form updates the configured glossary without running cleanup.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +27,17 @@ from markdownCleaner.modules.symspell.vocabulary import merge_approved_words
 
 
 def _markdown_files(root: Path, recursive: bool) -> list[Path]:
+    """Return sorted Markdown files found below ``root``.
+
+    Args:
+        root: Directory to search.
+        recursive: Search all descendants when true; otherwise inspect only
+            direct children.
+
+    Example:
+        ``_markdown_files(Path("books"), recursive=True)`` finds Markdown in
+        ``books`` and each volume subdirectory.
+    """
     iterator = root.rglob("*.md") if recursive else root.glob("*.md")
     return sorted(path for path in iterator if path.is_file())
 
@@ -28,7 +50,11 @@ def _safe_report_name(relative_file: Path) -> Path:
 
 
 def _unique_batch_output_name(filename: str, used_names: set[str]) -> str:
-    """Avoid overwrites when different tagged inputs simplify to the same name."""
+    """Return a case-insensitively unique filename for one output directory.
+
+    The supplied set is updated in place. For example, requesting ``Book.md``
+    twice returns ``Book.md`` and then ``Book (2).md``.
+    """
     path = Path(filename)
     candidate = path.name
     number = 2
@@ -47,6 +73,20 @@ def _run_one(
     output_name: str | None = None,
     report_subdirectory: Path | str = "reports",
 ) -> tuple[dict, int, list[dict]]:
+    """Run the configured pipeline for one Markdown source.
+
+    Args:
+        source: Markdown file to clean.
+        config: YAML configuration file used to construct the pipeline.
+        output_directory: Optional destination overriding the configured path.
+        output_name: Optional filename, primarily used to avoid batch clashes.
+        report_subdirectory: Report location relative to the output directory.
+
+    Returns:
+        A tuple containing the pipeline result mapping, total logged change
+        count, and serializable change records. Failed stages are summarized in
+        ``result["pipeline_error"]`` so batch callers can apply their policy.
+    """
     pipeline = OCRPipeline(config)
     result = pipeline.run(
         source,
@@ -189,6 +229,17 @@ def _write_batch_summary(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the argument parser for all supported CLI call signatures.
+
+    Supported forms::
+
+        markdownCleaner INPUT.md [--output DIR] [--config FILE]
+        markdownCleaner INPUT_DIR [--recursive] [--continue-on-error]
+        markdownCleaner --approve-words WORD [WORD ...] [--glossary-file FILE]
+
+    ``python -m markdownCleaner.cli`` can replace ``markdownCleaner`` when the
+    project is run directly from source.
+    """
     parser = argparse.ArgumentParser(
         description="Clean OCR/PDF-extracted novel Markdown for TTS. Input may be a file or folder.",
     )
@@ -243,6 +294,23 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Execute the requested CLI workflow and return a process exit code.
+
+    Args:
+        argv: Arguments without the executable name. Passing ``None`` reads
+            ``sys.argv``; passing a list supports programmatic calls such as
+            ``main(["book.md", "--output", "cleaned"])``.
+
+    Workflow:
+        1. Resolve and validate the configuration.
+        2. Approve glossary words and exit, if requested.
+        3. Run one file directly, or discover and process a folder batch.
+        4. Write per-file reports plus an aggregate report for folder runs.
+
+    Returns:
+        ``0`` on success, ``1`` when a folder contains no Markdown, and ``2``
+        when one or more pipeline stages or files fail.
+    """
     parser = build_parser()
     args = parser.parse_args(argv)
     config = args.config.resolve()

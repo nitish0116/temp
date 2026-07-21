@@ -22,14 +22,43 @@ PICTURE_BLOCK = re.compile(
     r"<!--\s*Start of picture text\s*-->.*?<!--\s*End of picture text\s*-->",
     re.IGNORECASE | re.DOTALL,
 )
+"""Match one complete converter picture-text comment block.
+
+Example: ``<!-- Start of picture text -->map OCR<!-- End of picture text -->``.
+The match spans newlines and is case-insensitive.
+"""
+
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
+"""Match a residual HTML comment, such as ``<!-- converter note -->``."""
+
 UNDERLINE_TAG = re.compile(r"</?u\s*>", re.IGNORECASE)
+"""Match an opening or closing underline tag, for example ``<u>`` or ``</u>``."""
+
 HTML_BREAK = re.compile(r"<br\s*/?>", re.IGNORECASE)
+"""Match HTML line-break variants such as ``<br>``, ``<br/>``, and ``<BR />``."""
+
 ATX_HEADING = re.compile(r"^(\s*#{1,6})\s+(.+?)\s*$")
+"""Capture the marker and title of an ATX heading, such as ``## Chapter 2``."""
+
 SECTION_NUMBER = re.compile(r"^_?(\d+)_?$")
+"""Match a bare section number with optional emphasis, such as ``7`` or ``_7_``."""
+
 FOOTNOTE_DEFINITION = re.compile(r"(?m)^\s*\[\^[^\]]+\]:.*(?:\n(?: {2,}|\t).*)*\n?")
+"""Match a Markdown footnote definition and its indented continuation lines.
+
+Example: ``[^1]: Definition`` followed by a line indented with two spaces.
+"""
+
 FOOTNOTE_REFERENCE = re.compile(r"\[\^[^\]]+\]")
+"""Match an inline Markdown footnote reference, for example ``[^translator]``."""
+
 GLOSSARY_FOOTNOTE = re.compile(r"^\s*>?\s*\d+\s+\*\*\S(?:.*?\S)?\*\*(?:\s+.*)?$")
+"""Match a bounded numbered glossary note with a bold term.
+
+Examples include ``1 **Heimat** A homeland`` and its blockquoted form
+``> 2 **Mage** A practitioner of magic``. Ordinary ``1. List text`` is excluded.
+"""
+
 SIGNUP_OR_NEWSLETTER = re.compile(
     r"(?:\bsign\s*up\b.*\bnewsletter\b|"
     r"\bnewsletter\s+sign\s*up\b|"
@@ -37,11 +66,21 @@ SIGNUP_OR_NEWSLETTER = re.compile(
     r"\byen\s+(?:press\s+)?newsletter\b)",
     re.I,
 )
+"""Recognize generic publisher signup and newsletter promotion text.
+
+Examples: ``Sign up for the newsletter`` and ``Visit yenpress.com/newsletter``.
+"""
+
 TRAILING_TOC_ITEM = re.compile(
     r"^\s*\d+[.)]\s+(?:cover|insert|title\s+page|copyright|"
     r"chapter\b.*|afterword|appendix\b.*|yen\s+newsletter)\s*$",
     re.I,
 )
+"""Match a numbered contents item allowed in a trailing TOC appendix.
+
+Examples: ``1. Cover``, ``2) Chapter 3``, and ``4. Afterword``. An unrelated
+instruction such as ``1. Mix the ingredients`` does not match.
+"""
 
 # Backward-compatible regex exports retained for callers/tests from older releases.
 # They are no longer used to truncate documents.
@@ -50,11 +89,21 @@ START_HEADING = re.compile(
     r"(?:chapter|story|part|book|volume|act|section)\s+(?:\d+|[ivxlcdm]+)\s*[|:])",
     re.IGNORECASE,
 )
+"""Recognize a strong narrative-start heading for backward compatibility.
+
+Examples: ``# Prologue`` and ``Chapter 2 | The Floor Guardians``. This pattern
+is exported for older callers and is not used to truncate arbitrary prefixes.
+"""
+
 BACK_MATTER_HEADING = re.compile(
     r"(?im)^\s*(?:#{1,6}\s*)?[_*\s]*(?:<u>\s*)?[_*\s]*(?:"
     r"a(?:fter|fer)word|yen\s+news(?:letter|leter)|newsletter|newsleter"
     r")[_*\s]*(?:</u>)?[_*\s]*$"
 )
+"""Recognize a standalone Afterword or newsletter back-matter heading.
+
+Examples: ``# Afterword`` and the common OCR misspelling ``Aferword``.
+"""
 
 # These patterns are intentionally generic. They only *promote* strong plain-text
 # headings; existing Markdown headings are preserved even when their text is unknown.
@@ -63,6 +112,12 @@ NUMBERED_HEADING = re.compile(
     r"([\divxlcdm]+)(?:\s*[|:\-–—]\s*|\s+)(.+)$",
     re.IGNORECASE,
 )
+"""Capture a numbered plain-text narrative heading and its title.
+
+Example: ``Chapter IV: The Battle`` captures ``Chapter``, ``IV``, and
+``The Battle`` for promotion to a standard Markdown heading.
+"""
+
 NAMED_HEADING = re.compile(
     r"^(prologue|epilogue|prelude|introduction|interlude|appendix|"
     r"afterword|foreword|acknowledg(?:e)?ments?|character\s+profiles?|glossary|"
@@ -70,6 +125,11 @@ NAMED_HEADING = re.compile(
     r"notes|references|bibliography)(?:\s*[|:\-–—]\s*(.+))?$",
     re.IGNORECASE,
 )
+"""Match a known unnumbered section heading with an optional subtitle.
+
+Examples: ``Epilogue`` and ``Appendix: Military Ranks``. Unknown existing
+Markdown headings are preserved elsewhere and do not need to match this pattern.
+"""
 
 # Front-matter blocks which are safe to remove *locally* when explicitly enabled.
 # No rule here slices from the start of the document to a later narrative heading.
@@ -82,6 +142,11 @@ LOCAL_METADATA_HEADINGS = {
     "publishing information",
     "library of congress cataloging-in-publication data",
 }
+"""Normalized local section labels whose metadata bodies may be removed.
+
+Examples include ``Copyright``, ``Contents``, and ``Title Page`` after case and
+markup normalization. Removal remains bounded by the next detected heading.
+"""
 
 # Common standalone metadata lines. These are removed individually only in safe
 # front-matter cleanup; surrounding prose is never deleted because of them.
@@ -93,6 +158,11 @@ METADATA_LINE_PATTERNS = [
     re.compile(r"^©\s*\d{4}\b", re.I),
     re.compile(r"^(?:visit us at\s+)?(?:https?://)?(?:www\.)?\S+\.com\S*$", re.I),
 ]
+"""Patterns for standalone publication metadata that is safe to remove locally.
+
+Representative matches include ``ISBN: 978...``, ``LCCN 2017044721``,
+``All rights reserved.``, and a standalone publisher website address.
+"""
 
 
 # Standalone ornamental scene separators. Remove only when the entire line is
@@ -100,6 +170,11 @@ METADATA_LINE_PATTERNS = [
 DECORATIVE_SEPARATOR_LINE = re.compile(
     r"(?m)^[ \t]*(?:[◆◇■□●○♦♢✦✧❖◈※＊*•·~_=+\-][ \t]*){3,}$"
 )
+"""Match a whole line made from at least three ornamental separator glyphs.
+
+Examples include ``***`` and ``◆ ◆ ◆``. A hyphen inside ordinary prose cannot
+match because the entire line must consist only of supported decorations.
+"""
 
 # Strong indicators that text before the first real narrative section is
 # publication/cover/navigation material rather than story prose.
@@ -116,29 +191,167 @@ FRONT_MATTER_SIGNALS = [
     re.compile(r"\bscanning, uploading\b|\bdistribution of this book\b", re.I),
     re.compile(r"\bpublisher\b", re.I),
 ]
+"""Strong publication and navigation indicators used to classify front matter.
+
+Examples include lines containing ``Copyright``, ``Begin Reading``,
+``Translation by``, ``ISBN``, or ``All rights reserved``. These signals supply
+evidence for bounded front-matter cleanup; none independently deletes prose.
+"""
 
 NARRATIVE_SECTION = re.compile(
     r"^(?:prologue|prelude|introduction|interlude|epilogue|"
     r"(?:chapter|story|part|book|act|section)\s+(?:\d+|[ivxlcdm]+)\b)",
     re.I,
 )
+"""Recognize the beginning of a known narrative section label.
+
+Examples: ``Prologue``, ``Story 3``, and ``Chapter IX: Dawn``. Metadata labels
+such as ``Copyright`` and ``Contents`` intentionally do not match.
+"""
 
 
 @dataclass
 class _Change:
+    """Describe one document-level transformation for change reporting.
+
+    The dataclass decorator generates the methods used by this internal value
+    object. Construction through ``__init__`` accepts the reason and text
+    excerpts, with confidence defaulting to 99 percent::
+
+        change = _Change(
+            reason="Removed newsletter tail",
+            before="Sign up for the Yen Press Newsletter",
+            after="",
+        )
+        assert change.confidence == 99.0
+
+    The generated ``__repr__`` provides a diagnostic representation suitable
+    for logs and debugging::
+
+        repr(_Change("Normalized heading", "Chapter 1", "# Chapter 1", 98.0))
+
+    The generated ``__eq__`` compares every field, which is useful in focused
+    cleanup tests::
+
+        assert _Change("Removed comment", "<!--x-->", "") == _Change(
+            "Removed comment", "<!--x-->", ""
+        )
+
+    Instances are collected during whole-document processing and later copied
+    into the shared change tracker; they do not mutate Markdown themselves.
+
+    Example:
+        ``instance = _Change("Safe correction", "teh", "the")``
+        Expected behavior: Describe one document-level transformation for change reporting.
+    """
+
     reason: str
+    """Human-readable explanation of why the transformation was appropriate."""
+
     before: str
+    """Small source excerpt or summary representing content before cleanup."""
+
     after: str
+    """Replacement excerpt or summary representing content after cleanup."""
+
     confidence: float = 99.0
+    """Percentage confidence attached to the transformation's audit record."""
+
+
+_Change.__init__.__doc__ = """Initialize one pending document-cleanup record.
+
+Args:
+    reason: Human-readable explanation for the transformation.
+    before: Source excerpt or summary before cleanup.
+    after: Replacement excerpt or summary after cleanup.
+    confidence: Percentage certainty; defaults to ``99.0``.
+
+Example::
+
+    change = _Change(
+        reason="Removed converter comment",
+        before="<!-- generated by converter -->",
+        after="",
+        confidence=100.0,
+    )
+
+The initializer only stores audit information. It does not modify the source
+Markdown or write to the shared change tracker.
+"""
+
+_Change.__repr__.__doc__ = """Return a developer-readable representation.
+
+Example::
+
+    change = _Change("Normalized heading", "Chapter 1", "# Chapter 1", 98.0)
+    print(repr(change))
+    # _Change(reason='Normalized heading', before='Chapter 1',
+    #         after='# Chapter 1', confidence=98.0)
+
+The representation exposes all fields, which makes a pending transformation
+easy to inspect in a debugger or failed test.
+"""
+
+_Change.__eq__.__doc__ = """Compare two pending changes field by field.
+
+Example::
+
+    first = _Change("Removed comment", "<!--x-->", "")
+    second = _Change("Removed comment", "<!--x-->", "")
+    assert first == second
+    assert first != _Change("Removed comment", "<!--y-->", "")
+
+Equality includes ``reason``, ``before``, ``after``, and ``confidence``. It is
+primarily useful for precise assertions in cleanup tests.
+"""
 
 
 class DocumentCleanupStage(PipelineStage):
-    """Generalized whole-document cleanup before OCR correction stages."""
+    """Reconstruct document structure before segment-level OCR correction.
+
+    This first pipeline stage works on the complete Markdown string because
+    front matter, contents pages, picture-OCR blocks, headings, and excluded
+    sections require context across paragraph boundaries. It conservatively
+    removes recognized non-narrative material, normalizes headings and wrapped
+    paragraphs, and reports suspicious whole-document OCR noise without
+    deleting it.
+
+    Workflow::
+
+        filter picture OCR -> remove converter comments/front matter
+        -> recognize the narrative start -> remove configured sections/tails
+        -> normalize headings and emphasis -> reconstruct paragraphs
+        -> report residual OCR-noise findings -> rebuild context segments
+
+    Example:
+        ``instance = DocumentCleanupStage(config)``
+        Expected behavior: Reconstruct document structure before segment-level OCR correction.
+    """
 
     name = "DocumentCleanup"
     config_section = "cleanup"
 
     def process(self, context) -> StageResult:
+        """Clean the complete document and rebuild its editable segments.
+
+        Every material transformation is appended to the shared tracker. OCR
+        noise detection is explicitly report-only: findings count as records,
+        but their source text remains untouched for human review.
+
+        Returns:
+            A result whose change count includes transformations and report-only
+            findings recorded by this stage.
+
+        Example::
+
+            stage = DocumentCleanupStage(config)
+            result = stage.execute(context)
+            cleaned = context.get_markdown()
+
+        If ``context`` contains copyright front matter followed by ``# Prologue``,
+        the front matter is removed, the narrative is retained, and ``result``
+        reports the corresponding audit records.
+        """
         text = context.current_markdown or context.original_markdown
         changes: list[_Change] = []
 
@@ -389,6 +602,12 @@ class DocumentCleanupStage(PipelineStage):
     # ------------------------------------------------------------------
     @staticmethod
     def _clean_picture_block(block: str) -> str:
+        """Remove picture-OCR wrappers and normalize their extracted text.
+
+        Example:
+            ``_clean_picture_block("<!-- Start of picture text -->Map<br>Gate"
+            "<!-- End of picture text -->")`` returns ``"Map\nGate"``.
+        """
         inner = re.sub(
             r"^<!--\s*Start of picture text\s*-->", "", block, flags=re.I
         ).strip()
@@ -408,6 +627,11 @@ class DocumentCleanupStage(PipelineStage):
 
         Readable captions, maps, profile cards, diagrams, and labels are retained.
         Blocks dominated by punctuation/single-character fragments are removed.
+
+        Example:
+            ``_picture_text_is_readable("Map of the Northern Kingdom Capital")``
+            returns ``True``, whereas ``_picture_text_is_readable("\\ / } : ~~")``
+            returns ``False``.
         """
         if not text.strip():
             return False
@@ -464,12 +688,18 @@ class DocumentCleanupStage(PipelineStage):
         * ``keep``: preserve every picture OCR block as cleaned text.
         * ``remove``: remove every picture OCR block.
         * ``safe`` (default): preserve readable blocks, remove likely gibberish.
+
+        Example:
+            ``cleaned, removed, preserved = _filter_picture_ocr(source, "safe")``
+            preserves a readable map caption but removes a symbol-only OCR block;
+            the two counters describe those decisions.
         """
         mode = mode.lower()
         if mode not in {"keep", "remove", "safe"}:
             mode = "safe"
 
         def section_key(value: str) -> str:
+            """Normalize a section label for tolerant exclusion matching."""
             value = UNDERLINE_TAG.sub("", str(value))
             value = re.sub(r"^#{1,6}\\s*", "", value.strip())
             value = re.sub(r"[*_`]+", "", value)
@@ -534,6 +764,13 @@ class DocumentCleanupStage(PipelineStage):
     # ------------------------------------------------------------------
     @staticmethod
     def _plain_heading_text(line: str) -> str | None:
+        """Return normalized text when a line is structurally heading-like.
+
+        Example:
+            ``_plain_heading_text("### <u>Afterword</u>")`` returns
+            ``"Afterword"``; ``_plain_heading_text("She walked home.")`` returns
+            ``None`` because ordinary prose is not promoted.
+        """
         raw = line.strip()
         atx = ATX_HEADING.match(raw)
         body = atx.group(2).strip() if atx else raw
@@ -563,6 +800,11 @@ class DocumentCleanupStage(PipelineStage):
         exists for OCR/ebook conversions where cover text, reader navigation,
         copyright boilerplate, and publisher data appear before the first
         Prologue/Chapter/Story heading without clean Markdown section markers.
+
+        Example:
+            Given ``"Copyright\nYen Press\n\n# Prologue\nStory"``, the returned
+            text begins at ``# Prologue``. A normal preface lacking at least two
+            publication signals is preserved.
         """
         lines = text.splitlines()
         first_narrative: int | None = None
@@ -643,12 +885,17 @@ class DocumentCleanupStage(PipelineStage):
 
         Plain headings such as ``Copyright`` and ``Contents`` are recognized even
         when the converter did not emit Markdown heading markers.
+
+        Example:
+            ``"Copyright\nISBN: 123\n# Chapter 1\nStory"`` becomes
+            ``"# Chapter 1\nStory"``. Later unrelated sections remain intact.
         """
         lines = text.splitlines()
         out: list[str] = []
         i = 0
 
         def normalized_label(line: str) -> str:
+            """Normalize Markdown and inline markup from a metadata label."""
             value = UNDERLINE_TAG.sub("", line).strip()
             value = re.sub(r"^#{1,6}\s*", "", value)
             value = re.sub(r"^[*_`]+|[*_`]+$", "", value).strip()
@@ -696,9 +943,16 @@ class DocumentCleanupStage(PipelineStage):
     def _remove_named_sections(
         cls, text: str, names: Iterable[str]
     ) -> tuple[str, list[str]]:
-        """Remove explicitly named sections locally, regardless of document order."""
+        """Remove explicitly named sections locally, regardless of document order.
+
+        Example:
+            Removing ``["Afterword"]`` from ``"# Chapter 1\nStory\n# Afterword\n"
+            "Notes\n# Appendix\nData"`` returns text containing the chapter and
+            appendix plus ``["Afterword"]`` as the removed-heading list.
+        """
 
         def section_key(value: str) -> str:
+            """Normalize configured and detected section names to a shared key."""
             value = UNDERLINE_TAG.sub("", str(value))
             value = re.sub(r"^#{1,6}\s*", "", value.strip())
             value = re.sub(r"[*_`]+", "", value)
@@ -749,6 +1003,11 @@ class DocumentCleanupStage(PipelineStage):
         Removal only happens when a Volume heading is followed within a few lines
         by publisher-style "Coming soon" text, which is characteristic of ebook
         previews appended after the actual novel.
+
+        Example:
+            ``"Story ending.\n\n# Volume 14\nComing soon!"`` becomes
+            ``"Story ending."``. Narrative dialogue that merely says
+            ``"The train is coming soon"`` is preserved.
         """
         lines = text.splitlines()
         for i, line in enumerate(lines):
@@ -774,7 +1033,13 @@ class DocumentCleanupStage(PipelineStage):
 
     @staticmethod
     def _remove_bounded_glossary_footnotes(text: str) -> tuple[str, int]:
-        """Remove only paragraphs explicitly shaped like numbered glossary notes."""
+        """Remove only paragraphs explicitly shaped like numbered glossary notes.
+
+        Example:
+            ``_remove_bounded_glossary_footnotes("Story.\n\n1 **Mage** Magic user")``
+            returns ``("Story.\n\n", 1)``. ``"1. Ordinary list item"`` is not
+            removed because it lacks the bounded bold-term form.
+        """
         paragraphs = re.split(r"(\n\s*\n+)", text)
         removed = 0
         out: list[str] = []
@@ -793,7 +1058,13 @@ class DocumentCleanupStage(PipelineStage):
 
     @staticmethod
     def _remove_generic_publisher_tail(text: str) -> tuple[str, str | None]:
-        """Remove strongly identified newsletter or numbered-TOC material at EOF."""
+        """Remove strongly identified newsletter or numbered-TOC material at EOF.
+
+        Example:
+            A final ``"Sign up for the Yen Press Newsletter"`` is removed and
+            returns reason ``"publisher signup/newsletter tail"``. With no
+            recognized tail, the original text and ``None`` are returned.
+        """
         lines = text.splitlines()
         if not lines:
             return text, None
@@ -823,7 +1094,13 @@ class DocumentCleanupStage(PipelineStage):
         *,
         limit: int = 100,
     ) -> list[tuple[int, str, str]]:
-        """Find high-signal OCR garbage without changing document text."""
+        """Find high-signal OCR garbage without changing document text.
+
+        Example:
+            ``_find_conservative_ocr_noise("Story\nbcdfghjklmnpqrst")`` returns a
+            finding for line 2 with a consonant-cluster reason. The input string
+            itself is never rewritten.
+        """
         findings: list[tuple[int, str, str]] = []
         if limit <= 0:
             return findings
@@ -852,6 +1129,13 @@ class DocumentCleanupStage(PipelineStage):
     # ------------------------------------------------------------------
     @staticmethod
     def _normalize_headings(text: str) -> str:
+        """Promote real headings, demote false ones, and standardize ATX levels.
+
+        Example:
+            ``_normalize_headings("Chapter 2 | Dawn")`` returns
+            ``"# Chapter 2: Dawn"``. A converter artifact such as
+            ``"## then—"`` is demoted to narrative text.
+        """
         out: list[str] = []
 
         for raw in text.splitlines():
@@ -933,7 +1217,13 @@ class DocumentCleanupStage(PipelineStage):
 
     @staticmethod
     def _looks_like_false_heading(body: str) -> bool:
-        """Detect only high-confidence converter-created prose headings."""
+        """Detect only high-confidence converter-created prose headings.
+
+        Example:
+            ``_looks_like_false_heading("then—")`` returns ``True`` while
+            ``_looks_like_false_heading("World Building Notes")`` returns
+            ``False``, preserving an unknown but plausible heading.
+        """
         s = body.strip()
         if not s:
             return True
@@ -958,10 +1248,23 @@ class DocumentCleanupStage(PipelineStage):
     # ------------------------------------------------------------------
     @staticmethod
     def _is_heading(block: str) -> bool:
+        """Return whether an entire block is an ATX Markdown heading.
+
+        Example:
+            ``_is_heading("## Appendix")`` is ``True`` and
+            ``_is_heading("Appendix")`` is ``False``.
+        """
         return bool(re.match(r"^\s*#{1,6}\s+", block))
 
     @staticmethod
     def _is_list_or_special(block: str) -> bool:
+        """Return whether a block contains structure that must retain line breaks.
+
+        Example:
+            ``_is_list_or_special("- First item")`` and
+            ``_is_list_or_special("> Quotation")`` return ``True``; ordinary
+            prose returns ``False``.
+        """
         stripped = block.lstrip()
         return bool(
             stripped.startswith(("```", "~~~", ">", "|"))
@@ -970,7 +1273,12 @@ class DocumentCleanupStage(PipelineStage):
 
     @staticmethod
     def _looks_structured_lines(lines: list[str]) -> bool:
-        """Preserve blocks that look like records/cards/tables rather than prose."""
+        """Preserve blocks that look like records/cards/tables rather than prose.
+
+        Example:
+            ``_looks_structured_lines(["Name: Alice", "Class: Mage"])`` returns
+            ``True`` so reconstruction retains the line boundary between fields.
+        """
         if len(lines) < 2:
             return False
         short = sum(len(line) <= 48 for line in lines)
@@ -983,6 +1291,13 @@ class DocumentCleanupStage(PipelineStage):
 
     @classmethod
     def _should_join(cls, left: str, right: str) -> bool:
+        """Decide whether adjacent OCR blocks are fragments of one paragraph.
+
+        Example:
+            ``_should_join("A curious", "sight appeared.")`` returns ``True``.
+            ``_should_join("A sentence ended.", "A new paragraph.")`` returns
+            ``False`` because the left fragment has terminal punctuation.
+        """
         if not left or not right or cls._is_heading(left) or cls._is_heading(right):
             return False
         if cls._is_list_or_special(left) or cls._is_list_or_special(right):
@@ -1014,6 +1329,11 @@ class DocumentCleanupStage(PipelineStage):
         This is a safety valve for OCR sources that contain thousands of words
         with no blank paragraph separators. Normal-sized paragraphs are left
         untouched. No text is discarded.
+
+        Example:
+            ``_split_overlong_paragraph("One sentence. Two sentences.", 15)``
+            returns multiple chunks split at sentence or whitespace boundaries;
+            joining their text recovers every source word.
         """
         if len(text) <= max_chars or text.startswith("#"):
             return [text]
@@ -1052,6 +1372,13 @@ class DocumentCleanupStage(PipelineStage):
 
     @classmethod
     def _reconstruct_paragraphs(cls, text: str) -> str:
+        """Join wrapped OCR fragments while preserving structured blocks.
+
+        Example:
+            ``_reconstruct_paragraphs("A curious\n\nsight appeared.")`` returns
+            ``"A curious sight appeared."``. Headings, lists, quotations, and
+            record-like lines retain their structural boundaries.
+        """
         raw_blocks = re.split(r"\n\s*\n+", text.strip())
         blocks: list[str] = []
         for block in raw_blocks:
@@ -1098,6 +1425,12 @@ class DocumentCleanupStage(PipelineStage):
 
     @staticmethod
     def _strip_markdown_emphasis(text: str) -> str:
+        """Remove emphasis delimiters while preserving internal underscores.
+
+        Example:
+            ``_strip_markdown_emphasis("_quiet_ **voice** file_name")`` returns
+            ``"quiet voice file_name"``.
+        """
         text = re.sub(r"(?<!\w)\*\*(?=\S)(.+?)(?<=\S)\*\*(?!\w)", r"\1", text)
         text = re.sub(r"(?<!\w)__(?=\S)(.+?)(?<=\S)__(?!\w)", r"\1", text)
         text = re.sub(r"(?<!\w)\*(?=\S)(.+?)(?<=\S)\*(?!\w)", r"\1", text)
@@ -1106,6 +1439,13 @@ class DocumentCleanupStage(PipelineStage):
 
     @staticmethod
     def _normalize_spacing(text: str) -> str:
+        """Normalize horizontal whitespace, blank lines, and punctuation spacing.
+
+        Example:
+            ``_normalize_spacing("Hello   , world.\n\n\nNext")`` returns
+            ``"Hello, world.\n\nNext\n"`` while retaining Markdown heading
+            markers and ending the document with one newline.
+        """
         lines = []
         for line in text.splitlines():
             if re.match(r"^\s*#{1,6}\s+", line):

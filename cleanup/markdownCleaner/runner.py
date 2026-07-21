@@ -4,6 +4,7 @@ from markdownCleaner.pipeline import OCRPipeline
 
 
 def main():
+    """Run the cleaner against the example input configured in this module."""
     root = Path(__file__).resolve().parent
     input_file = root / "Overlord v01.md"
     config_file = root / "config.yaml"

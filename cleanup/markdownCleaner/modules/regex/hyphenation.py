@@ -28,8 +28,11 @@ from .constants import (
 
 
 class HyphenationProcessor(RegexProcessor):
-    """
-    Remove artificial line-break hyphenation.
+    """Remove artificial line-break hyphenation.
+
+    Example:
+        ``instance = HyphenationProcessor(context)``
+        Expected behavior: Remove artificial line-break hyphenation.
     """
 
     name = "Hyphenation"
@@ -40,11 +43,14 @@ class HyphenationProcessor(RegexProcessor):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Repair broken words across lines.
+        """Repair broken words across lines.
 
         Returns:
             True if text changed.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Repair broken words across lines.
         """
 
         before = segment.current_text
@@ -85,8 +91,11 @@ class HyphenationProcessor(RegexProcessor):
         self,
         match: re.Match,
     ) -> str:
-        """
-        Join the two halves of a broken word.
+        """Join the two halves of a broken word.
+
+        Example:
+            ``result = instance._merge_words(match)``
+            Expected behavior: Join the two halves of a broken word.
         """
 
         first = match.group(1)

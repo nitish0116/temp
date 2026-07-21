@@ -24,8 +24,11 @@ from .constants import (
 
 
 class BrokenWordProcessor(RegexProcessor):
-    """
-    Merge words incorrectly separated by OCR.
+    """Merge words incorrectly separated by OCR.
+
+    Example:
+        ``instance = BrokenWordProcessor(context)``
+        Expected behavior: Merge words incorrectly separated by OCR.
     """
 
     name = "BrokenWords"
@@ -36,11 +39,14 @@ class BrokenWordProcessor(RegexProcessor):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Fix broken words.
+        """Fix broken words.
 
         Returns:
             True if changes occurred.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Fix broken words.
         """
 
         before = segment.current_text

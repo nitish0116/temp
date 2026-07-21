@@ -32,8 +32,16 @@ from .punctuation import (
 
 
 class UnicodeStage(PipelineStage):
-    """
-    Complete Unicode cleanup pipeline.
+    """Normalize Unicode safely across every editable segment.
+
+    Processor order is significant: normalize canonical forms first, remove
+    invisible controls, expand ligatures, regularize whitespace, and finally
+    normalize punctuation. Each processor records its own transformations in
+    the shared tracker.
+
+    Example:
+        ``instance = UnicodeStage(config)``
+        Expected behavior: Normalize Unicode safely across every editable segment.
     """
 
     name = "Unicode"
@@ -44,6 +52,12 @@ class UnicodeStage(PipelineStage):
         self,
         config,
     ):
+        """Initialize the Unicode stage before processors are constructed.
+
+        Example:
+            ``instance = UnicodeStage(config)``
+            Expected behavior: Initialize the Unicode stage before processors are constructed.
+        """
 
         super().__init__(config)
 
@@ -55,13 +69,14 @@ class UnicodeStage(PipelineStage):
         self,
         context,
     ):
-        """
-        Create processors after context exists.
+        """Construct Unicode processors bound to the active context.
 
-        Processors need access to:
-            - logger
-            - tracker
-            - config
+        Binding is deferred because processors use the context's logger, change
+        tracker, and configuration. The list order defines the cleanup workflow.
+
+        Example:
+            ``instance.initialize(context)``
+            Expected behavior: Construct Unicode processors bound to the active context.
         """
 
         self.processors = [
@@ -78,9 +93,15 @@ class UnicodeStage(PipelineStage):
         self,
         context,
     ) -> StageResult:
-        """
-        Execute Unicode cleanup.
+        """Run the ordered Unicode workflow over every editable segment.
 
+        Returns:
+            A result containing the number of transformations logged during
+            this stage, excluding changes made by earlier stages.
+
+        Example:
+            ``result = instance.process(context)``
+            Expected behavior: Run the ordered Unicode workflow over every editable segment.
         """
 
         if not self.processors:

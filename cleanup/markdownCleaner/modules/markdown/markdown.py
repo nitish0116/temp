@@ -47,7 +47,12 @@ REFERENCE_LINK = re.compile(r"^\s*\[[^\]]+\]:\s+\S+.*$")
 
 
 class BlockType(Enum):
-    """Logical Markdown block types."""
+    """Logical Markdown block types.
+
+    Example:
+        ``member = BlockType.PARAGRAPH``
+        Expected behavior: Logical Markdown block types.
+    """
 
     UNKNOWN = auto()
 
@@ -87,8 +92,11 @@ class BlockType(Enum):
 
 @dataclass(slots=True)
 class MarkdownBlock:
-    """
-    Represents one logical block inside the document.
+    """Represents one logical block inside the document.
+
+    Example:
+        ``instance = MarkdownBlock(BlockType.PARAGRAPH, "Example text.", 1, 1)``
+        Expected behavior: Represents one logical block inside the document.
     """
 
     block_type: BlockType
@@ -106,9 +114,21 @@ class MarkdownBlock:
     current_text: str = ""
 
     def line_count(self) -> int:
+        """Return the number of source lines occupied by this block.
+
+        Example:
+            ``result = instance.line_count()``
+            Expected behavior: Return the number of source lines occupied by this block.
+        """
         return self.end_line - self.start_line + 1
 
     def copy(self) -> "MarkdownBlock":
+        """Return an independent copy of this Markdown block.
+
+        Example:
+            ``result = instance.copy()``
+            Expected behavior: Return an independent copy of this Markdown block.
+        """
         return MarkdownBlock(
             block_type=self.block_type,
             text=self.text,
@@ -119,6 +139,12 @@ class MarkdownBlock:
         )
 
     def __repr__(self):
+        """Return a concise debugging representation of this block.
+
+        Example:
+            ``result = instance.__repr__()``
+            Expected behavior: Return a concise debugging representation of this block.
+        """
 
         preview = self.text.replace("\n", "\\n")
 
@@ -134,19 +160,43 @@ class MarkdownBlock:
         )
 
     def __post_init__(self):
+        """Initialize mutable block text from its original value.
+
+        Example:
+            ``result = instance.__post_init__()``
+            Expected behavior: Initialize mutable block text from its original value.
+        """
         if not self.current_text:
             self.current_text = self.text
 
     def update(self, value: str):
+        """Replace the block's current editable text.
+
+        Example:
+            ``instance.update("value")``
+            Expected behavior: Replace the block's current editable text.
+        """
         self.current_text = value
 
     @property
     def content(self) -> str:
-        """Compatibility alias for code that expects ``block.content``."""
+        """Compatibility alias for code that expects ``block.content``.
+
+        Example:
+            ``value = instance.content``
+            Expected behavior: Compatibility alias for code that expects ``block.content``.
+        """
         return self.current_text
 
     @content.setter
     def content(self, value: str) -> None:
+        """Replace the block text through the compatibility property.
+
+        Example:
+            ``instance.content = "value"``
+            Expected behavior: Replace the block text through the compatibility property.
+        """
+
         self.current_text = value
 
 
@@ -157,8 +207,17 @@ class MarkdownBlock:
 
 @dataclass
 class MarkdownDocument:
-    """
-    Container for every parsed block.
+    """Store parsed Markdown blocks in their original document order.
+
+    Editable prose blocks can be transformed independently while protected code,
+    HTML, and structural blocks survive reconstruction unchanged.
+
+    Example::
+
+        document = parse_markdown("# Chapter 1\n\nStory text.")
+        for block in document.editable_blocks():
+            block.update(block.current_text.strip())
+        cleaned = document.to_markdown()
     """
 
     source: Optional[Path] = None
@@ -166,18 +225,42 @@ class MarkdownDocument:
     blocks: List[MarkdownBlock] = field(default_factory=list)
 
     def add(self, block: MarkdownBlock):
+        """Append a parsed block in document order.
+
+        Example:
+            ``instance.add(block)``
+            Expected behavior: Append a parsed block in document order.
+        """
 
         self.blocks.append(block)
 
     def __len__(self):
+        """Return the number of parsed blocks.
+
+        Example:
+            ``result = instance.__len__()``
+            Expected behavior: Return the number of parsed blocks.
+        """
 
         return len(self.blocks)
 
     def __iter__(self):
+        """Iterate over parsed blocks in document order.
+
+        Example:
+            ``result = instance.__iter__()``
+            Expected behavior: Iterate over parsed blocks in document order.
+        """
 
         return iter(self.blocks)
 
     def editable_blocks(self):
+        """Yield blocks whose prose content may be edited.
+
+        Example:
+            ``result = instance.editable_blocks()``
+            Expected behavior: Yield blocks whose prose content may be edited.
+        """
 
         for block in self.blocks:
 
@@ -185,6 +268,12 @@ class MarkdownDocument:
                 yield block
 
     def protected_blocks(self):
+        """Yield structural blocks that must remain unchanged.
+
+        Example:
+            ``result = instance.protected_blocks()``
+            Expected behavior: Yield structural blocks that must remain unchanged.
+        """
 
         for block in self.blocks:
 
@@ -192,13 +281,22 @@ class MarkdownDocument:
                 yield block
 
     def rebuild(self) -> str:
-        """
-        Reconstruct markdown exactly as stored.
+        """Reconstruct markdown exactly as stored.
+
+        Example:
+            ``result = instance.rebuild()``
+            Expected behavior: Reconstruct markdown exactly as stored.
         """
 
         return "\n".join(block.current_text for block in self.blocks)
 
     def statistics(self):
+        """Return block counts grouped by block type.
+
+        Example:
+            ``result = instance.statistics()``
+            Expected behavior: Return block counts grouped by block type.
+        """
 
         stats = {}
 
@@ -211,8 +309,11 @@ class MarkdownDocument:
         return stats
 
     def to_markdown(self) -> str:
-        """
-        Rebuild the markdown exactly as parsed.
+        """Rebuild the markdown exactly as parsed.
+
+        Example:
+            ``result = instance.to_markdown()``
+            Expected behavior: Rebuild the markdown exactly as parsed.
         """
         # Blocks are parsed from ``splitlines()`` (without line endings),
         # so a newline must be reinserted between adjacent blocks.
@@ -231,8 +332,34 @@ HTML_END = re.compile(r".*</([A-Za-z][A-Za-z0-9]*)>\s*$")
 
 
 class MarkdownParser:
+    """Parse Markdown into typed blocks while preserving source structure.
+
+    Fenced code, HTML blocks, tables, lists, headings, quotes, separators, and
+    prose receive distinct block types. Cleanup stages can therefore edit
+    narrative text without corrupting protected Markdown syntax.
+
+    Example:
+        ``instance = MarkdownParser()``
+        Expected behavior: Parse Markdown into typed blocks while preserving source structure.
+    """
 
     def parse(self, markdown: str) -> MarkdownDocument:
+        """Parse Markdown text into a structured document model.
+
+                        ``MarkdownParser().parse("# Dawn
+
+                Hello.").statistics()`` returns
+                        counts for the heading, blank, and paragraph block types.
+
+                Example:
+                    ``result = instance.parse("# Chapter 1
+
+        Story.")`` demonstrates this behavior: Parse Markdown text into a structured document model.
+
+        Example:
+            ``result = instance.parse("# Chapter 1\n\nStory.")``
+            Expected behavior: Parse Markdown text into a structured document model.
+        """
 
         document = MarkdownDocument()
         lines = markdown.splitlines()
@@ -734,5 +861,9 @@ class MarkdownParser:
 
 
 def parse_markdown(text: str) -> MarkdownDocument:
+    """Parse Markdown text using a fresh default parser.
+
+    This convenience function is equivalent to ``MarkdownParser().parse(text)``.
+    """
 
     return MarkdownParser().parse(text)

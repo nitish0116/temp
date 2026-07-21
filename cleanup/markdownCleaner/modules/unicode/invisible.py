@@ -44,13 +44,16 @@ class InvisibleProcessor(UnicodeProcessor):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Remove invisible characters.
+        """Remove invisible characters.
 
         Returns
         -------
         bool
             True if text changed.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Remove invisible characters.
         """
 
         before = segment.current_text
@@ -83,10 +86,13 @@ class InvisibleProcessor(UnicodeProcessor):
         self,
         text: str,
     ) -> str:
-        """
-        Remove invisible characters.
+        """Remove invisible characters.
 
         Kept separate for easier unit testing.
+
+        Example:
+            ``result = instance._clean_text("Example text.")``
+            Expected behavior: Remove invisible characters.
         """
 
         result = []

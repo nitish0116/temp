@@ -16,8 +16,11 @@ import yaml
 
 
 class PipelineConfig:
-    """
-    Handles pipeline configuration.
+    """Provide validated, nested access to pipeline configuration.
+
+    Relative file paths are resolved against the YAML file's directory rather
+    than the caller's working directory. Dot-separated keys keep stage code
+    concise, for example ``config.get("symspell.confidence_threshold", 92)``.
     """
 
     def __init__(
@@ -25,6 +28,12 @@ class PipelineConfig:
         data=None,
         base_dir=None,
     ):
+        """Initialize configuration data and its path-resolution base directory.
+
+        Example:
+            ``instance = PipelineConfig()``
+            Expected behavior: Initialize configuration data and its path-resolution base directory.
+        """
 
         self.data = data or {}
         self.base_dir = Path(base_dir).resolve() if base_dir else Path.cwd()
@@ -36,8 +45,14 @@ class PipelineConfig:
         cls,
         file_path,
     ):
-        """
-        Load YAML configuration.
+        """Load YAML configuration and remember its directory for path lookup.
+
+        Example:
+            ``PipelineConfig.load("markdownCleaner/config.yaml")`` resolves
+            relative data paths beside that configuration file.
+
+        Raises:
+            FileNotFoundError: If ``file_path`` does not exist.
         """
 
         path = Path(file_path)
@@ -100,8 +115,10 @@ class PipelineConfig:
         self,
         name,
     ):
-        """
-        Return configuration section.
+        """Return a top-level configuration section or an empty mapping.
+
+        For example, ``config.section("unicode")`` returns all Unicode-stage
+        settings without repeated dot-separated lookups.
         """
 
         return self.data.get(name, {})
@@ -113,8 +130,14 @@ class PipelineConfig:
         key,
         value,
     ):
-        """
-        Update nested configuration.
+        """Create or replace a value addressed by a dot-separated key.
+
+        ``config.set("paths.output_directory", "cleaned")`` creates missing
+        intermediate dictionaries when necessary.
+
+        Example:
+            ``instance.set("section.option", "value")``
+            Expected behavior: Create or replace a value addressed by a dot-separated key.
         """
 
         parts = key.split(".")
@@ -132,7 +155,16 @@ class PipelineConfig:
         target[parts[-1]] = value
 
     def resolve_path(self, value):
-        """Resolve a config-relative path without changing special URI-like values."""
+        """Resolve a path relative to the configuration directory.
+
+        Absolute paths are retained. Dictionary selectors such as
+        ``builtin:en-82k`` and ``symspellpy`` are returned verbatim because they
+        identify providers rather than files.
+
+        Example:
+            ``result = instance.resolve_path("value")``
+            Expected behavior: Resolve a path relative to the configuration directory.
+        """
         if value is None:
             return None
         text = str(value)
@@ -146,8 +178,17 @@ class PipelineConfig:
     def validate(
         self,
     ):
-        """
-        Validate required sections.
+        """Validate the minimum configuration shape required by the pipeline.
+
+        Returns:
+            ``True`` when the ``paths`` and ``backup`` sections exist.
+
+        Raises:
+            ValueError: If one or more required sections are missing.
+
+        Example:
+            ``result = instance.validate()``
+            Expected behavior: Validate the minimum configuration shape required by the pipeline.
         """
 
         required = [
@@ -190,8 +231,11 @@ class PipelineConfig:
     def dump(
         self,
     ):
-        """
-        Return raw configuration.
+        """Return the underlying configuration mapping for serialization.
+
+        Example:
+            ``result = instance.dump()``
+            Expected behavior: Return the underlying configuration mapping for serialization.
         """
 
         return self.data

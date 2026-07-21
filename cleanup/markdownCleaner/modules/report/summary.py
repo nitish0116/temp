@@ -14,8 +14,11 @@ from datetime import datetime
 
 
 class SummaryReporter:
-    """
-    Creates markdown cleanup reports.
+    """Creates markdown cleanup reports.
+
+    Example:
+        ``instance = SummaryReporter(change_log)``
+        Expected behavior: Creates markdown cleanup reports.
     """
 
     def __init__(
@@ -23,6 +26,12 @@ class SummaryReporter:
         change_log,
         review_threshold: float = 85.0,
     ):
+        """Configure summary generation and its review threshold.
+
+        Example:
+            ``instance = SummaryReporter(change_log)``
+            Expected behavior: Configure summary generation and its review threshold.
+        """
 
         self.change_log = change_log
 
@@ -35,8 +44,7 @@ class SummaryReporter:
         output_file,
         source_file=None,
     ):
-        """
-        Generate markdown summary report.
+        """Generate markdown summary report.
 
         Args:
             output_file:
@@ -44,6 +52,10 @@ class SummaryReporter:
 
             source_file:
                 Original processed file name
+
+        Example:
+            ``result = instance.generate(output_file)``
+            Expected behavior: Generate markdown summary report.
         """
 
         output_path = Path(output_file)

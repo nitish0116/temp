@@ -15,6 +15,10 @@ def meaningful_output_name(source_file: str | Path) -> str:
     Release/source tags such as ``[Yen Press][Kobo]`` are useful on input files
     but make poor output names. Keep the actual book title and volume, use normal
     spaces, and make the generated-file status explicit.
+
+    Example:
+        ``meaningful_output_name("Tanya_V13_[Kobo].md")`` returns
+        ``"Tanya V13 - Cleaned.md"``.
     """
     source = Path(source_file)
     name = source.stem
@@ -38,9 +42,24 @@ def meaningful_output_name(source_file: str | Path) -> str:
 
 
 class ReportExporter:
-    """Export cleaned Markdown and optional per-file reports."""
+    """Export cleaned Markdown and its auditable companion reports.
+
+    Each export writes the cleaned document, JSON change records, a readable
+    Markdown summary, and pending vocabulary candidates beneath the configured
+    output/report directories.
+
+    Example:
+        ``instance = ReportExporter(Path("output"))``
+        Expected behavior: Export cleaned Markdown and its auditable companion reports.
+    """
 
     def __init__(self, output_directory, report_subdirectory="reports"):
+        """Configure Markdown and report destination directories.
+
+        Example:
+            ``instance = ReportExporter(Path("output"))``
+            Expected behavior: Configure Markdown and report destination directories.
+        """
         self.output_directory = Path(output_directory)
         self.report_directory = self.output_directory / Path(report_subdirectory)
 
@@ -53,6 +72,22 @@ class ReportExporter:
         output_name: str | None = None,
         vocabulary_candidates: list[dict] | None = None,
     ):
+        """Write all artifacts for one successfully processed source.
+
+        Args:
+            cleaned_markdown: Final reconstructed Markdown text.
+            source_file: Original source used in names and report metadata.
+            change_log: Shared tracker capable of JSON export.
+            output_name: Optional filename overriding the generated readable name.
+            vocabulary_candidates: Review-only terms discovered by the pipeline.
+
+        Returns:
+            A mapping from artifact names to their written filesystem paths.
+
+        Example:
+            ``result = instance.export(cleaned_markdown="Cleaned text.", source_file=Path("input.md"), change_log=change_log)``
+            Expected behavior: Write all artifacts for one successfully processed source.
+        """
         self._create_directories()
 
         source = Path(source_file)
@@ -81,5 +116,11 @@ class ReportExporter:
         }
 
     def _create_directories(self):
+        """Create output and report directories when absent.
+
+        Example:
+            ``result = instance._create_directories()``
+            Expected behavior: Create output and report directories when absent.
+        """
         self.output_directory.mkdir(parents=True, exist_ok=True)
         self.report_directory.mkdir(parents=True, exist_ok=True)

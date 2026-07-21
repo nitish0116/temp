@@ -20,14 +20,23 @@ from .candidate import (
 
 
 class SymSpellEngine:
-    """
-    SymSpell implementation.
+    """SymSpell implementation.
+
+    Example:
+        ``instance = SymSpellEngine()``
+        Expected behavior: SymSpell implementation.
     """
 
     def __init__(
         self,
         max_edit_distance: int = 2,
     ):
+        """Initialize empty word and delete indexes for an edit-distance limit.
+
+        Example:
+            ``instance = SymSpellEngine()``
+            Expected behavior: Initialize empty word and delete indexes for an edit-distance limit.
+        """
 
         self.max_edit_distance = max_edit_distance
 
@@ -50,8 +59,11 @@ class SymSpellEngine:
         word: str,
         frequency: int,
     ):
-        """
-        Add dictionary word.
+        """Add dictionary word.
+
+        Example:
+            ``result = instance.add_word("teh", 1000)``
+            Expected behavior: Add dictionary word.
         """
 
         key = word.lower()
@@ -68,8 +80,11 @@ class SymSpellEngine:
         self,
         word: str,
     ):
-        """
-        Find correction candidates.
+        """Find correction candidates.
+
+        Example:
+            ``result = instance.lookup("teh")``
+            Expected behavior: Find correction candidates.
         """
 
         word = word.lower()
@@ -126,8 +141,11 @@ class SymSpellEngine:
         self,
         word,
     ):
-        """
-        Generate delete variants.
+        """Generate delete variants.
+
+        Example:
+            ``result = instance._generate_deletes("teh")``
+            Expected behavior: Generate delete variants.
         """
 
         deletes = set()
@@ -161,10 +179,13 @@ class SymSpellEngine:
         a,
         b,
     ):
-        """
-        Damerau-Levenshtein distance.
+        """Damerau-Levenshtein distance.
 
         Simplified implementation.
+
+        Example:
+            ``result = instance.edit_distance(a, b)``
+            Expected behavior: Damerau-Levenshtein distance.
         """
 
         rows = len(a) + 1

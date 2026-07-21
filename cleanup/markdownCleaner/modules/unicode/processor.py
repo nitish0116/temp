@@ -14,20 +14,29 @@ from ..markdown.segmenter import MarkdownSegment
 
 
 class UnicodeProcessor(ABC):
-    """
-    Base class for every Unicode cleanup processor.
+    """Base class for every Unicode cleanup processor.
 
     Responsibilities
     ----------------
     * Access shared ProcessingContext
     * Record changes
     * Provide a common processing interface
+
+    Example:
+        ``instance = UnicodeProcessor(context)``
+        Expected behavior: Base class for every Unicode cleanup processor.
     """
 
     #: Display name used in logs/reports
     name = "Unicode"
 
     def __init__(self, context: ProcessingContext):
+        """Bind shared processing services and Unicode configuration.
+
+        Example:
+            ``instance = UnicodeProcessor(context)``
+            Expected behavior: Bind shared processing services and Unicode configuration.
+        """
 
         self.context = context
         self.config = context.config
@@ -37,6 +46,12 @@ class UnicodeProcessor(ABC):
     # ---------------------------------------------------------
 
     def enabled(self, key, default=True):
+        """Return whether a named Unicode correction is enabled.
+
+        Example:
+            ``result = instance.enabled("section.option")``
+            Expected behavior: Return whether a named Unicode correction is enabled.
+        """
         unicode_config = self.config.data.get("unicode", {})
 
         fixes = unicode_config.get("fixes", {})
@@ -48,13 +63,16 @@ class UnicodeProcessor(ABC):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Process a segment.
+        """Process a segment.
 
         Returns
         -------
         bool
             True if the processor modified the segment.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Process a segment.
         """
         raise NotImplementedError
 
@@ -69,8 +87,11 @@ class UnicodeProcessor(ABC):
         reason: str,
         confidence: float = 100.0,
     ) -> None:
-        """
-        Record a change in the shared ChangeTracker.
+        """Record a change in the shared ChangeTracker.
+
+        Example:
+            ``instance.record_change(segment=segment, before="teh", after="the", reason="Safe correction")``
+            Expected behavior: Record a change in the shared ChangeTracker.
         """
 
         if before == after:

@@ -20,8 +20,11 @@ from datetime import datetime
 
 @dataclass
 class ChangeRecord:
-    """
-    One text correction event.
+    """One text correction event.
+
+    Example:
+        ``instance = ChangeRecord("RegexOCR", 0, 0, 1, "teh", "the", 98.0, "Safe correction", "2026-01-01T00:00:00")``
+        Expected behavior: One text correction event.
     """
 
     stage: str
@@ -44,11 +47,20 @@ class ChangeRecord:
 
 
 class ChangeLog:
-    """
-    Stores all pipeline corrections.
+    """Stores all pipeline corrections.
+
+    Example:
+        ``instance = ChangeLog()``
+        Expected behavior: Stores all pipeline corrections.
     """
 
     def __init__(self):
+        """Initialize an empty ordered collection of change records.
+
+        Example:
+            ``instance = ChangeLog()``
+            Expected behavior: Initialize an empty ordered collection of change records.
+        """
 
         self.records = []
 
@@ -66,8 +78,11 @@ class ChangeLog:
         confidence,
         reason,
     ):
-        """
-        Add correction record.
+        """Add correction record.
+
+        Example:
+            ``instance.add(stage="RegexOCR", block_index=0, segment_index=0, line=1, before="teh", after="the", confidence=98.0, reason="Safe correction")``
+            Expected behavior: Add correction record.
         """
 
         record = ChangeRecord(
@@ -89,8 +104,11 @@ class ChangeLog:
     def total_changes(
         self,
     ):
-        """
-        Number of changes.
+        """Number of changes.
+
+        Example:
+            ``result = instance.total_changes()``
+            Expected behavior: Number of changes.
         """
 
         return len(self.records)
@@ -101,8 +119,11 @@ class ChangeLog:
         self,
         threshold=90.0,
     ):
-        """
-        Return safe automatic corrections.
+        """Return safe automatic corrections.
+
+        Example:
+            ``result = instance.high_confidence()``
+            Expected behavior: Return safe automatic corrections.
         """
 
         return [item for item in self.records if item.confidence >= threshold]
@@ -113,8 +134,11 @@ class ChangeLog:
         self,
         threshold=85.0,
     ):
-        """
-        Return uncertain changes.
+        """Return uncertain changes.
+
+        Example:
+            ``result = instance.needs_review()``
+            Expected behavior: Return uncertain changes.
         """
 
         return [item for item in self.records if item.confidence < threshold]
@@ -125,8 +149,11 @@ class ChangeLog:
         self,
         path,
     ):
-        """
-        Save complete change log.
+        """Save complete change log.
+
+        Example:
+            ``result = instance.export_json(Path("output.json"))``
+            Expected behavior: Save complete change log.
         """
 
         path = Path(path)

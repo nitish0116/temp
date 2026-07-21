@@ -18,8 +18,15 @@ from ..core.logger import get_logger
 
 @dataclass
 class StageResult:
-    """
-    Result returned by every stage.
+    """Describe the observable outcome of one pipeline stage.
+
+    ``changes`` is the number reported by the stage, while ``success`` and
+    ``error`` distinguish a clean run from a contained failure. The base
+    executor adds ISO-formatted start and finish timestamps.
+
+    Example:
+        ``StageResult(stage="Unicode", changes=3)`` represents a successful
+        stage that logged three transformations.
     """
 
     stage: str
@@ -41,8 +48,26 @@ class StageResult:
 
 
 class PipelineStage(ABC):
-    """
-    Abstract base class for every cleanup stage.
+    """Provide the lifecycle shared by every cleanup stage.
+
+    Subclasses declare ``name`` and, where applicable, ``config_section``.
+    They may prepare resources in :meth:`initialize`, but implement their work
+    in :meth:`process`. Callers should invoke :meth:`execute`, which applies the
+    enabled flag, timestamps the run, updates context statistics, and converts
+    exceptions into unsuccessful :class:`StageResult` objects.
+
+    Stage workflow::
+
+        execute(context)
+          -> is_enabled()
+          -> initialize(context)
+          -> process(context)
+          -> add timing and statistics
+          -> StageResult
+
+    Example:
+        ``instance = PipelineStage(config)``
+        Expected behavior: Provide the lifecycle shared by every cleanup stage.
     """
 
     name = "BaseStage"
@@ -53,6 +78,12 @@ class PipelineStage(ABC):
         self,
         config,
     ):
+        """Bind pipeline configuration and initialize the context reference.
+
+        Example:
+            ``instance = PipelineStage(config)``
+            Expected behavior: Bind pipeline configuration and initialize the context reference.
+        """
 
         self.config = config
 
@@ -64,9 +95,16 @@ class PipelineStage(ABC):
         self,
         context,
     ):
-        """
-        Execute the stage with common
-        timing, statistics and error handling.
+        """Run the complete stage lifecycle against a processing context.
+
+        Disabled stages return a successful zero-change result immediately.
+        Enabled stages initialize, process, timestamp, and publish statistics.
+        Exceptions are logged and returned as failed results so the pipeline can
+        finish its remaining stages and produce diagnostic reports.
+
+        Example:
+            ``result = instance.execute(context)``
+            Expected behavior: Run the complete stage lifecycle against a processing context.
         """
 
         self.context = context
@@ -122,8 +160,15 @@ class PipelineStage(ABC):
         self,
         context,
     ):
-        """
-        Optional initialization hook.
+        """Prepare context-dependent resources before processing.
+
+        The default hook does nothing. Stages override it to construct
+        processors, load dictionaries, or build indexes that need the active
+        document context.
+
+        Example:
+            ``instance.initialize(context)``
+            Expected behavior: Prepare context-dependent resources before processing.
         """
 
         pass
@@ -135,8 +180,14 @@ class PipelineStage(ABC):
         self,
         context,
     ):
-        """
-        Stage implementation.
+        """Transform or inspect the active context and return a stage result.
+
+        Implementations may mutate editable segments and record each mutation,
+        or operate report-only and leave the Markdown unchanged.
+
+        Example:
+            ``result = instance.process(context)``
+            Expected behavior: Transform or inspect the active context and return a stage result.
         """
 
         raise NotImplementedError
@@ -146,9 +197,14 @@ class PipelineStage(ABC):
     def is_enabled(
         self,
     ):
-        """
-        Returns whether the stage is enabled
-        in config.yaml.
+        """Return whether configuration enables this stage.
+
+        A stage without ``config_section`` is always enabled. Otherwise the
+        value comes from ``<config_section>.enabled`` and defaults to true.
+
+        Example:
+            ``result = instance.is_enabled()``
+            Expected behavior: Return whether configuration enables this stage.
         """
 
         if self.config_section is None:
@@ -167,8 +223,14 @@ class PipelineStage(ABC):
         key,
         default=None,
     ):
-        """
-        Convenience wrapper around PipelineConfig.
+        """Read a setting relative to this stage's configuration section.
+
+        For a stage whose section is ``unicode``, ``get_config("enabled")`` is
+        equivalent to ``config.get("unicode.enabled")``.
+
+        Example:
+            ``result = instance.get_config("section.option")``
+            Expected behavior: Read a setting relative to this stage's configuration section.
         """
 
         if self.config_section is None:
@@ -194,9 +256,15 @@ class PipelineStage(ABC):
         confidence,
         reason,
     ):
-        """
-        Record a correction in the shared
-        change log.
+        """Append one auditable transformation to the shared change tracker.
+
+        Location fields are inferred from the segment. ``before`` and ``after``
+        should be the smallest useful excerpts, while ``reason`` explains why
+        the change was considered safe and ``confidence`` quantifies certainty.
+
+        Example:
+            ``instance.record_change(segment=segment, before="teh", after="the", confidence=98.0, reason="Safe correction")``
+            Expected behavior: Append one auditable transformation to the shared change tracker.
         """
 
         self.context.tracker.add(
@@ -232,8 +300,11 @@ class PipelineStage(ABC):
         self,
         message,
     ):
-        """
-        Console logger.
+        """Write an informational message prefixed with the stage name.
+
+        Example:
+            ``instance.log("Processing segment")``
+            Expected behavior: Write an informational message prefixed with the stage name.
         """
 
         get_logger().info(f"[{self.name}] {message}")

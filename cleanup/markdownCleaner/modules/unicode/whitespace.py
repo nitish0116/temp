@@ -21,8 +21,11 @@ from .constants import (
 
 
 class WhitespaceProcessor(UnicodeProcessor):
-    """
-    Normalize whitespace while preserving Markdown structure.
+    """Normalize whitespace while preserving Markdown structure.
+
+    Example:
+        ``instance = WhitespaceProcessor(context)``
+        Expected behavior: Normalize whitespace while preserving Markdown structure.
     """
 
     name = "Whitespace"
@@ -31,13 +34,16 @@ class WhitespaceProcessor(UnicodeProcessor):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Normalize whitespace.
+        """Normalize whitespace.
 
         Returns
         -------
         bool
             True if text changed.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Normalize whitespace.
         """
 
         before = segment.current_text
@@ -129,8 +135,11 @@ class WhitespaceProcessor(UnicodeProcessor):
         self,
         text: str,
     ) -> str:
-        """
-        Convert CRLF/CR to LF.
+        """Convert CRLF/CR to LF.
+
+        Example:
+            ``result = instance._normalize_line_endings("Example text.")``
+            Expected behavior: Convert CRLF/CR to LF.
         """
 
         return text.replace(
@@ -147,10 +156,13 @@ class WhitespaceProcessor(UnicodeProcessor):
         self,
         text: str,
     ) -> str:
-        """
-        Remove spaces before newline.
+        """Remove spaces before newline.
 
         Keeps Markdown indentation intact.
+
+        Example:
+            ``result = instance._remove_trailing_spaces("Example text.")``
+            Expected behavior: Remove spaces before newline.
         """
 
         return re.sub(
@@ -165,10 +177,13 @@ class WhitespaceProcessor(UnicodeProcessor):
         self,
         text: str,
     ) -> str:
-        """
-        Collapse multiple spaces.
+        """Collapse multiple spaces.
 
         Does NOT touch newlines.
+
+        Example:
+            ``result = instance._collapse_spaces("Example text.")``
+            Expected behavior: Collapse multiple spaces.
         """
 
         lines = text.split("\n")

@@ -39,13 +39,16 @@ class PunctuationProcessor(UnicodeProcessor):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Normalize punctuation.
+        """Normalize punctuation.
 
         Returns
         -------
         bool
             True if text changed.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Normalize punctuation.
         """
 
         before = segment.current_text

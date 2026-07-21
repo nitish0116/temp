@@ -23,9 +23,12 @@ from .constants import (
 
 
 class LigatureProcessor(UnicodeProcessor):
-    """
-    Replace Unicode ligature characters with their ASCII
+    """Replace Unicode ligature characters with their ASCII
     character equivalents.
+
+    Example:
+        ``instance = LigatureProcessor(context)``
+        Expected behavior: Replace Unicode ligature characters with their ASCII.
     """
 
     name = "Ligatures"
@@ -36,13 +39,16 @@ class LigatureProcessor(UnicodeProcessor):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Replace ligatures in one segment.
+        """Replace ligatures in one segment.
 
         Returns
         -------
         bool
             True if any replacement occurred.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Replace ligatures in one segment.
         """
 
         if not self.enabled(
@@ -92,10 +98,13 @@ class LigatureProcessor(UnicodeProcessor):
         before: str,
         after: str,
     ) -> int:
-        """
-        Count number of ligature characters replaced.
+        """Count number of ligature characters replaced.
 
         Used only for statistics.
+
+        Example:
+            ``result = instance._count_changes("teh", "the")``
+            Expected behavior: Count number of ligature characters replaced.
         """
 
         count = 0

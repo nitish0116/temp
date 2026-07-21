@@ -36,8 +36,11 @@ from .constants import (
 
 
 class OCRCharacterProcessor(RegexProcessor):
-    """
-    Fix character-level OCR errors.
+    """Fix character-level OCR errors.
+
+    Example:
+        ``instance = OCRCharacterProcessor(context)``
+        Expected behavior: Fix character-level OCR errors.
     """
 
     name = "OCRCharacters"
@@ -48,11 +51,14 @@ class OCRCharacterProcessor(RegexProcessor):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Apply OCR character corrections.
+        """Apply OCR character corrections.
 
         Returns:
             True if text changed.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Apply OCR character corrections.
         """
 
         before = segment.current_text
@@ -99,8 +105,11 @@ class OCRCharacterProcessor(RegexProcessor):
         self,
         text: str,
     ) -> str:
-        """
-        Replace common OCR alphabet confusion.
+        """Replace common OCR alphabet confusion.
+
+        Example:
+            ``result = instance._replace_character_patterns("Example text.")``
+            Expected behavior: Replace common OCR alphabet confusion.
         """
 
         result = text
@@ -110,6 +119,7 @@ class OCRCharacterProcessor(RegexProcessor):
             pattern = re.compile(rf"\b\w*{old}\w*\b")
 
             def replace(match):
+                """Return the context-sensitive replacement for one regex match."""
 
                 word = match.group(0)
 

@@ -11,8 +11,11 @@ from dataclasses import dataclass
 
 @dataclass
 class MarkdownSegment:
-    """
-    Represents a single markdown processing unit.
+    """Represents a single markdown processing unit.
+
+    Example:
+        ``instance = MarkdownSegment("Example text.", 1)``
+        Expected behavior: Represents a single markdown processing unit.
     """
 
     text: str
@@ -44,6 +47,12 @@ class MarkdownSegment:
     def __post_init__(
         self,
     ):
+        """Initialize current text and missing source-line boundaries.
+
+        Example:
+            ``result = instance.__post_init__()``
+            Expected behavior: Initialize current text and missing source-line boundaries.
+        """
 
         if not self.current_text:
 
@@ -63,8 +72,11 @@ class MarkdownSegment:
         self,
         value: str,
     ):
-        """
-        Update processed text.
+        """Update processed text.
+
+        Example:
+            ``instance.update("value")``
+            Expected behavior: Update processed text.
         """
 
         original_has_newline = self.current_text.endswith("\n")
@@ -79,8 +91,11 @@ class MarkdownSegment:
     def get_text(
         self,
     ):
-        """
-        Return current processed text.
+        """Return current processed text.
+
+        Example:
+            ``result = instance.get_text()``
+            Expected behavior: Return current processed text.
         """
 
         return self.current_text

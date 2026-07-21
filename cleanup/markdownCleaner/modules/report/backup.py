@@ -18,14 +18,23 @@ from datetime import datetime
 
 
 class BackupManager:
-    """
-    Handles original file backups.
+    """Handles original file backups.
+
+    Example:
+        ``instance = BackupManager(backup_root)``
+        Expected behavior: Handles original file backups.
     """
 
     def __init__(
         self,
         backup_root,
     ):
+        """Configure the root directory used for timestamped backups.
+
+        Example:
+            ``instance = BackupManager(backup_root)``
+            Expected behavior: Configure the root directory used for timestamped backups.
+        """
 
         self.backup_root = Path(backup_root)
 
@@ -35,11 +44,14 @@ class BackupManager:
         self,
         source_file,
     ):
-        """
-        Create timestamped backup.
+        """Create timestamped backup.
 
         Returns:
             backup directory
+
+        Example:
+            ``result = instance.create_backup(Path("input.md"))``
+            Expected behavior: Create timestamped backup.
         """
 
         source = Path(source_file)
@@ -85,8 +97,11 @@ class BackupManager:
         self,
         path,
     ):
-        """
-        Generate SHA256 checksum.
+        """Generate SHA256 checksum.
+
+        Example:
+            ``result = instance._hash_file(Path("output.json"))``
+            Expected behavior: Generate SHA256 checksum.
         """
 
         sha = hashlib.sha256()
@@ -109,6 +124,12 @@ class BackupManager:
         folder,
         metadata,
     ):
+        """Write JSON metadata describing an immutable source backup.
+
+        Example:
+            ``result = instance._write_metadata(folder, metadata)``
+            Expected behavior: Write JSON metadata describing an immutable source backup.
+        """
 
         file = Path(folder) / "metadata.json"
 

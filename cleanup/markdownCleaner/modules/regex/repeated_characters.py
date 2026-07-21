@@ -25,8 +25,11 @@ from .constants import (
 
 
 class RepeatedCharacterProcessor(RegexProcessor):
-    """
-    Reduce accidental OCR character duplication.
+    """Reduce accidental OCR character duplication.
+
+    Example:
+        ``instance = RepeatedCharacterProcessor(context)``
+        Expected behavior: Reduce accidental OCR character duplication.
     """
 
     name = "RepeatedCharacters"
@@ -37,11 +40,14 @@ class RepeatedCharacterProcessor(RegexProcessor):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Remove excessive repeated characters.
+        """Remove excessive repeated characters.
 
         Returns:
             True if changed.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Remove excessive repeated characters.
         """
 
         before = segment.current_text
@@ -82,8 +88,7 @@ class RepeatedCharacterProcessor(RegexProcessor):
         self,
         match: re.Match,
     ) -> str:
-        """
-        Convert:
+        """Convert:
 
             aaa
 
@@ -91,6 +96,9 @@ class RepeatedCharacterProcessor(RegexProcessor):
 
             a
 
+        Example:
+            ``result = instance._reduce_repeat(match)``
+            Expected behavior: Convert:.
         """
 
         character = match.group(1)

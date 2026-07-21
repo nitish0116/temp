@@ -22,8 +22,7 @@ from ..markdown.segmenter import MarkdownSegment
 
 
 class ProcessingContext:
-    """
-    Shared processing state.
+    """Shared processing state.
 
     Markdown flow:
 
@@ -38,9 +37,19 @@ class ProcessingContext:
        pipeline stages
           ↓
       rebuild markdown
+
+    Example:
+        ``instance = ProcessingContext(config)``
+        Expected behavior: Shared processing state.
     """
 
     def __init__(self, config):
+        """Create empty shared state for one pipeline execution.
+
+        Example:
+            ``instance = ProcessingContext(config)``
+            Expected behavior: Create empty shared state for one pipeline execution.
+        """
 
         self.config = config
 
@@ -80,12 +89,24 @@ class ProcessingContext:
 
     @property
     def total_changes(self):
+        """Return the number of change and review records collected so far.
+
+        Example:
+            ``value = instance.total_changes``
+            Expected behavior: Return the number of change and review records collected so far.
+        """
 
         return self.tracker.total_changes()
 
     # -------------------------------------------------------------
 
     def load_markdown(self, file_path):
+        """Read, parse, and segment a UTF-8 Markdown source file.
+
+        Example:
+            ``result = instance.load_markdown(Path("input.md"))``
+            Expected behavior: Read, parse, and segment a UTF-8 Markdown source file.
+        """
 
         path = Path(file_path)
 
@@ -117,6 +138,12 @@ class ProcessingContext:
     # -------------------------------------------------------------
 
     def _create_segments(self):
+        """Create editable wrappers for paragraph blocks in the document.
+
+        Example:
+            ``result = instance._create_segments()``
+            Expected behavior: Create editable wrappers for paragraph blocks in the document.
+        """
 
         self.segments = []
 
@@ -148,6 +175,12 @@ class ProcessingContext:
     # -------------------------------------------------------------
 
     def update_markdown(self):
+        """Copy segment edits into the document and rebuild Markdown text.
+
+        Example:
+            ``result = instance.update_markdown()``
+            Expected behavior: Copy segment edits into the document and rebuild Markdown text.
+        """
 
         #
         # Copy edited text back into markdown blocks
@@ -166,7 +199,17 @@ class ProcessingContext:
     # -------------------------------------------------------------
 
     def replace_markdown(self, markdown: str):
-        """Replace the complete working document and rebuild editable segments."""
+        """Replace the complete working document and rebuild editable segments.
+
+                Example:
+                    ``result = instance.replace_markdown("# Chapter 1
+
+        Story.")`` demonstrates this behavior: Replace the complete working document and rebuild editable segments.
+
+        Example:
+            ``result = instance.replace_markdown("# Chapter 1\n\nStory.")``
+            Expected behavior: Replace the complete working document and rebuild editable segments.
+        """
         self.current_markdown = markdown
         parser = MarkdownParser()
         self.document = parser.parse(markdown)
@@ -176,6 +219,12 @@ class ProcessingContext:
     # -------------------------------------------------------------
 
     def get_markdown(self):
+        """Return current Markdown after synchronizing editable segments.
+
+        Example:
+            ``result = instance.get_markdown()``
+            Expected behavior: Return current Markdown after synchronizing editable segments.
+        """
 
         self.update_markdown()
 
@@ -184,23 +233,47 @@ class ProcessingContext:
     # -------------------------------------------------------------
 
     def iter_segments(self):
+        """Yield editable Markdown segments in document order.
+
+        Example:
+            ``result = instance.iter_segments()``
+            Expected behavior: Yield editable Markdown segments in document order.
+        """
 
         yield from self.segments
 
     # -------------------------------------------------------------
 
     def add_stat(self, stage, changes):
+        """Store a stage's change count in execution statistics.
+
+        Example:
+            ``result = instance.add_stat("RegexOCR", changes)``
+            Expected behavior: Store a stage's change count in execution statistics.
+        """
 
         self.statistics["stages"][stage] = changes
 
     # -------------------------------------------------------------
 
     def increment(self, name, amount=1):
+        """Increment a named processing statistic.
+
+        Example:
+            ``result = instance.increment("Unicode")``
+            Expected behavior: Increment a named processing statistic.
+        """
 
         self.statistics[name] = self.statistics.get(name, 0) + amount
 
     # -------------------------------------------------------------
 
     def finish(self):
+        """Record the processing completion timestamp.
+
+        Example:
+            ``result = instance.finish()``
+            Expected behavior: Record the processing completion timestamp.
+        """
 
         self.statistics["finished"] = datetime.now().isoformat()

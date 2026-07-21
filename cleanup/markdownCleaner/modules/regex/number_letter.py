@@ -27,8 +27,11 @@ from .processor import RegexProcessor
 
 
 class NumberLetterProcessor(RegexProcessor):
-    """
-    Replace digits incorrectly recognized as letters.
+    """Replace digits incorrectly recognized as letters.
+
+    Example:
+        ``instance = NumberLetterProcessor(context)``
+        Expected behavior: Replace digits incorrectly recognized as letters.
     """
 
     name = "NumberLetter"
@@ -54,11 +57,14 @@ class NumberLetterProcessor(RegexProcessor):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Replace numbers inside words.
+        """Replace numbers inside words.
 
         Returns:
             True if changed.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Replace numbers inside words.
         """
 
         before = segment.current_text
@@ -93,8 +99,11 @@ class NumberLetterProcessor(RegexProcessor):
         self,
         text: str,
     ) -> str:
-        """
-        Process only alphabetic word tokens.
+        """Process only alphabetic word tokens.
+
+        Example:
+            ``result = instance._process_words("Example text.")``
+            Expected behavior: Process only alphabetic word tokens.
         """
 
         words = text.split()
@@ -113,9 +122,11 @@ class NumberLetterProcessor(RegexProcessor):
         self,
         word: str,
     ) -> str:
-        """
-        Fix digits appearing inside a word.
+        """Fix digits appearing inside a word.
 
+        Example:
+            ``result = instance._fix_word("teh")``
+            Expected behavior: Fix digits appearing inside a word.
         """
 
         if not self._contains_letters_and_digits(word):
@@ -139,9 +150,12 @@ class NumberLetterProcessor(RegexProcessor):
         self,
         word: str,
     ) -> bool:
-        """
-        Check whether token contains both
+        """Check whether token contains both
         letters and digits.
+
+        Example:
+            ``result = instance._contains_letters_and_digits("teh")``
+            Expected behavior: Check whether token contains both.
         """
 
         has_letter = bool(

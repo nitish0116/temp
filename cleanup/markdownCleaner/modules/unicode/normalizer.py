@@ -28,16 +28,25 @@ from .constants import (
 
 
 class UnicodeNormalizer(UnicodeProcessor):
-    """
-    Normalize Unicode characters.
+    """Normalize Unicode characters.
 
     This should run first in UnicodeStage because later processors
     operate on normalized text.
+
+    Example:
+        ``instance = UnicodeNormalizer(context)``
+        Expected behavior: Normalize Unicode characters.
     """
 
     name = "UnicodeNormalizer"
 
     def __init__(self, context):
+        """Configure the Unicode normalization form from pipeline settings.
+
+        Example:
+            ``instance = UnicodeNormalizer(context)``
+            Expected behavior: Configure the Unicode normalization form from pipeline settings.
+        """
 
         super().__init__(context)
 
@@ -63,13 +72,16 @@ class UnicodeNormalizer(UnicodeProcessor):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Normalize one text segment.
+        """Normalize one text segment.
 
         Returns
         -------
         bool
             True if text changed.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Normalize one text segment.
         """
 
         before = segment.current_text

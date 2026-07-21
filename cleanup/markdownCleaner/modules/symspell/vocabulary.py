@@ -17,7 +17,24 @@ TERM = re.compile(rf"{WORD.pattern}(?:\s+{WORD.pattern})*")
 
 
 def merge_approved_words(path: str | Path, words: list[str]) -> list[str]:
-    """Safely merge explicitly approved words into a JSON glossary."""
+    """Merge explicitly approved terms into a JSON glossary.
+
+    Existing list- or object-based glossaries are accepted. Terms are validated,
+    deduplicated case-insensitively, sorted for stable review, and written as a
+    JSON list. Nothing is added without appearing in ``words``.
+
+    Example::
+
+        added = merge_approved_words(
+            "data/custom_words.json", ["sitrep", "Ainz Ooal Gown"]
+        )
+
+    Returns:
+        The newly inserted terms; existing terms are omitted from this list.
+
+    Raises:
+        ValueError: If the glossary shape or an approved term is invalid.
+    """
     target = Path(path)
     existing: list[str] = []
     if target.exists():
@@ -48,12 +65,36 @@ def merge_approved_words(path: str | Path, words: list[str]) -> list[str]:
 
 
 class VocabularyCandidateStage(PipelineStage):
-    """Discover repeated unknown terms without changing text or glossaries."""
+    """Discover domain vocabulary for review without silently approving it.
+
+    The report-only workflow counts token forms and source lines, excludes known
+    or protected words, and attaches the best dictionary suggestion when one
+    exists. Candidates are stored in ``context.metadata['glossary_candidates']``
+    and logged as ``pending_review``. The document and glossary remain unchanged.
+
+    A reviewer can later approve a candidate explicitly with::
+
+        python -m markdownCleaner.cli --approve-words sitrep noncoms
+
+    Example:
+        ``instance = VocabularyCandidateStage(config)``
+        Expected behavior: Discover domain vocabulary for review without silently approving it.
+    """
 
     name = "VocabularyCandidates"
     config_section = "vocabulary_candidates"
 
     def process(self, context) -> StageResult:
+        """Collect and report repeated unknown terms as review-only candidates.
+
+        The configured occurrence threshold suppresses one-off noise, while the
+        report limit bounds memory and audit output. ``changes`` in the returned
+        result means findings reported—not text mutations—for this stage.
+
+        Example:
+            ``result = instance.process(context)``
+            Expected behavior: Collect and report repeated unknown terms as review-only candidates.
+        """
         text = context.current_markdown or context.original_markdown
         manager = DictionaryManager(
             dictionary_path=context.config.resolve_path(

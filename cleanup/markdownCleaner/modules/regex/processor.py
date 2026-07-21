@@ -13,6 +13,12 @@ from ..markdown.segmenter import MarkdownSegment
 
 
 class RegexProcessor(ABC):
+    """Base interface and reporting support for deterministic regex processors.
+
+    Example:
+        ``instance = RegexProcessor(context)``
+        Expected behavior: Base interface and reporting support for deterministic regex processors.
+    """
 
     name = "Regex"
 
@@ -20,6 +26,12 @@ class RegexProcessor(ABC):
         self,
         context: ProcessingContext,
     ):
+        """Bind shared configuration, logging, and change-tracking services.
+
+        Example:
+            ``instance = RegexProcessor(context)``
+            Expected behavior: Bind shared configuration, logging, and change-tracking services.
+        """
 
         self.context = context
 
@@ -36,11 +48,14 @@ class RegexProcessor(ABC):
         self,
         segment: MarkdownSegment,
     ) -> bool:
-        """
-        Process one text segment.
+        """Process one text segment.
 
         Returns:
             True if text changed.
+
+        Example:
+            ``result = instance.process(segment)``
+            Expected behavior: Process one text segment.
         """
 
         raise NotImplementedError
@@ -56,6 +71,12 @@ class RegexProcessor(ABC):
         reason: str,
         confidence: float,
     ):
+        """Record a non-empty segment transformation in the shared change log.
+
+        Example:
+            ``instance.record_change(segment=segment, before="teh", after="the", reason="Safe correction", confidence=98.0)``
+            Expected behavior: Record a non-empty segment transformation in the shared change log.
+        """
 
         if before == after:
             return

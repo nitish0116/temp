@@ -69,14 +69,39 @@ from markdownCleaner.modules.core.config import (
 
 
 class OCRPipeline:
-    """
-    Main OCR cleanup pipeline.
+    """Coordinate cleanup, validation, backup, and report generation.
+
+    The pipeline owns one :class:`ProcessingContext`. It loads the source into
+    that context, runs stages in a deliberate order, and finally exports the
+    cleaned Markdown and audit reports. Earlier deterministic cleanup reduces
+    ambiguity for later dictionary correction.
+
+    Workflow::
+
+        source Markdown -> optional backup -> document reconstruction
+        -> Unicode normalization -> deterministic OCR rules
+        -> vocabulary candidate report -> conservative SymSpell correction
+        -> TTS validation -> cleaned Markdown and reports
+
+    Example::
+
+        pipeline = OCRPipeline("config.yaml")
+        result = pipeline.run("book.md", output_directory="output")
+        print(result["output"]["markdown"])
     """
 
     def __init__(
         self,
         config_file,
     ):
+        """Load and validate configuration, then initialize pipeline logging.
+
+        Args:
+            config_file: Path to the YAML configuration used by all stages.
+
+        Stage objects are intentionally deferred until :meth:`initialize`,
+        because several processors require a loaded document context.
+        """
 
         self.config = PipelineConfig.load(config_file)
 
@@ -106,8 +131,15 @@ class OCRPipeline:
         self,
         input_file,
     ):
-        """
-        Initialize pipeline.
+        """Load one Markdown document and register its ordered stage workflow.
+
+        Args:
+            input_file: Markdown source path loaded into a fresh context.
+
+        This method resets ``context`` and ``stages`` for each run. Stage order
+        matters: structural cleanup precedes character-level fixes, candidate
+        discovery observes text before SymSpell mutates it, and TTS validation
+        inspects the final cleaned content.
         """
 
         self.context = ProcessingContext(self.config)
@@ -137,8 +169,13 @@ class OCRPipeline:
         self,
         input_file,
     ):
-        """
-        Create original backup.
+        """Create a timestamped backup of the original input.
+
+        Args:
+            input_file: Source file to preserve before any processing starts.
+
+        Returns:
+            The backup directory returned by :class:`BackupManager`.
         """
 
         manager = BackupManager(
@@ -160,8 +197,27 @@ class OCRPipeline:
         output_name=None,
         report_subdirectory="reports",
     ):
-        """
-        Execute complete pipeline.
+        """Execute the end-to-end workflow for one Markdown file.
+
+        Args:
+            input_file: Markdown source to clean.
+            output_directory: Optional destination overriding configuration.
+            output_name: Optional meaningful output filename for batch mode.
+            report_subdirectory: Relative directory for this file's reports.
+
+        Returns:
+            A mapping containing the backup path, ordered stage results, output
+            artifact paths, and elapsed time. Individual stage failures remain
+            in the result so callers can report them without losing later-stage
+            diagnostics.
+
+        Example::
+
+            result = OCRPipeline("config.yaml").run(
+                "volume-13.md",
+                output_directory="cleaned",
+                output_name="Tanya Volume 13 - Cleaned.md",
+            )
         """
 
         #

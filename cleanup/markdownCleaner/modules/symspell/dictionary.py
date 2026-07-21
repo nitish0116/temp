@@ -9,11 +9,22 @@ from typing import Iterable
 
 
 class DictionaryManager:
-    """Manage the main frequency dictionary and protected vocabulary."""
+    """Manage the main frequency dictionary and protected vocabulary.
+
+    Example:
+        ``instance = DictionaryManager()``
+        Expected behavior: Manage the main frequency dictionary and protected vocabulary.
+    """
 
     BUILTIN_NAMES = {"builtin", "builtin:en", "builtin:en-82k", "symspellpy"}
 
     def __init__(self, dictionary_path=None, glossary_path=None, learned_path=None):
+        """Configure primary, glossary, and learned vocabulary sources.
+
+        Example:
+            ``instance = DictionaryManager()``
+            Expected behavior: Configure primary, glossary, and learned vocabulary sources.
+        """
         self.words: dict[str, int] = {}
         self.protected_words: set[str] = set()
         self.dictionary_path = dictionary_path
@@ -21,6 +32,12 @@ class DictionaryManager:
         self.learned_path = Path(learned_path) if learned_path else None
 
     def load(self) -> None:
+        """Load all configured vocabulary sources into memory.
+
+        Example:
+            ``result = instance.load()``
+            Expected behavior: Load all configured vocabulary sources into memory.
+        """
         if self.dictionary_path:
             path = self._resolve_dictionary_path(self.dictionary_path)
             self._load_frequency_dictionary(path)
@@ -31,6 +48,12 @@ class DictionaryManager:
 
     @classmethod
     def _resolve_dictionary_path(cls, value) -> Path:
+        """Resolve a built-in dictionary alias or explicit path.
+
+        Example:
+            ``result = DictionaryManager._resolve_dictionary_path("value")``
+            Expected behavior: Resolve a built-in dictionary alias or explicit path.
+        """
         text = str(value).strip()
         if text.lower() not in cls.BUILTIN_NAMES:
             return Path(text)
@@ -49,6 +72,12 @@ class DictionaryManager:
             ) from exc
 
     def _load_frequency_dictionary(self, path: Path) -> None:
+        """Load word-frequency pairs from a SymSpell text dictionary.
+
+        Example:
+            ``result = instance._load_frequency_dictionary(Path("output.json"))``
+            Expected behavior: Load word-frequency pairs from a SymSpell text dictionary.
+        """
         if not path.exists():
             raise FileNotFoundError(f"SymSpell dictionary not found: {path}")
         with path.open("r", encoding="utf-8") as file:
@@ -64,6 +93,12 @@ class DictionaryManager:
                 self.add_word(word, frequency)
 
     def _load_glossary(self, path: Path) -> None:
+        """Load custom terms as frequent protected vocabulary.
+
+        Example:
+            ``result = instance._load_glossary(Path("output.json"))``
+            Expected behavior: Load custom terms as frequent protected vocabulary.
+        """
         if not path.exists():
             return
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -83,6 +118,10 @@ class DictionaryManager:
         Learned terms are intentionally *not* used as correction targets. This
         prevents a typo accidentally learned in one book from being propagated
         into later books.
+
+        Example:
+            ``result = instance._load_learned_words(Path("output.json"))``
+            Expected behavior: Load user-approved learned words as protected vocabulary.
         """
         if not path.exists():
             return
@@ -96,6 +135,12 @@ class DictionaryManager:
             self.add_word(str(word), frequency=1, protected=True)
 
     def add_word(self, word: str, frequency: int = 1, protected: bool = False) -> None:
+        """Add or update a normalized word and optionally protect it.
+
+        Example:
+            ``result = instance.add_word("teh")``
+            Expected behavior: Add or update a normalized word and optionally protect it.
+        """
         key = word.lower()
         if not key:
             return
@@ -104,14 +149,38 @@ class DictionaryManager:
             self.protected_words.add(key)
 
     def protect(self, word: str) -> None:
+        """Exempt a word from automatic correction.
+
+        Example:
+            ``instance.protect("teh")``
+            Expected behavior: Exempt a word from automatic correction.
+        """
         if word:
             self.protected_words.add(word.lower())
 
     def contains(self, word: str) -> bool:
+        """Return whether a word exists in the combined dictionary.
+
+        Example:
+            ``result = instance.contains("teh")``
+            Expected behavior: Return whether a word exists in the combined dictionary.
+        """
         return word.lower() in self.words
 
     def is_protected(self, word: str) -> bool:
+        """Return whether a word is exempt from correction.
+
+        Example:
+            ``result = instance.is_protected("teh")``
+            Expected behavior: Return whether a word is exempt from correction.
+        """
         return word.lower() in self.protected_words
 
     def frequency(self, word: str) -> int:
+        """Return a word's frequency or zero when unknown.
+
+        Example:
+            ``result = instance.frequency("teh")``
+            Expected behavior: Return a word's frequency or zero when unknown.
+        """
         return self.words.get(word.lower(), 0)
