@@ -40,9 +40,7 @@ def _ensure_dependencies() -> None:
 
     if missing:
         print(f"Installing missing packages: {', '.join(missing)}")
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", *missing]
-        )
+        subprocess.check_call([sys.executable, "-m", "pip", "install", *missing])
 
 
 class _FlowableBuilder(HTMLParser):
@@ -150,12 +148,33 @@ def _build_pdf(blocks: List[Tuple[str, str]], output_path: str, title: str) -> N
         alignment=TA_LEFT,
     )
     heading_styles = {
-        "h1": ParagraphStyle("H1", parent=styles["Heading1"], fontName="Times-Bold",
-                             fontSize=22, leading=26, spaceBefore=18, spaceAfter=12),
-        "h2": ParagraphStyle("H2", parent=styles["Heading2"], fontName="Times-Bold",
-                             fontSize=18, leading=22, spaceBefore=14, spaceAfter=10),
-        "h3": ParagraphStyle("H3", parent=styles["Heading3"], fontName="Times-Bold",
-                             fontSize=15, leading=19, spaceBefore=12, spaceAfter=8),
+        "h1": ParagraphStyle(
+            "H1",
+            parent=styles["Heading1"],
+            fontName="Times-Bold",
+            fontSize=22,
+            leading=26,
+            spaceBefore=18,
+            spaceAfter=12,
+        ),
+        "h2": ParagraphStyle(
+            "H2",
+            parent=styles["Heading2"],
+            fontName="Times-Bold",
+            fontSize=18,
+            leading=22,
+            spaceBefore=14,
+            spaceAfter=10,
+        ),
+        "h3": ParagraphStyle(
+            "H3",
+            parent=styles["Heading3"],
+            fontName="Times-Bold",
+            fontSize=15,
+            leading=19,
+            spaceBefore=12,
+            spaceAfter=8,
+        ),
     }
     for level in ("h4", "h5", "h6"):
         heading_styles[level] = heading_styles["h3"]
@@ -197,12 +216,12 @@ def _build_pdf(blocks: List[Tuple[str, str]], output_path: str, title: str) -> N
 # Decorative/ornamental characters (geometric shapes, dingbats, box-drawing,
 # and stars) that act as visual dividers but add nothing when read aloud.
 _ORNAMENT_CHARS = (
-    "\u25A0-\u25FF"   # Geometric Shapes: ■ □ ◆ ◇ ● ○ ◢ ◣ ▲ ▼ etc.
-    "\u2600-\u26FF"   # Miscellaneous Symbols: stars, suns, etc.
-    "\u2700-\u27BF"   # Dingbats: ✱ ✲ ✦ ✧ ❖ etc.
-    "\u2500-\u257F"   # Box Drawing: ─ │ ┼ etc.
-    "\u2580-\u259F"   # Block Elements: ▀ ▄ █ etc.
-    "\u2b00-\u2bff"   # Misc Symbols and Arrows: ⬛ ⬥ ★ variants etc.
+    "\u25a0-\u25ff"  # Geometric Shapes: ■ □ ◆ ◇ ● ○ ◢ ◣ ▲ ▼ etc.
+    "\u2600-\u26ff"  # Miscellaneous Symbols: stars, suns, etc.
+    "\u2700-\u27bf"  # Dingbats: ✱ ✲ ✦ ✧ ❖ etc.
+    "\u2500-\u257f"  # Box Drawing: ─ │ ┼ etc.
+    "\u2580-\u259f"  # Block Elements: ▀ ▄ █ etc.
+    "\u2b00-\u2bff"  # Misc Symbols and Arrows: ⬛ ⬥ ★ variants etc.
 )
 _ORNAMENT_RE = re.compile(f"[{_ORNAMENT_CHARS}]")
 
@@ -345,7 +364,6 @@ def convert(md_path: str, pdf_path: str) -> None:
     _build_pdf(parser.blocks, pdf_path, title)
 
 
-
 def _default_input() -> Optional[str]:
     """Return the single .md file in the script folder, if there is exactly one."""
     here = os.path.dirname(os.path.abspath(__file__))
@@ -381,7 +399,9 @@ def _crisp_stem_from_markdown(md_path: str) -> str:
 
     # Prefer a single canonical title + first volume marker when the source
     # filename repeats the title or embeds duplicate volume metadata.
-    volume_match = re.search(r"\b(?:volume|vol\.?|book)\s*0*(\d+)\b", stem, re.IGNORECASE)
+    volume_match = re.search(
+        r"\b(?:volume|vol\.?|book)\s*0*(\d+)\b", stem, re.IGNORECASE
+    )
     if volume_match:
         title_part = stem[: volume_match.start()].strip(" -_.")
         volume_number = int(volume_match.group(1))
@@ -399,7 +419,9 @@ def _crisp_stem_from_markdown(md_path: str) -> str:
     return stem or "converted"
 
 
-def _default_pdf_output_path(md_path: str, used_paths: Optional[set[str]] = None) -> str:
+def _default_pdf_output_path(
+    md_path: str, used_paths: Optional[set[str]] = None
+) -> str:
     """Return a crisp default PDF path for a markdown file.
 
     If multiple files resolve to the same name in a single --all run, append a
@@ -423,7 +445,8 @@ def _default_pdf_output_path(md_path: str, used_paths: Optional[set[str]] = None
         index += 1
 
 
-def main() -> int:
+def _build_argument_parser() -> argparse.ArgumentParser:
+    """Create the command-line parser without reading process arguments."""
     parser = argparse.ArgumentParser(
         description="Convert a Markdown file into an accessible PDF for "
         "Adobe Acrobat's Read Out Loud feature."
@@ -445,56 +468,80 @@ def main() -> int:
         action="store_true",
         help="Convert all .md files in the script folder into PDFs.",
     )
+    return parser
+
+
+def _convert_all_markdown(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> int:
+    """Convert every Markdown file beside the script and summarize failures."""
+    if args.input or args.output:
+        parser.error("--all cannot be used with positional input/output arguments.")
+
+    md_files = _list_markdown_files()
+    if not md_files:
+        print("Error: no Markdown (.md) files were found in this folder.")
+        return 1
+
+    _ensure_dependencies()
+    failed = 0
+    used_paths: set[str] = set()
+    for md_path in md_files:
+        pdf_path = _default_pdf_output_path(md_path, used_paths)
+        used_paths.add(pdf_path)
+        print(f"Converting: {md_path}")
+        try:
+            convert(md_path, pdf_path)
+            print(f"PDF written: {pdf_path}")
+        except Exception as exc:
+            failed += 1
+            print(f"Failed: {md_path}")
+            print(f"Reason: {exc}")
+
+    if failed:
+        print(f"Done with errors: {len(md_files) - failed} succeeded, {failed} failed.")
+        return 1
+
+    print(f"Done: converted {len(md_files)} file(s).")
+    return 0
+
+
+def _resolve_cli_input(
+    parser: argparse.ArgumentParser, requested: Optional[str]
+) -> Optional[str]:
+    """Resolve an explicit or implicit input, printing choices when ambiguous."""
+    md_path = requested or _default_input()
+    if md_path:
+        return md_path
+
+    md_files = _list_markdown_files()
+    if not md_files:
+        parser.error(
+            "No Markdown file specified and no .md files were found in this folder."
+        )
+
+    print("Multiple Markdown files found. Please choose one:")
+    for idx, path in enumerate(md_files, start=1):
+        print(f"  {idx}. {os.path.basename(path)}")
+
+    print("\nRun one of these commands:")
+    script_name = os.path.basename(__file__)
+    for idx, path in enumerate(md_files, start=1):
+        print(f'  {idx}) python .\\{script_name} "{os.path.basename(path)}"')
+    print(f"\nOr convert all at once:\n  python .\\{script_name} --all")
+    return None
+
+
+def main() -> int:
+    """Run the Markdown-to-PDF command-line application."""
+    parser = _build_argument_parser()
     args = parser.parse_args()
 
     if args.all:
-        if args.input or args.output:
-            parser.error("--all cannot be used with positional input/output arguments.")
+        return _convert_all_markdown(parser, args)
 
-        md_files = _list_markdown_files()
-        if not md_files:
-            print("Error: no Markdown (.md) files were found in this folder.")
-            return 1
-
-        _ensure_dependencies()
-
-        failed = 0
-        used_paths: set[str] = set()
-        for md_path in md_files:
-            pdf_path = _default_pdf_output_path(md_path, used_paths)
-            used_paths.add(pdf_path)
-            print(f"Converting: {md_path}")
-            try:
-                convert(md_path, pdf_path)
-                print(f"PDF written: {pdf_path}")
-            except Exception as exc:
-                failed += 1
-                print(f"Failed: {md_path}")
-                print(f"Reason: {exc}")
-
-        if failed:
-            print(f"Done with errors: {len(md_files) - failed} succeeded, {failed} failed.")
-            return 1
-
-        print(f"Done: converted {len(md_files)} file(s).")
-        return 0
-
-    md_path = args.input or _default_input()
+    md_path = _resolve_cli_input(parser, args.input)
     if not md_path:
-        md_files = _list_markdown_files()
-        if not md_files:
-            parser.error("No Markdown file specified and no .md files were found in this folder.")
-
-        print("Multiple Markdown files found. Please choose one:")
-        for idx, path in enumerate(md_files, start=1):
-            print(f"  {idx}. {os.path.basename(path)}")
-
-        print("\nRun one of these commands:")
-        script_name = os.path.basename(__file__)
-        for idx, path in enumerate(md_files, start=1):
-            base = os.path.basename(path)
-            print(f"  {idx}) python .\\{script_name} \"{base}\"")
-        print(f"\nOr convert all at once:\n  python .\\{script_name} --all")
         return 1
 
     if args.input and not os.path.isabs(md_path) and not os.path.isfile(md_path):
@@ -508,7 +555,11 @@ def main() -> int:
         print(f"Error: '{md_path}' is not a file.")
         return 1
 
-    pdf_path = os.path.abspath(args.output) if args.output else _default_pdf_output_path(md_path)
+    pdf_path = (
+        os.path.abspath(args.output)
+        if args.output
+        else _default_pdf_output_path(md_path)
+    )
 
     _ensure_dependencies()
 

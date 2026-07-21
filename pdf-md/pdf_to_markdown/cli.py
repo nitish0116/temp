@@ -108,6 +108,64 @@ def _unique_name(name: str, used: set[str]) -> str:
     return candidate
 
 
+def _conversion_options(args: argparse.Namespace) -> ConversionOptions:
+    """Translate validated CLI arguments into converter settings."""
+    try:
+        pages = parse_page_spec(args.pages)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+    return ConversionOptions(
+        layout_mode=args.layout,
+        ocr_mode=args.ocr,
+        ocr_language=args.ocr_language,
+        header=args.keep_header,
+        footer=args.keep_footer,
+        image_mode=args.images,
+        image_format=args.image_format,
+        pages=pages,
+        show_progress=not args.quiet,
+    )
+
+
+def _sources(source: Path, recursive: bool) -> tuple[list[Path], Path]:
+    """Return documents to convert and the root used for relative paths."""
+    if source.is_file():
+        return [source], source.parent
+    return _document_files(source, recursive), source
+
+
+def _convert_documents(
+    files: list[Path],
+    source_root: Path,
+    output_root: Path,
+    converter: PDFToMarkdownConverter,
+    continue_on_error: bool,
+) -> int:
+    """Convert a document batch, preserving subdirectories and unique names."""
+    failures = 0
+    used_by_directory: dict[Path, set[str]] = {}
+    for index, document in enumerate(files, 1):
+        relative = document.relative_to(source_root)
+        target_dir = output_root / relative.parent
+        used = used_by_directory.setdefault(target_dir, set())
+        target = target_dir / _unique_name(readable_output_name(document), used)
+        print(f"[{index}/{len(files)}] {relative}")
+        try:
+            result = converter.convert(document, target)
+            print(
+                f"  Output: {result.markdown} "
+                f"({result.pages} pages, {result.characters:,} characters)"
+            )
+        except Exception as exc:
+            failures += 1
+            print(f"  ERROR: {exc}", file=sys.stderr)
+            if not continue_on_error:
+                return 2
+
+    print(f"Completed: {len(files) - failures} succeeded, {failures} failed")
+    return 0 if failures == 0 else 2
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run PDF/EPUB conversion from command-line arguments.
 
@@ -127,55 +185,19 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"Input path not found: {source}")
 
     try:
-        pages = parse_page_spec(args.pages)
-    except ValueError as exc:
+        options = _conversion_options(args)
+    except argparse.ArgumentTypeError as exc:
         parser.error(str(exc))
-
-    options = ConversionOptions(
-        layout_mode=args.layout,
-        ocr_mode=args.ocr,
-        ocr_language=args.ocr_language,
-        header=args.keep_header,
-        footer=args.keep_footer,
-        image_mode=args.images,
-        image_format=args.image_format,
-        pages=pages,
-        show_progress=not args.quiet,
-    )
     converter = PDFToMarkdownConverter(options)
 
-    if source.is_file():
-        files = [source]
-        source_root = source.parent
-    else:
-        files = _document_files(source, args.recursive)
-        source_root = source
+    files, source_root = _sources(source, args.recursive)
     if not files:
         print(f"No PDF or EPUB files found in: {source}", file=sys.stderr)
         return 1
 
-    failures = 0
-    used_by_directory: dict[Path, set[str]] = {}
-    for index, document in enumerate(files, 1):
-        relative = document.relative_to(source_root)
-        target_dir = output_root / relative.parent
-        used = used_by_directory.setdefault(target_dir, set())
-        target = target_dir / _unique_name(readable_output_name(document), used)
-        print(f"[{index}/{len(files)}] {relative}")
-        try:
-            result = converter.convert(document, target)
-            print(
-                f"  Output: {result.markdown} "
-                f"({result.pages} pages, {result.characters:,} characters)"
-            )
-        except Exception as exc:
-            failures += 1
-            print(f"  ERROR: {exc}", file=sys.stderr)
-            if not args.continue_on_error:
-                return 2
-
-    print(f"Completed: {len(files) - failures} succeeded, {failures} failed")
-    return 0 if failures == 0 else 2
+    return _convert_documents(
+        files, source_root, output_root, converter, args.continue_on_error
+    )
 
 
 if __name__ == "__main__":

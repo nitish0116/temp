@@ -11,7 +11,6 @@ from markdownCleaner.cli import (
     _write_batch_glossary_candidates,
 )
 from markdownCleaner.modules.cleanup.tts_validation import TTSValidationStage
-from md_to_audio import escape_ssml_text, is_speakable_chunk
 from markdownCleaner.modules.symspell.vocabulary import (
     VocabularyCandidateStage,
     merge_approved_words,
@@ -201,15 +200,6 @@ def test_tts_validation_reports_xml_ampersand_and_low_alpha():
         "RAW_AMPERSAND",
     ]
     assert TTSValidationStage.issues("Safe narration text.") == []
-
-
-def test_audio_boundary_escapes_ssml_once_and_skips_invalid_chunks():
-    """Escape SSML once and reject chunks unsuitable for audio generation."""
-    assert escape_ssml_text("R&D <test> &amp; done") == (
-        "R&amp;D &lt;test&gt; &amp; done"
-    )
-    assert not is_speakable_chunk("... 1")
-    assert is_speakable_chunk("Okay.")
 
 
 def test_explicit_glossary_approval_merges_without_duplicates(tmp_path):

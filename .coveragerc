@@ -1,0 +1,14 @@
+[run]
+source =
+    cleanup/markdownCleaner
+    md_python
+    pdf-md/pdf_to_markdown
+    mp3ToYT
+    md-audio
+omit =
+    */tests/*
+
+[report]
+show_missing = True
+skip_covered = False
+fail_under = 75

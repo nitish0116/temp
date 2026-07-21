@@ -1,0 +1,6 @@
+[run]
+source = pdf_to_markdown
+omit = tests/*
+[report]
+show_missing = True
+fail_under = 75
