@@ -83,6 +83,13 @@ def escape_ssml_text(text: str) -> str:
     return html.escape(html.unescape(text), quote=False)
 
 
+def is_decorative_separator(text: str) -> bool:
+    """Return whether a line contains only ornaments and Markdown wrappers."""
+    without_ornaments = ORNAMENT_RE.sub("", text)
+    without_wrappers = re.sub(r"[\s*_~`.,;:!?=+\-]+", "", without_ornaments)
+    return not without_wrappers
+
+
 def log_step(message: str) -> None:
     """
     Print a step/progress message if quiet mode is disabled.
@@ -468,6 +475,9 @@ def narration_paragraphs(
     for raw in markdown_text.splitlines():
         if FENCE_RE.match(raw):
             continue
+        if is_decorative_separator(raw):
+            flush()
+            continue
 
         line = ORNAMENT_RE.sub("", raw).strip()
         if not line:
@@ -626,6 +636,9 @@ def narration_paragraphs_with_scene_markers(
 
     for raw in markdown_text.splitlines():
         if FENCE_RE.match(raw):
+            continue
+        if is_decorative_separator(raw):
+            flush()
             continue
         line = ORNAMENT_RE.sub("", raw).strip()
         if not line:

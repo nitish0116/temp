@@ -33,6 +33,16 @@ def test_narration_paragraphs_preserve_content_and_bound_chunks():
     assert "Bold" in " ".join(chunks)
 
 
+def test_markdown_wrapped_ornament_line_is_dropped_before_edge_tts():
+    chunks = narration_paragraphs(
+        "Narration before.\n\n**◆◇◆◇◆,\n\nNarration after.", chunk_size=100
+    )
+    combined = " ".join(chunks)
+    assert "Narration before." in combined
+    assert "Narration after." in combined
+    assert "◆" not in combined and "*" not in combined
+
+
 def test_chunk_splitting_and_duration_estimation_preserve_totals():
     chunks = split_speech_chunk("One sentence. Another sentence follows.", 20)
     assert len(chunks) >= 2
