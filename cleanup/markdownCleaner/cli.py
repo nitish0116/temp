@@ -78,7 +78,7 @@ def _run_one(
     output_directory: Path | None,
     output_name: str | None = None,
     report_subdirectory: Path | str = "reports",
-) -> tuple[dict, int, list[dict]]:
+) -> tuple[dict, int, list[dict], list[dict]]:
     """Run the configured pipeline for one Markdown source.
 
     Args:
@@ -90,8 +90,9 @@ def _run_one(
 
     Returns:
         A tuple containing the pipeline result mapping, total logged change
-        count, and serializable change records. Failed stages are summarized in
-        ``result["pipeline_error"]`` so batch callers can apply their policy.
+        count, serializable change records, and vocabulary candidates. Failed
+        stages are summarized in ``result["pipeline_error"]`` so batch callers
+        can apply their policy.
     """
     pipeline = OCRPipeline(config)
     result = pipeline.run(
@@ -101,11 +102,12 @@ def _run_one(
         report_subdirectory=report_subdirectory,
     )
     records = [asdict(record) for record in pipeline.context.tracker.records]
+    candidates = list(pipeline.context.metadata.get("glossary_candidates", []))
     failed_stages = [stage for stage in result["stages"] if not stage.success]
     if failed_stages:
         details = "; ".join(f"{stage.stage}: {stage.error}" for stage in failed_stages)
         result["pipeline_error"] = f"Pipeline stage failure(s): {details}"
-    return result, pipeline.context.total_changes, records
+    return result, pipeline.context.total_changes, records, candidates
 
 
 def _md_code(value: object) -> str:
@@ -231,6 +233,75 @@ def _write_batch_summary(
             lines.append("")
 
     report_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    return report_path
+
+
+def _write_batch_glossary_candidates(
+    output_root: Path,
+    entries: list[dict],
+) -> Path:
+    """Aggregate per-file vocabulary candidates into one batch JSON report.
+
+    Candidates are merged case-insensitively, occurrences are totaled, and each
+    source file retains its own occurrence count and line references.
+
+    Example:
+        Two entries for ``Degurechaff`` from separate volumes become one item
+        whose ``files`` list identifies both source documents.
+    """
+    import json
+
+    combined: dict[str, dict] = {}
+    for entry in entries:
+        relative_path = str(entry.get("relative_path", ""))
+        for candidate in entry.get("glossary_candidates", []):
+            word = str(candidate.get("word", "")).strip()
+            if not word:
+                continue
+            key = word.casefold()
+            occurrences = int(candidate.get("occurrences", 0) or 0)
+            aggregate = combined.setdefault(
+                key,
+                {
+                    "word": word,
+                    "occurrences": 0,
+                    "files": [],
+                    "suggested_correction": candidate.get("suggested_correction"),
+                    "edit_distance": candidate.get("edit_distance"),
+                    "confidence": candidate.get("confidence"),
+                    "status": "pending_review",
+                },
+            )
+            aggregate["occurrences"] += occurrences
+            aggregate["files"].append(
+                {
+                    "file": relative_path,
+                    "occurrences": occurrences,
+                    "lines": list(candidate.get("lines", [])),
+                }
+            )
+            current_confidence = aggregate.get("confidence")
+            candidate_confidence = candidate.get("confidence")
+            if candidate_confidence is not None and (
+                current_confidence is None or candidate_confidence > current_confidence
+            ):
+                aggregate["suggested_correction"] = candidate.get(
+                    "suggested_correction"
+                )
+                aggregate["edit_distance"] = candidate.get("edit_distance")
+                aggregate["confidence"] = candidate_confidence
+
+    values = sorted(
+        combined.values(),
+        key=lambda item: (-item["occurrences"], item["word"].casefold()),
+    )
+    report_dir = output_root / "reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "glossary_candidates.json"
+    report_path.write_text(
+        json.dumps(values, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
     return report_path
 
 
@@ -417,7 +488,7 @@ def main(argv: list[str] | None = None) -> int:
     if source.is_file():
         if source.suffix.lower() != ".md":
             parser.error(f"Input file must be Markdown (.md): {source}")
-        result, changes, _records = _run_one(
+        result, changes, _records, _candidates = _run_one(
             source,
             config=config,
             output_directory=output_root,
@@ -462,7 +533,7 @@ def main(argv: list[str] | None = None) -> int:
 
         print(f"\n[{index}/{len(files)}] {relative}")
         try:
-            result, changes, records = _run_one(
+            result, changes, records, candidates = _run_one(
                 file,
                 config=config,
                 output_directory=target_dir,
@@ -482,6 +553,7 @@ def main(argv: list[str] | None = None) -> int:
                         "elapsed_seconds": result.get("elapsed_seconds", 0),
                         "stage_counts": stage_counts,
                         "records": records,
+                        "glossary_candidates": candidates,
                         "output": str(result["output"]["markdown"]),
                         "error": pipeline_error,
                     }
@@ -494,7 +566,11 @@ def main(argv: list[str] | None = None) -> int:
                         entries=batch_entries,
                         report_name=args.batch_report_name,
                     )
+                    candidates_path = _write_batch_glossary_candidates(
+                        output_root, batch_entries
+                    )
                     print(f"Batch summary: {summary_path}")
+                    print(f"Batch glossary candidates: {candidates_path}")
                     return 2
             else:
                 succeeded += 1
@@ -506,6 +582,7 @@ def main(argv: list[str] | None = None) -> int:
                         "elapsed_seconds": result.get("elapsed_seconds", 0),
                         "stage_counts": stage_counts,
                         "records": records,
+                        "glossary_candidates": candidates,
                         "output": str(result["output"]["markdown"]),
                     }
                 )
@@ -520,6 +597,7 @@ def main(argv: list[str] | None = None) -> int:
                     "elapsed_seconds": 0,
                     "stage_counts": {},
                     "records": [],
+                    "glossary_candidates": [],
                     "output": None,
                     "error": str(exc),
                 }
@@ -532,7 +610,11 @@ def main(argv: list[str] | None = None) -> int:
                     entries=batch_entries,
                     report_name=args.batch_report_name,
                 )
+                candidates_path = _write_batch_glossary_candidates(
+                    output_root, batch_entries
+                )
                 print(f"Batch summary: {summary_path}")
+                print(f"Batch glossary candidates: {candidates_path}")
                 return 2
 
     summary_path = _write_batch_summary(
@@ -541,6 +623,7 @@ def main(argv: list[str] | None = None) -> int:
         entries=batch_entries,
         report_name=args.batch_report_name,
     )
+    candidates_path = _write_batch_glossary_candidates(output_root, batch_entries)
 
     print("\nBatch completed")
     print(f"Succeeded: {succeeded}")
@@ -548,6 +631,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Total changes logged: {total_changes}")
     print(f"Output directory: {output_root}")
     print(f"Batch summary: {summary_path}")
+    print(f"Batch glossary candidates: {candidates_path}")
     return 0 if failed == 0 else 2
 
 

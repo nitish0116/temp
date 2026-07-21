@@ -6,7 +6,10 @@ from markdownCleaner.modules.cleanup.document import (
 )
 from markdownCleaner.modules.regex.constants import OCR_CHARACTER_REPLACEMENTS
 from markdownCleaner.modules.report.exporter import meaningful_output_name
-from markdownCleaner.cli import _unique_batch_output_name
+from markdownCleaner.cli import (
+    _unique_batch_output_name,
+    _write_batch_glossary_candidates,
+)
 from markdownCleaner.modules.cleanup.tts_validation import TTSValidationStage
 from md_to_audio import escape_ssml_text, is_speakable_chunk
 from markdownCleaner.modules.symspell.vocabulary import (
@@ -39,6 +42,60 @@ def test_meaningful_batch_names_remain_collision_safe():
     name = "Book - Volume 1 - Cleaned.md"
     assert _unique_batch_output_name(name, used) == name
     assert _unique_batch_output_name(name, used) == "Book - Volume 1 - Cleaned (2).md"
+
+
+def test_batch_glossary_candidates_merge_words_and_preserve_sources(tmp_path):
+    """Aggregate duplicate candidates while retaining per-file evidence."""
+    import json
+
+    entries = [
+        {
+            "relative_path": "Volume 1.md",
+            "glossary_candidates": [
+                {
+                    "word": "Degurechaff",
+                    "occurrences": 3,
+                    "lines": [4, 8, 12],
+                    "suggested_correction": "degrease",
+                    "edit_distance": 2,
+                    "confidence": 70.0,
+                }
+            ],
+        },
+        {
+            "relative_path": "Volume 2.md",
+            "glossary_candidates": [
+                {
+                    "word": "DEGURECHAFF",
+                    "occurrences": 5,
+                    "lines": [2, 9],
+                    "suggested_correction": None,
+                    "edit_distance": None,
+                    "confidence": None,
+                },
+                {
+                    "word": "noncoms",
+                    "occurrences": 4,
+                    "lines": [20, 21],
+                    "suggested_correction": "noncom",
+                    "edit_distance": 1,
+                    "confidence": 95.0,
+                },
+            ],
+        },
+    ]
+
+    path = _write_batch_glossary_candidates(tmp_path, entries)
+    values = json.loads(path.read_text(encoding="utf-8"))
+
+    assert path == tmp_path / "reports" / "glossary_candidates.json"
+    assert [item["word"] for item in values] == ["Degurechaff", "noncoms"]
+    assert values[0]["occurrences"] == 8
+    assert values[0]["status"] == "pending_review"
+    assert [source["file"] for source in values[0]["files"]] == [
+        "Volume 1.md",
+        "Volume 2.md",
+    ]
 
 
 def test_bounded_bare_and_blockquoted_glossary_footnotes_are_removed():
