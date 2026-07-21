@@ -1,0 +1,9 @@
+[run]
+source = markdownCleaner
+omit =
+    markdownCleaner/tests/*
+
+[report]
+show_missing = True
+skip_covered = False
+fail_under = 75

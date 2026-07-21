@@ -1,0 +1,21 @@
+paths:
+  output_directory: "C:/Users/z005537p/NitishWork/HM/temp/cleanup/.pytest-tmp/test_full_pipeline_creates_bac0/output"
+backup:
+  enabled: true
+  directory: "C:/Users/z005537p/NitishWork/HM/temp/cleanup/.pytest-tmp/test_full_pipeline_creates_bac0/backup"
+cleanup:
+  enabled: true
+unicode:
+  enabled: true
+regex:
+  enabled: true
+symspell:
+  enabled: false
+  dictionary: "C:/Users/z005537p/NitishWork/HM/temp/cleanup/.pytest-tmp/test_full_pipeline_creates_bac0/dictionary.txt"
+vocabulary_candidates:
+  enabled: false
+tts_validation:
+  enabled: true
+  report_limit: 10
+logging:
+  directory: "C:/Users/z005537p/NitishWork/HM/temp/cleanup/.pytest-tmp/test_full_pipeline_creates_bac0/logs"
