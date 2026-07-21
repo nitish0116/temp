@@ -20,3 +20,5 @@ mp3ToYT/**/*.txt
 *.png
 *.pdf
 *.json
+.pytest-runs/
+.pytest-tmp/
