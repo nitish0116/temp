@@ -168,7 +168,7 @@ Representative matches include ``ISBN: 978...``, ``LCCN 2017044721``,
 # Standalone ornamental scene separators. Remove only when the entire line is
 # composed of decorative glyphs (optionally separated by whitespace).
 DECORATIVE_SEPARATOR_LINE = re.compile(
-    r"(?m)^[ \t]*(?:[◆◇■□●○♦♢✦✧❖◈※＊*•·~_=+\-][ \t]*){3,}$"
+    r"(?m)^[ \t]*(?:[◆◇■□●○♦♢✦✧❖◈※＊*•·~_=+\-][ \t]*){3,}" r"[.,;:!?]?[ \t]*$"
 )
 """Match a whole line made from at least three ornamental separator glyphs.
 

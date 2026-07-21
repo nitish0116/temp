@@ -269,6 +269,13 @@ def _write_batch_glossary_candidates(
                     "suggested_correction": candidate.get("suggested_correction"),
                     "edit_distance": candidate.get("edit_distance"),
                     "confidence": candidate.get("confidence"),
+                    "classification": candidate.get("classification", "unknown"),
+                    "classification_confidence": candidate.get(
+                        "classification_confidence", 0.0
+                    ),
+                    "classification_basis": candidate.get(
+                        "classification_basis", "not classified"
+                    ),
                     "status": "pending_review",
                 },
             )
@@ -291,6 +298,17 @@ def _write_batch_glossary_candidates(
                 aggregate["edit_distance"] = candidate.get("edit_distance")
                 aggregate["confidence"] = candidate_confidence
 
+            if aggregate.get("classification") == "unknown" and candidate.get(
+                "classification"
+            ) in {"noun", "adjective", "verb"}:
+                aggregate["classification"] = candidate["classification"]
+                aggregate["classification_confidence"] = candidate.get(
+                    "classification_confidence", 0.0
+                )
+                aggregate["classification_basis"] = candidate.get(
+                    "classification_basis", "not classified"
+                )
+
     values = sorted(
         combined.values(),
         key=lambda item: (-item["occurrences"], item["word"].casefold()),
@@ -305,6 +323,58 @@ def _write_batch_glossary_candidates(
     return report_path
 
 
+def _write_simplified_glossary_candidates(
+    source: Path, output: Path | None = None
+) -> Path:
+    """Write a compact candidate report containing only review essentials.
+
+    Args:
+        source: Master ``glossary_candidates.json`` report.
+        output: Optional destination. By default, writes
+            ``glossary_candidates_simplified.json`` beside ``source``.
+
+    Returns:
+        The resolved path of the simplified JSON report.
+    """
+    import json
+
+    source = source.resolve()
+    if not source.is_file():
+        raise ValueError(f"Glossary candidate report not found: {source}")
+    try:
+        candidates = json.loads(source.read_text(encoding="utf-8-sig"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Invalid JSON in {source}: line {exc.lineno}, column {exc.colno}"
+        ) from exc
+    if not isinstance(candidates, list):
+        raise ValueError("Master glossary candidate JSON must contain a list.")
+
+    simplified = []
+    for index, candidate in enumerate(candidates, 1):
+        if not isinstance(candidate, dict):
+            raise ValueError(f"Candidate {index} must be a JSON object.")
+        simplified.append(
+            {
+                "word": candidate.get("word"),
+                "occurrences": candidate.get("occurrences", 0),
+                "suggested_correction": candidate.get("suggested_correction"),
+            }
+        )
+
+    target = (
+        output.resolve()
+        if output
+        else source.with_name(f"{source.stem}_simplified.json")
+    )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(simplified, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return target
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the argument parser for all supported CLI call signatures.
 
@@ -315,6 +385,7 @@ def build_parser() -> argparse.ArgumentParser:
         markdownCleaner --approve-words WORD [WORD ...] [--glossary-file FILE]
         markdownCleaner --learn-words WORD [WORD ...] [--learned-file FILE]
         markdownCleaner --reject-words WORD [WORD ...] [--rejected-file FILE]
+        markdownCleaner --simplify-candidates glossary_candidates.json
 
     ``python -m markdownCleaner.cli`` can replace ``markdownCleaner`` when the
     project is run directly from source.
@@ -396,6 +467,21 @@ def build_parser() -> argparse.ArgumentParser:
             "(defaults to vocabulary_candidates.rejected)"
         ),
     )
+    parser.add_argument(
+        "--simplify-candidates",
+        type=Path,
+        metavar="MASTER_JSON",
+        help=(
+            "Write a simplified glossary candidate JSON containing only word, "
+            "occurrences, and suggested_correction, then exit"
+        ),
+    )
+    parser.add_argument(
+        "--simplified-output",
+        type=Path,
+        default=None,
+        help="Optional destination used with --simplify-candidates",
+    )
     return parser
 
 
@@ -419,6 +505,19 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.simplify_candidates:
+        try:
+            target = _write_simplified_glossary_candidates(
+                args.simplify_candidates, args.simplified_output
+            )
+        except (ValueError, OSError) as exc:
+            parser.error(str(exc))
+        print(f"Simplified glossary candidates: {target}")
+        return 0
+    if args.simplified_output:
+        parser.error("--simplified-output requires --simplify-candidates")
+
     config = args.config.resolve()
     if not config.exists():
         parser.error(f"Config file not found: {config}")

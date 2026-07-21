@@ -9,14 +9,26 @@ from markdownCleaner.modules.report.exporter import meaningful_output_name
 from markdownCleaner.cli import (
     _unique_batch_output_name,
     _write_batch_glossary_candidates,
+    _write_simplified_glossary_candidates,
 )
 from markdownCleaner.modules.cleanup.tts_validation import TTSValidationStage
 from markdownCleaner.modules.symspell.vocabulary import (
     VocabularyCandidateStage,
+    classify_candidate,
     merge_approved_words,
     merge_learned_words,
     merge_rejected_words,
 )
+
+
+def test_glossary_candidate_classification_is_conservative():
+    """Classify strong noun/adjective forms and leave ambiguous terms unknown."""
+    assert classify_candidate("noncoms", [("the", "were")])[0] == "noun"
+    assert classify_candidate("armored", [("an", "vehicle")])[0] == "adjective"
+    assert classify_candidate("armored", [("they", "the")])[0] == "verb"
+    assert classify_candidate("mobilized", [("they", "the")])[0] == "verb"
+    assert classify_candidate("Degurechaff", [("Captain", "spoke")])[0] == "noun"
+    assert classify_candidate("sitrep")[0] == "unknown"
 
 
 def test_output_filename_is_readable_and_drops_release_tags():
@@ -95,6 +107,50 @@ def test_batch_glossary_candidates_merge_words_and_preserve_sources(tmp_path):
         "Volume 1.md",
         "Volume 2.md",
     ]
+
+
+def test_cli_writes_simplified_glossary_candidate_report(tmp_path):
+    """Expose a compact review report through both helper and CLI workflows."""
+    import json
+    from markdownCleaner.cli import main
+
+    source = tmp_path / "glossary_candidates.json"
+    source.write_text(
+        json.dumps(
+            [
+                {
+                    "word": "sitrep",
+                    "occurrences": 12,
+                    "suggested_correction": "strep",
+                    "classification": "noun",
+                    "files": [{"file": "book.md"}],
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    default_output = _write_simplified_glossary_candidates(source)
+    assert json.loads(default_output.read_text(encoding="utf-8")) == [
+        {
+            "word": "sitrep",
+            "occurrences": 12,
+            "suggested_correction": "strep",
+        }
+    ]
+
+    explicit_output = tmp_path / "review.json"
+    assert (
+        main(
+            [
+                "--simplify-candidates",
+                str(source),
+                "--simplified-output",
+                str(explicit_output),
+            ]
+        )
+        == 0
+    )
+    assert explicit_output.exists()
 
 
 def test_change_log_timestamps_are_timezone_aware_utc():
@@ -827,6 +883,9 @@ Paragraph two.
 """
     cleaned = DECORATIVE_SEPARATOR_LINE.sub("", text)
     assert "◆◇◆◇◆" not in cleaned
+
+    wrapped = "Before.\n**◆◇◆◇◆,\nAfter."
+    assert "◆" not in DECORATIVE_SEPARATOR_LINE.sub("", wrapped)
     assert "Paragraph one." in cleaned
     assert "Paragraph two." in cleaned
 

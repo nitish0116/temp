@@ -24,6 +24,88 @@ REJECTED_DESCRIPTION = (
     "`python -m markdownCleaner.cli --reject-words WORD ...`."
 )
 
+DETERMINERS = {"a", "an", "the", "this", "that", "these", "those", "each", "every"}
+SUBJECT_PRONOUNS = {"i", "you", "he", "she", "it", "we", "they"}
+MODALS = {"can", "could", "may", "might", "must", "shall", "should", "will", "would"}
+COPULAS = {"am", "are", "be", "been", "being", "is", "was", "were", "become", "seem"}
+DEGREE_WORDS = {
+    "fairly",
+    "less",
+    "more",
+    "most",
+    "quite",
+    "rather",
+    "so",
+    "too",
+    "very",
+}
+NOUN_TITLES = {
+    "captain",
+    "colonel",
+    "doctor",
+    "general",
+    "major",
+    "mr",
+    "mrs",
+    "professor",
+}
+
+
+def classify_candidate(
+    word: str, contexts: list[tuple[str | None, str | None]] | None = None
+) -> tuple[str, float, str]:
+    """Conservatively infer whether a candidate is a noun, adjective, or verb.
+
+    Votes come from the words immediately before and after each occurrence.
+    No suffix or spelling rule is used. Conflicting or weak contexts remain
+    ``unknown`` rather than receiving a misleading category.
+
+    Examples:
+        ``classify_candidate("armored", [("an", "vehicle")])`` returns an
+        adjective, while ``classify_candidate("armored", [("they", "the")])``
+        returns a verb.
+    """
+    value = word.strip()
+    if not value:
+        return "unknown", 0.0, "empty candidate"
+    votes: Counter[str] = Counter()
+    evidence: Counter[str] = Counter()
+    for previous, following in contexts or []:
+        previous = previous.casefold() if previous else None
+        following = following.casefold() if following else None
+        if previous == "to" or previous in MODALS:
+            votes["verb"] += 3
+            evidence["infinitive/modal context"] += 1
+        if previous in SUBJECT_PRONOUNS and following in DETERMINERS:
+            votes["verb"] += 3
+            evidence["subject + candidate + object context"] += 1
+        if following in DETERMINERS:
+            votes["verb"] += 2
+            evidence["candidate followed by determiner/object"] += 1
+        if previous in DEGREE_WORDS or previous in COPULAS:
+            votes["adjective"] += 2
+            evidence["degree/copular context"] += 1
+        if previous in NOUN_TITLES or following in COPULAS:
+            votes["noun"] += 3
+            evidence["title or subject-before-copula context"] += 1
+        if previous in DETERMINERS:
+            category = (
+                "noun" if following in COPULAS or following is None else "adjective"
+            )
+            votes[category] += 2
+            evidence[f"determiner + {category} context"] += 1
+
+    if not votes:
+        return "unknown", 0.0, "insufficient contextual evidence"
+    ranked = votes.most_common()
+    winner, score = ranked[0]
+    runner_up = ranked[1][1] if len(ranked) > 1 else 0
+    if score == runner_up:
+        return "unknown", 0.0, "conflicting contextual evidence"
+    confidence = round(min(0.95, 0.55 + (score - runner_up) * 0.1), 2)
+    basis = evidence.most_common(1)[0][0]
+    return winner, confidence, basis
+
 
 def _word_list(data, *, label: str) -> list[str]:
     """Extract words from legacy or structured vocabulary JSON.
@@ -215,13 +297,19 @@ class VocabularyCandidateStage(PipelineStage):
         counts: Counter[str] = Counter()
         forms: dict[str, Counter[str]] = defaultdict(Counter)
         lines: dict[str, list[int]] = defaultdict(list)
+        contexts: dict[str, list[tuple[str | None, str | None]]] = defaultdict(list)
         for line_number, line in enumerate(text.splitlines(), 1):
-            for token in WORD.findall(line):
+            tokens = WORD.findall(line)
+            for index, token in enumerate(tokens):
                 key = token.casefold()
                 counts[key] += 1
                 forms[key][token] += 1
                 if len(lines[key]) < 10:
                     lines[key].append(line_number)
+                if len(contexts[key]) < 20:
+                    previous = tokens[index - 1] if index else None
+                    following = tokens[index + 1] if index + 1 < len(tokens) else None
+                    contexts[key].append((previous, following))
 
         engine = SymSpellEngine(
             max_edit_distance=int(context.config.get("symspell.max_edit_distance", 2))
@@ -250,6 +338,9 @@ class VocabularyCandidateStage(PipelineStage):
             if len(key) < 4 or not key.isalpha():
                 continue
             display = forms[key].most_common(1)[0][0]
+            classification, classification_confidence, classification_basis = (
+                classify_candidate(display, contexts[key])
+            )
             suggestions = engine.lookup(key)
             best = suggestions[0] if suggestions else None
             item = {
@@ -259,6 +350,9 @@ class VocabularyCandidateStage(PipelineStage):
                 "suggested_correction": best.corrected if best else None,
                 "edit_distance": best.distance if best else None,
                 "confidence": round(best.confidence, 2) if best else None,
+                "classification": classification,
+                "classification_confidence": classification_confidence,
+                "classification_basis": classification_basis,
                 "status": "pending_review",
             }
             candidates.append(item)
