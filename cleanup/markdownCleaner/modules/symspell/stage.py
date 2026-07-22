@@ -124,6 +124,7 @@ class SymSpellStage(PipelineStage):
         start_changes = context.total_changes
         threshold = float(self.get_config("confidence_threshold", 92))
         for segment in context.iter_segments():
+            segment.current_text = self._merge_broken_words(segment)
             segment.current_text = self._process_text(segment, threshold)
         return StageResult(
             stage=self.name, changes=context.total_changes - start_changes
@@ -140,6 +141,70 @@ class SymSpellStage(PipelineStage):
             lambda match: self._correct_word(match.group(0), segment, threshold),
             segment.current_text,
         )
+
+    def _merge_broken_words(self, segment) -> str:
+        """Merge high-confidence OCR spaces inside dictionary words.
+
+        A pair is merged only when its concatenation is a frequent dictionary
+        word and at least one fragment is unknown. Requiring an unknown fragment
+        preserves legitimate pairs such as ``in side`` and ``some one``.
+        """
+        assert self.dictionary is not None
+        minimum_frequency = int(
+            self.get_config("broken_word_merge_minimum_frequency", 100_000)
+        )
+        changes = 0
+
+        def should_merge(left: str, right: str) -> bool:
+            combined = left + right
+            if self.dictionary.is_protected(left) or self.dictionary.is_protected(right):
+                return False
+            if self.dictionary.frequency(combined) < minimum_frequency:
+                return False
+            if self.dictionary.contains(left) and self.dictionary.contains(right):
+                return False
+            return True
+
+        before = segment.current_text
+        # Repeat because repairing one pair can expose another OCR fragment.
+        after = before
+        for _ in range(3):
+            words = list(re.finditer(r"[A-Za-z]{2,}", after))
+            spaces_to_remove: list[tuple[int, int]] = []
+            previous_pair_merged = False
+            for left_match, right_match in zip(words, words[1:]):
+                if previous_pair_merged:
+                    previous_pair_merged = False
+                    continue
+                between = after[left_match.end() : right_match.start()]
+                if not re.fullmatch(r"[ \t]+", between):
+                    continue
+                if should_merge(left_match.group(0), right_match.group(0)):
+                    spaces_to_remove.append((left_match.end(), right_match.start()))
+                    previous_pair_merged = True
+            if not spaces_to_remove:
+                break
+            updated = after
+            for start, end in reversed(spaces_to_remove):
+                updated = updated[:start] + updated[end:]
+            changes += len(spaces_to_remove)
+            if updated == after:
+                break
+            after = updated
+
+        if after != before:
+            self.context.tracker.add(
+                stage=self.name,
+                block_index=segment.block_index,
+                segment_index=segment.segment_index,
+                line=segment.start_line,
+                before=before,
+                after=after,
+                confidence=97.0,
+                reason="Dictionary-validated OCR broken-word merge",
+            )
+            self.context.increment("broken_words_fixed", changes)
+        return after
 
     def _correct_word(self, word: str, segment, threshold: float) -> str:
         """Return a safe correction or preserve the original word.

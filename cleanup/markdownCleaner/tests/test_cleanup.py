@@ -572,6 +572,70 @@ def test_symspell_does_not_convert_regular_plural_to_singular(tmp_path):
     assert "noncoms" in context.get_markdown()
 
 
+def test_symspell_merges_dictionary_validated_ocr_word_splits(tmp_path):
+    """Merge frequent joined words while preserving valid adjacent words."""
+    from markdownCleaner.modules.core.config import PipelineConfig
+    from markdownCleaner.modules.core.context import ProcessingContext
+    from markdownCleaner.modules.symspell.stage import SymSpellStage
+
+    dictionary = tmp_path / "freq.txt"
+    dictionary.write_text(
+        "\n".join(
+            [
+                "attention 40000000",
+                "situation 40000000",
+                "directly 30000000",
+                "inside 20000000",
+                "someone 20000000",
+                "direct 100000000",
+                "in 8000000000",
+                "side 100000000",
+                "some 500000000",
+                "one 900000000",
+                "rareword 10",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    source = tmp_path / "sample.md"
+    source.write_text(
+        "Our situa tion drew unwanted atten tion. We moved direct ly. "
+        "Look in side and tell some one about rare word.",
+        encoding="utf-8",
+    )
+    config = PipelineConfig(
+        {
+            "paths": {"output_directory": str(tmp_path / "out")},
+            "backup": {"enabled": False},
+            "symspell": {
+                "enabled": True,
+                "dictionary": str(dictionary),
+                "max_edit_distance": 2,
+                "max_auto_edit_distance": 1,
+                "confidence_threshold": 92,
+                "minimum_word_length": 4,
+                "minimum_candidate_frequency": 1000,
+                "broken_word_merge_minimum_frequency": 100000,
+                "ambiguity_margin": 2,
+                "auto_protect_proper_nouns": False,
+            },
+        }
+    )
+    context = ProcessingContext(config)
+    context.load_markdown(source)
+
+    result = SymSpellStage(config).execute(context)
+    cleaned = context.get_markdown()
+
+    assert result.success
+    assert "situation" in cleaned
+    assert "attention" in cleaned
+    assert "directly" in cleaned
+    assert "in side" in cleaned
+    assert "some one" in cleaned
+    assert "rare word" in cleaned
+
+
 def test_false_atx_heading_is_demoted_and_context_rejoined():
     """Demote a false ATX heading and rejoin it to its narrative context."""
     source = 'And\n\n## then—\n\n"A scream?"'

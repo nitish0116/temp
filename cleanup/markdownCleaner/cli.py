@@ -359,6 +359,8 @@ def _write_simplified_glossary_candidates(
                 "word": candidate.get("word"),
                 "occurrences": candidate.get("occurrences", 0),
                 "suggested_correction": candidate.get("suggested_correction"),
+                "classification": candidate.get("classification", "unknown"),
+
             }
         )
 
