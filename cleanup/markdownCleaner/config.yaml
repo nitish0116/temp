@@ -82,7 +82,12 @@ symspell:
   minimum_dictionary_frequency: 1
   minimum_candidate_frequency: 1000
   # Conservative threshold for joining PDF/OCR spaces inside words.
-  broken_word_merge_minimum_frequency: 100000
+  broken_word_merge_minimum_frequency: 50000
+  # Broader corpus evidence for words omitted from the compact dictionary.
+  wordfreq_enabled: true
+  wordfreq_language: "en"
+  wordfreq_wordlist: "large"
+  wordfreq_minimum_zipf: 2.5
   ambiguity_margin: 2
   auto_protect_proper_nouns: true
   proper_noun_min_occurrences: 2

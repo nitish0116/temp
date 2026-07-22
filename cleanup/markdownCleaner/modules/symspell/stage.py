@@ -6,6 +6,7 @@ from collections import Counter
 import re
 
 from .engine import SymSpellEngine
+from .frequency import WordfreqScorer
 from ..core.stage import PipelineStage, StageResult
 from .dictionary import DictionaryManager
 
@@ -30,6 +31,14 @@ class SymSpellStage(PipelineStage):
     config_section = "symspell"
     WORD_PATTERN = re.compile(r"[A-Za-z]+(?:['’][A-Za-z]+|-[A-Za-z]+)*")
     DETACHED_OCR_SUFFIXES = {"tion", "tions"}
+    CONTEXTUAL_COMMON_MERGES = {
+        ("be", "cause"): "because",
+        ("upperclass", "men"): "upperclassmen",
+    }
+    JOINED_OCR_CORRECTIONS = {"expressinless": "expressionless"}
+    COMMON_MERGE_BLOCKING_PREVIOUS = {
+        "can", "could", "may", "might", "must", "shall", "should", "will", "would"
+    }
 
     def __init__(self, config):
         """Initialize the correction stage before dictionaries are loaded.
@@ -41,6 +50,7 @@ class SymSpellStage(PipelineStage):
         super().__init__(config)
         self.dictionary: DictionaryManager | None = None
         self.engine: SymSpellEngine | None = None
+        self.frequency_scorer = WordfreqScorer(enabled=False)
 
     def initialize(self, context) -> None:
         """Load vocabularies, protect document terms, and build the lookup index.
@@ -78,6 +88,11 @@ class SymSpellStage(PipelineStage):
 
         self.engine = SymSpellEngine(
             max_edit_distance=int(context.config.get("symspell.max_edit_distance", 2))
+        )
+        self.frequency_scorer = WordfreqScorer(
+            enabled=bool(context.config.get("symspell.wordfreq_enabled", True)),
+            language=str(context.config.get("symspell.wordfreq_language", "en")),
+            wordlist=str(context.config.get("symspell.wordfreq_wordlist", "large")),
         )
         minimum_dictionary_frequency = int(
             context.config.get("symspell.minimum_dictionary_frequency", 1)
@@ -154,17 +169,48 @@ class SymSpellStage(PipelineStage):
         minimum_frequency = int(
             self.get_config("broken_word_merge_minimum_frequency", 100_000)
         )
+        minimum_zipf = float(self.get_config("wordfreq_minimum_zipf", 2.5))
         changes = 0
 
         def merge_score(left: str, right: str) -> int:
             combined = left + right
-            if self.dictionary.is_protected(left) or self.dictionary.is_protected(right):
+            if self.dictionary.is_protected(left) and self.dictionary.is_protected(right):
                 return 0
             if self.dictionary.contains(left) and self.dictionary.contains(right):
                 return 0
             combined_frequency = self.dictionary.frequency(combined)
+            combined_zipf = self.frequency_scorer.zipf(combined)
+            if combined_zipf >= minimum_zipf:
+                return max(combined_frequency, self.frequency_scorer.rank(combined))
             if combined_frequency >= minimum_frequency:
                 return combined_frequency
+            corrected_join = self.JOINED_OCR_CORRECTIONS.get(combined.lower())
+            if corrected_join:
+                corrected_frequency = self.dictionary.frequency(corrected_join)
+                if corrected_frequency >= minimum_frequency:
+                    return corrected_frequency
+            # Some dictionaries contain a singular but omit its regular plural,
+            # for example "augmenter" but not "augmenters".
+            if combined.lower().endswith("s"):
+                singular_frequency = self.dictionary.frequency(combined[:-1])
+                singular_zipf = self.frequency_scorer.zipf(combined[:-1])
+                if singular_zipf >= minimum_zipf:
+                    return max(
+                        singular_frequency,
+                        self.frequency_scorer.rank(combined[:-1]),
+                    )
+                if singular_frequency >= minimum_frequency:
+                    return singular_frequency
+            if combined.lower().endswith("ly"):
+                base_frequency = self.dictionary.frequency(combined[:-2])
+                base_zipf = self.frequency_scorer.zipf(combined[:-2])
+                if base_zipf >= minimum_zipf:
+                    return max(
+                        base_frequency,
+                        self.frequency_scorer.rank(combined[:-2]),
+                    )
+                if base_frequency >= minimum_frequency:
+                    return base_frequency
             # The compact dictionary omits some valid derivatives such as
             # "petrification". A detached suffix is still strong extraction
             # evidence when neither fragment is independently known.
@@ -189,6 +235,17 @@ class SymSpellStage(PipelineStage):
                 if not re.fullmatch(r"[ \t]+", between):
                     continue
                 score = merge_score(left_match.group(0), right_match.group(0))
+                pair = (left_match.group(0).lower(), right_match.group(0).lower())
+                if not score and pair in self.CONTEXTUAL_COMMON_MERGES:
+                    previous = words[pair_index - 1].group(0).lower() if pair_index else ""
+                    blocked = (
+                        pair == ("be", "cause")
+                        and previous in self.COMMON_MERGE_BLOCKING_PREVIOUS
+                    )
+                    if not blocked:
+                        score = self.dictionary.frequency(
+                            self.CONTEXTUAL_COMMON_MERGES[pair]
+                        )
                 if score:
                     candidates.append(
                         (score, pair_index, left_match.end(), right_match.start())

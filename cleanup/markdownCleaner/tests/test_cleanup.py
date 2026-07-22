@@ -595,6 +595,20 @@ def test_symspell_merges_dictionary_validated_ocr_word_splits(tmp_path):
                 "mana 1920430",
                 "manama 164807",
                 "manipulation 4744083",
+                "aug 100502612",
+                "augmenter 106719",
+                "be 2398724162",
+                "cause 65904680",
+                "because 271323986",
+                "however 163957176",
+                "professor 40572636",
+                "profession 9208483",
+                "expressionless 55876",
+                "virion 138756",
+                "virions 143808",
+                "conjurer 63746",
+                "upperclassmen 71309",
+                "upperclass 100000",
                 "rareword 10",
             ]
         ),
@@ -605,6 +619,11 @@ def test_symspell_merges_dictionary_validated_ocr_word_splits(tmp_path):
         "Our situa tion drew unwanted atten tion. We moved direct ly. "
         "The petrifica tion process continued. "
         "We studied mana ma nipulation. "
+        "The aug menters continued training. "
+        "They left be cause it was late. This could be cause for concern. "
+        "Howev er, the profes sor chose a profes sion and spoke expres sionlessly. "
+        "Another Profes sor stared expres sinless at Viri on and two Viri ons. "
+        "The conjur er joined other conjur ers and upperclass men. "
         "Look in side and tell some one about rare word.",
         encoding="utf-8",
     )
@@ -620,9 +639,9 @@ def test_symspell_merges_dictionary_validated_ocr_word_splits(tmp_path):
                 "confidence_threshold": 92,
                 "minimum_word_length": 4,
                 "minimum_candidate_frequency": 1000,
-                "broken_word_merge_minimum_frequency": 100000,
+                "broken_word_merge_minimum_frequency": 50000,
                 "ambiguity_margin": 2,
-                "auto_protect_proper_nouns": False,
+                "auto_protect_proper_nouns": True,
             },
         }
     )
@@ -639,9 +658,67 @@ def test_symspell_merges_dictionary_validated_ocr_word_splits(tmp_path):
     assert "petrification" in cleaned
     assert "mana manipulation" in cleaned
     assert "manama nipulation" not in cleaned
+    assert "augmenters" in cleaned
+    assert "left because it was late" in cleaned
+    assert "could be cause for concern" in cleaned
+    assert "However" in cleaned
+    assert "professor" in cleaned and "Professor" in cleaned
+    assert "profession" in cleaned
+    assert "expressionlessly" in cleaned
+    assert "expressionless" in cleaned
+    assert "Virion" in cleaned and "Virions" in cleaned
+    assert "conjurer" in cleaned and "conjurers" in cleaned
+    assert "upperclassmen" in cleaned
     assert "in side" in cleaned
     assert "some one" in cleaned
     assert "rare word" in cleaned
+
+
+def test_wordfreq_scores_words_missing_from_symspell_dictionary(tmp_path):
+    """Use broad corpus evidence without importing it into the edit index."""
+    from markdownCleaner.modules.core.config import PipelineConfig
+    from markdownCleaner.modules.core.context import ProcessingContext
+    from markdownCleaner.modules.symspell.frequency import WordfreqScorer
+    from markdownCleaner.modules.symspell.stage import SymSpellStage
+
+    scorer = WordfreqScorer(
+        lookup=lambda word, language, wordlist: (
+            3.4 if word.lower() == "lexicographical" else 0.0
+        )
+    )
+    assert scorer.available
+    assert scorer.zipf("lexicographical") == 3.4
+    assert scorer.rank("lexicographical") == round(10**3.4)
+
+    dictionary = tmp_path / "freq.txt"
+    dictionary.write_text("ordinary 1000000\n", encoding="utf-8")
+    source = tmp_path / "sample.md"
+    source.write_text("A lexico graphical example.", encoding="utf-8")
+    config = PipelineConfig(
+        {
+            "paths": {"output_directory": str(tmp_path / "out")},
+            "backup": {"enabled": False},
+            "symspell": {
+                "enabled": True,
+                "dictionary": str(dictionary),
+                "wordfreq_enabled": False,
+                "wordfreq_minimum_zipf": 2.5,
+                "broken_word_merge_minimum_frequency": 50000,
+                "auto_protect_proper_nouns": False,
+            },
+        }
+    )
+    context = ProcessingContext(config)
+    context.load_markdown(source)
+    stage = SymSpellStage(config)
+    stage.initialize(context)
+    stage.frequency_scorer = scorer
+    stage.initialize = lambda active_context: None
+
+    result = stage.execute(context)
+
+    assert result.success
+    assert "lexicographical" in context.get_markdown()
 
 
 def test_false_atx_heading_is_demoted_and_context_rejoined():
