@@ -29,6 +29,7 @@ class SymSpellStage(PipelineStage):
     name = "SymSpell"
     config_section = "symspell"
     WORD_PATTERN = re.compile(r"[A-Za-z]+(?:['’][A-Za-z]+|-[A-Za-z]+)*")
+    DETACHED_OCR_SUFFIXES = {"tion", "tions"}
 
     def __init__(self, config):
         """Initialize the correction stage before dictionaries are loaded.
@@ -155,37 +156,58 @@ class SymSpellStage(PipelineStage):
         )
         changes = 0
 
-        def should_merge(left: str, right: str) -> bool:
+        def merge_score(left: str, right: str) -> int:
             combined = left + right
             if self.dictionary.is_protected(left) or self.dictionary.is_protected(right):
-                return False
-            if self.dictionary.frequency(combined) < minimum_frequency:
-                return False
+                return 0
             if self.dictionary.contains(left) and self.dictionary.contains(right):
-                return False
-            return True
+                return 0
+            combined_frequency = self.dictionary.frequency(combined)
+            if combined_frequency >= minimum_frequency:
+                return combined_frequency
+            # The compact dictionary omits some valid derivatives such as
+            # "petrification". A detached suffix is still strong extraction
+            # evidence when neither fragment is independently known.
+            suffix_match = (
+                right.lower() in self.DETACHED_OCR_SUFFIXES
+                and len(left) >= 4
+                and not self.dictionary.contains(left)
+                and not self.dictionary.contains(right)
+            )
+            return minimum_frequency if suffix_match else 0
 
         before = segment.current_text
         # Repeat because repairing one pair can expose another OCR fragment.
         after = before
         for _ in range(3):
             words = list(re.finditer(r"[A-Za-z]{2,}", after))
-            spaces_to_remove: list[tuple[int, int]] = []
-            previous_pair_merged = False
-            for left_match, right_match in zip(words, words[1:]):
-                if previous_pair_merged:
-                    previous_pair_merged = False
-                    continue
+            candidates: list[tuple[int, int, int, int]] = []
+            for pair_index, (left_match, right_match) in enumerate(
+                zip(words, words[1:])
+            ):
                 between = after[left_match.end() : right_match.start()]
                 if not re.fullmatch(r"[ \t]+", between):
                     continue
-                if should_merge(left_match.group(0), right_match.group(0)):
-                    spaces_to_remove.append((left_match.end(), right_match.start()))
-                    previous_pair_merged = True
+                score = merge_score(left_match.group(0), right_match.group(0))
+                if score:
+                    candidates.append(
+                        (score, pair_index, left_match.end(), right_match.start())
+                    )
+            # Competing overlaps are resolved by joined-word frequency. This
+            # makes ``mana ma nipulation`` choose ``ma+nipulation`` rather than
+            # the lower-frequency dictionary entry ``mana+ma`` ("manama").
+            spaces_to_remove: list[tuple[int, int]] = []
+            used_word_indices: set[int] = set()
+            for _, pair_index, start, end in sorted(candidates, reverse=True):
+                pair_words = {pair_index, pair_index + 1}
+                if pair_words & used_word_indices:
+                    continue
+                used_word_indices.update(pair_words)
+                spaces_to_remove.append((start, end))
             if not spaces_to_remove:
                 break
             updated = after
-            for start, end in reversed(spaces_to_remove):
+            for start, end in sorted(spaces_to_remove, reverse=True):
                 updated = updated[:start] + updated[end:]
             changes += len(spaces_to_remove)
             if updated == after:

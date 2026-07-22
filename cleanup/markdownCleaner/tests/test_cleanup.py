@@ -592,6 +592,9 @@ def test_symspell_merges_dictionary_validated_ocr_word_splits(tmp_path):
                 "side 100000000",
                 "some 500000000",
                 "one 900000000",
+                "mana 1920430",
+                "manama 164807",
+                "manipulation 4744083",
                 "rareword 10",
             ]
         ),
@@ -600,6 +603,8 @@ def test_symspell_merges_dictionary_validated_ocr_word_splits(tmp_path):
     source = tmp_path / "sample.md"
     source.write_text(
         "Our situa tion drew unwanted atten tion. We moved direct ly. "
+        "The petrifica tion process continued. "
+        "We studied mana ma nipulation. "
         "Look in side and tell some one about rare word.",
         encoding="utf-8",
     )
@@ -631,6 +636,9 @@ def test_symspell_merges_dictionary_validated_ocr_word_splits(tmp_path):
     assert "situation" in cleaned
     assert "attention" in cleaned
     assert "directly" in cleaned
+    assert "petrification" in cleaned
+    assert "mana manipulation" in cleaned
+    assert "manama nipulation" not in cleaned
     assert "in side" in cleaned
     assert "some one" in cleaned
     assert "rare word" in cleaned
