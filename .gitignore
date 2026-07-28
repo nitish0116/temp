@@ -20,6 +20,10 @@ mp3ToYT/**/*.txt
 .pytest-runs/
 .pytest-tmp/
 
+# Always keep project documentation and dependency manifests visible.
+!**/README.md
+!**/requirements.txt
+
 # Library visibility switch:
 # Uncomment the last line to ignore/hide all Library files.
 # Comment it out to include/show all Library files.
