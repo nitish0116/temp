@@ -1,0 +1,164 @@
+## Side Story: A Borrowed Cat
+
+It was a cold, cloudy day.
+
+Magic Second Lieutenant Tanya Degurechaff felt more alone than ever. She'd been putting up a hopeless solo resistance for seventy-two hours with no end in sight.
+
+In a corner of the imperial capital, Berun, where the core of the Imperial Army gathered, she was alone and friendless.
+
+The wave attack was conducted by terrifyingly unyielding opponents who had never learned how to hold back. Her mental processing was saturated almost immediately, and the situation rapidly deteriorated into one she couldn't manage.
+
+She was supposed to be the outstanding field officer who returned from Norden, received the Silver Wings Assault Badge despite being alive, and was so graceful she was given the alias "White Silver." But in this extreme circumstance, Lieutenant Degurechaff could only defend herself in a daze like she was newly commissioned and didn't know how to fight.
+
+This is indeed the shame of being trampled after a lone battle, your resistance proving futile. The helplessness assailing her brain gave way to an empty feeling, like her mind was being ground down to nothing.
+
+But even then, she couldn't run away.
+
+Running away would be a major breach of trust as an imperial soldier; as a soldier, period; and, when it came down to it, as a modern civilized person with contractual obligations. As much as she
+
+might like to take emergency evacuation measures, fleeing before the enemy meant death by firing squad.
+
+Continuing was hell, but fleeing meant ruin.
+
+In that case... Tanya roused her timid heart, reviving her determination to resist until the very end.
+
+In Norden when I faced an entire company, wasn't I prepared to die?
+
+Didn't that mad scientist force me to go along with all sorts of dangerous experiments?
+
+But here I am, still alive. Yes, alive. I didn't break.
+
+Unyielding spirit. Free will and an even obstinate devotion to her dignity.
+
+Using all those things, she-Magic Second Lieutenant Tanya Degurechaff-took a firm stance with indomitable resolve, bracing herself.
+
+"Tanya, sweetie, are you here?"
+
+Sadly.
+
+"Hey, today we're finally gonna get your makeup done!"
+
+Her indomitable resolve.
+
+"It's a special occasion, so why not, right? We got a cute outfit for you! C'mon, let's try it on!"
+
+Her oath to resist.
+
+"Change into this, okay?"
+
+Her sense of dignity.
+
+"And this is a new corset. You said the other one was too hard to
+
+move in, so I brought the most flexible one. C'mon, c'mon."
+
+Today, under these circumstances, they would all be crushed underfoot.
+
+... It all started with orders she received three days previously.
+
+It was supposed to be a mission to help out with some minor business in the rear as part of her receiving the Silver Wings Assault Badge and being transferred back there. Of course, this was the "minor" of not only the military's but any organization's upper echelons. It had to be taken with a grain of salt.
+
+But she wasn't going to become the guinea pig of a mad scientist and get blown up by his invention; she wasn't going to have to perform delaying action in isolation on the front lines; this time it was supposed to be simply supplying a word or two on some topics for a little propaganda piece.
+
+Nothing had seemed problematic when she received the orders, but the moment she knocked on the door of the Culture and Promotion Division in her type I dress uniform, things started to go haywire.
+
+Her hair was tucked under her well-starched cap, and her Silver Wings Assault Badge gleamed on her chest according to regulation. She could move briskly after her injuries in Norden thanks to advanced magic treatment for mages, and she thought she had made a model salute. Her boots were polished to such mirror perfection that even her sergeant at the academy wouldn't have been able to pick on her.
+
+"Be mindful that as a magic officer, you are a model member of the Reich." She thought she had followed her orders to the letter. Like past heroes who had left behind any number of propaganda photos, she would say beautiful things and look sharp like an officer should.
+
+First impressions stick in people's minds, so she had given her appearance extra attention.
+
+And yet. She was forced to realize she had made a huge mistake.
+
+The moment she walked into the room and everyone's eyes gathered on her, there were sighs.
+
+She was then dragged before similarly disappointed military women, who grumbled at her so furiously she didn't know what they were talking about.
+
+Before she knew it, she was stripped of her new riding breeches, the boots she'd spent half a day polishing were thrown away, and although she just managed to keep her underwear, she lost her cap.
+
+Her resistance futile, she was forced into an outfit so mortifying she could hardly take it.
+
+A floor-length frilly skirt, incomprehensibly designed, and a pair of strappy women's shoes that would be impossible to march in.
+
+But all that was still tolerable compared with the smiling murmurs. Before that, she still had room to debate.
+
+"It's great that your skin is so clear! We heard you were hurt, so we were worried... but I guess the surgeon did a great job! And your legs are so slim. Try this one for just a second."
+
+It was another frilly skirt, but for some reason, this one left her legs exposed when she sat down. And to top it off, the corset's restraints were pulled impossibly tight until she could hardly breathe.
+
+Hurry, hurry, please just be over. Tanya could only hope, but even that was in vain; it went on for half a day. And when both her body and mind were flagging, finally the hands of the woman in charge stopped moving. It's finally over. She had nearly sighed it aloud when she suddenly heard something that made her heart freeze.
+
+"Well, this simple outfit is good enough for the first day. Let's try some makeup!"
+
+The first day? ... The first day?!
+
+"Oh my gosh, your hair! Are you taking care of it properly?!"
+
+"Huh? Umm, according to hygiene regulations-"
+
+Her hair was cut to regulation length. In some ways, the Imperial Army was quite traditional, and this was a vestige of a rule created mainly with nobles in mind. The bizarre regulation stated that "in order to distinguish the sexes of young members of the service" or whatnot, girls who went through the academy before they had reached conscription age were to maintain shoulder-length hair. When she had looked into it, the imperative turned out to have been included mainly for the sake of noblewomen.
+
+Sadly, the Imperial Army stuck fast to the rules, so she had to grow her hair that long, too. But Tanya could boast that her duty was performed in full. It was the perfect length-she measured it.
+
+"Stop right there. Do you brush it?"
+
+
+"What kind of comb do you normally use?!"
+
+"The standard-issue..."
+
+There was nothing she could do. Every time she opened her mouth, the lady's expression grew more severe, and she couldn't fix it.
+
+"Hold on. By the standard-issue, do you mean this... celluloid one?"
+
+"Yes, that's right..."
+
+"That's insane! We've got to teach you from square one!"
+
+With that, she took out several combs and began to speak voluminously about each one, while Tanya stood there and felt like her mind was being physically scraped away.
+
+... O Being X, I don't even care if it's thee this time...
+
+If you call yourself God, then you should be able to at least fix this issue with my hair. No, I know it's impossible. I know it's impossible, but...
+
+In her thoughts, she began bandying about absurdities that would affect her life's mission. But as her mind was about to escape reality, she was suddenly jolted back by something that looked like a branding iron.
+
+"Umm, excuse me, what might that be...?"
+
+"Oh? So you are interested in some of this, huh? I do think you would look charming with a perm. Hmm, wanna try it?"
+
+"No, uh, er, with that iron rod?"
+
+"Yeah, you use it to make waves, you know?"
+
+She smiled and said she was confident in her wave-making techniques. But honestly, at the point Tanya heard that the rod would be used, all she could think about was formulating some plan of escape.
+
+"Uhh, no thanks, er, I think it would interfere with my duties..."
+
+"Yeah. It's too bad, but I guess we'll have to hold off on that. Then I'll at least do your makeup really nice."
+
+"... I can't just look the way I always do?"
+
+She knew it was a bit late to say that. She was ashamed to admit she had been overpowered, but if she wasn't able to speak up, then it would have been the undeniable truth. So she mustered her courage and asked. Would her type I dress uniform really not work?
+
+"You look too dangerous like that. And you can talk in a gentler, more girlie way, you know. Just because you're in the army doesn't mean you have to act like a man."
+
+"Oh, this is easier for me..."
+
+"Oh boy, well, let's at least try this, okay? We have four days until the event, so let's do our best here, all right?"
+
+Thus, she was shot down.
+
+If this is how it's going to be, I'll take the battlefield. I want to go back...
+
+How many times did she murmur that deep inside?
+
+It went on for three days. She withstood the weirdness of the foundation brushed onto her face, the stickiness of the lipstick, the constricting corset, all of it.
+
+... If public relations wants a dear little patriot and if that is recognized as an order by the army... then I have no choice...
+
+Suppress yourself.
+
+This is work. Smile, c'mon, smile.
+
+"Hello, everyone! I'm White Silver, also known as Tanya Degurechaff!"

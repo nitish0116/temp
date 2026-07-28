@@ -1,0 +1,1709 @@
+## DECEMBER 10, UNIFIED YEAR 1924, ENTENTE ALLIANCE, ARNELSNE PORT
+
+Upon hearing the news that the city of Os had fallen, coupled with the Imperial Army's advance on the interior, everyone of that generation understood that this was the end for the Entente Alliance leadership. Some lifted a glass to toast the Imperial Army's victory. Others downed bitter drinks in anticipation of that victory. Everyone saw it as the end of the Entente Alliance.
+
+But they cried out to encourage the ones directly involved, who were beginning to break in the face of their fatherland's looming fate; it wasn't over yet. The Empire's victory was not certain. Only the government had given up.
+
+The civilians, the people, were not defeated.
+
+"... So are we ready to sow our seed?"
+
+"The Republic agreed and... the Commonwealth also agreed to take someone as a diplomat."
+
+Resistance could continue outside the fatherland.
+
+Yes, the war against the Empire would carry on beyond their borders.
+
+
+"In that case, I think the recipient should be Foreign Affairs Councilor Abensoll."
+
+"No, I think we should send the youngest, Culture Councilor Korsor, as our ambassador."
+
+"I disagree. You're the better man for the job, Councilor Abensoll."
+
+Someone had to survive and continue the fight, to declare, We're still here.
+
+And it was the soldiers who would act based on the councilors' intentions. The reality was obvious, but the army did what the government demanded. Everyone would do all they could for their country, which was how it should be in a unified nation. If there was one thing that was often forgotten in the big picture, it's that those soldiers who are asked to give their all and sacrificed by the politicians in the name of the fatherland have families and happy households. And so that day before deploying, the Entente Alliance mages had only a short time to say their farewells.
+
+"Good luck."
+
+"... I'm sorry," Colonel Sue quietly apologized as he embraced his tearful wife. She would evacuate to another country to avoid the fighting. The fact that they were a family who could choose that option was Sue's only consolation as head of the household. He should probably have been happy he could have his family go to the Unified States.
+
+Still, the way things had turned out meant he had no choice but to send them away. Probably the only thing I-no, every Entente Alliance soldier-can do is hug their family and exchange hopes of safety. Our fatherland is no longer safe.
+
+"Dad?"
+
+"Mary, look after your mother. And take care of yourself."
+
+"... You can't come with us?"
+
+"I'm sorry. I have work again."
+
+He forced himself to remember that he was still lucky. He had the connections to at least get his family to safety. Given the congested maritime traffic and issues with controlling the sea routes, it wasn't an option open to many people. He did feel a bit guilty, but if he could protect his family, he had no regrets.
+
+Of course, it wasn't what Sue wanted. He would have preferred to
+
+spend peaceful days in the warmth of his family. If he had known this was going to happen, he would have gone home more often. Why didn't I appreciate what a blessing that was to have my home so close at hand?
+
+I should have spoken to my daughter more. There are so many things I still want to tell my wife. So many regrets. It was stupid of me to believe our lives would go on unchanged forever.
+
+It was a feeling even he couldn't explain, but when he loosened the arms he had unconsciously wrapped around his wife, as if sweeping away some awkwardness, he managed to put on a smile as he crouched down to his daughter's eye level.
+
+iii < --- lc lr f oo | \ Va! ~ fh se i": i) oa \ SNA ' a Se oe FANS Sr ET aan ered
+
+
+"I may not have been a very good parent, but I hope someday you'll think of me as a father you can be proud of."
+
+"It's okay. You're my dad! Oh, but you should shave."
+
+She was such a sweet girl. He had hugged her in spite of himself; he wanted to grin at her ticklishness.
+
+"You're right. I really should be good and shave."
+
+"Get it together, Dad!"
+
+"Yeah, you're right. I gotta get it together."
+
+The most Sue could do as a father was laugh like that with a wry smile. The moment where his daughter scolded him for not shaving often enough-that was normal life. The essence of his precious everyday world.
+
+"Well, this is no good... I can't have you worrying about me. I'd rather remember you with a smile."
+
+"Please stay safe."
+
+The fact that his wife bravely wished him well, even after she had broken into tears, pained his heart. He wanted to board the ship with them, to live out their lives together. But he was a soldier bound by duty.
+
+Duty. Aghh, annoying, noble duty. O Fatherland, I give myself to thee. So, God, please bless my home, the country my family loves.
+
+"Dad, it's a little early, but... Merry Christmas!"
+
+As Sue steeped in sentiment, his daughter pointed at a large case before she boarded the ship with her mother, telling him to take good care of it.
+
+Momentary relief filled his heart as he watched them go, as well as the sadness at their parting that could very well be final. But if there was one thing he didn't want to do, it was regret the moment. There was nothing unluckier than tears in a send-off. He forced himself to smile and then suddenly realized the case was gone. He was confused until he noticed an old acquaintance holding it out to him with an easygoing look on his face.
+
+"Sue, a Christmas present from your daughter. Take it with you."
+
+The bizarre remark came from Councilor Cazor, who was present to see the evacuees off. Wondering why the councilor would know about his daughter's present, Sue grabbed the case only to be puzzled by its unexpected weight.
+
+There weren't cookies or a wool sweater inside. It was something much heavier.
+
+"Councilor Cazor, what is this?"
+
+"Go ahead and open it. That's an SMG from A. S. Weapons in the Waldstätte Confederacy. Durable with a body like an LMG."
+
+At the councilor's suggestion, Sue moved to the shade and opened the case. What greeted him was a brand-new submachine gun-a fairly costly model that would work well in conjunction with his orb. Clips, magic bullets, a set of maintenance tools-it came with everything.
+
+"How did she get ahold of something like this...?" He admired the solid yet light build as his examination continued. It accepted the same caliber as his rifle and had a shorter range, but it was easier to handle in a close-quarters fight. It was a good choice for facing anyone who snuck up on him. Additionally, the limited range meant a comparatively lower risk of accidentally shooting an ally, so that was a big plus.
+
+That's why he had to wonder.
+
+How in the world did my daughter get this?
+
+"It's a personal gift from a lousy Commonwealth fellow. For a country with such horrible food, they sent us a good man, wouldn't you say?"
+
+
+"Apparently, he saw your daughter crying in the park. He put your initials on it."
+
+"Oh, the A. S. is for my name?"
+
+He was sure the engraved letters were the factory's logo; the level of effort made him smile.
+
+I don't know if my daughter is sinful or if heaven simply loves her, but she sure wooed that intelligence agent... Now and again, those Albion chaps actually can do something nice.
+
+"Surely it's the initials for Arnold & Smith Weapons."
+
+"No, apparently, that's stamped on the underside." Councilor Cazor looked somehow amused as he explained.
+
+"That vexing Commonwealth gent was probably moved by your daughter's tears and gave her a discount. Apparently, she paid the special price of a hundred pounts. That's surprisingly cheap, Colonel."
+
+Thanks for giving your dad such a great present, sweetie. He wanted to give her a kiss if he could.
+
+... So this is what the strength of a hundred men feels like.
+
+"I'm proud to have such a happy family."
+
+"I'm sorry, Colonel. I'm afraid we're going to have to ask too much of you."
+
+"You arranged the ship for me. For my part, I'm prepared to protect my family's home with my own two hands."
+
+"We're counting on you."
+
+One man bowed, and the other smiled in receipt of the gesture. They didn't need to say anything more.
+
+## DECEMBER 11, UNIFIED YEAR 1924, EMPIRE, RHEINE HOTEL DINING ROOM
+
+For Tanya, it's a wonderful autumn lunch. The appetizer had been a delightful pâté of seasonal fish. The skillfully prepared dish used fish so fresh it seemed almost a waste to make them into a paste. No praise would be enough. It was simply sublime.
+
+The potato soup was legendary. She was used to eating potatoes, so it felt strange to enjoy them so much. That said, it wasn't a bad thing. Battlefield rations could hardly compare when it came to the level of care devoted to their creation, and as such, the dish was an embodiment of humanity's delightful creativity.
+
+She has heard the main course, which hasn't yet arrived, is whitefish. The waiter explained the dish so proudly she has high expectations. If the hotel's waiter says it's that good, not only should the quality of the ingredients be high, but she's certain it will demonstrate the chef's skills, too.
+
+And the fact that her dining mates are also happily expectant makes the meal even more fun. With her are members of the reservists association and notable figures from the region. To think that she gets to network with them. She can only marvel at her luck.
+
+As they have an understanding of soldierly habits, the gift from the troops up north, Koskenkorva,[10] is going over well. I can see why this stuff is notorious for increasing your chances of becoming an alcoholic.
+
+Though they're old soldiers, they're mainly just men well-known around town who are getting on in years. They're probably just surprised by the curious flavor. And if they're happy to have an interesting story of receiving such a gift from a child of my age, even better. With her scheme going to plan, conversation flows naturally, and Tanya is able to enjoy herself quite a bit.
+
+Even if she can't drink with them, it was worth the trouble of confiscating a case of the stuff for private use at parties. She's most satisfied.
+
+As she's thinking how happy she is about the results of her labor, she's looking forward to enjoying the sautéed whitefish when the waiter brings not the highly anticipated main dish but the receiver of an ominous-looking black telephone.
+
+"Miss von Degurechaff?" He deliberately asks her if she will accept the call. She's on her way back to Central, having lunch with these local reservists and celebrities as an excuse to pass through a resort town. Who gets a wartime phone call in that setting?
+
+My best day off has turned into my worst in an instant.
+
+I'm also now dubious that I'll really get to spend Christmas on leave like I was promised.
+
+She takes the respectfully proffered receiver with reluctance. If it weren't her duty, she would want to run away. This has to be just how Churchill felt getting woken up by the news that his capital ships had been sunk.
+
+Would someone make me a hellish cup of black coffee?
+
+"This is Major General von Rudersdorf of the General Staff. Major Tanya von Degurechaff?"
+
+
+She knew before he even spoke. It was obviously a call from a military person. No statement of purpose or seasonal greeting. Not to mention, General von Rudersdorf is still at this moment on the forward-most line fighting the Entente Alliance. The implications are the opposite of this gorgeous luncheon-the telephone call will be an invitation back to the wretched front lines.
+
+I want to go home right now. How could I have been so dense to come to this meeting where everyone would know exactly where I am?
+
+"A notice from the General Staff Office. 'Assemble Major von Degurechaff and her unit at once. Report in as soon as this is done.'"
+
+"Understood, sir. We'll proceed to the nearest garrison at once, and I'll report in as soon as we're all gathered."
+
+... It's an impressively impossible-to-misunderstand order to mobilize.
+
+She has already responded to a pile of unreasonable General von Rudersdorf orders, but it seems he's going to work her some more. If this was going to happen, she should have blocked the radios and taken her time going back under the pretense of training.
+
+Well, there's no use crying over whatever. She replaces the receiver and slips the waiter a generous tip.
+
+It's not his fault the news is awful. She doesn't like it, but services must be compensated.
+
+"Oh. Good news, Major von Degurechaff?"
+
+But apparently, people give big tips when news is favorable. I can't help but think of that as emotional, illogical behavior, so I don't do that... but it seems the amount I gave was a signal to these local names, who hadn't heard, that the message was something fortunate.
+
+I'm probably supposed to smile at these gentlemen and politely reply, but I'm not sure I can manage it.
+
+In the end, her face wears an unrefined frown as she shakes her head. "No, sir. Unfortunately, it doesn't seem to be very good news."
+
+"Oh! That's..."
+
+The man with the expression of utter compassion on his face is truly a good person. Well, they have the goodwill of men who don't have to go to war.
+
+To someone being sent on the assault, it's complicated, but it is what it is.
+
+Polite manners are one of the most basic tools for keeping mistakes to a minimum. As such, it's only a matter of course that I follow the rules. At their core, human beings are political animals, but at the same time, they are social ones.
+
+"Apologies, but I have orders. I'll have to leave early."
+
+"... I wish you well, Major."
+
+Can I say for sure that none of them are feeling lucky it's not them? Tanya decides it's a groundless suspicion and puts on a polite smile as she swallows her bitter thoughts and stands.
+
+"Thank you. I hope you'll forgive my rudeness. Excuse me."
+
+With those parting words and a bow, she takes her overcoat from the waiter and pays her bill. She's dressed formally-in uniform. Her overcoat, having been designed for practical use, is quite substantial. Somehow it bothers me, but the army can be irrational in the strangest ways.
+
+Of course, I also have to wonder about people who wear trench coats as fashion...
+
+While she was picking up her coat, a military vehicle had been sent over. A thoughtful waiter must have alerted the orderly in the waiting room. A car with her subordinate at the wheel is already standing by. The efficient arrangements make her feel a little better. Humans have to live with a positive outlook.
+
+And so she finds the situation genuinely wonderful. She was right not to be stingy with the tips for the waiters.
+
+It's also nice that they open the door so courteously. She quickly gets into the car, and it pulls out.
+
+"Corporal, back to the barracks. Sorry, but if you can step on it..."
+
+"Yes, ma'am."
+
+The corporal takes off, and amid the slight jolts along the way, she
+
+decides to share her misfortune. I don't enjoy suffering alone. However, I don't mind making others suffer alone. Without even giving herself time to sink back into her seat, she boots up her computation orb. She connects to the garrison and calls the Officer of the Week. The fact that he answers on the second alert means he passes.
+
+"What can I do for you, Major?"
+
+Well, it's bad news. Rather than beat around the bush, I should just get to the point.
+
+"Leave's been cut short! Issue mobilization orders immediately! All hands should assemble as of right now."
+
+"... Yes, ma'am, mobilization orders, understood. I'll call everyone back from their half-day leave."
+
+Well, my rest in this resort town is certainly over sooner than planned. Then Tanya has a vexing thought: the possibility that even before she applied for leave, General von Rudersdorf had been "kind" enough to hold her unit up near a naval base for a few days as nominal time off. It's totally possible. If, during a large-scale operation on the northern lines, they were transferring a unit that could keep itself safe from espionage, the General Staff certainly might have the 203rd Aerial Mage Battalion withdraw.
+
+It's actually quite practical.
+
+"Hurry. It's orders from the General Staff."
+
+"Understood."
+
+The fact that they single her out to give the orders makes her think the General Staff wants to hide something. Yes, upon closer consideration, there is something very unnatural about all this. Why now, of all times, is General von Rudersdorf from Operations personally in Norden on the pretext of an inspection?
+
+## TEMPORARY CAMP OF THE IMPERIAL ARMY'S 203RD BATTALION
+
+"Telegram from the Imperial Navy Northern Sea Fleet Command!"
+
+
+From the fleet? That's the doubt in my mind. Tanya shares the question behind the puzzled looks of the 203rd Aerial Mage Battalion officers. Why did the fleet's command go to the trouble of sending us a telegram?
+
+The fact that they aren't going through the regional army must mean this is what the General Staff wants? Or are they intervening directly? Either way, I have a bad feeling about this. As Tanya interprets the situation, she presses the radio operator to read the telegram.
+
+As the officers listen with question marks on their faces, he responds to her request and reads the mission orders. "These are search and destroy combat orders for the 203rd Battalion. All previous maneuvers are to be halted immediately. You are requested to proceed directly to the waters indicated, locate the enemy, and block off the area. That is all!"
+
+Geez. They say "search and destroy" like it's nothing. Plus, nobody uses search and destroy these days! And mages don't have any way to navigate over the water, so how are we supposed to find enemies and block off an area? Talk about mission impossible.
+
+As Lieutenant Serebryakov brings the document over, Tanya stares crankily at a navigation chart of Norden's coast spread out on her desk. She doesn't even usually look at these things. Realizing this, she can't help an inward sigh. It confronts her with the reality that she'll have to fly in airspace with no sense of place, and it makes her awfully depressed.
+
+"Lieutenant, get me the combat control map for the Northern Sea area. Call Norden Control." This is making my brain hurt. Tanya shakes her head to clear her mind as Lieutenant Serebryakov brings her the requested map before trying to establish a line through to the local controllers.
+
+"Yes, ma'am. Right away."
+
+She hands over the map and receiver with crisp motions. It's Norden Control. We exchange just a word or two, and the radio operator connects me to someone from the navy. It's the worst when they don't pass you off irresponsibly but actually have good lateral cooperation.
+
+At this rate, I won't be able to slack off and blame it on bad coordination. Maybe being too efficient is a bad thing. I suppose I should at least praise the integrity with which they do their work, though. I'm a good citizen, so it's only right that I commend my fellow countrymen for performing their duties.
+
+When I think of that, I guess all I can do is stick it out for the public good.
+
+Since I have no other choice, I make all the necessary calls without a minute wasted. Griping is a luxury and a waste of time. There is not a day in the life of a corporate warrior that they are allowed the indulgence of wasting time. In order to spend their off days as they wish, the highest level of job performance is essential.
+
+For a soldier, not a thing changes.
+
+"Lieutenant! Where is the Northern Sea Fleet now?"
+
+"I'll ask right away!"
+
+The military machine is starting to move, and I'm one of its gears , Tanya automatically thinks. And this gear needs to know the positions of the remaining Entente Alliance ships, as well as her friendly fleet. She has crammed the general memo on the Entente Alliance ships into her head at least, so she dredges it up while quickly confirming the crucial points.
+
+Even if the Northern Sea Fleet deployed in this area isn't the Empire's strongest, the High Seas Fleet, it has some powerful vessels, including capital ships. Their training is trustworthy, and ever since the landing operation a few days ago, we've been able to coordinate to some extent. But an unplanned battle is a different story.
+
+Tanya manages to consider all the most important facts while having Lieutenant Serebryakov make phone calls. She has no choice but to handle this efficiently, but it's in an area she has no experience with, not to mention a rapid response mission. Maybe that's why she can't calm down and has only a tenuous hold on the urge to give a thousand different instructions.
+
+She takes deep breaths-small ones so no one around her will notice. Sometimes it's useful to be short. It makes you less conspicuous, but at times like this, it's really handy.
+
+Still, we've never even done an exercise over water, and now we're being thrown into a real marine battle? The target is a group of fleeing Entente Alliance warships. Missions to assist in pursuit are so hard. It's like trying to negotiate an acquisition without knowing anything about the other side. If we're in such a superior position that these talks would work out, it begs the question whether negotiations are even needed in the first place.
+
+Hence, each minute feels like a hundred years, and when the situation report that Tanya is waiting for comes in and Lieutenant Serebryakov hands her the receiver, she snatches it away. With her other hand she holds a pen, ready to make notes at any moment on the map she had Lieutenant Weiss spread on the table.
+
+"This is Major von Degurechaff of the 203rd Aerial Mage Battalion. We received a mission to support your ships from the General Staff. What's the situation?"
+
+"The second fleet of battle cruisers has left the Kiël naval base. Submarine Task Force 13 went out ahead of them to build a patrol net."
+
+Luckily, someone from the navy who knows what's going on fills her in. According to him, the emergency-dispatched battle cruisers
+
+are already searching for the enemy.
+
+"So we'll be the vanguard for the battleships? Thrilling!"
+
+Lieutenant Weiss has a penchant for keeping things lighthearted, and Tanya makes a mental note. A vice commander who stands out by paying attention to the atmosphere of the troops is hard to come by. But what he said is actually correct. Just being the vanguard would make them look good.
+
+"What are you getting all excited about? We're a rapid-response mage battalion-it's what we do."
+
+Soon enough, she receives the report that the unit is ready to sortie, so she goes to meet them.
+
+"Your commander!"
+
+Battalion Commander Tanya von Degurechaff's expression must look normal to Weiss and everyone else as they meet her with salutes. I'm confident that I act the part of an unflappable officer that well. She returns their salutes nonchalantly, glances around, and nods in satisfaction. Well, internally she's over it all, but still.
+
+"Thanks. At ease. Lieutenant Weiss?"
+
+"Ma'am. I'll give the briefing."
+
+Having one's subordinates do the annoying stuff is the privilege and duty of all officers throughout history. An organization runs on hierarchy by nature. If a superior is stealing work from their reports, that workplace is topsy-turvy.
+
+"Yesterday before dawn, a scout plane belonging to the 224th Night Reconnaissance Team spotted a gathering of vessels."
+
+Photos on the board show multiple Entente Alliance battleships, including a coastal defense ship. The Entente Alliance is hardly a naval power, but it's still an armament lineup on par with what you'd expect of a player on the world stage. It's a formidable threat even the Empire can't ignore.
+
+To Tanya, the obsession with big ships and their big guns is passé. Still, she is aware they have to be wary of heavily armed combat vessels. As one data point, take the fact that a battleship's naval gun fires way more iron than an entire division of infantry. On top of that, the porcupine-like anti-air fire and marine mage interception makes it a difficult net to slip through.
+
+Still, they should be easier to approach than the U. S. ships in the Marianas were. It's a question of how much easier.
+
+"Upon analysis, the General Staff has concluded these are the main remaining forces of the Entente Alliance fleet attempting to escape. It's obvious, don't you think?"
+
+We've estimated the various paths they might take, from a beeline for the Republic to a meandering route to the Commonwealth. But it's clear that their goal is to shake off imperial pursuit and get away. Naturally, the pursuing side wants to locate and annihilate them.
+
+We've received reports that the Commonwealth Navy is doing exercises just outside our territorial waters, which is a real headache. We've been notified to avoid firing stray shots. On the other hand, we've notified them that regardless of what happens on the open sea, anything violating imperial waters will be shot at. Overall, it's a delicate situation that puts a huge strain on the nerves.
+
+"Fleet Command has ordered all ships to find and annihilate the Entente Alliance vessels. The General Staff's order for us is to support them."
+
+Lieutenant Weiss narrows down the broad range of meanings support could have. Then he looks to me as if the rest is my job, and yeah, I don't want to look like I'm getting paid to do nothing, so I take over.
+
+"Battalion, it's as he said. Reconnaissance Mage Task Force 2 with Northern Sea Fleet Command has gone out ahead of us. And apparently, a 'neutral country' is hard at work doing exercises in nearby waters. Take care not to hit them."
+
+It must be really hard for the scouts to stay on top of them in this
+
+rain. Although I must say, it seems backward to send a unit to watch the Commonwealth exercise while we're trying to find the Entente Alliance. But there's no reason to lower morale by making that kind of remark.
+
+"We're going to head north and meet up with them as soon as we get data. This goes without saying, but we'll be playing it by ear."
+
+"Understood."
+
+"According to Intelligence, the enemy is fast. And apparently, they have marine mages. The scope of our mission includes eliminating those, but reconnaissance is top priority."
+
+Our mission is of the common enough "search and destroy" variety -we're just being told to prioritize the "search" part.
+
+"Meet at the exercise ground runway in sixty minutes in full gear. Any questions?"
+
+... Well, they're my war-obsessed underlings. They're full of fight.
+
+Without raising any questions, as usual, the unit eventually takes off an hour later. We head west at cruising speed as we climb.
+
+Apart from a few irritating false reports from friendly submarine units, there is no news. If there is anything to say at all, it's that the wind and rain have picked up, and our visibility has rapidly deteriorated.
+
+I look around, but I can't even see my battalion.
+
+I'm confident in our ability to fly in formation, so I'll be pretty upset if we get separated and can't bring our full power to the fight. Our saving grace is that we shouldn't have anyone with a sense of direction that hopeless in this unit.
+
+"Control to Pixie. No reports of contact."
+
+"Pixie 01, roger. How about the weather? Can we expect it to improve?"
+
+Still, I'm fed up with these tiresome reports from the rear. No reports of contact means that even though we've been flying all this time, we have to keep searching.
+
+If we wanted to get above the rain clouds, we would have to climb awfully high. Instead, we just get wet. Even though our defensive shells repel water, getting rained on doesn't do much for the mood.
+
+"Sending war zone data from Urban Control... Looks like it won't for a while. I feel for the ground troops. They must be in hell with this cold."
+
+"The whole combat zone is hard rain and storm winds. A level-two flood warning and flight restrictions are being issued? Got it. How are the other units in the operation doing?" Tanya checks the data as it suddenly comes in and gets confirmation that the weather is only getting worse, which boggles her mind. That said, if the flight warnings become no-fly advisories, they can return to base.
+
+"First Squadron has left Kiël naval base on a search and destroy mission. The air force is sending up a special force recon company. Make sure you don't accidentally shoot them."
+
+We have other forces searching? I suppose that's better than not. Guess we should keep searching till we get permission to go home. That was what she was thinking when...
+
+"Pixie 01, roger. Can you let me know where the exercising Commonwealth ships a...?"
+
+Far down.
+
+Even in the downpour, an unmistakable roar and the sound of gunfire abruptly draw her focus to something below her.
+
+"An explosion?"
+
+It was the dull boom of something detonating underwater. It reverberates more than you would expect, especially in the quiet night sky.
+
+When she squints, she can just barely make out several floating shapes.
+
+The next moment, her eyes pop open. In the searchlight are enemy ships.
+
+It was an awful sight for the men on board the submarine belonging to Imperial Northern Sea Fleet's Submarine Task Force 13. The captain, who was looking through the periscope and saw the huge splashes the moment the explosions sounded, was so shocked at first that he couldn't get his mouth closed again. When they realized they didn't hear any secondary explosions, everyone looked to the heavens.
+
+The torpedoes had gone off early.
+
+The six aal s[11] they'd only just been issued really were more useless than actual eels. The furious sailors spewed strings of curses, swearing that next time they'd load the torpedo development team, who were only good for wasting the budget, into the tubes and fire them .
+
+To them, the results the devs had gotten meant nothing.
+
+The Entente Alliance vessels they'd discovered wouldn't sink; the six torpedoes they'd launched after making careful calculations in anticipation of success had gotten impatient and blown up too soon.
+
+It was no surprise that the navigation officer who had gone to such pains to get them into a striking position was looking dazed. Even the captain's thoughts froze for a moment at the sudden scene that seemed to scoff at all their hard work.
+
+What he saw through the periscope was the Entente Alliance fleet changing formations for counter-sub combat. Then marine mages began sweeping the water's surface for periscopes. As the crew hurriedly pulled theirs in, they found themselves furious-they didn't want to die because of such a stupid failure.
+
+Actually, they didn't know it at the time, but... given the outcome, they had actually pulled off a fantastic assist. When the Entente Alliance fleet realized an imperial submarine was targeting it, it entered counter-sub combat. As a result, if only for a moment... everyone was looking down.
+
+And that's why their response to what came out of the sky in the next moment was delayed. Make them look down, then have the real attack swoop in from above for the kill.
+
+To Colonel Anson Sue, who realized they'd been caught, it was an awfully cunning one-two punch.
+
+"They got us, those bastards!"
+
+"Where was the leak?! No, now they're- Those fuckers!"
+
+It was truly the worst possible timing for the Entente Alliance fleet. Since they had transitioned into counter-sub combat, the destroyer escorting the flagship had moved away. Not only that, but the marine mages had rushed out to suppress the submarine, and the lookouts, staring into the darkness, were all scouring the sea so as not to miss any torpedo wakes. That was when it happened.
+
+The enemy mage battalion that had been lurking in the sky made a full-speed charge at the flagship.
+
+Only a few managed to take off, including Colonel Sue.
+
+But the imperial mages plunging down, trading altitude for acceleration, were far faster than they were, and the fact that they had control of the air meant he couldn't think of a way this desperate situation could get any worse.
+
+Still, all Sue could do was climb. If he didn't, that ship and the seed of his fatherland's future would be sunk.
+
+Major von Degurechaff's feelings at that moment, the time, the place, would be the subject of many inquiries in later years. In reality, the 203rd Aerial Mage Battalion, including Tanya, is in partial chaos
+
+at finding themselves in an unexpected encounter, but they manage to charge as a training reflex.
+
+"Battalion! Break! Break! Prepare to attack!"
+
+Making the split-second decision to engage, Tanya enters a headlong dive; she has no experience fighting ships. The reason is that supposedly great balance of power. Thanks to diplomatic efforts, the leading nations have avoided serious armed conflicts up until this war. In other words, this is practically the first mage attack on a ship in history.
+
+And that was why it's all they can do to act according to their exercises. She scatters the unit, and dodging anti-air fire all the while, everyone swoops in at the same time. It's a tactic championed by a doctrine that has only been verified theoretically. No one knows whether it will work or not until the 203rd Aerial Mage Battalion tests it with their own flesh and blood.
+
+Really, the receiving end of the attack was in the same boat. The ability of aircraft to attack ships was only just starting to be discussed, so no one was focused on mages, who have less firepower. As a result, they had only just touched on anti-mage combat in training exercises.
+
+In a sense, it was an extremely crude firefight for both sides.
+
+"Pixie 01 to CP! Contact! Contact!"
+
+"CP to Pixie 01. What is it?"
+
+It's hard to do your best when you find yourself stuck in a battle where you weren't expecting to get shot at. In that sense, Tanya can't help but hate the easygoing CP radio operator. Internally, she can't stop griping, What the hell did you mean, telling us there'd be no contact? But a calmer part of her brain isn't very impressed with the enemy's anti-air fire, which is a relief.
+
+Actually, the enemy's protective fire is so poor it doesn't even come close to the American empire's anti-aircraft fire Tanya is thinking of. It's sparse enough that she can evade simply by flying aimlessly, inwardly outraged and wondering what the other search units have
+
+been doing, so it's evident that it isn't much to worry about.
+
+"I'm taking fire! That's definitely the flash of a battle cruiser gun. Two hundred off the coast of Wiengenberg."
+
+As she makes the report, she immediately breaks formation. After all, naval guns are a much greater threat than small arms or even most field artillery. Even a single autocannon uses 20 mm ammunition, the same class as a heavy machine gun on land. The powerful high-angle cannons are 127 mm. The shells they're aiming at her won't allow anyone with a human body to just walk away from a direct hit. If we stay in tight formation, the enemy anti-air guns will have their way with us.
+
+"Battalion, don't bunch up! Make sure you attack the mages and the ships. Don't get too distracted by one or the other!"
+
+Everywhere around me is dark, but I'm sure I'm exposed. When she realizes that, she can hardly believe how unexpected this is. Her mission was to find the enemy. If the submarines, the scout planes that went out ahead, or the company of recon mages discovered the enemy, Tanya's unit might have taken over monitoring, depending on the situation; it was supposed to be an easy mission. Entering the effective firing range of enemy ships and engaging was never part of the plan.
+
+But if she squints, she can see a light reminiscent of a muzzle flash from below. It must be one of our submarines torpedoing them. If it wasn't for the noise from the explosion, I probably wouldn't have noticed it. The thought that she had narrowly escaped making an error frightens her. If she hadn't noticed, she would no doubt have ended up being grilled by an investigative commission. Boy, am I glad the torpedo's wake caught her eye. But I can't be completely happy because if she had been a little farther away, she could have noticed and been fine.
+
+"Ngh! Anti-mage counterattack detected! Anti-air disciplined fire incoming!"
+
+"I'm picking up mages! Damn it! We've got marine mages incoming!"
+
+Her talented subordinates have an appropriate understanding of the situation, so she isn't actually very worried. But any commander asking their subordinates to act in a situation they haven't been trained to handle has to at least acknowledge their right to scowl.
+
+"All hands, engage at will! Follow your company commander's lead!"
+
+As long as they are receiving an organized interception, it has to be dealt with, but she decides that rather than trying to control an entire battalion in the dark, it's better to let each company operate individually. We have to regain some degree of discipline and get out of here!
+
+"Visibility is poor. Don't lose your depth perception! The air is dense, but don't forget we're over the sea! Take the humidity from the water into account. Our opponents are used to it! Maintain your altitude!"
+
+The lower companies, Second and Third, seem to be in good positions. First and Fourth were on guard above, so they have some leeway in terms of their altitude. And as long as I'm personally commanding First Company, I want to push all the dangerous stuff onto Fourth. She makes some quick calculations and decides to adjust some things.
+
+"Ngh, draw the mages away from the ships! Second and Third Companies, you're the vanguard! Keep those mages busy!"
+
+Marine mages are a threat to aerial mages. It goes without saying that exposing myself to anti-air fire and enemy mages isn't a hobby of mine. Even the majority of my war-crazy subordinates probably aren't into it. We'd all like to avoid working in dangerous areas.
+
+"Fourth Company, guard the rear. Help Second and Third withdraw. A shoot-out with the ships is out of the question."
+
+Really, I want Fourth Company as my shield, but that's too much to ask for.
+
+In that case, increasing the number of decoys will probably get me the best results. From the enemy's point of view, it must be easier to target the entire battalion.
+
+"First Company, lament your misfortune-or sob with joy at your opportunity to earn commendations! Rejoice, for it is we who will harass the ships! Follow me!"
+
+I'll have my underlings do the dangerous counter-mage warfare, and I'll mess with the boats.
+
+
+"Plunging into the fleet is a bold move! Allow us to be the vanguard!"
+
+The elated personnel of my company volunteer, but it won't do for me to follow their suggestion.
+
+"Sorry, the commander leads the way. Get back."
+
+This is the only time believing that commanders should lead the way is useful. Don't get me wrong, it's not like I want to expose myself to enemy fire. Nobody with common sense wants to be out front charging into a hail of bullets.
+
+But that's an amateur's calculation. Of course, I don't want to do it, but since I know it's the safer option, I choose it without hesitation. Reason trumps fear.
+
+To explain it simply, most of the bullets aimed at the leader of a pack will end up hitting the people behind them.
+
+In a little more detail, with deflection shooting, if they open fire assuming I'm coming in at two hundred fifty, all I have to do is approach at three hundred. The difference will keep me safe in the lead. But what about the ones behind me? Yes, the enemy will correct their deflection to my speed, and it's the ones who follow who will rush straight into that.
+
+Also, when moving away after the attack, it goes without saying
+
+that I'd rather have a shield behind me. Our eyes are in the front of our heads.
+
+The more you think about it, the more dangerous the rear starts to sound.
+
+In other words, being the bold commander out front is the safer policy. It's said that in war, whether you survive or not is determined by how cowardly you can be. I'm a coward, so I want to calmly maneuver myself into a safe position.
+
+"Follow me. I say again, follow me."
+
+For the moment, I look for a ship that isn't firing so heavily.
+
+I don't even have to stop and think to know that only war junkies want to get up close and personal with the dense anti-air fire of cruisers or battle cruisers. You can see it in war videos or special reports. The anti-aircraft fire density of American ships was nine parts bullets to one part sky. I would practically despair just watching.
+
+I don't care how strong mages' defensive shells are-I am absolutely not flying into a 127 mm high-angle gunshot.
+
+This is a night battle, but even if we can expect some help from the cover of darkness, it's too dangerous to aim at one of the big ships known for anti-air fire.
+
+Of course, the sensible way to do this is to attack a destroyer. In war, picking on the weak is justice. Hooray, justice.
+
+"... Ah. Is that a destroyer? Well, whatever it is, let's get it!"
+
+I can't really tell because it's dark, but there's a turret firing at random, so I can make out the shape of the ship.
+
+Considering there are no ships in consort, it must be an isolated destroyer?
+
+In that case, we don't have to worry about backup from other ships in the enemy fleet.
+
+Based on that interpretation, we get into assault formation.
+
+In order to dive all at once from forty-five hundred feet, we maintain the spindle shape and make minute adjustments to the angle of our assault.
+
+"Gah! I'm hit! Heading back to base! No escort necessary."
+
+But I guess you can't underestimate a destroyer. Just as we were about to strike, one of my men gets hit.
+
+The main gun on a destroyer is 127 mm and can be effectively used for anti-air fire, so I reappraise the situation and decide we can't take it lightly. My mage who got shot seems able to fly, well, fine. Still, he doesn't look very good, so he has to drop out, I guess.
+
+Since his mouth works, he'll fly back to base on his own. There's nothing else we can do for him. About the only thing we can do is hope he's good bait.
+
+"Go on, get outta here. Okay, everyone, prepare explosion formulas. Given a typical destroyer's armor, we should be able to take it out if we aim for exposed depth charges or the torpedo tubes."
+
+Tanya's able to instantly twist her body to evade a shot as she approaches, most certainly a result of her training. "Well, would you look at that? I can dodge them," she murmurs. She makes a mental note that her unit probably needs additional training as she returns fire.
+
+The ones firing off interceptor formulas from below must be Entente Alliance direct support. Since they're a destroyer's escort, there are probably only a few, but if they're brave enough to come up here, they can't be discounted.
+
+Just as she's thinking that, she seems to recognize one of the enemies, a mage who gave her a lot of trouble in the fjord. He looks an awful lot like that fanatically patriotic monster.
+
+Maybe it's a coincidence, but you can kill a lousy enemy with less guilt than a good one. In that sense, it's a plus that this guy resembles
+
+a lousy one. It'll be refreshing to shoot him.
+
+She changes gears and turns her attention to how best to attack. A heavy explosion type would blow up a wide area, but she'd be a sitting duck while she's using it. Out of the question. Shoot with her rifle? That probably wouldn't even count as harassment. Rejected.
+
+That's when she realizes: A dive at this speed must have a ton of kinetic energy. All I have to do is literally assault him-with the sharp end of my rifle.
+
+A fleeting intersection.
+
+But Tanya's bayonet, propelled at the speed of her dive, cuts through the Entente Alliance mage's defensive shell and twists into him. A bayonet thrust by a mage going over four hundred knots is far more damaging than a lance charge from a medieval heavy cavalry member.
+
+She jabs it in and, in satisfaction, watches the stunned face of the enemy soldier, who seems hardly able to believe something is piercing his abdomen, but when she tries to pull her bayonet out, she frowns slightly because it seems to have gone too far in and gotten stuck. Even the barrel is sticking into him, and Tanya struggles a bit to remove it.
+
+
+"M... Mar..."
+
+The enemy soldier, murmuring something that's not even a word, is fatally wounded. Geez, what's that about? she thinks, when she realizes he's groping at the air, trying as hard as he can to bring his writhing right arm around to the submachine gun on his back. So she decides to make a trade.
+
+"Auf Wiedersehen." She murmurs the curt farewell with a smile. I admire him for his unexpected stubbornness, but I don't have time to go along with his futile resistance-I have to hurry on ahead. Shoving his right arm out of the way, she steals the submachine gun. Then she kicks the corpse away, already pushing it out of her mind, and takes a quick look at the weapon she's acquired.
+
+It's a standard submachine gun. But oddly enough, it accepts imperial magic bullets. How nice, this trophy will prove unexpectedly useful. A Christmas present to myself. Anyhow. Tanya smiles at her clear path, feeling quite refreshed, and murmurs, "Now there's nothing in my way."
+
+Yes, she's literally kicked the obstacles out of her path. All that's left is to evade the ship's wimpy anti-air fire, strike her blow, and disappear under the veil of night.
+
+That said, war is a gentlemanly fight for survival wherein one must be the first to do what the enemy hates. And as a civilized individual with an education, Tanya will not use her pretty hands for a sophisticated game of cricket;[12] she understands the need to unhesitatingly kick the enemy's ass.
+
+This situation demands the enemy's intentions be thwarted.
+
+So what is the best way to bully them?
+
+It's simple. The enemy fleet is currently being pestered by submarines, so they have to take counter-sub measures. If I use an explosion formula with short activation time and get either the ship's depth charges or their torpedoes to blow in a secondary explosion, this thing will go down easily.
+
+Those torpedoes can be used against even a battleship. If I can get them to explode, the destroyer won't stand a chance. If I concentrate my attack on the stern, even with low expectations, there's a possibility of speed reduction and rudder damage, too. And if it dumps the torpedoes to avoid the danger of secondary explosions, the destroyer's ability to counter the submarines will definitely take a dive.
+
+Not so much risk on my end. This is perfect.
+
+"There's no law that says a mage can't sink a ship. I'm gonna rock this!"
+
+"We drew off the mages! Holding them at a distance now!"
+
+And the one thing I was worried about, the marine mages, had been pulled away right on schedule. They made it extremely easy by dropping their altitude to work on the subs. Now I should be able to dive without worrying about being attacked from above like an idiot. And I'm nominally here to harass them, so this is too perfect.
+
+"Good. Keep them far enough away that they can't support the ships."
+
+
+It'll probably be difficult to hold them until our fleet can get here, but they'll surely be rewarded for hastening the enemy's attrition. After all, we already did a great job by locating the enemy fleet, and we're even coordinating with our submarines, though that was rather sudden. All I have to do is report to the brass that we did all we could with a split-second decision.
+
+The best thing to do right now is give the enemy one good hit and RTB.[13] Fighting the ships is a secondary objective.
+
+If we return fire, I figure our part of the search and destroy mission is accomplished. Destroying the Entente Alliance ships is the Northern Sea Fleet's job.
+
+"Okay, First Company, if you don't want to be called a bunch of no-achievement knuckleheads, it's time to go to work."
+
+We begin accelerating again to dive. Unlike air-to-ground attacks, the humidity from the water makes this descent uncomfortable. But we're also in the rain. As expected, the intercepting shots can't catch me, and they fly past.
+
+Unless the enemy are hopelessly incompetent, the rest of the company behind me is in danger. Using your subordinates as bait to survive and climb the ladder is a constant in a corporate setting and the military.
+
+"... All hands, deploy your formulas!"
+
+That said, to my happy miscalculation, no one has dropped out. Considering it's a destroyer, maybe the last guy who got hit was a fluke? That would make sense.
+
+The company efficiently deploys their formulas. The concentrated attacks fly one after another toward the stern of the ship.
+
+"This is Fourth Company with an impact report. The enemy ship seems unharmed."
+
+After confirming impact, I pull up sharply to get out of there. Even if my subordinates are acting as a shield behind me, human flesh is fragile; their presence is enough to ease my mind somewhat, but I still move at full speed.
+
+Only an idiot gets shot down while hanging out observing the results of their attack. A unit spotting from a distance reports the outcome.
+
+And according to Fourth Company, regrettably, the ship is apparently fine. I knew already since there wasn't a secondary explosion, but it's still disappointing. All we do now is hope is that they've jettisoned their torpedoes.
+
+"Good enough! We achieved our aim of throwing them into confusion! Let's get out of here!"
+
+Following the swiftly withdrawing First Company, the other three also begin to move away, keeping the marine mages in check as they go.
+
+In order to get out of there all at once, I pull us into return formation as fast as possible. Well, we didn't do so badly.
+
+We failed to take out the marine mages, but the strategic win of locating the enemy can't be ignored. Basically, any further combat would just wear us down without gaining anything. We should let our fleet get some of the credit here.
+
+"How did we do?"
+
+"Six mages down and probably moderate damage to an unknown ship. For a destroyer, it's moving pretty slowly. Its engine must be hurting. If we're lucky, the submarines will confirm. What's our damage?"
+
+"We also have six with serious injuries and a bunch with scrapes."
+
+Anyhow, no one died. That's a blessing in this curse. If we had been up against an American ship, there would probably be heaps of corpses...
+
+Taking a look at the actual damage, it's not as bad as I expected. Considering we were up against a destroyer, we could have come out far worse. I'm kind of glad VT fuses[14] aren't unleashing their fury yet.
+
+"... We basically lost. How can we show our faces back at base?"
+
+But the mood is heavy because we weren't able to deal much damage. The lack of secondary explosion could mean that they had already used up their depth charges, but still... That's probably wishful thinking , Tanya laments.
+
+"But if we encountered the enemy in these waters... they're advancing too quickly!"
+
+"Major, if you'll forgive me... considering the speed of a destroyer..."
+
+"Yeah, you're right. It's possible. Still, I can't believe we missed our chance to take out a destroyer..."
+
+All Tanya can do is bemoan the unexpected encounter. In other words, she wasn't prepared. It was possible for the Entente Alliance ships to be moving faster than the estimate she'd been given if they had a group of faster than average ships.
+
+And for just a quick destroyer... it was definitely possible.
+
+Calling it unexpected was basically a confession of incompetence.
+
+"It's possible, but... what about the enemy coastal defense ship...? This is going to give me a headache."
+
+Still, the fact that a superior was wrong is no small matter. Well, the fleet coming after us has a powerful attack in store. This probably won't be viewed as that much of a problem. After all, to our fleet of powerful ships, a destroyer is easy prey.
+
+At this point, it's more constructive to think about the damage my unit has taken and apply for their retraining and rest periods.
+
+Thinking it nearly makes her crack a smile. Of course, I have plenty of experience controlling myself and faking a sorrowful expression. Nah, I should be genuinely sad. The damage to the unit I spent my time training really gets me down.
+
+"Mages were able to hold their own against an enemy battleship. That's a fine achievement."
+
+"We'll leave the rest up to our friends. Back to base!"
+
+We accomplished our mission , Tanya consoles herself, biting back a sigh, and orders her soldier with the long-range wireless set to radio Command. After a few coded exchanges, Tanya is told she's gotten through, so she takes the receiver and gives a straightforward summary of the situation.
+
+"Pixie 01 to Urban Control. That's it for my report."
+
+"Urban Control, roger. We'll take care of it. Can you stay on the enemy?"
+
+The enemy fleet is several ships, including a battleship. They're on a course heading north. They've had contact with our submarines. When I promptly gave Command coordinate data and the details of their speed, they asked us to pursue.
+
+"With all due respect, we've been flying patrol for hours and can't take much more fatigue. Is it possible to spare us further anti-ship combat while we're flying with wounded men?"
+
+"Understood. I've made arrangements for you to land at the nearest base. Wishing you a safe return."
+
+"Thanks. Over."
+
+To Tanya, all she had done was say indirectly that she wanted to go home. The controller probably hadn't been expecting much when he asked. She had no problems getting permission to return to base.
+
+But Tanya doesn't know that on the way to the nearby base the controller was considerate enough to get them accommodated at, she's about to have a rather lovely run-in.
+
+## IMPERIAL ARMY NORTHERN PATROL AIRSPACE, B-47
+
+
+There's something you learn if you read a lot of self-improvement books: Decisions that aren't made in time are pointless. Judgments that come too late mean nothing. Of course, it goes without saying that careless decisions are prohibited.
+
+In other words, the most important thing is balance. We can call it an essential skill for any managerial profession.
+
+And on this most inauspicious day, the sky over the freezing Northern Sea has poor visibility. Not only is this the absolute worst possible weather to fly in, but also the fact that we encountered a submarine of unknown nationality over the water on our way home is a turn of events so unlucky I feel like something is wrong with the theory of probability.
+
+And now that we've found it, Tanya, as the most senior officer, is forced to deal with it.
+
+She has her troops fan out, and when she glances at their faces, she sees eyes so serious it makes her sick. Just one shot can kill almost a hundred of our own species. And their expressions mean business- these soldiers will do their best not to miss. I really hate this world. May ruin befall this place where humans can't act like humans.
+
+And fuck the war laws, too, while we're at it , Tanya grumbles in her head.
+
+Way to blow it by having no provision about a right to innocent passage for submarines. Were you planning on appealing to the
+
+principle of legality? Or waiting for a decision from a maritime court? This isn't a joke.
+
+Before my eyes, a submarine of unknown nationality is attempting to rapidly flee underwater from us, the Imperial Army. This has to happen when I'm in charge, of all times. It's moving awfully fast and will probably be completely submerged in less than a minute. But although a minute isn't much, we do currently have it.
+
+Right now, we can still make it in time.
+
+Submarine armor is as flimsy as paper. My battalion is prepared for anti-ship combat, so we can sink a sub instantaneously.
+
+I can't help but feel the eyes of my men turn to me, hoping for permission to attack. It's practically the same look a hunting dog uses to ask permission from its master. Externally, Tanya's unfazed, but inside she's raging.
+
+I'm the one in charge. To put it another way, I have to take responsibility.
+
+Sink a boat of unknown nationality? That'd be idiotic! thinks Tanya, flatly rejecting that fantasy.
+
+The law of war doesn't permit fighting except between countries in conflict. And the worst part is that there are boats from the Commonwealth sailing near here. I should break war laws right in front of a neutral country?
+
+The various ensuing problems would wring my neck. It'd be a way bigger issue than compliance. If I don't want to become a political scapegoat, I have to maintain at least a veneer of reason.
+
+So do I let it go? Before my eyes? Without inspecting it even though we're right above it? That could develop into a huge hairy mess in the Imperial Army. It already looks like I'm forcing a lot of issues in the military org (even though I'm doing it because I have no choice), so if I let a sub of unknown nationality get away, they wouldn't just let me off the hook. It's an unknown boat operating in these waters. It must have some awfully important cargo. I can't overlook that, either.
+
+And with a little effort, that sub can get away in two days underwater. As long as we don't have sonar of some kind, it'll be practically impossible to find it again if I let it go now.
+
+... Why? Why must I be driven into this kind of corner?
+
+What started all this, the root of Tanya's suffering in this dilemma, was a radio message received after the fight with the Entente Alliance ship as we were on our way back to base.
+
+"... Commander! Urgent report of a suspicious boat running dark in our territorial waters at two o'clock."
+
+I didn't expect to find anything, but if we're flying we get paid for it, so we headed away from base and ended up involved in a fight with the Entente Alliance.
+
+It happened just as Tanya had started grumbling about how if she couldn't warm up by the fireplace with a warm cup of coffee she wouldn't be able to go on.
+
+A report of a suspicious boat arrived. Apparently, some industrious guys found it.
+
+Who is doing more work than they get paid for? She was halfimpressed and half-disgusted as she cocked her head and then sighed in irritation that she would have to work extra hours-with no overtime pay-to deal with it.
+
+My battalion was somewhat worn out by the unforeseen battle we had just been in. I couldn't imagine wanting to actively enter combat. But we weren't hurting so badly that we had to avoid it altogether.
+
+"Well, we can't ignore it. Challenge it."
+
+It was a situation that couldn't be ignored, and even though my
+
+battalion was on its way back to base, I acquiesced since we were the nearest force. Albeit reluctantly, Tanya and her battalion arrived at the reported sector that had been reported, and they discovered the suspicious boat.
+
+"Is it one of our transport ships? Check the nationality."
+
+"It's a cargo-passenger ship from the Commonwealth, the Lytol ."
+
+When she called and got a response, it was even more troubling.
+
+It wasn't strange for a Commonwealth cargo-passenger ship to be there, but that didn't mean she could just let it go.
+
+"... Tell them we're boarding."
+
+"Are you sure? If it takes too long, it will affect our return time..."
+
+"We can't ignore it now that we challenged it. It's in waters between countries at war."
+
+The boat's nationality was too problematic to ignore, which was also a pain.
+
+Yes, ships from neutral countries have the right to come and go as they please, but at the same time, we have the right to board in the territorial waters of the country at war. Obnoxiously, if we didn't inspect this ship, I would need a good reason for it.
+
+It's just one thing after another. How annoying. I want to do my job efficiently, but it's not as if I want to work, so there's no way this will end well.
+
+" Lytol , this is the Imperial Army General Staff's 203rd Aerial Mage Battalion. We order you to submit to inspection. Cut your engines immediately. I say again, cut your engines immediately."
+
+"This is Lytol . We are a vessel from a neutral country, the Commonwealth, so we do not believe we are under obligation to comply."
+
+" Lytol , this is the Imperial Army. Are you carrying any military personnel? Or are you operating under the orders of military personnel?"
+
+" Lytol to the Imperial Army. We're not required to answer those questions."
+
+"Imperial Army, roger. Lytol , if that is your decision, we're unable to recognize your immunity to boarding as a neutral country's warship. This is a warning that if you refuse inspection, it will be considered a hostile action and you will be classified as a hostile nation's vessel. I say again, if you refuse inspection, it will be considered a hostile action. We will have no choice but to sink you."
+
+" Lytol , we've cut our engines."
+
+"Good. Start the inspection. Lieutenant Weiss, your company is the boarding party."
+
+"Yes, ma'am."
+
+"The rest of you, keep watch over the area."
+
+Tanya wanted to pull her hair out, the legal exchange was such a pain in the ass, but just as she was pushing the boarding duty onto her subordinates and having the smallest acceptable party pull up alongside the ship, something else happened.
+
+"Wait a minute. What's that?" Lieutenant Serebryakov asked, pointing at something on the surface. She seemed to have found something in the mist over the sea. Drawn by her question, several people followed her gaze and... bingo, I suppose you could say? There was the cargo-passenger ship flying the Commonwealth flag plus a submarine of unknown nationality.
+
+... And if I wasn't seeing things, they seemed to be transferring something.
+
+It goes without saying that these were two British ladies[15] enjoying a secret meeting.
+
+They couldn't be unrelated. I most certainly wanted to inquire about their relationship. I might have seemed like a paparazzo, and you could say it was bad manners, but I just hoped they'd find it in their hearts to forgive me.
+
+Another extra job to do? Tanya lamented. As she was about to send out another boarding party, she was suddenly unsure what to do.
+
+Submarines go underwater, as their name implies, but war laws cover only surface boarding rules; there's nothing pertaining to boats that can dive. After all, submarines are a relatively new type of vessel.
+
+Since they are used in proxy wars, there is research being done into counter-sub combat and ways to stop them, but most navy personnel are extremely under-informed. Still, it's crazy that there is nothing in the naval war laws about submarines. I realized it was only a matter of time before unrestricted submarine warfare was declared.
+
+But every second Tanya fretted, the situation was developing. The sub was trying to dive before her eyes. In a few minutes, it would be deep enough that our attacks might not reach-it would be able to make a calm getaway.
+
+"Ngh. Lieutenant Weiss, capture the Lytol with your company!"
+
+I figured we should hurry. I wanted to keep them from hiding evidence before the inspection.
+
+But what about the critical submarine?
+
+If it refuses to be boarded, I can shoot, but first it has to be a warning shot. That's the standard protocol demanded by the law of war. Submerging isn't denying inspection. Annoyingly, my opponent has slipped through a legal loophole.
+
+I love slipping through legal loopholes, but I hate it when other people do it to me.
+
+What suddenly crosses my mind is compromise... Does it really matter how deep the mire goes?
+
+I'm in this bog already. If I'm already covered in mud, it's not a big deal if another kind of mud gets involved. I'd hesitate to get clean white sheets all dirty, but throwing a ball of mud covered in mud into the dirt won't hurt it.
+
+"... All units on standby, prepare to attack the submarine! Ready a warning!"
+
+
+"Fire sniping formulas! If it doesn't comply with orders to halt and starts to dive, blow its conning tower off!"
+
+All we can do is shoot.
+
+"All hands, at the same time, prepare to subdue the target. Avoid direct hits. This is for intimidation purposes only."
+
+So I'll choose the route that isn't pitch-black, even if it is dirty.
+
+The law of war doesn't prohibit shots across the bow. As long as we don't hit them directly, we can claim they were warning shots. We can't call diving refusing inspection, but it's not exactly cooperative, either. If we're firing warning shots to urge compliance, legally speaking, that's got to be the whiter part of gray-in other words, white.
+
+"All hands! Assault formation! Prepare to fire warning shots!"
+
+The company commanders repeat the orders. My men have just enough self-control to wait when told to heel. If I tell them to intimidate, they should intimidate. Submarines have such wimpy armor that one depth charge is enough to crush it. If we blow multiple heavy explosion formulas in its immediate vicinity, it won't be able to keep diving. Then all we have to do is stroll aboard once it surfaces.
+
+"You got that? No direct hits!" So I repeatedly emphasize that we're not trying to sink it. If it sinks, I'll really be in trouble. "The opponent is a sub. One depth charge is enough to cave in its armor. Stop at a few near misses! I'm not listening to any excuses if you sink it!"
+
+What did they put on board? Depending on that cargo, this could be a major achievement. We can't go lending them a hand by sinking them and erasing all the tangible evidence.
+
+We have to secure it.
+
+" Jawohl , Frau Major!"
+
+"Good! Gentlemen, that Commonwealth vessel is watching. Make sure you don't humiliate us!"
+
+Everyone swiftly gets into formation. The sub doesn't have any anti-air fire to speak of. Actually, anyone who would be scared of that should be shot. So yes, everyone has calmly-leisurely, even-assumed their positions. All that's left now is to decide how much distance to keep.
+
+Heavy explosion formulas are different from the simple kind. About ten meters away should do it.
+
+Converted to gunpowder, they're a hundred fifty kilos at most. There won't be fragmentation; the water pressure will be enough.
+
+"Stay ten-no, fifteen meters away from the hull!" The worry that ten meters won't be enough suddenly crosses my mind.
+
+Submarines are fragile. I'm not about to have them too close and send it to the bottom. Considering it's half-intimidation tactic, halfwarning, fifteen meters should be good. It might even be a little under-confident, since the water will dull the shock.
+
+That said, it can't be interpreted as an attack. We may be in waters where the Empire and Entente Alliance are at war, but that doesn't mean it's okay to sink a vessel of unknown nationality. Which is precisely why commanders forced to make quick, delicate calls can never relax-I hate it.
+
+"Warning fire at a distance of fifteen!"
+
+"All right. Fire!"
+
+That's why I have them keep their distance.
+
+I shout over and over, so there will be no confusion, that this is only for intimidation.
+
+It must be recorded in the unit logs.
+
+And the fact that I clearly stated to keep fifteen meters away should be in the firing data table. In other words, I'm compromising myself as little as possible. We've seen it, so the best thing we can do is perform our duty.
+
+I pour a hefty dose of mana into the computation orb in my hand and put it in firing mode. The cores regulate the energy, and I aim near the submarine my unit is trying to keep from diving.
+
+It's a company's worth of disciplined fire from 360 degrees and fifteen meters away-the heavy explosion formulas burst in the water.
+
+The huge splashes obscure the unidentified submarine.
+
+"Second Company, descend! Prepare to board the sub when it comes up."
+
+Well, they were warning shots, but at that range, the sub is probably taking on water.
+
+That's the weakness of these vulnerable submarines. I'm sure a bunch of confidential materials will get ruined, so we have to capture it as soon as possible.
+
+Meanwhile, the captain of the Commonwealth S-class submarine Syrtis was nearly panicking due to the report of an incoming mage battalion.
+
+There's a mole[16] in the intelligence agency. He was aware of the rumors. He and his submarine crew were not about to lose to the subterranean, but unfortunately diving into intelligence and diving into the sea are two different things. They knew they had taken measures to preserve utmost secrecy.
+
+Security was so tight that when they were dispatched, he could only tell his crew that they were performing an utterly normal navigation exercise. Only the captain knew the true identity of the "technical officer" from the Office of the Admiralty who was on board; only the captain knew about the sealed orders.
+
+They had been so thorough that even the navigation officer wasn't informed until after they had launched and were setting their course.
+
+However...
+
+There they were at the rendezvous point only a handful of people should have known about. They managed to make the transfer just as the report came in that the Imperial Army was approaching, and the situation rapidly deteriorated.
+
+If that hadn't happened, all they would have had to do was play dumb and get past the Imperial Army patrol line. What did it mean that an imperial mage battalion appeared out of nowhere just then?
+
+The shock was so great that he momentarily locked eyes with the "technical officer" from the Office of the Admiralty.
+
+"Multiple Imperial Army mages incoming! They saw our rendezvous with the Lytol !"
+
+The enemy must have known about the cargo and the schedule. If not, they wouldn't have shown up here. An auxiliary ship might have been conspicuous, but it's nominally a civilian vessel. The Empire couldn't be rough with a civilian vessel from the neutral Commonwealth.
+
+But if the vessel was of unknown nationality, handling it as a belligerent to some extent would be permissible.
+
+If they had known that much planned a raid, there had to be a mole.
+
+"They're ordering us to halt!"
+
+The radio operator's shout jerked everyone back to reality.
+
+The captain had to set aside his doubts for the time being and make it through this moment. An S-class submarine could dive to a depth of over a hundred meters. Even mages would have trouble following them if they submerged.
+
+It would be a different story if they took a shot to the hull, but the law of war wasn't clear on the definition of halting their ship.
+
+No, submerging was not officially recognized as fugitive behavior. After all, the rules were written before boats went underwater.
+
+"Cut off all radio communications! Emergency dive!"
+
+All they had to do was dive before the mages were on them. Maintain radio silence, refuse transmissions, and dive, just like that. He thought they would be able to escape that way.
+
+But his forecast was naive. Just as they opened the vents...
+
+The observer shrieked a warning, and the captain learned, whether he wanted to or not, their opponent's lack of scruples.
+
+"M-multiple mana signals detected! All hands, brace for..."
+
+They were going to shoot. When he realized that, his head told him to grab hold of something, but the warning was so unexpected that his body wasn't moving the way he wanted it to.
+
+Not many on the crew could get their bodies to cooperate. I have to move. Everyone thought so, and when they reached their hands out, they heard a roar. Then came a series of huge shocks to the hull, the captain noticed that he felt weightless as the attacks landed, and he lost consciousness.
+
+"Captain?! Shit! Medic! The captain's wounded! Get to the conning station!"
+
+He awoke to the sound of someone's raised voice but not for long. Noting the captain's condition, the first officer prepared himself to take command. The scenario was about as "worst-case" as it could get. Multiple hull breaches. Rapidly spreading flooding.
+
+On top of that, the water pressure around the bridge had destroyed the periscope. The engines were just barely running, but there was a problem in the battery compartments-they were emitting chlorine gas. They needed masks for poisonous gas, but it was all he could do to just get the battered crew moving.
+
+Between the flooding and the gas, the environment in the sub would deteriorate quickly. It was only a matter of time until disaster.
+
+To make matters worse, the rudder wouldn't budge. It had probably been damaged by the water pressure. So they wouldn't be able to move properly.
+
+There was a limit to the emergency repairs they could do. Only one of the drain pumps was working, so they would eventually lose balance. With their reserve power situation looking dire, the only choice they had was to surface.
+
+"... Sir, we can't take any more." He addressed the technical officer.
+
+"There's nothing you can do?"
+
+He had to make a hard decision-and fast. The first officer didn't really think the mysterious technical officer was a mere officer. So he hinted at him that all they could do was surrender.
+
+As long as the captain couldn't command the ship, the first officer was responsible for the lives of the crew. Since they were forced to surface, he had no choice but to say it. "We're not going to last long. If you need to take care of the cargo, let's do so quickly."
+
+
+A murmured exchange, and then the technical officer and the first officer went to quickly "deal with" the cargo. It was an awful decision to make... but it was the only way.
+
+## DECEMBER 12, UNIFIED YEAR 1924, COMMONWEALTH, LONDINIUM , UNDISCLOSED LOCATION
+
+"What were you doing?!"
+
+An unassuming building stood tucked away in a quiet residential area. Isolated from the outside in an inconspicuous way, the building's interior was in the midst of a storm that struck a perfect contrast with its quiet environs. Not so much as a molecule of the genial Christmas spirit of the world at large could survive there.
+
+Particularly violent was Major General Habergram of the Foreign Strategy Division, who was abusing the line of intelligence officers. He pounded the desk with his clenched fist almost hard enough to break it. A half-assed explanation wasn't going to cut it. The intelligence officers standing there were as pale as prisoners about to be executed by firing squad.
+
+Well, it was only natural. Of course the general's fury would be violent when he'd been woken from a nap because the plan he'd forgone sleep or rest to realize was ruined in the span of a single night.
+
+He'd figured out the Imperial Army aerial units' patrol lines and analyzed their Northern Sea Fleet's patrol routes. He'd checked the speed of that fleet and adjusted the Commonwealth Navy's exercise schedule accordingly as a distraction. In a single moment, all his efforts went up in smoke.
+
+General Habergram was by no means the only person in the Commonwealth grinding his teeth in disappointment; the need for a sweeping investigation into the causes of the problem had been acknowledged. At this point in time, the ones getting the murderous looks were the security officers; their stomachs probably couldn't take much more.
+
+"Why were there imperial mages over there?"
+
+The failures of the intelligence agency had been in question for some time, but now there were getting to be too many to brush off as coincidences. One or two incidents could be unfortunate mistakes, but by the time the third one happens, it's inevitable.
+
+When the voluntary army that had been sent out to gather intel and observe was pinpointed and bombarded by mages, it was still possible to suspect coincidence.
+
+They were working on improving the apparatuses after they concluded that reverse detection of the surveillance waves could have been the cause. It wasn't out of the question to call it an unfortunate accident or coincidence.
+
+But this time, it was too hard to fathom as a coincidence; he couldn't accept it. They were targeted so precisely.
+
+"We're performing a thorough investigation, but we can only imagine it was a coincidence!"
+
+"The Empire might have a good intelligence team, but I really don't think they could have known about this..."
+
+"Then explain this video."
+
+The footage of the battle he projected shut up the officers who were trying to object. Even though the details were hazy with static thanks to the dense concentration of combat mana, what it showed was clear.
+
+The imperial mages moved in perfect formation toward a single target. Other ships tried to draw their fire by attacking, but the enemy unit ignored them. Not only were they not afraid of getting hit, they maneuvered as if they weren't even taking the possibility of damage into account.
+
+Then they held back the marine mages who went up to intercept them and dived in assault formation.
+
+The log blacked out when an Entente Alliance mage who went to intercept fell as a corpse into the sea after being mercilessly bayoneted
+
+and kicked away. The last image was the enemy mages darting straight for the battle cruiser.
+
+Yes, one glance made it obvious. They were clearly aiming for a specific ship and paying no attention to the others.
+
+"I ask you-why?" It was the question of a man about to explode at any moment. "Why is the Named who was supposedly deployed in the northern zone lying in wait for us here?"
+
+Then his thunder crashed. All the intelligence officers could do was pray for the storm to pass. According to their careful analysis, the imperial Named had seemed to be providing support to the northern lines.
+
+Central had taken the trouble to dispatch this Named unit. And the intelligence officers had given a partially incorrect warning that they were going to be supporting an offensive.
+
+Against their expectations, the Named unit appeared far from the sector they had been stationed in. At first, they wondered if it was an unknown elite unit, but the recorded mana signatures answered that question immediately.
+
+They matched the signals of the Named unit who had just previously been spotted in the Entente Alliance.
+
+Looking at the combat logs, it was obviously the same unit who had been so kind as to demolish the voluntary army there just the other day. Really, it was hard to imagine them being here. Considering the Imperial Army's rotation of combat and rest, it was too soon.
+
+"The fighting in the north is intensifying. And they're planning an offensive to mop up the Entente Alliance. Why would they dispatch a powerful mage unit out here?"
+
+Yes. Their analysis said the Imperial Army, which had carried out a landing operation that ignored communication lines and the power of the Commonwealth's Navy, was preparing an operation to finish off the Entente Alliance. Why would they just happen to send an elite
+
+unit to this area at a time when the Northern Army Group probably needed all the help they could get?
+
+These were the guys who were massing all available arms, ammunition, and personnel for the northern lines, so this maneuver clearly had to be the result of a plan, not a coincidence.
+
+This was the same Named unit who was spotted during the landing operation. If it had been pulled and then appeared on the Rhine lines, you could call it proof that the Empire was prioritizing the Rhine front. But just when they noticed they had stopped seeing it on the northern lines, it was instead lying in wait for departing Entente Alliance ships and their submarine in the Northern Sea.
+
+"Most importantly, look at this. They make a beeline for the middle of the fleet without even looking at the vanguard."
+
+The attack was too efficient to be explained as a chance encounter. For starters, look at how the mages suddenly attacked just as a sub distracted the fleet with a torpedo, causing everyone to look down. How elite mages dropped out of the sky just when everyone's minds were blank, and physically, the fleet had broken formation to perform evasive maneuvers with too-perfect timing.
+
+But then they didn't even touch the vanguard destroyers.
+
+As a result, they were able to go undetected for some time. They ignored the intercepting attack that had just barely occurred at all and headed straight for their objective. If that was a coincidence, it had to mean about a dozen ladies of luck were smiling on the Empire. But that seemed impossible.
+
+"We also have record of some kind of transmission above the fleet."
+
+Were the mages filing a report right before going into assault formation? There was not no chance it was a report of enemy contact, but in that case, you'd think they would have done it sooner. If they were there to restrain them, they wouldn't have had to approach so closely.
+
+But if they were an attacking unit, there should have been a combat control team.
+
+Unexpectedly encountering an unguided battalion of mages? Don't be ridiculous. Plus, it happened right after the submarine attack. If it wasn't planned and it wasn't the kind of coincidence only God can conceive of, it wasn't possible.
+
+"They started drawing off the escorts straightaway, and on top of that, one company went right for the battle cruiser. All you can do is laugh."
+
+Anti-air fire doesn't score that many direct hits. The navy and even the army know that. But the difference between knowing something and experiencing it is night and day. Would you charge a battle cruiser lined with autocannons simply because the shots don't usually connect?
+
+Normally there would be some hesitation. Even if they didn't hesitate, there would have been various ways to go about it. If attacking was their aim, deploying barrage formulas at range would have been one option. A mage's extra-long range barrage formula would be able to get past most anti-air fire.
+
+Of course, the marine mages were there to keep them from doing that. But they had been pretty much caught by surprise, so although the handful of direct support mages put up the best resistance they could, it was futile, and they were scattered. The enemy mages were emitting such tranquil signals we didn't discover them until they were right on top of us, so they must have been working really hard to conceal them.
+
+"Look. From the mana signatures, it seems like the Named is leading the formation."
+
+Did the Entente Alliance miss the signature of the Named because they're incompetent? Observing the mana isotope of the flight leader[17] is the most basic step to take. It's easy to detect it as long as the mage isn't limiting output to conceal themselves.
+
+A unit putting a check on enemies might be able to limit output. It
+
+was a standard way to extend one's time in the air and liked for the way it lowered one's chances of being detected. But could a battalion flying at high speeds do it?
+
+It did temporarily increase your endurance, but in the end, your fatigue would spike. It would be out of the question to enter combat. So perhaps they were limiting output for some other reason, not a sneak attack...
+
+But then right after that, the same unit raided the waters where their auxiliary ship and submarine were meeting. No matter how optimistically someone wanted to interpret the situation, it was only natural to suspect a giant leak. Rather, if the enemy was acting this boldly on their intelligence, they probably weren't even trying to hide that they were getting it.
+
+They considered saying it was so obvious it was unnatural... but they thought they had looked deep into all the circumstances... and yet they still couldn't get the possibility out of their heads-and that was the demands of their job. In an information war, truth was never guaranteed. Even if something seemed correct, the mere appearance of accuracy wouldn't help them. And that was why they had to suspect every possibility-including the hypothesis of a leak.
+
+"... What did you find out in the hunt?"
+
+Acknowledging that hypothesis had serious implications. If there wasn't a leak, they had no explanation for the enemy's actions.
+
+Naturally, the intelligence agency had launched a major operation in great haste to whack all the moles and clean out the organization, the assumption being that if they could just find the culprit...
+
+Everyone was about ready to cry because they hadn't found the slightest sign of the enemy. The people in charge of the investigation had come up with no evidence and no support, but if there wasn't a huge leak, then they were saddled with the bigger problem of having no explanation for the situation. They really were at wits' end, about to break down sobbing.
+
+"We considered code issues, a double agent, or betrayal, but so far we're clear."
+
+"We're still waiting for the actual results of the investigation, but I can't imagine the code is broken. We're not using anything except onetime pads."
+
+"A double agent or traitor isn't terribly likely, either. The number of people with access to this information isn't even double digits."
+
+"It's possible they were a lookout on the flank of the main imperial fleet headed north. Perhaps it really was just an unfortunate coincidence..."
+
+It wasn't as if the intelligence agency and its officers were doing nothing.
+
+They had arrived at this word coincidence after suffering through investigations that exhausted every other avenue. Now all they could do was tell their irate boss their troubling conclusion... that perhaps it was simply chance. Over the course of the hunt, a few moles had been discovered and purged. Still, they were clear.
+
+At this point, wasn't it just an unfortunate accident? It was only a matter of time until a number of people began to think that. Actually, some were even saying it, given the report that the Entente Alliance fleet had been able to escape the Empire's Northern Sea Fleet to meet up with the Republic fleet in the end.
+
+But that idea was rejected due to one piece of unmistakably clear evidence: the reports from the intelligence and naval officers dispatched to the Entente Alliance ship as military observers.
+
+The details written there were enough to silence anyone claiming it was a coincidence or an accident. No, it blew them out of the water.
+
+"... A big augmented battalion of mages just happens to encounter the battle cruiser with the councilor who would form the government in exile, and they just happen to attack and concentrate their fire on where that vital politician is?"
+
+And immediately before, the submarine torpedo attack with
+
+perfect timing. Right as the ships abruptly shifted to counter-sub combat and the direct support marine mages were flying low on patrol, the imperial mages used their altitude to their advantage and swooped out of the sky.
+
+It was awfully well coordinated if they weren't waiting for us.
+
+Then, as if they had done what they came to do, the enemy mages left after only one strike.
+
+For General Habergram, the bad news they had woken him up for was enough to make him nearly crush the pipe in his hand. The attached photo made it clear that they had focused their attack on a single area-an area that was almost never considered a strategic target. In anti-ship warfare, there aren't many methods of effective attack; maybe a heavy explosion formula or a gravity formula aimed beneath the target's waterline.
+
+But they took the trouble to aim for the living quarters with antipersonnel explosion formulas. Maybe against the bridge it would be understandable, but they aimed at the living quarters. That is, the entire company concentrated their fire on them.
+
+And this had been noted already, but according to the reports, after recklessly charging in and bombing their target area, they all left without any further combat actions.
+
+They left as if they had no time to lose. They must have been on their way back to base. Theoretically, it was possible to insist that coincidences had just stacked up.
+
+But what are the astronomical odds of the coincidence where an enemy who waited so persistently, only to strike once and rush away, subsequently runs into the Commonwealth's auxiliary ship and sub "on their way back"?
+
+You don't even have to think about it.
+
+"And is there anyone who believes that it was a coincidence that they ran into our boat on their way back just because it was bobbing out there looking suspicious?" It was a rhetorical question containing his fury.
+
+He was all but saying that if anyone did, that fist pounding into the table would smash into them instead. He squared his shoulders imposingly while inside him the hurricane was raging.
+
+"What a priceless fluke! Of all the coincidences that could possibly happen, this one's a real riot!" Shouting, he slammed his fist into the table again, paid no mind to the fact that he'd started bleeding, and fell silent as though he'd lost the power of speech.
+
+He had always been praised as an unflappable paragon of composure, and yet...
+
+## SAME DAY, IMPERIAL ARMY GENERAL STAFF OFFICE, JOINT CONFERENCE ROOM
+
+The situation was bad if the Service Corps staff, the Intelligence staff, and the Operations staff were all at wits' end. Maybe there was some kind of political strategy problem or some kind of military issue. It was natural that the staff officers would be worried about how to get things under control.
+
+Well, they had probably also started thinking about who to blame.
+
+"What? We lost the Entente Alliance ships?" That accurately summed up the sentiment of all the army officers present. No, all the participants' thoughts could be expressed that way.
+
+Not that they'd had them trapped like rats, but everyone had believed it was certain, given the power balance, that they would deal the enemy ships a serious blow in this naval battle. It had been finally a chance for the idle navy to shine and show some results, but the staff's expectations had been magnificently betrayed.
+
+"... The Northern Sea Fleet failed to relocate them."
+
+"Even though we succeeded in building up superior fighting capabilities?"
+
+"Yes, it seems they got away."
+
+They let them get away? Not that the fleet was perfect, but they had managed to gather a fair number of capital ships. They were also able to choose the battleground. It was only natural to have high expectations under those circumstances.
+
+Were all those fleet maneuvers just a waste of heavy oil?
+
+The stern gazes from the army seemed to contain a rebuke. What is the meaning of this? The confused naval officers bearing the brunt
+
+of it were forced to present materials and attempt to explain.
+
+"No, the weather was so horrible. The fact that we even made contact twice was a fluke. It's incredibly difficult to relocate a fleet."
+
+There was nothing easy about finding something in the sea. Even a fleet of warships is nothing but a speck in the wide-open water.
+
+Unless you controlled all sides of an area, it was impossible to patrol it perfectly. How well you could do was practically up to probability. For that reason, the navy prioritized inferences based on past experience. To put it another way, the Imperial Navy's lack of experience was enough to break them down into tears. Though the expansion of their "hardware" was on schedule, the personnel operating them still required improvements.
+
+"But that's your job."
+
+Still, it was true that griping wouldn't get them anywhere. They didn't need to be told that doing their best with what they were given was demanded of military men. In that case, the navy had to supplement their perfectly adequate hardware with "software" that could operate it in the form of quality manpower.
+
+"Still, I guess saying any more at this point won't change anything." Major General von Zettour figured that was enough useless finger-pointing and chimed in to end the venting.
+
+As far as he could tell, the army had already expressed most of their complaints and discontent. The navy was getting near the end of their rope. Any more of this was just a waste of time. Yes, he made up his mind to end the witch hunt and proposed that they work toward a realistic solution.
+
+"All we can do is consider our next step. Does the navy have anything to suggest?" After finishing his question, he gave a stern look to any army officers who seemed to have more to say and slowly took his seat. An officer from the navy stood, apparently waiting for the chance. What a young kid , Zettour thought as he changed gears.
+
+"We would like to prevent their meeting with the Republic by
+
+getting some assistance on the diplomatic front."
+
+In the documents they'd been given, there was a plan that included an opinion from the Foreign Office. There was not a problem with the proposal per se. He actually thought it was fairly well put together. At least, it was reasonable.
+
+"Making use of the duties of neutral states, hmm? But do you think the Commonwealth will actually fulfill them?"
+
+But reason is not all that matters in a fight for the survival of a state. If that were the case, the world would already be Utopia, and the absence of a heaven on earth made their position clear.
+
+"The Foreign Office thinks it's tricky. But honestly, they won't, right?"
+
+The Commonwealth would probably just demand they leave within forty-eight hours. He didn't think it would actually take measures to disarm them like it was supposed to. The military attaché's confirmation would be resisted with procedural delays.
+
+By the time permission was granted, the boat would have left the bay.
+
+"In which case, those ships will waltz over to meet up with the Republic fleet."
+
+"Ugh. That means Entente Alliance resistance will drag on."
+
+Inconveniently for the Empire, the Commonwealth and the Republic had more than a little adjacent territorial water. Since it was out of the question to battle in the Commonwealth's territory, there was no real way to prevent the ships from getting to the Republic once they'd lost them.
+
+And if the Entente Alliance ships were fighting with the Empire, it could create issues with convincing them to surrender. Look! Our navy's fit as a fiddle! the enemy could say. They were trying to discourage further resistance at this juncture, so the issue had the capacity to develop into a headache.
+
+"... There's not really anything else we can do but sink them ASAP."
+
+There was no other way to rapidly gain control of the situation and minimize damage. They had to sink all those Entente Alliance ships.
+
+Missing a ship or two was one thing, but they had let them get away. Sinking a few enemy vessels was no longer enough to resolve the problem.
+
+The only option their current situation permitted was to swiftly sink as many ships as they could. That was the only way to stop the issue from evolving any further.
+
+"So the orders for the Northern Sea Fleet are still to promptly sink the ships?"
+
+"That works."
+
+The navy had no objections, either.
+
+"We'll continue to provide support. I just want to get this resolved as soon as possible."
+
+## GARRISON OF THE 203RD BATTALION, BATTALION HQ
+
+It had crystallized into something pure and tranquil... a madness that had precipitated as a faintly black sediment, then festered and condensed.
+
+Those nightmarish eyes seemed to invite insanity into everything they fell upon. It was all you could do to resist the bewitching gaze if it landed on you.
+
+"Your orders, please, Colonel."
+
+Lieutenant Colonel von Lergen exhaled lightly and finally drew air into his lungs again. Sunlight streamed in through the window.
+
+It seemed a warm day for winter, but his body felt like it was enveloped in cold.
+
+The reason was simple-the incarnation of madness before his eyes.
+
+"Major von Degurechaff, you're being transferred."
+
+Preparations were under way for a large operation on the Rhine front-planned and drafted with an unprecedented amount of leverage from Major General von Rudersdorf, deputy director of Operations, and the support of Major General von Zettour.
+
+So they needed reinforcements.
+
+And they would need support for those reinforcements.
+
+Of course, as a bit of an obnoxious errand, there was a courtmartial waiting for her at Central-a formality. After all, though she hadn't realized it was a neutral country's boat, she had sunk a Commonwealth submarine as a suspicious vessel in an unfortunate accident. That said, it would be a court-martial in form only.
+
+"Of course, I can't say it won't be a bother... but it's really mostly a formality. I'm expecting your best."
+
+"... So this'll be a chance to redeem my reputation?"
+
+But the little major before him didn't make an effort to understand any of that. Apparently, she was taking the unofficial transfer orders he'd shown her as bad news. Maybe she was also a bit nervous about the trial.
+
+She had a warped sense of responsibility, but the thought of being called to account made her shiver. A mere major had to take responsibility for everything. He had a strange feeling that something more horrifying than chilly air was blowing through the room. Or maybe like he had been hurled into the fissure separating normal and abnormal.
+
+"You succeeded in locating the enemy unit. It's not your fault. Nobody was asking any more than that of you."
+
+"I had our sworn enemy right in front of me, and I let them get away. Next time, next time, I'll get them for sure."
+
+His intercession didn't accomplish anything. But the words weren't just for show.
+
+That her unit had located the enemy at all in those horrible weather conditions was impressive. They had also dealt some damage to the enemy marine mages.
+
+Even if the results were not perfect, there was probably only one person who didn't acknowledge them as acceptable.
+
+
+"Don't worry. I won't repeat this mistake. I swear to you that it won't happen again."
+
+But that person wouldn't acknowledge anything less than perfect. Horrifyingly, her frame of mind seemed to be a combination of bloodlust and patriotism molded into the form of a soldier's psyche.
+
+Rather than a soldier, she was more a doll shaped like one.
+
+The words she repeated over and over, practically delirious, exuded a strange urgency.
+
+One time-just one time-she had gotten merely satisfactory results, and this was her state. How much of a perfectionist can you be?
+
+She has no interest in anything except for following her orders to the letter. What kind of education do you have to give a child to warp them like this?
+
+"... Don't fret, Major. We're pleased with what you've achieved. All you need to do is accomplish your missions."
+
+"Don't worry. I won't leave a single ship behind."
+
+I'm not getting through to her at all. It looks like we're having a conversation, but something is making us talk past each other. All I did was encourage her to accomplish her missions; why does that make this ball of insanity overflow with a will to fight and declare her intent to annihilate? How war crazy can you get?
+
+Though she's the best the Empire has ever produced, she's the worst war nut we've seen. Can a mere person be so joyful about killing their fellow men? Can a mere person carry out any and every military duty so faithfully with no hesitation?
+
+Unless your foundation as a human being was off-kilter, this level of incongruity was impossible.
+
+"No one at the General Staff Office has any issues with your actions, Major."
+
+It was a fact he had to express to her as a messenger. Customarily, typical notices to unit commanders conveyed expectations that they eliminate enemy units. They were practically season's greetings. But what he had to express this time was not superficial consolation but unmistakable forgiveness.
+
+But, but... In some corner of his mind, reason was warning him. This monster in front of you might actually do it.
+
+
+Thus...
+
+"... if you do want to contribute to the fleet's efforts..."
+
+He gave her as much consideration as his discretion would allow.
+
+"... it is planning a war game in the Northern Sea. I don't think anyone would mind if you participated before going to the Rhine."
+
+"I volunteer."
+
+"Great. I'll make the arrangements."
+
+As she gave the reply he expected, Lergen caught himself feeling relieved that this would bring closure to the matter.
+
+"I wish you and your unit much success. Good luck."
+
+Feeling a slight chill, he dutifully answered with the required encouragement, speaking quickly. She and her men were on his side, at least. As long as the tip of her spear isn't pointed at my beloved fatherland, what is there to fear? He suffocated his mind with that question to deceive himself.
+
+"Thank you."
+
+Whether she knew it or not as she bowed, Major von Degurechaff was an outstanding model soldier.
+
+## BATTALION GARRISON, LARGE AUDITORIUM
+
+To express the feelings of Magic Major Tanya von Degurechaff in a nutshell: I've escaped by a hair.
+
+I was trembling in fear of a rebuke. But when I opened the envelope my friend Colonel von Lergen brought from the General Staff, it was just an administrative note. I really expected a reprimand over my failure in that mission, but I guess the brass is more lenient than I thought.
+
+Relieved, Tanya drains her cold coffee with an involuntary sigh and smiles wryly, thinking of how uncharacteristically nervous she's been feeling.
+
+There's the court-martial coming up. But it's supposed be nothing more than a discussion held as a formality, which means Tanya's been unofficially given a mostly unexpected pardon. She was only informed verbally, but given that it was the word of a staff officer, it has to be true.
+
+In other words, the fact that Lergen, someone she knows, delivered the note had to be a token of consideration from the higher-ups. Lergen's report must be a roundabout way of saying that the brass hasn't forsaken me yet. It's a kindness that says, We'll keep you around, so show us you can still get results.
+
+If I'm receiving this sort of understanding, the General Staff must still have high expectations for my unit and me. I mean, they were nice enough to spare me mental stress by giving me a heads-up, albeit only verbally, that I would be found not guilty.
+
+If it were me and my subordinate was being incompetent, I wouldn't give a damn about their mental health-I'd advise them to resign. Wouldn't anyone? Even in the army, where you can't lay someone off, they'd have to be ready for some sort of disciplinary action.
+
+But apparently the higher-ups are letting me off the hook this time and giving me a second chance. To put it another way, I can't expect them to be so lenient again.
+
+They're even giving me an opportunity to show off my abilities in this war game. I definitely have to live up to the expectations of the General Staff and the brass this time.
+
+"Still, I wonder... Who's the one making allowances for me?"
+
+If I'm getting off so easily, someone in the totem pole is pulling the strings. There are only a few people it could possibly be. Someone who has influence higher up but would also deign to do me a favor-it has to be someone in General von Zettour's camp.
+
+"Hmm, I'll have to thank him sometime soon," Tanya murmurs, her mood improving slightly after considering her good fortune to have such a great superior in the army, where soldiers don't have the luxury of choosing their bosses. I really can't thank him enough.
+
+Then, with a single deep breath, I amble leisurely to the room next door. In the worst-case scenario, I thought the battalion might even be broken up, so I had summoned them all in case I needed to explain; they're already waiting.
+
+Everyone's exhibiting proper concern, and they seem ready to listen, which is endearing. I'll tell them the good news. Tanya slowly begins to speak.
+
+"Battalion, I don't believe in God. Not even a little bit."
+
+If you do exist, grant me the power to feed Being X to pigs after cramming him through a shredder.
+
+Tanya doesn't say that part aloud, but I think it.
+
+Nothing happens.
+
+I sigh inwardly. The troops lined up here are way more useful and a hell of a lot more loyal than some nonexistent god. A great commander of ancient times said that the hundred men you have are
+
+better than the ten thousand you don't, and he was quite right.
+
+Of course, if I loosen the reins, they'll go racing off to the battlefield, so that gives me a splitting headache, but... Anyhow, I have a chance to make up for the mistake. She takes the dais and decides to give her troops a few inspiring words so that she can restore her reputation.
+
+"Gentlemen, I believe in the General Staff. It's a bastion of logic and wisdom. Dear God, if you're so great, try being ethical. Then I'll show you that the General Staff's wisdom is greater than yours."
+
+The Imperial Army General Staff exists for real; God or whoever only exists as an idea. In other words, he's a fantasy.
+
+That's ethics. If you want to oppose the rule of law, the generally accepted universal principles, then you have to show us something greater.
+
+To neglect them, unilaterally claim you exist, and declare your own laws is to ask us to fulfill a one-sided contract.
+
+On that point, the kindhearted General Staff shows mercy even when we err and gives us chances to redeem ourselves. But Tanya won't forget her failure. Colonel von Lergen and the General Staff are considerate enough to be indirect about it, but it's torturous. It's our- in other words, my-failure.
+
+I want to impress these things on my disheartened troops, so I issue a declaration. These are the kinds of subtleties middle management has to instill in their subordinates.
+
+"People don't expect anything from an entity with minimal presence. My brothers-in-arms, the General Staff-maybe even the Empire itself-has expectations of us. Our duty and dedication are our honor."
+
+Of course, Tanya was convinced the higher-ups were disappointed in them. She could have done nothing if they had been deemed useless.
+
+If a person in manufacturing somehow made an inventory management error by going out on a business call? It wouldn't matter how well he did in the meeting.
+
+He would have to endure castigation for his incompetence.
+
+"It is the will of the army to give us a chance. We've been granted an opportunity to atone for our mistake."
+
+The General Staff Office even sent someone in person. It means we haven't been forsaken. There's still the danger of being sent to serve in some penal battalion, but we'll just have to overcome it by amassing achievements.
+
+"I don't care if it's purgatory-we'll go there, and we'll conquer it, because that's what soldiers do."
+
+We go anywhere we're ordered. That fundamental principle goes without saying, but it's important to constantly review the basics. Heinrich's Law is a warning against letting minor errors pile up.
+
+Taking a heavier hand to prevent accidents is elementary.
+
+"So let's do a mission right now. Let's do it ourselves."
+
+"Commander?"
+
+Vice Commander Weiss is interrupting me? Am I repeating myself too much? I feel rather hesitant, but something from my education at the military academy crosses my mind: Never waver in front of subordinates. But I'd rather regret doing something than aimlessly doing nothing.
+
+Having made up her mind, she just barely maintains her unconcerned expression and glances around. Well, the battalion personnel don't seem to be so sick of my insistent confirmations. People who value the basics are the kind of talent I wish I could just put in my pocket.
+
+"Let's show the Empire how great their watchdog is."
+
+I make sure it registers. Basically, the army is an instrument of violence that serves as a watchdog. We need to show that we have no intention of bucking the state's control. You never know whose eyes might be out there glinting as they watch.
+
+It's good to appeal to their loyalty to a slightly underhanded degree. It's a million times better to have them laughing at me than putting them on their guard and trapping myself. Besides, I can just give anyone who laughs a beating.
+
+"Let's teach those rats that no matter where they run we'll be on their tails."
+
+Let's think a step further. I'm acting like Tsuji right now. Would anyone with common sense like him? Fat chance. I have the feeling they probably hated him. Why? Because he would act without consulting anyone?
+
+... Of course. If a sensible person like me had a subordinate like Tsuji, they would stand him up before a firing squad. After all, he was the kind of guy who'd go making his own arbitrary decisions. How useless can you get?
+
+And does my vice commander have common sense? In other words, has he concluded that I'm a Tsuji who might go on a rampage?
+
+Well, that's no good. I'm actually a sensible person who feels shame. I don't want to make decisions on my own and then shove the responsibility onto others. Plus, following rules is the meaning of my existence. I don't break them; I find loopholes!
+
+"Lieutenant, we're being transferred to the Rhine. Some of you have fond memories there. Yes, gentlemen, the Rhine!"
+
+Sweating bullets at this misunderstanding, Tanya racks her brain. Honestly, I want to avoid being seen like Tsuji, General Brute-Guchi, and those guys. If Lieutenant Weiss thinks of me like that, I'll need to have a talk with him.
+
+Though brooding inside, she concentrates on getting through the current moment.
+
+"The Rhine?"
+
+"Well, we'll be in a rush, but they're expecting a lot out of us. We're going to do a counterclockwise sweep of the battlefield."
+
+We just bop the guys who have the gall to show up. That's it.
+
+We don't get paid to do more. There's also the idea of working hard to get promotions, but in the army, getting promoted doesn't always mean you'll be happy. As long as that's the case, I'd like to cut off my efforts where my pay grade ends. Why in the world is this happening? No, I know Being X is at the root of this , Tanya laments. I think twice about acting too much like Tsuji.
+
+Next time maybe I should speak frankly with my troops. Should I ask Serebryakov what they think of me? Or should I ask Weiss how they're doing?
+
+"So?"
+
+"Yes, but before that, we're going to play a little game of marine mages. Rejoice. The navy has better food, right?"
+
+But that's a job for later. For now, I have one piece of good news that is worth telling them. Navy meals are much higher quality than the army's. The navy lambastes the army for spending too much on "hardware," and frankly, the army can't deny it-because on the "software" side, the navy surpasses the army with their quality food. From a welfare standpoint, the navy is certainly a much more desirable workplace.
+
+"Huh?"
+
+"Courtesy of Colonel von Lergen. We're going to go help out the fleet."
+
+## JANUARY 18, UNIFIED YEAR 1925, IMPERIAL NAVY, NORTHERN SEA FLEET COMMAND'S EXERCISE AREA 2
+
+At one hundred feet.
+
+Scowling at the spray, Major von Degurechaff gives the order for boarding assault formation. The idea is to practically skim the water without dropping their speed and charge their target. Responding to her directions, the companies all get into formations that support one another.
+
+Beneath her serious expression, however, Tanya is shocked... They were told they'd be flying into anti-air fire, so despite it being an exercise, she expected an appropriate interception. Instead, she is compelled to worry. Are they actually shooting? She's puzzled by the weak intercepting fire. Surely, they're going to fire on us, even though it's an exercise.
+
+We're performing an attack on a ship using visual combat maneuvers with a clear view. According to the scenario, we've already deployed a smoke screen to foil the intercepting fire. Tanya hides in the smoke and gets down to business, finding it disappointingly easy to reach boarding distance.
+
+"Enemy mage incoming on the starboard side! Prepare for a closequarters fight! Anyone not occupied, come starboard!"
+
+A few petty officers on deck begin moving to handle the situation, but they're hopelessly slow. It's already too late. Once you let a mage get this close, you can't avoid a fight on deck. Maybe they weren't expecting it, but this is still pathetic.
+
+Inside, she wonders: Is this a trap? Like the wily ones people used to plan back in the age of sailing ships? I'm pretty sure I've read nautical novels where confusion on the deck turns out to be a trick.
+
+But no matter how I look at it, the opponents running hither and
+
+thither everywhere I can see seem a bit too inexperienced. The deck may be narrow, but I even see some sailors tripping. If that's acting, they would have had to spend an awful lot of time training to fall so naturally.
+
+"Magic blades up! Company, on me!"
+
+Anyhow, leading the charge again, Tanya has no choice but to maintain her speed perfectly and swoop in. She even deploys an interference formula right into the panicking cluster of sailors.
+
+As some of them go flying, the sailors grow even more confused, and the marine unit that came running gets caught up in the mess. The rest of my company coming after me hinders the marines' efforts to restore discipline. They miss their chance to stop us, too busy with the exchange of checking fire.
+
+"Don't let up! Keep shooting!"
+
+"Fix bayonets! All hands, fix bayonets!"
+
+A handful of officers and sailors just barely manage to fight back, but they're not enough to keep the force of the attack at bay.
+
+Tanya and her company easily break through their defense. Then they stab the second bridge's soft shrapnel shielding and cling to it with their magic blades. We didn't slow down at all; one of the internal frames probably got dented.
+
+Watching us come in is probably freaky as hell.
+
+"Land and capture! Go, go, go!"
+
+Even though they smashed into them pretty much head-on, the members of the 203rd Battalion are enthusiasm incarnate.
+
+With brisk movements, they promptly establish a bridgehead. From there, they set about taking the main areas of the boat. Though outnumbered, their coordination keeps everyone well-covered.
+
+"Destroy the anti-air gun mounts! Take the next set of points!"
+
+"Gunners, don't let them get any closer!"
+
+"We're taking the second bridge back. Form an assault team around the marine unit."
+
+It takes a little while, but they manage to finish setting up their counterattack team consisting chiefly of marines.
+
+We may be a battalion, but our strength is our mobility, and that can't be used to its fullest in the closed space of a ship's interior. That's why the marines and marine mages are able to put up a fierce fight inside.
+
+"Here's the counterattack! Marines!"
+
+"Dump 'em overboard! Get rid of 'em."
+
+But the members of the 203rd Battalion capture point after point with surprising efficiency.
+
+Normally, mages focus on mobile battles and aerial maneuvers and tend not to be so great at close-quarters fighting. The vanguard might be different, but the members in the rear usually have a hard time with it. But training is about eliminating weak areas.
+
+"Show them what the marines are made of! Don't let those landlubbers think they're so tough!"
+
+"The next group has arrived! I'm sending them in now!"
+
+And so the 203rd Battalion and the marines, each with their own take on close-quarters combat, clash and refuse to give any ground. The marines have a slightly better position, but the situation is fluid.
+
+As both sides struggle to make their next move, the follow-up company lands.
+
+We shall be victorious. Major von Degurechaff and the company commanders grin. Meanwhile, the marines who had allowed reinforcements to arrive display their disgrace in their expressions. They're running out of fighting resources to tap into. Sailors would be
+
+some help, but they can't be pulled off the cannons. They hesitate slightly, and their actions get delayed.
+
+"All unoccupied personnel, prepare for hand-to-hand combat! We're going to drive them off this ship!"
+
+Still, if the bridges, engine block, and magazine get captured, your ship is done no matter how much you have left to throw at the enemy.
+
+It's that crisis that makes them hesitate a bit before they scrape together what muscle they can for a counterattack.
+
+The captain issues the order to gather up any spare fighting power. And when it comes down to it, a ship has quite a lot of personnel on board. Though it isn't their primary task, sailors can shoot guns. The mobilized officers and petty officers form provisional naval brigades and start to reinforce the marines.
+
+It was hopeless to begin with. Their idea is to push and push till they push us off the boat. It's quite simple, but it's still a valid attack plan for the narrow space inside the ship. If this is all, though, the 203rd Aerial Mage Battalion can push right back. Humming, I cheerfully lay down a smoke screen, and just as the cunning fire from the attacking side has distracted the defenders-
+
+"All hands, I don't care if they're marines! Teach them what a bad idea it is to mount a frontal attack on my battalion! Remember that the useless ones who die in war get sent to hell!"
+
+With that shout, she attacks in a flash to bring the fight into close quarters.
+
+The pressure of two companies is hitting the resistance hard.
+
+Just as the sailors begin to retreat from the mages and their ogrelike game faces, Tanya takes a small unit on a detour.
+
+While everyone is focused on the fierce fighting inside the ship, she seizes the opening and launches a sneak attack on the port side.
+
+"We're pincered?! Shit! Move some of the crew to the port side!"
+
+"They're all confused?! Success! Major von Degurechaff got around behind them! Now we destroy them!"
+
+Our opponents look ready to run once they've been pincered, but we don't let them. Each company commander works to improve their results. The iron law of war is the harmony of impact and confusion.
+
+Break their composure, disrupt their discipline, and then crush them.
+
+Chaos is spreading on the defensive side between the rear attack, pulled off efficiently in loyal accordance with the principles of war, and the intensifying frontal attack. Just like we wanted.
+
+An intense impact crushes the marines faster than they can close gaps and rebuild the interception line.
+
+"We're clear."
+
+
+Directly after that, Tanya gives each company their own target as she mops up the defenders, who are no longer able to operate in an organized way. "Good. First Company, to the bridge. Follow me. Second and Third Companies, go to the engines. Fourth Company, to the magazine. Capture your objectives quickly." After eliminating the main enemy resistance force, we need to gain control of the key parts of the ship.
+
+The plan is to approach each area in order by sweeping outward from captured locations. We manage to maintain speed by going around any pockets of enemy resistance, and the decision to share the burden across the battalion is implemented with high standards.
+
+Once the ship side realizes that we've stormed the critical areas, they give up resisting. Discipline has collapsed inside, and the sailors look like they're about to flee. At the same time, their pretend enemy joins up with reinforcements and seems ready for more. The defense's fighting force is already practically nonexistent, and their methods of resistance are limited. They're forced to gracefully admit their defeat to the referees.
+
+"Okay, rush them in your two-man cells. Vanguard troops, brace yourselves!"
+
+"Major von Degurechaff, that's enough, that's enough."
+
+The message comes just as she's about to step onto the bridge.
+
+For the referees, who were forced to follow all those insane maneuvers, the end couldn't have come soon enough. Honestly, so many things had gone through their minds when she told them to come with her because she was going to seize the second bridge.
+
+"The exercise is over! I say again, the exercise is over!"
+
+The call ending the game echoes throughout the ship over the loudspeakers.
+
+Hearing this, though they're concerned about all the things on the ship that were damaged, everyone is finally able to relax. It had been a rare joint combat simulation. Many things were broken, but there hadn't been any accidents.
+
+"All right, stupid corpses, you can move now."
+
+All the sailors and marines who were judged dead and ordered to lie still, facedown, sluggishly get to their feet.
+
+We may have been using exercise-grade rubber bullets and lowpower explosion formulas, but that doesn't mean they feel good.
+
+Some of the injured even have to go to the infirmary to get treated by a surgeon.
+
+For example, take the sailors who were unlucky enough to get caught up in the firefight between the 203rd Battalion and the marines. They said that, despite ducking down, they came out of it worse for wear because stray bullets kept hitting them.
+
+Although such bad luck was rare, no small number of people were hurt in the melee on the interior of the ship. A team of medics and surgeons was on call and prepared for efficient intake, but I imagine
+
+the infirmary will still be crowded for a while.
+
+And in the midst of all that hustle and bustle, Magic Major Tanya von Degurechaff is in the wardroom, which has already been picked up. Although it's small, some thought was put into the design, so the atmosphere is relaxing. It's now packed full of officers. In her hand is a cup of coffee she was given; it's supposedly better than the stuff the army serves. Something smells faintly like baked goods. Surely only in the navy, where they're allowed to bring their own rations and cookies, can you enjoy that.
+
+Naturally, we're not just having a tea party for no reason. After the exercise, it's time for the main event.
+
+"Very well, let's review the full fleet close-quarters exercise."
+
+The seamen have been permitted port and starboard liberty and raced off to the PX still in a holiday mood now boosted by postexercise cheer, but unlike them, the officers' real work begins now. We have to go through the referees' commentary and the reports from each unit commander to find areas of improvement and reflect on what happened so we can put the lessons to use in actual combat.
+
+This time was different from the usual exercise in that it included a boarding scenario that aimed to be extremely realistic. But to only do that would be a waste.
+
+"First of all, it's still early in the year, but I think we can say that this exercise was meaningful."
+
+The all-important ratings showed that the participants thought the exercise was worth doing.
+
+The navy, who provided the base and ship as the venue, are desperate for anti-mage combat experience; they can never get enough. Although their main job is counter-ship warfare, they've learned through battle that marine mages can't be ignored.
+
+But they never have enough marine mages for an exercise, and how few mages they do have allotted internally is a matter of constant contention. Yes, the borderline-overworked marine mages are in such
+
+great demand that they don't have the wherewithal to participate in war games. And so, the navy was thrilled to have this joint exercise to gain some of that missing experience.
+
+At the same time, Tanya herself and the 203rd Battalion had little experience with anti-ship combat or battles to capture ships, so the exercise was in their interest as well. More than anything, it was what the General Staff wanted. They had no choice but to participate. That notwithstanding, it was still a useful experience.
+
+And when the referees said it was meaningful, they meant it. When it comes to results, although they were up against particularly elite mages, building some experience handling that situation was clearly valuable for the navy.
+
+"All right. First some complaints from Captain Grän of the warship used in the exercise, Basel ."
+
+Captain Grän stands and bows to Major von Degurechaff. "... To be blunt, you creamed us. And on top of that, the year has only just started, and we've taken all kinds of damage." His expression is somewhat resigned as he acknowledges his ship's defeat. No one died during the exercise, but that didn't mean the ship wasn't laid to waste.
+
+It was more than a few broken windows. The formulas and grenades may have been exercise-grade, but they were still hurled all over the place. Naturally, the crew did cleanup as an exercise in damage control, but still.
+
+"Damage control went fairly well. The crew was able to make prompt repairs."
+
+The results were all right. They could at least be satisfied with them. There were no issues during the operation inspection after interior maintenance was performed, mainly on the engines.
+
+... That said, although the damage isn't bad enough that the ships need to be docked, there are a number of repairs that need to be made -broken glass exchanged, dents fixed, and so on-that will take some time.
+
+Luckily, it'll be patched up by the time the Entente Alliance ships have to leave the neutral port, but the captain still isn't happy about it.
+
+As such, Major von Degurechaff bows as well. Honestly, it might be a bit weird that the child among all these adults is the one being so considerate. It might be weird, but I guess I just have to go with it, since it's better than being seen as uncaring.
+
+"Our most urgent task is to reevaluate our anti-air fire. I can't believe we didn't even graze the incoming mages." He looks like he wants to rough up the men of his who boasted that they wouldn't let the mages anywhere near the ship.
+
+The gunners who upset him are sure to be trained extra hard for some time. Still, everyone is relieved that they learned their lesson in an exercise rather than in actual combat.
+
+The observing captains are also sure to tighten up their training regimens in the same way. If things go downhill when the enemy reaches a ship, then they have to drive the enemy off before that happens. Learning that is a great outcome for the exercise.
+
+"Major von Degurechaff, do you have any suggestions for improvement from the attacking side?"
+
+"I believe the fundamental problem is a lack of firepower. I can't imagine anything but a dense barrage of anti-air fire will prevent an approach." Tanya, who was actually one of the mages to so easily break through their defense, has an even simpler opinion-the utterly straightforward one that they don't have enough guns.
+
+Tanya would tell you that if intercepting is a matter of probability, the only way to raise the probability is to increase the density of anti- air fire. The idea for this comes from the simple knowledge that at the end of their trials and errors, the navies of countries outside this world all went running for the solution of adding more anti-air fire. If you don't outfit ships like porcupines, they'll be vulnerable to an attack from the sky.
+
+Plus , Tanya adds in her head, even the aircraft carriers the Americans used near the end of World War II that supposedly had
+
+great anti-aircraft fire couldn't completely stop a certain all-in approach taken on the assumption of not returning.
+
+" Basel has some of the most powerful anti-air cannons out of all our existing capital ships."
+
+To someone who doesn't know yet , charging a ship with a mountain of autocannons seems like suicide.
+
+The navy officer who brought it up, looking confused, seems to have done so because he thought the ship had enough firepower.
+
+And it's not such an outlandish thing to believe.
+
+It's a practical truth that human beings, while intending to take in things objectively, only accept what they themselves can understand subjectively. In a surprise twist, Lippmann's "stereotype" paradoxically describes how far the human intellect can expand.
+
+A warship with a pile of autocannons is a floating fortress. Among them, Basel boasts outstanding defensive firepower, so the question arises: Isn't that enough? To the officers in attendance, it's a natural question. Or at least to them, it's not a strange one.
+
+"From the point of view of the attacker, it's not much of a threat." But Tanya puts an end to it easily. "To be honest, it really wasn't even an obstacle." That matter-of-fact murmur is significant. She has hinted that anti-air fire is not actually an efficient defense against attacks from the sky. All the Northern Sea Fleet Command, previously lacking in anti-mage combat and exercise experience, can do is register anew what a threat mages are.
+
+Still, that's just the opinion of one major, and they would like to hear from a third party who participated in the assault. The head referee gathers that and discreetly eyes the referee in charge of the attacking side.
+
+The referee takes the hint and begins giving his general opinion. "I agree with Major von Degurechaff. I accompanied her on the charge and was surprised to find the firing line not so imposing." But
+
+contrary to most of the officers' hopes, he essentially repeats what Tanya said. "Overall, I'm forced to say that our current anti-air fire is about as useful as a bunch of firecrackers."
+
+"... Our defensive firepower is that weak?" The claim is that they have been overestimating their defense, and in response the officers ask a question that shows their consternation: Is it really, honestly that weak?
+
+"Yes, we're lacking even more than I expected. In order to halt approaches, we need to increase the number of guns until the ships are like porcupines."
+
+The reply from the second referee is simple and leaves no room for misunderstanding.
+
+"I agree. And we should be adding not just 20 mm autocannons but 40 mm as well."
+
+Tanya concurs more strongly than anyone. She believes the American military provided the best example of ideal anti-air fire.
+
+In this world, it's completely unheard of, but it's already been proven in combat. She indirectly proposes the innovation as her own contribution, albeit dispassionately.
+
+"What do you mean?"
+
+"This is just my opinion, but 20 mm are for short-range defense; in order to create a multilayered interception shield, I strongly recommend adding midrange guns," Tanya answers. From what she can tell, the 20 mm guns have the advantage when it comes to handling and speed, but in terms of range and power, they're weaker. It's logical to add 40 mm autocannons for intercepting at midrange.
+
+Most importantly, mage defensive shells and aircraft have no chance of withstanding a 40 mm shell.
+
+From the attacking point of view, capturing a warship with multibarrel gun emplacements all over like a porcupine would be a difficult task.
+
+"If possible, I'd like to focus on numbers. We probably need ten times the current amount."
+
+"Captain Grän, what do you think?"
+
+"... It's an interesting suggestion, but we can't change the number of cannons without doing major overhauls, such as removing the secondary guns on the flanks."
+
+"To go a step further, I would say that secondary guns are worse than useless. We need to increase the priority of air defense." Tanya knows it's disrespectful, but she sees a chance for the navy to take a decisive step forward and chimes in. After all, she knows the era of aerial warfare better than anyone here. She's sure the time will come when warships will be assigned to aircraft carriers as direct support.
+
+Really, she would like to urge them to change the doctrine from obsessing about big ships with big guns to focusing on their air forces as their main power. Incidentally, she's also a believer in fire action and values warship cannons for their supporting fire.
+
+That said, even one-shot lighters were able to send the then stateof-the-art Prince of Wales and the Repulse , which had been reconstructed for the modern era, to join the seaweed. Of course, we should concentrate on removing the secondary guns already and increasing the amount of high-angle guns and other autocannon emplacements.
+
+She also knows that until a comparable incident occurs, it will be difficult to convince the ship warfare-oriented navy to accept an air force-centric doctrine.
+
+At the time, the fleet's original mission was set as counter-ship combat, and the use of mages was not yet so widespread. I've heard that requests for vessels to be upgraded for anti-mage and anti-air combat began pouring in this year as a countermeasure. Honestly, everyone still thinks mages fight on land.
+
+Computation orb functionality and aircraft specs are both improving. As a result, the idea that maybe orbs and planes might be threats is only just starting to spread.
+
+Only someone who understands the history of how aviation advanced by leaps and bounds during the Second World War can understand. Until then, no one had dreamed war would drive scientific and technological advances like it does.
+
+"Hmm. It's not that we're taking air defense lightly, but..."
+
+"We'll have to think about it if issues arise fighting off other ships."
+
+In truth, even officers who are far from inept have deeply rooted views. Ships are equipped to counter ships because the navy can't escape the instinct to keep their original counter-ship combat mission in mind.
+
+And thinking in terms of counter-ship doctrine, they'd like to keep their secondary guns. Though the importance of being equipped for close-quarters fighting has lessened, the need to fight off torpedo boats and destroyers, which do press in to attack, is a factor that can't be ignored to them.
+
+"We'll have to discuss it with Technology. Please let navy command and the Technology Department handle this issue."
+
+In the end, the conclusion is not to reject the idea but take it under advisement, which essentially means to shelve it. Well, in a way, by saying her piece Tanya has done her duty. After all, it's no skin off her back if the anti-air fire isn't strengthened.
+
+As long as it's not a ship I'm on, where it sinks has nothing to do with me. Besides, the Empire is a continental state, not a maritime state.
+
+Without breathing a word of any of that, she camouflages herself with a sober attitude, but she is in utter earnest. The best thing for ensuring my own survival is training my troops.
+
+Of course, she is passionate about identifying issues in this postmortem. Well, she has to be. She believes that preventing mistakes is best.
+
+"All right. Are there any other remarks from the attacking side?"
+
+"I would say there are cooperation problems."
+
+"Of what sort?"
+
+"The marines and sailors don't seem to be very well coordinated. I felt like the disorder of the sailors was tripping up the marines."
+
+She had noticed it on her approach-the deck was a real mess. Her impression was that the two different corps had trouble working together.
+
+If they had been units stationed there today, below-par coordination would be understandable, but for units that are shipmates, it's a bit problematic. From what I could tell, it seemed like the marines felt their job consisted of ground and landing battles.
+
+Of course, I can't deny that those are their primary duties, but we don't want them to suck at fighting on board a ship. And the confusion and failure to cooperate with sailors is completely unacceptable. In an organization where sales and systems engineering become estranged, they have to compensate with a death march. In the military, the death in death march is literal.
+
+Considering that I could end up a casualty of poor cooperation between our own troops, it's absolutely critical to suggest an improvement. Having reached this quite reasonable conclusion, albeit via a selfish argument, Tanya speaks eloquently on the necessity of increased coordination. Her idea at its root is self-preservation, but at the same time, she's altruistic; it can't be said that she isn't acting with the aim to benefit the majority.
+
+And that attitude, for the good of the majority, leads to a proposal that is acceptable by the whole.
+
+Probably everyone was vaguely aware of the poor cooperation. The head referee questions the concerned party. Naturally, he does it in a way that is sensitive to their sense of honor. "I see. What do the marines think about this?"
+
+"I'm embarrassed to admit that we haven't trained much with fighting on ships in mind. I acknowledge the need for retraining."
+
+In response to the comment from the marines, Tanya declares her unit's need for more training as well. "After having actually fought inside a ship, I think my unit is lacking experience, too."
+
+She's half using inadequate training as an excuse; though the 203rd Aerial Mage Battalion is elite, the group is made up entirely of mages, and their lack of knowledge of other fields is a real problem.
+
+That's why Tanya hopes to do joint training with the marines, who have the most experience on this front.
+
+You can't hesitate to borrow wisdom from experts if you want to stay alive. The plan for what happens next can come after you survive.
+
+If this meeting runs long enough, the navy will feed us dinner- that is, the good food that navy officers get. It's no problem at all if the exercise schedule takes more time than planned.
+
+In this way, Tanya continues her hard work, cultivating a heartening friendship with the navy while keeping an eye on her next battlefield-though it runs against her own thinking-and thus she takes one step after another toward victory.
+
+

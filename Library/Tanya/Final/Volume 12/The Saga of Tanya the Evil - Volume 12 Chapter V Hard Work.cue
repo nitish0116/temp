@@ -1,0 +1,4 @@
+FILE "The Saga of Tanya the Evil - Volume 12 Chapter V Hard Work.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "DECEMBER 17, UNIFIED YEAR 1927, THE ILDOAN ROYAL CAPITAL"
+    INDEX 01 00:00:00

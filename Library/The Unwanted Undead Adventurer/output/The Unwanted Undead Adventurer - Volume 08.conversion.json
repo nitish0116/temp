@@ -1,0 +1,22 @@
+{
+  "source": "C:\\Users\\z005537p\\NitishWork\\HM\\temp\\Library\\The Unwanted Undead Adventurer\\The Unwanted Undead Adventurer - Volume 08 [J-Novel Club][Premium].epub",
+  "markdown": "C:\\Users\\z005537p\\NitishWork\\HM\\temp\\Library\\The Unwanted Undead Adventurer\\output\\The Unwanted Undead Adventurer - Volume 08.md",
+  "report": "C:\\Users\\z005537p\\NitishWork\\HM\\temp\\Library\\The Unwanted Undead Adventurer\\output\\The Unwanted Undead Adventurer - Volume 08.conversion.json",
+  "pages": 149,
+  "characters": 260038,
+  "elapsed_seconds": 65.4,
+  "options": {
+    "layout_mode": "smart",
+    "ocr_mode": "auto",
+    "ocr_language": "eng",
+    "header": false,
+    "footer": false,
+    "image_mode": "ignore",
+    "image_format": "png",
+    "pages": null,
+    "show_progress": true,
+    "effective_layout": "smart",
+    "effective_ocr_mode": "off"
+  },
+  "generated_at": "2026-07-21T19:54:31"
+}
