@@ -5,9 +5,6 @@ cleanup/**/*.md
 md-audio/**/*.md
 md_python/**/*.md
 mp3ToYT/**/*.md
-Library/**/*.md
-Library/**/*.txt
-Library/**/*.epub
 pdf-md/**/*.md
 pdf-md/**/*.epub
 *.log
@@ -22,3 +19,10 @@ mp3ToYT/**/*.txt
 *.json
 .pytest-runs/
 .pytest-tmp/
+
+# Library visibility switch:
+# Uncomment the last line to ignore/hide all Library files.
+# Comment it out to include/show all Library files.
+!Library/
+!Library/**
+#Library/
