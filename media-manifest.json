@@ -1,0 +1,2710 @@
+{
+  "schema_version": 1,
+  "media_root": "OneDrive/Library",
+  "hashes_included": false,
+  "summary": {
+    "file_count": 385,
+    "total_size_bytes": 26033950048,
+    "by_type": {
+      "mp3": 193,
+      "mp4": 192
+    }
+  },
+  "files": [
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 01.mp3",
+      "type": "mp3",
+      "size_bytes": 180506541,
+      "modified_utc": "2026-07-28T07:56:50+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 01.mp4",
+      "type": "mp4",
+      "size_bytes": 481593935,
+      "modified_utc": "2026-07-28T07:57:42+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 02.mp3",
+      "type": "mp3",
+      "size_bytes": 194881341,
+      "modified_utc": "2026-07-28T07:57:08+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 02.mp4",
+      "type": "mp4",
+      "size_bytes": 520471454,
+      "modified_utc": "2026-07-28T07:58:24+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 03.mp3",
+      "type": "mp3",
+      "size_bytes": 187707117,
+      "modified_utc": "2026-07-28T07:57:34+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 03.mp4",
+      "type": "mp4",
+      "size_bytes": 501303841,
+      "modified_utc": "2026-07-28T07:59:12+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 04.mp3",
+      "type": "mp3",
+      "size_bytes": 189855069,
+      "modified_utc": "2026-07-28T07:58:26+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 04.mp4",
+      "type": "mp4",
+      "size_bytes": 539362425,
+      "modified_utc": "2026-07-28T07:59:32+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 05.mp3",
+      "type": "mp3",
+      "size_bytes": 190154829,
+      "modified_utc": "2026-07-28T07:58:55+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 05.mp4",
+      "type": "mp4",
+      "size_bytes": 541908028,
+      "modified_utc": "2026-07-28T08:00:18+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 06.mp3",
+      "type": "mp3",
+      "size_bytes": 186277341,
+      "modified_utc": "2026-07-28T07:59:37+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 06.mp4",
+      "type": "mp4",
+      "size_bytes": 528634231,
+      "modified_utc": "2026-07-28T08:01:15+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 07.mp3",
+      "type": "mp3",
+      "size_bytes": 189911997,
+      "modified_utc": "2026-07-28T08:00:19+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 07.mp4",
+      "type": "mp4",
+      "size_bytes": 538663795,
+      "modified_utc": "2026-07-28T08:01:46+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 08.mp3",
+      "type": "mp3",
+      "size_bytes": 177895293,
+      "modified_utc": "2026-07-28T08:01:02+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 08.mp4",
+      "type": "mp4",
+      "size_bytes": 503296517,
+      "modified_utc": "2026-07-28T08:02:12+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 09.mp3",
+      "type": "mp3",
+      "size_bytes": 175152621,
+      "modified_utc": "2026-07-28T08:01:38+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 09.mp4",
+      "type": "mp4",
+      "size_bytes": 495336288,
+      "modified_utc": "2026-07-28T08:03:05+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 10.mp3",
+      "type": "mp3",
+      "size_bytes": 178766541,
+      "modified_utc": "2026-07-28T08:02:15+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 10.mp4",
+      "type": "mp4",
+      "size_bytes": 505697428,
+      "modified_utc": "2026-07-28T08:04:03+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 11.mp3",
+      "type": "mp3",
+      "size_bytes": 175425357,
+      "modified_utc": "2026-07-28T08:03:03+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "hell mode/hellmode_final/output/Hell Mode - Volume 11.mp4",
+      "type": "mp4",
+      "size_bytes": 498257418,
+      "modified_utc": "2026-07-28T08:04:27+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil - Volume 01 Chapter 0 Prologue.mp3",
+      "type": "mp3",
+      "size_bytes": 11376909,
+      "modified_utc": "2026-07-28T08:21:01+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil - Volume 01 Chapter 0 Prologue.mp4",
+      "type": "mp4",
+      "size_bytes": 29901391,
+      "modified_utc": "2026-07-28T08:21:04+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil - Volume 01 Chapter I The Sky over Norden.mp3",
+      "type": "mp3",
+      "size_bytes": 35442237,
+      "modified_utc": "2026-07-28T08:21:04+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil - Volume 01 Chapter I The Sky over Norden.mp4",
+      "type": "mp4",
+      "size_bytes": 94306143,
+      "modified_utc": "2026-07-28T08:21:12+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil - Volume 01 Chapter II The Elinium Type 95 Computation Orb.mp3",
+      "type": "mp3",
+      "size_bytes": 33467709,
+      "modified_utc": "2026-07-28T08:21:10+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil - Volume 01 Chapter II The Elinium Type 95 Computation Orb.mp4",
+      "type": "mp4",
+      "size_bytes": 88927265,
+      "modified_utc": "2026-07-28T08:21:16+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil - Volume 01 Chapter III The WatchGuard on the Rhine.mp3",
+      "type": "mp3",
+      "size_bytes": 56665437,
+      "modified_utc": "2026-07-28T08:21:19+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil - Volume 01 Chapter III The WatchGuard on the Rhine.mp4",
+      "type": "mp4",
+      "size_bytes": 150417268,
+      "modified_utc": "2026-07-28T08:21:29+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil - Volume 01 Chapter IV War College.mp3",
+      "type": "mp3",
+      "size_bytes": 35432781,
+      "modified_utc": "2026-07-28T08:21:25+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil - Volume 01 Chapter IV War College.mp4",
+      "type": "mp4",
+      "size_bytes": 94037706,
+      "modified_utc": "2026-07-28T08:21:30+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil - Volume 01 Chapter V The Primeval Battalion.mp3",
+      "type": "mp3",
+      "size_bytes": 52582845,
+      "modified_utc": "2026-07-28T08:21:32+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil - Volume 01 Chapter V The Primeval Battalion.mp4",
+      "type": "mp4",
+      "size_bytes": 139359752,
+      "modified_utc": "2026-07-28T08:21:41+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/The Saga of Tanya the Evil Volume 1.mp3",
+      "type": "mp3",
+      "size_bytes": 52582125,
+      "modified_utc": "2026-07-28T08:21:39+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/Volume 1 Appendix.mp3",
+      "type": "mp3",
+      "size_bytes": 2750781,
+      "modified_utc": "2026-07-28T08:21:33+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 1/Volume 1 Appendix.mp4",
+      "type": "mp4",
+      "size_bytes": 7323178,
+      "modified_utc": "2026-07-28T08:21:36+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter 0 Prologue.mp3",
+      "type": "mp3",
+      "size_bytes": 5531613,
+      "modified_utc": "2026-07-28T08:21:52+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter 0 Prologue.mp4",
+      "type": "mp4",
+      "size_bytes": 18353815,
+      "modified_utc": "2026-07-28T08:21:53+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter I Blueprint.mp3",
+      "type": "mp3",
+      "size_bytes": 15670605,
+      "modified_utc": "2026-07-28T08:21:52+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter I Blueprint.mp4",
+      "type": "mp4",
+      "size_bytes": 46935496,
+      "modified_utc": "2026-07-28T08:21:58+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter II Con Artist.mp3",
+      "type": "mp3",
+      "size_bytes": 47629629,
+      "modified_utc": "2026-07-28T08:22:00+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter II Con Artist.mp4",
+      "type": "mp4",
+      "size_bytes": 137079599,
+      "modified_utc": "2026-07-28T08:22:11+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter III Boss.mp3",
+      "type": "mp3",
+      "size_bytes": 24916173,
+      "modified_utc": "2026-07-28T08:22:01+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter III Boss.mp4",
+      "type": "mp4",
+      "size_bytes": 72956553,
+      "modified_utc": "2026-07-28T08:22:10+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter IV Value Verification.mp3",
+      "type": "mp3",
+      "size_bytes": 39002397,
+      "modified_utc": "2026-07-28T08:22:09+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter IV Value Verification.mp4",
+      "type": "mp4",
+      "size_bytes": 112773254,
+      "modified_utc": "2026-07-28T08:22:22+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter V Imperial Door Knocker.mp3",
+      "type": "mp3",
+      "size_bytes": 44109309,
+      "modified_utc": "2026-07-28T08:22:20+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter V Imperial Door Knocker.mp4",
+      "type": "mp4",
+      "size_bytes": 126988414,
+      "modified_utc": "2026-07-28T08:22:28+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter VI Hourglass.mp3",
+      "type": "mp3",
+      "size_bytes": 29659917,
+      "modified_utc": "2026-07-28T08:22:25+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 10/The Saga of Tanya the Evil - Volume 10  Chapter VI Hourglass.mp4",
+      "type": "mp4",
+      "size_bytes": 86385587,
+      "modified_utc": "2026-07-28T08:22:31+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 11/The Saga of Tanya the Evil - Volume 11 Chapter I Create a Rift.mp3",
+      "type": "mp3",
+      "size_bytes": 31300317,
+      "modified_utc": "2026-07-28T08:22:44+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 11/The Saga of Tanya the Evil - Volume 11 Chapter I Create a Rift.mp4",
+      "type": "mp4",
+      "size_bytes": 89512449,
+      "modified_utc": "2026-07-28T08:22:50+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 11/The Saga of Tanya the Evil - Volume 11 Chapter II Memoir.mp3",
+      "type": "mp3",
+      "size_bytes": 22764045,
+      "modified_utc": "2026-07-28T08:22:43+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 11/The Saga of Tanya the Evil - Volume 11 Chapter II Memoir.mp4",
+      "type": "mp4",
+      "size_bytes": 66007655,
+      "modified_utc": "2026-07-28T08:22:50+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 11/The Saga of Tanya the Evil - Volume 11 Chapter III The Incident.mp3",
+      "type": "mp3",
+      "size_bytes": 34200621,
+      "modified_utc": "2026-07-28T08:22:49+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 11/The Saga of Tanya the Evil - Volume 11 Chapter III The Incident.mp4",
+      "type": "mp4",
+      "size_bytes": 97902161,
+      "modified_utc": "2026-07-28T08:23:03+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 11/The Saga of Tanya the Evil - Volume 11 Chapter IV Turning Point.mp3",
+      "type": "mp3",
+      "size_bytes": 25003245,
+      "modified_utc": "2026-07-28T08:22:55+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 11/The Saga of Tanya the Evil - Volume 11 Chapter IV Turning Point.mp4",
+      "type": "mp4",
+      "size_bytes": 72184738,
+      "modified_utc": "2026-07-28T08:23:02+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 11/The Saga of Tanya the Evil - Volume 11 Chapter V Stage.mp3",
+      "type": "mp3",
+      "size_bytes": 43304397,
+      "modified_utc": "2026-07-28T08:23:04+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 11/The Saga of Tanya the Evil - Volume 11 Chapter V Stage.mp4",
+      "type": "mp4",
+      "size_bytes": 123300652,
+      "modified_utc": "2026-07-28T08:23:15+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 11/The Saga of Tanya the Evil - Volume 11 Chapter VI Impact.mp3",
+      "type": "mp3",
+      "size_bytes": 27594525,
+      "modified_utc": "2026-07-28T08:23:08+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 11/The Saga of Tanya the Evil - Volume 11 Chapter VI Impact.mp4",
+      "type": "mp4",
+      "size_bytes": 79459440,
+      "modified_utc": "2026-07-28T08:23:14+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter 0 Prologue.mp3",
+      "type": "mp3",
+      "size_bytes": 3091053,
+      "modified_utc": "2026-07-28T08:23:23+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter 0 Prologue.mp4",
+      "type": "mp4",
+      "size_bytes": 10957335,
+      "modified_utc": "2026-07-28T08:23:24+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter I The World's Enemy.mp3",
+      "type": "mp3",
+      "size_bytes": 28502877,
+      "modified_utc": "2026-07-28T08:23:26+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter I The World's Enemy.mp4",
+      "type": "mp4",
+      "size_bytes": 81504173,
+      "modified_utc": "2026-07-28T08:23:34+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter II The Stage.mp3",
+      "type": "mp3",
+      "size_bytes": 32731629,
+      "modified_utc": "2026-07-28T08:23:31+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter II The Stage.mp4",
+      "type": "mp4",
+      "size_bytes": 93374656,
+      "modified_utc": "2026-07-28T08:23:38+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter III An Appointment.mp3",
+      "type": "mp3",
+      "size_bytes": 47647197,
+      "modified_utc": "2026-07-28T08:23:37+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter III An Appointment.mp4",
+      "type": "mp4",
+      "size_bytes": 135149910,
+      "modified_utc": "2026-07-28T08:23:50+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter IV A Temporary Visitor.mp3",
+      "type": "mp3",
+      "size_bytes": 41357661,
+      "modified_utc": "2026-07-28T08:23:45+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter IV A Temporary Visitor.mp4",
+      "type": "mp4",
+      "size_bytes": 117369302,
+      "modified_utc": "2026-07-28T08:23:52+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter V Hard Work.mp3",
+      "type": "mp3",
+      "size_bytes": 20124957,
+      "modified_utc": "2026-07-28T08:23:49+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter V Hard Work.mp4",
+      "type": "mp4",
+      "size_bytes": 58427574,
+      "modified_utc": "2026-07-28T08:23:56+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter VI The Logistics of War.mp3",
+      "type": "mp3",
+      "size_bytes": 24488013,
+      "modified_utc": "2026-07-28T08:23:53+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 12/The Saga of Tanya the Evil - Volume 12 Chapter VI The Logistics of War.mp4",
+      "type": "mp4",
+      "size_bytes": 70804262,
+      "modified_utc": "2026-07-28T08:24:00+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter 0 Prologue.mp3",
+      "type": "mp3",
+      "size_bytes": 9526701,
+      "modified_utc": "2026-07-28T08:24:10+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter 0 Prologue.mp4",
+      "type": "mp4",
+      "size_bytes": 29207592,
+      "modified_utc": "2026-07-28T08:24:11+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter I End of the Beginning.mp3",
+      "type": "mp3",
+      "size_bytes": 23604573,
+      "modified_utc": "2026-07-28T08:24:11+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter I End of the Beginning.mp4",
+      "type": "mp4",
+      "size_bytes": 68539457,
+      "modified_utc": "2026-07-28T08:24:16+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter II House of Cards.mp3",
+      "type": "mp3",
+      "size_bytes": 39544077,
+      "modified_utc": "2026-07-28T08:24:17+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter II House of Cards.mp4",
+      "type": "mp4",
+      "size_bytes": 113254129,
+      "modified_utc": "2026-07-28T08:24:25+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter III Last Ditch.mp3",
+      "type": "mp3",
+      "size_bytes": 43940397,
+      "modified_utc": "2026-07-28T08:24:24+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter III Last Ditch.mp4",
+      "type": "mp4",
+      "size_bytes": 125406848,
+      "modified_utc": "2026-07-28T08:24:32+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter IV Setback.mp3",
+      "type": "mp3",
+      "size_bytes": 37010541,
+      "modified_utc": "2026-07-28T08:24:30+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter IV Setback.mp4",
+      "type": "mp4",
+      "size_bytes": 105977273,
+      "modified_utc": "2026-07-28T08:24:37+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter V Dawn.mp3",
+      "type": "mp3",
+      "size_bytes": 27156573,
+      "modified_utc": "2026-07-28T08:24:37+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter V Dawn.mp4",
+      "type": "mp4",
+      "size_bytes": 78466571,
+      "modified_utc": "2026-07-28T08:24:42+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter VI Mutiny.mp3",
+      "type": "mp3",
+      "size_bytes": 34240221,
+      "modified_utc": "2026-07-28T08:24:44+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 13/The Saga of Tanya the Evil - Volume 13 Chapter VI Mutiny.mp4",
+      "type": "mp4",
+      "size_bytes": 98055705,
+      "modified_utc": "2026-07-28T08:24:47+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter I In the Name of Duty.mp3",
+      "type": "mp3",
+      "size_bytes": 35051997,
+      "modified_utc": "2026-07-28T08:25:03+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter I In the Name of Duty.mp4",
+      "type": "mp4",
+      "size_bytes": 100872147,
+      "modified_utc": "2026-07-28T08:25:09+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter II Untimely AirLand Battle Doctrine.mp3",
+      "type": "mp3",
+      "size_bytes": 27978189,
+      "modified_utc": "2026-07-28T08:25:02+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter II Untimely AirLand Battle Doctrine.mp4",
+      "type": "mp4",
+      "size_bytes": 80834296,
+      "modified_utc": "2026-07-28T08:25:12+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter III Liar Today, Thief Tomorrow.mp3",
+      "type": "mp3",
+      "size_bytes": 26694765,
+      "modified_utc": "2026-07-28T08:25:09+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter III Liar Today, Thief Tomorrow.mp4",
+      "type": "mp4",
+      "size_bytes": 77212819,
+      "modified_utc": "2026-07-28T08:25:20+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter IV Professionalism.mp3",
+      "type": "mp3",
+      "size_bytes": 24043437,
+      "modified_utc": "2026-07-28T08:25:12+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter IV Professionalism.mp4",
+      "type": "mp4",
+      "size_bytes": 70028070,
+      "modified_utc": "2026-07-28T08:25:22+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter V Mage Graveyard.mp3",
+      "type": "mp3",
+      "size_bytes": 45721101,
+      "modified_utc": "2026-07-28T08:25:22+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter V Mage Graveyard.mp4",
+      "type": "mp4",
+      "size_bytes": 130724175,
+      "modified_utc": "2026-07-28T08:25:32+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter VI By a Whisker.mp3",
+      "type": "mp3",
+      "size_bytes": 34974669,
+      "modified_utc": "2026-07-28T08:25:29+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter VI By a Whisker.mp4",
+      "type": "mp4",
+      "size_bytes": 100571457,
+      "modified_utc": "2026-07-28T08:25:35+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter VII Living the Dream.mp3",
+      "type": "mp3",
+      "size_bytes": 23853837,
+      "modified_utc": "2026-07-28T08:25:33+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 14/The Saga of Tanya the Evil - Volume 14 Chapter VII Living the Dream.mp4",
+      "type": "mp4",
+      "size_bytes": 69361824,
+      "modified_utc": "2026-07-28T08:25:38+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter I The Dacian War.mp3",
+      "type": "mp3",
+      "size_bytes": 28482765,
+      "modified_utc": "2026-07-28T08:08:59+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter I The Dacian War.mp4",
+      "type": "mp4",
+      "size_bytes": 78144715,
+      "modified_utc": "2026-07-28T08:09:22+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter II Norden I.mp3",
+      "type": "mp3",
+      "size_bytes": 35392317,
+      "modified_utc": "2026-07-28T08:09:18+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter II Norden I.mp4",
+      "type": "mp4",
+      "size_bytes": 96312153,
+      "modified_utc": "2026-07-28T08:09:24+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter III Norden II.mp3",
+      "type": "mp3",
+      "size_bytes": 39123741,
+      "modified_utc": "2026-07-28T08:09:24+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter III Norden II.mp4",
+      "type": "mp4",
+      "size_bytes": 106379480,
+      "modified_utc": "2026-07-28T08:09:34+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter IV The Devil off the Coast of Norden.mp3",
+      "type": "mp3",
+      "size_bytes": 49705917,
+      "modified_utc": "2026-07-28T08:09:32+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter IV The Devil off the Coast of Norden.mp4",
+      "type": "mp4",
+      "size_bytes": 134310303,
+      "modified_utc": "2026-07-28T08:09:51+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter V The Devil of the Rhine.mp3",
+      "type": "mp3",
+      "size_bytes": 45980733,
+      "modified_utc": "2026-07-28T08:09:55+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter V The Devil of the Rhine.mp4",
+      "type": "mp4",
+      "size_bytes": 124413083,
+      "modified_utc": "2026-07-28T08:09:58+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter VI Ordeal of Fire.mp3",
+      "type": "mp3",
+      "size_bytes": 44147517,
+      "modified_utc": "2026-07-28T08:09:59+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter VI Ordeal of Fire.mp4",
+      "type": "mp4",
+      "size_bytes": 119541854,
+      "modified_utc": "2026-07-28T08:10:08+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter VII Preparation to Move Forward.mp3",
+      "type": "mp3",
+      "size_bytes": 23048877,
+      "modified_utc": "2026-07-28T08:10:03+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Chapter VII Preparation to Move Forward.mp4",
+      "type": "mp4",
+      "size_bytes": 63814825,
+      "modified_utc": "2026-07-28T08:10:07+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Side Story A Borrowed Cat.mp3",
+      "type": "mp3",
+      "size_bytes": 3554877,
+      "modified_utc": "2026-07-28T08:10:05+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 02 Side Story A Borrowed Cat.mp4",
+      "type": "mp4",
+      "size_bytes": 11999601,
+      "modified_utc": "2026-07-28T08:10:07+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 2 Appendix.mp3",
+      "type": "mp3",
+      "size_bytes": 780429,
+      "modified_utc": "2026-07-28T08:10:08+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 2/The Saga of Tanya the Evil - Volume 2 Appendix.mp4",
+      "type": "mp4",
+      "size_bytes": 4703368,
+      "modified_utc": "2026-07-28T08:10:09+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 3/The Saga of Tanya the Evil - Volume 03 Chapter I Open Sesame.mp3",
+      "type": "mp3",
+      "size_bytes": 36150141,
+      "modified_utc": "2026-07-28T08:10:14+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 3/The Saga of Tanya the Evil - Volume 03 Chapter I Open Sesame.mp4",
+      "type": "mp4",
+      "size_bytes": 98567684,
+      "modified_utc": "2026-07-28T08:10:22+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 3/The Saga of Tanya the Evil - Volume 03 Chapter II The Intervention, Which Was Too Late.mp3",
+      "type": "mp3",
+      "size_bytes": 47042733,
+      "modified_utc": "2026-07-28T08:10:16+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 3/The Saga of Tanya the Evil - Volume 03 Chapter II The Intervention, Which Was Too Late.mp4",
+      "type": "mp4",
+      "size_bytes": 127192541,
+      "modified_utc": "2026-07-28T08:10:29+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 3/The Saga of Tanya the Evil - Volume 03 Chapter III Operation Ark.mp3",
+      "type": "mp3",
+      "size_bytes": 18136461,
+      "modified_utc": "2026-07-28T08:10:21+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 3/The Saga of Tanya the Evil - Volume 03 Chapter III Operation Ark.mp4",
+      "type": "mp4",
+      "size_bytes": 50515960,
+      "modified_utc": "2026-07-28T08:10:28+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 3/The Saga of Tanya the Evil - Volume 03 Chapter IV How to Use Victory.mp3",
+      "type": "mp3",
+      "size_bytes": 12033021,
+      "modified_utc": "2026-07-28T08:10:25+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 3/The Saga of Tanya the Evil - Volume 03 Chapter IV How to Use Victory.mp4",
+      "type": "mp4",
+      "size_bytes": 34345250,
+      "modified_utc": "2026-07-28T08:10:29+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 3/The Saga of Tanya the Evil - Volume 03 Chapter V Internal Affairs.mp3",
+      "type": "mp3",
+      "size_bytes": 23588013,
+      "modified_utc": "2026-07-28T08:10:32+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 3/The Saga of Tanya the Evil - Volume 03 Chapter V Internal Affairs.mp4",
+      "type": "mp4",
+      "size_bytes": 65063972,
+      "modified_utc": "2026-07-28T08:10:37+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 3/The Saga of Tanya the Evil - Volume 03 Chapter VI The Southern Campaign.mp3",
+      "type": "mp3",
+      "size_bytes": 41387277,
+      "modified_utc": "2026-07-28T08:10:36+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 3/The Saga of Tanya the Evil - Volume 03 Chapter VI The Southern Campaign.mp4",
+      "type": "mp4",
+      "size_bytes": 112205257,
+      "modified_utc": "2026-07-28T08:10:45+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 4/output/The Saga of Tanya the Evil - Volume 04 Chapter I A Long-Range Reconnaissance Mission.mp4",
+      "type": "mp4",
+      "size_bytes": 127396921,
+      "modified_utc": "2026-07-28T08:13:59+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 4/output/The Saga of Tanya the Evil - Volume 04 Chapter II A Goodwill Visit.mp4",
+      "type": "mp4",
+      "size_bytes": 83981930,
+      "modified_utc": "2026-07-28T08:14:03+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 4/output/The Saga of Tanya the Evil - Volume 04 Chapter III A Magnificent Victory.mp4",
+      "type": "mp4",
+      "size_bytes": 109998835,
+      "modified_utc": "2026-07-28T08:14:08+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 4/output/The Saga of Tanya the Evil - Volume 04 Chapter IV Reorganization.mp4",
+      "type": "mp4",
+      "size_bytes": 69535032,
+      "modified_utc": "2026-07-28T08:14:09+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 4/output/The Saga of Tanya the Evil - Volume 04 Chapter V The Battle of Dodobird.mp4",
+      "type": "mp4",
+      "size_bytes": 105022688,
+      "modified_utc": "2026-07-28T08:14:13+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 4/output/The Saga of Tanya the Evil - Volume 04 Chapter VI Operation Door Knocker.mp4",
+      "type": "mp4",
+      "size_bytes": 108069918,
+      "modified_utc": "2026-07-28T08:14:17+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 4/The Saga of Tanya the Evil - Volume 04 Chapter I A Long-Range Reconnaissance Mission.mp3",
+      "type": "mp3",
+      "size_bytes": 44839149,
+      "modified_utc": "2026-07-28T08:10:43+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 4/The Saga of Tanya the Evil - Volume 04 Chapter II A Goodwill Visit.mp3",
+      "type": "mp3",
+      "size_bytes": 29441037,
+      "modified_utc": "2026-07-28T08:10:43+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 4/The Saga of Tanya the Evil - Volume 04 Chapter III A Magnificent Victory.mp3",
+      "type": "mp3",
+      "size_bytes": 38674029,
+      "modified_utc": "2026-07-28T08:10:47+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 4/The Saga of Tanya the Evil - Volume 04 Chapter IV Reorganization.mp3",
+      "type": "mp3",
+      "size_bytes": 24319533,
+      "modified_utc": "2026-07-28T08:10:46+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 4/The Saga of Tanya the Evil - Volume 04 Chapter V The Battle of Dodobird.mp3",
+      "type": "mp3",
+      "size_bytes": 36978141,
+      "modified_utc": "2026-07-28T08:10:48+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 4/The Saga of Tanya the Evil - Volume 04 Chapter VI Operation Door Knocker.mp3",
+      "type": "mp3",
+      "size_bytes": 37963101,
+      "modified_utc": "2026-07-28T08:10:52+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 5/The Saga of Tanya the Evil - Volume 05 Chapter I Rapid Advance.mp3",
+      "type": "mp3",
+      "size_bytes": 40346493,
+      "modified_utc": "2026-07-28T08:12:32+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 5/The Saga of Tanya the Evil - Volume 05 Chapter I Rapid Advance.mp4",
+      "type": "mp4",
+      "size_bytes": 115590733,
+      "modified_utc": "2026-07-28T08:12:39+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 5/The Saga of Tanya the Evil - Volume 05 Chapter II Strange Friendship.mp3",
+      "type": "mp3",
+      "size_bytes": 36809661,
+      "modified_utc": "2026-07-28T08:12:44+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 5/The Saga of Tanya the Evil - Volume 05 Chapter II Strange Friendship.mp4",
+      "type": "mp4",
+      "size_bytes": 105932143,
+      "modified_utc": "2026-07-28T08:12:51+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 5/The Saga of Tanya the Evil - Volume 05 Chapter III Northern Operation.mp3",
+      "type": "mp3",
+      "size_bytes": 34842237,
+      "modified_utc": "2026-07-28T08:12:50+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 5/The Saga of Tanya the Evil - Volume 05 Chapter III Northern Operation.mp4",
+      "type": "mp4",
+      "size_bytes": 100072009,
+      "modified_utc": "2026-07-28T08:12:58+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 5/The Saga of Tanya the Evil - Volume 05 Chapter IV Long - Range Assault Operation.mp3",
+      "type": "mp3",
+      "size_bytes": 33423645,
+      "modified_utc": "2026-07-28T08:12:54+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 5/The Saga of Tanya the Evil - Volume 05 Chapter IV Long - Range Assault Operation.mp4",
+      "type": "mp4",
+      "size_bytes": 96329459,
+      "modified_utc": "2026-07-28T08:13:05+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 5/The Saga of Tanya the Evil - Volume 05 Chapter V Out of Time.mp3",
+      "type": "mp3",
+      "size_bytes": 52072941,
+      "modified_utc": "2026-07-28T08:13:04+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 5/The Saga of Tanya the Evil - Volume 05 Chapter V Out of Time.mp4",
+      "type": "mp4",
+      "size_bytes": 148305642,
+      "modified_utc": "2026-07-28T08:13:14+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 5/The Saga of Tanya the Evil - Volume 05 Chapter VI Liberator.mp3",
+      "type": "mp3",
+      "size_bytes": 15583341,
+      "modified_utc": "2026-07-28T08:13:07+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 5/The Saga of Tanya the Evil - Volume 05 Chapter VI Liberator.mp4",
+      "type": "mp4",
+      "size_bytes": 46450297,
+      "modified_utc": "2026-07-28T08:13:13+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 6/The Saga of Tanya the Evil - Volume 06 Chapter I Winter Operation Limited Offensive.mp3",
+      "type": "mp3",
+      "size_bytes": 33710205,
+      "modified_utc": "2026-07-28T08:10:53+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 6/The Saga of Tanya the Evil - Volume 06 Chapter I Winter Operation Limited Offensive.mp4",
+      "type": "mp4",
+      "size_bytes": 96419958,
+      "modified_utc": "2026-07-28T08:11:01+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 6/The Saga of Tanya the Evil - Volume 06 Chapter II Paradox.mp3",
+      "type": "mp3",
+      "size_bytes": 32226573,
+      "modified_utc": "2026-07-28T08:10:57+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 6/The Saga of Tanya the Evil - Volume 06 Chapter II Paradox.mp4",
+      "type": "mp4",
+      "size_bytes": 92144017,
+      "modified_utc": "2026-07-28T08:11:04+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 6/The Saga of Tanya the Evil - Volume 06 Chapter III Lull in the Wind.mp3",
+      "type": "mp3",
+      "size_bytes": 19705053,
+      "modified_utc": "2026-07-28T08:11:01+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 6/The Saga of Tanya the Evil - Volume 06 Chapter III Lull in the Wind.mp4",
+      "type": "mp4",
+      "size_bytes": 57449050,
+      "modified_utc": "2026-07-28T08:11:08+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 6/The Saga of Tanya the Evil - Volume 06 Chapter IV Diplomatic Deal.mp3",
+      "type": "mp3",
+      "size_bytes": 39343485,
+      "modified_utc": "2026-07-28T08:11:07+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 6/The Saga of Tanya the Evil - Volume 06 Chapter IV Diplomatic Deal.mp4",
+      "type": "mp4",
+      "size_bytes": 111959462,
+      "modified_utc": "2026-07-28T08:11:16+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 6/The Saga of Tanya the Evil - Volume 06 Chapter V Portent.mp3",
+      "type": "mp3",
+      "size_bytes": 29443485,
+      "modified_utc": "2026-07-28T08:11:14+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 6/The Saga of Tanya the Evil - Volume 06 Chapter V Portent.mp4",
+      "type": "mp4",
+      "size_bytes": 84384730,
+      "modified_utc": "2026-07-28T08:11:19+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 6/The Saga of Tanya the Evil - Volume 06 Chapter VI Structural Problems.mp3",
+      "type": "mp3",
+      "size_bytes": 21542205,
+      "modified_utc": "2026-07-28T08:11:16+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 6/The Saga of Tanya the Evil - Volume 06 Chapter VI Structural Problems.mp4",
+      "type": "mp4",
+      "size_bytes": 62479353,
+      "modified_utc": "2026-07-28T08:11:26+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 7/The Saga of Tanya the Evil - Volume 07 Chapter I Disarray.mp3",
+      "type": "mp3",
+      "size_bytes": 35442045,
+      "modified_utc": "2026-07-28T08:11:24+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 7/The Saga of Tanya the Evil - Volume 07 Chapter I Disarray.mp4",
+      "type": "mp4",
+      "size_bytes": 102062223,
+      "modified_utc": "2026-07-28T08:11:30+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 7/The Saga of Tanya the Evil - Volume 07 Chapter II Restoration.mp3",
+      "type": "mp3",
+      "size_bytes": 36827373,
+      "modified_utc": "2026-07-28T08:11:29+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 7/The Saga of Tanya the Evil - Volume 07 Chapter II Restoration.mp4",
+      "type": "mp4",
+      "size_bytes": 105965841,
+      "modified_utc": "2026-07-28T08:11:37+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 7/The Saga of Tanya the Evil - Volume 07 Chapter III Effort and Ingenuity.mp3",
+      "type": "mp3",
+      "size_bytes": 35859117,
+      "modified_utc": "2026-07-28T08:11:36+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 7/The Saga of Tanya the Evil - Volume 07 Chapter III Effort and Ingenuity.mp4",
+      "type": "mp4",
+      "size_bytes": 103200250,
+      "modified_utc": "2026-07-28T08:11:41+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 7/The Saga of Tanya the Evil - Volume 07 Chapter IV Operation Iron Hammer.mp3",
+      "type": "mp3",
+      "size_bytes": 38545581,
+      "modified_utc": "2026-07-28T08:11:43+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 7/The Saga of Tanya the Evil - Volume 07 Chapter IV Operation Iron Hammer.mp4",
+      "type": "mp4",
+      "size_bytes": 111107976,
+      "modified_utc": "2026-07-28T08:11:50+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 7/The Saga of Tanya the Evil - Volume 07 Chapter V Turning Point.mp3",
+      "type": "mp3",
+      "size_bytes": 22490589,
+      "modified_utc": "2026-07-28T08:11:47+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 7/The Saga of Tanya the Evil - Volume 07 Chapter V Turning Point.mp4",
+      "type": "mp4",
+      "size_bytes": 65706655,
+      "modified_utc": "2026-07-28T08:11:52+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 7/The Saga of Tanya the Evil - Volume 07 Chapter VI Excessive Triumph.mp3",
+      "type": "mp3",
+      "size_bytes": 18262029,
+      "modified_utc": "2026-07-28T08:11:50+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 7/The Saga of Tanya the Evil - Volume 07 Chapter VI Excessive Triumph.mp4",
+      "type": "mp4",
+      "size_bytes": 53970259,
+      "modified_utc": "2026-07-28T08:11:56+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 8/The Saga of Tanya the Evil - Volume 08 Chapter I A Journalist's Memories of the Eastern Front.mp3",
+      "type": "mp3",
+      "size_bytes": 22972269,
+      "modified_utc": "2026-07-28T08:11:55+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 8/The Saga of Tanya the Evil - Volume 08 Chapter I A Journalist's Memories of the Eastern Front.mp4",
+      "type": "mp4",
+      "size_bytes": 66908914,
+      "modified_utc": "2026-07-28T08:11:58+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 8/The Saga of Tanya the Evil - Volume 08 Chapter II Andromeda Eve.mp3",
+      "type": "mp3",
+      "size_bytes": 31192125,
+      "modified_utc": "2026-07-28T08:12:00+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 8/The Saga of Tanya the Evil - Volume 08 Chapter II Andromeda Eve.mp4",
+      "type": "mp4",
+      "size_bytes": 89897213,
+      "modified_utc": "2026-07-28T08:12:07+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 8/The Saga of Tanya the Evil - Volume 08 Chapter III Andromeda.mp3",
+      "type": "mp3",
+      "size_bytes": 35641005,
+      "modified_utc": "2026-07-28T08:12:05+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 8/The Saga of Tanya the Evil - Volume 08 Chapter III Andromeda.mp4",
+      "type": "mp4",
+      "size_bytes": 102512308,
+      "modified_utc": "2026-07-28T08:12:12+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 8/The Saga of Tanya the Evil - Volume 08 Chapter IV Encounter and Engage.mp3",
+      "type": "mp3",
+      "size_bytes": 28600509,
+      "modified_utc": "2026-07-28T08:12:11+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 8/The Saga of Tanya the Evil - Volume 08 Chapter IV Encounter and Engage.mp4",
+      "type": "mp4",
+      "size_bytes": 82736126,
+      "modified_utc": "2026-07-28T08:12:16+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 8/The Saga of Tanya the Evil - Volume 08 Chapter V Pocket.mp3",
+      "type": "mp3",
+      "size_bytes": 39580365,
+      "modified_utc": "2026-07-28T08:12:20+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 8/The Saga of Tanya the Evil - Volume 08 Chapter V Pocket.mp4",
+      "type": "mp4",
+      "size_bytes": 113555689,
+      "modified_utc": "2026-07-28T08:12:26+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 8/The Saga of Tanya the Evil - Volume 08 Chapter VI Hans von Zettour.mp3",
+      "type": "mp3",
+      "size_bytes": 28071165,
+      "modified_utc": "2026-07-28T08:12:21+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 8/The Saga of Tanya the Evil - Volume 08 Chapter VI Hans von Zettour.mp4",
+      "type": "mp4",
+      "size_bytes": 81157552,
+      "modified_utc": "2026-07-28T08:12:29+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 9/The Saga of Tanya the Evil - Volume 09  Chapter I Erosion.mp3",
+      "type": "mp3",
+      "size_bytes": 27849309,
+      "modified_utc": "2026-07-28T08:13:12+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 9/The Saga of Tanya the Evil - Volume 09  Chapter I Erosion.mp4",
+      "type": "mp4",
+      "size_bytes": 81753074,
+      "modified_utc": "2026-07-28T08:13:23+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 9/The Saga of Tanya the Evil - Volume 09  Chapter II The Home Front.mp3",
+      "type": "mp3",
+      "size_bytes": 45982797,
+      "modified_utc": "2026-07-28T08:13:24+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 9/The Saga of Tanya the Evil - Volume 09  Chapter II The Home Front.mp4",
+      "type": "mp4",
+      "size_bytes": 133183659,
+      "modified_utc": "2026-07-28T08:13:30+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 9/The Saga of Tanya the Evil - Volume 09  Chapter III Necessity Is the Mother of Invention.mp3",
+      "type": "mp3",
+      "size_bytes": 34981773,
+      "modified_utc": "2026-07-28T08:13:29+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 9/The Saga of Tanya the Evil - Volume 09  Chapter III Necessity Is the Mother of Invention.mp4",
+      "type": "mp4",
+      "size_bytes": 102181842,
+      "modified_utc": "2026-07-28T08:13:36+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 9/The Saga of Tanya the Evil - Volume 09  Chapter IV Love from Underwater.mp3",
+      "type": "mp3",
+      "size_bytes": 22902477,
+      "modified_utc": "2026-07-28T08:13:34+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 9/The Saga of Tanya the Evil - Volume 09  Chapter IV Love from Underwater.mp4",
+      "type": "mp4",
+      "size_bytes": 67766474,
+      "modified_utc": "2026-07-28T08:13:37+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 9/The Saga of Tanya the Evil - Volume 09  Chapter V Sightseeing.mp3",
+      "type": "mp3",
+      "size_bytes": 47259741,
+      "modified_utc": "2026-07-28T08:13:42+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 9/The Saga of Tanya the Evil - Volume 09  Chapter V Sightseeing.mp4",
+      "type": "mp4",
+      "size_bytes": 136622547,
+      "modified_utc": "2026-07-28T08:13:52+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 9/The Saga of Tanya the Evil - Volume 09  Chapter VI At Dusk.mp3",
+      "type": "mp3",
+      "size_bytes": 27435117,
+      "modified_utc": "2026-07-28T08:13:43+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "Tanya/Final/Volume 9/The Saga of Tanya the Evil - Volume 09  Chapter VI At Dusk.mp4",
+      "type": "mp4",
+      "size_bytes": 80574665,
+      "modified_utc": "2026-07-28T08:13:54+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-1 - Prologue.mp3",
+      "type": "mp3",
+      "size_bytes": 3248733,
+      "modified_utc": "2026-07-28T07:49:41+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-1 - Prologue.mp4",
+      "type": "mp4",
+      "size_bytes": 11920681,
+      "modified_utc": "2026-07-28T07:49:42+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-2 - Chapter 1 A Grasp of the Situation and Existential Evolution.mp3",
+      "type": "mp3",
+      "size_bytes": 22524525,
+      "modified_utc": "2026-07-28T07:49:43+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-2 - Chapter 1 A Grasp of the Situation and Existential Evolution.mp4",
+      "type": "mp4",
+      "size_bytes": 66606219,
+      "modified_utc": "2026-07-28T07:49:50+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-3 - Chapter 2 Rina the Adventurer.mp3",
+      "type": "mp3",
+      "size_bytes": 29374989,
+      "modified_utc": "2026-07-28T07:49:48+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-3 - Chapter 2 Rina the Adventurer.mp4",
+      "type": "mp4",
+      "size_bytes": 85458579,
+      "modified_utc": "2026-07-28T07:49:53+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-4 - Chapter 3 A Certain Undead’s Town Infiltration.mp3",
+      "type": "mp3",
+      "size_bytes": 24146061,
+      "modified_utc": "2026-07-28T07:49:53+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-4 - Chapter 3 A Certain Undead’s Town Infiltration.mp4",
+      "type": "mp4",
+      "size_bytes": 70920915,
+      "modified_utc": "2026-07-28T07:49:59+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-5 - Chapter 4 The Labyrinth of the Moon’s Reflection and Troublesome Restrictions.mp3",
+      "type": "mp3",
+      "size_bytes": 28263549,
+      "modified_utc": "2026-07-28T07:49:59+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-5 - Chapter 4 The Labyrinth of the Moon’s Reflection and Troublesome Restrictions.mp4",
+      "type": "mp4",
+      "size_bytes": 82396077,
+      "modified_utc": "2026-07-28T07:50:04+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-6 - Chapter 5 Proof of Inhumanity.mp3",
+      "type": "mp3",
+      "size_bytes": 44493309,
+      "modified_utc": "2026-07-28T07:50:06+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-6 - Chapter 5 Proof of Inhumanity.mp4",
+      "type": "mp4",
+      "size_bytes": 128087520,
+      "modified_utc": "2026-07-28T07:50:14+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-7 - Side Story The Day When Rentt Snapped ~Adventurer Lorraine’s Sixth Year.mp3",
+      "type": "mp3",
+      "size_bytes": 8654925,
+      "modified_utc": "2026-07-28T07:50:06+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 01/The Unwanted Undead Adventurer - Volume 01-7 - Side Story The Day When Rentt Snapped ~Adventurer Lorraine’s Sixth Year.mp4",
+      "type": "mp4",
+      "size_bytes": 26938416,
+      "modified_utc": "2026-07-28T07:50:11+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 02/The Unwanted Undead Adventurer - Volume 02-1 - Chapter 1 The Labyrinth of the New Moon.mp3",
+      "type": "mp3",
+      "size_bytes": 55424109,
+      "modified_utc": "2026-07-28T07:50:15+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 02/The Unwanted Undead Adventurer - Volume 02-1 - Chapter 1 The Labyrinth of the New Moon.mp4",
+      "type": "mp4",
+      "size_bytes": 159713428,
+      "modified_utc": "2026-07-28T07:50:43+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 02/The Unwanted Undead Adventurer - Volume 02-2 - Chapter 2 Contract by Magic.mp3",
+      "type": "mp3",
+      "size_bytes": 21853005,
+      "modified_utc": "2026-07-28T07:50:18+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 02/The Unwanted Undead Adventurer - Volume 02-2 - Chapter 2 Contract by Magic.mp4",
+      "type": "mp4",
+      "size_bytes": 64557327,
+      "modified_utc": "2026-07-28T07:50:41+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 02/The Unwanted Undead Adventurer - Volume 02-3 - Chapter 3 A New Weapon and Newfound Strength.mp3",
+      "type": "mp3",
+      "size_bytes": 30500157,
+      "modified_utc": "2026-07-28T07:50:45+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 02/The Unwanted Undead Adventurer - Volume 02-3 - Chapter 3 A New Weapon and Newfound Strength.mp4",
+      "type": "mp4",
+      "size_bytes": 89024023,
+      "modified_utc": "2026-07-28T07:50:50+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 02/The Unwanted Undead Adventurer - Volume 02-4 - Chapter 4 Dragon Blood Blossom.mp3",
+      "type": "mp3",
+      "size_bytes": 48468957,
+      "modified_utc": "2026-07-28T07:50:52+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 02/The Unwanted Undead Adventurer - Volume 02-4 - Chapter 4 Dragon Blood Blossom.mp4",
+      "type": "mp4",
+      "size_bytes": 139891714,
+      "modified_utc": "2026-07-28T07:50:58+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 02/The Unwanted Undead Adventurer - Volume 02-5 - Bonus Short Stories.mp3",
+      "type": "mp3",
+      "size_bytes": 8677197,
+      "modified_utc": "2026-07-28T07:50:52+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 02/The Unwanted Undead Adventurer - Volume 02-5 - Bonus Short Stories.mp4",
+      "type": "mp4",
+      "size_bytes": 27126499,
+      "modified_utc": "2026-07-28T07:50:57+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 03/The Unwanted Undead Adventurer - Volume 03-1 - Chapter 1 A Peculiar Man.mp3",
+      "type": "mp3",
+      "size_bytes": 29602749,
+      "modified_utc": "2026-07-28T07:52:36+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 03/The Unwanted Undead Adventurer - Volume 03-1 - Chapter 1 A Peculiar Man.mp4",
+      "type": "mp4",
+      "size_bytes": 85769064,
+      "modified_utc": "2026-07-28T07:52:40+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 03/The Unwanted Undead Adventurer - Volume 03-2 - Chapter 2 And an Equally Peculiar Request.mp3",
+      "type": "mp3",
+      "size_bytes": 50533725,
+      "modified_utc": "2026-07-28T07:52:45+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 03/The Unwanted Undead Adventurer - Volume 03-2 - Chapter 2 And an Equally Peculiar Request.mp4",
+      "type": "mp4",
+      "size_bytes": 145124649,
+      "modified_utc": "2026-07-28T07:52:54+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 03/The Unwanted Undead Adventurer - Volume 03-3 - Chapter 3 A New Existential Evolution.mp3",
+      "type": "mp3",
+      "size_bytes": 45431037,
+      "modified_utc": "2026-07-28T07:52:49+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 03/The Unwanted Undead Adventurer - Volume 03-3 - Chapter 3 A New Existential Evolution.mp4",
+      "type": "mp4",
+      "size_bytes": 130866759,
+      "modified_utc": "2026-07-28T07:52:58+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 03/The Unwanted Undead Adventurer - Volume 03-4 - Chapter 4 Magecraft.mp3",
+      "type": "mp3",
+      "size_bytes": 28127661,
+      "modified_utc": "2026-07-28T07:52:55+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 03/The Unwanted Undead Adventurer - Volume 03-4 - Chapter 4 Magecraft.mp4",
+      "type": "mp4",
+      "size_bytes": 81736117,
+      "modified_utc": "2026-07-28T07:53:03+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 03/The Unwanted Undead Adventurer - Volume 03-5 - Epilogue.mp3",
+      "type": "mp3",
+      "size_bytes": 4388637,
+      "modified_utc": "2026-07-28T07:52:58+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 03/The Unwanted Undead Adventurer - Volume 03-5 - Epilogue.mp4",
+      "type": "mp4",
+      "size_bytes": 14925483,
+      "modified_utc": "2026-07-28T07:53:01+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 03/The Unwanted Undead Adventurer - Volume 03-6 - Bonus Short Stories.mp3",
+      "type": "mp3",
+      "size_bytes": 18168093,
+      "modified_utc": "2026-07-28T07:53:02+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 03/The Unwanted Undead Adventurer - Volume 03-6 - Bonus Short Stories.mp4",
+      "type": "mp4",
+      "size_bytes": 53740443,
+      "modified_utc": "2026-07-28T07:53:08+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-1 - Chapter 1 To the Labyrinth of the New Moon.mp3",
+      "type": "mp3",
+      "size_bytes": 28937613,
+      "modified_utc": "2026-07-28T07:52:04+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-1 - Chapter 1 To the Labyrinth of the New Moon.mp4",
+      "type": "mp4",
+      "size_bytes": 85443174,
+      "modified_utc": "2026-07-28T07:52:16+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-2 - Intermission Rina Rupaage, Adventurer.mp3",
+      "type": "mp3",
+      "size_bytes": 5035053,
+      "modified_utc": "2026-07-28T07:52:08+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-2 - Intermission Rina Rupaage, Adventurer.mp4",
+      "type": "mp4",
+      "size_bytes": 17231624,
+      "modified_utc": "2026-07-28T07:52:09+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-3 - Chapter 2 Materials for My Disciple’s Weapon.mp3",
+      "type": "mp3",
+      "size_bytes": 50325933,
+      "modified_utc": "2026-07-28T07:52:16+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-3 - Chapter 2 Materials for My Disciple’s Weapon.mp4",
+      "type": "mp4",
+      "size_bytes": 145920758,
+      "modified_utc": "2026-07-28T07:52:25+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-4 - Chapter 3 The Stheno Trading Company.mp3",
+      "type": "mp3",
+      "size_bytes": 14593533,
+      "modified_utc": "2026-07-28T07:52:19+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-4 - Chapter 3 The Stheno Trading Company.mp4",
+      "type": "mp4",
+      "size_bytes": 44105434,
+      "modified_utc": "2026-07-28T07:52:23+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-5 - Intermission Myullias Raiza, Priestess-Saint.mp3",
+      "type": "mp3",
+      "size_bytes": 30886269,
+      "modified_utc": "2026-07-28T07:52:26+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-5 - Intermission Myullias Raiza, Priestess-Saint.mp4",
+      "type": "mp4",
+      "size_bytes": 90336892,
+      "modified_utc": "2026-07-28T07:52:31+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-6 - Epilogue.mp3",
+      "type": "mp3",
+      "size_bytes": 3013005,
+      "modified_utc": "2026-07-28T07:52:26+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-6 - Epilogue.mp4",
+      "type": "mp4",
+      "size_bytes": 11460831,
+      "modified_utc": "2026-07-28T07:52:30+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-7 - Side Story The Princess-Saint of Healing.mp3",
+      "type": "mp3",
+      "size_bytes": 16017981,
+      "modified_utc": "2026-07-28T07:52:30+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 04/The Unwanted Undead Adventurer - Volume 04-7 - Side Story The Princess-Saint of Healing.mp4",
+      "type": "mp4",
+      "size_bytes": 48248365,
+      "modified_utc": "2026-07-28T07:52:37+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 05/The Unwanted Undead Adventurer - Volume 05-1 - Chapter 1 Off to Adventure.mp3",
+      "type": "mp3",
+      "size_bytes": 25811037,
+      "modified_utc": "2026-07-28T07:53:08+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 05/The Unwanted Undead Adventurer - Volume 05-1 - Chapter 1 Off to Adventure.mp4",
+      "type": "mp4",
+      "size_bytes": 75918431,
+      "modified_utc": "2026-07-28T07:53:12+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 05/The Unwanted Undead Adventurer - Volume 05-2 - Chapter 2 Making a Catalyst.mp3",
+      "type": "mp3",
+      "size_bytes": 26358477,
+      "modified_utc": "2026-07-28T07:53:12+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 05/The Unwanted Undead Adventurer - Volume 05-2 - Chapter 2 Making a Catalyst.mp4",
+      "type": "mp4",
+      "size_bytes": 77393367,
+      "modified_utc": "2026-07-28T07:53:15+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 05/The Unwanted Undead Adventurer - Volume 05-3 - Chapter 3 Existence and Status.mp3",
+      "type": "mp3",
+      "size_bytes": 28184349,
+      "modified_utc": "2026-07-28T07:53:17+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 05/The Unwanted Undead Adventurer - Volume 05-3 - Chapter 3 Existence and Status.mp4",
+      "type": "mp4",
+      "size_bytes": 82644344,
+      "modified_utc": "2026-07-28T07:53:22+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 05/The Unwanted Undead Adventurer - Volume 05-4 - Chapter 4 The Journey.mp3",
+      "type": "mp3",
+      "size_bytes": 22588269,
+      "modified_utc": "2026-07-28T07:53:20+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 05/The Unwanted Undead Adventurer - Volume 05-4 - Chapter 4 The Journey.mp4",
+      "type": "mp4",
+      "size_bytes": 67014438,
+      "modified_utc": "2026-07-28T07:53:55+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 06/The Unwanted Undead Adventurer - Volume 06-1 - Chapter 1 My Hometown of Hathara.mp3",
+      "type": "mp3",
+      "size_bytes": 24436461,
+      "modified_utc": "2026-07-28T07:51:46+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 06/The Unwanted Undead Adventurer - Volume 06-1 - Chapter 1 My Hometown of Hathara.mp4",
+      "type": "mp4",
+      "size_bytes": 73000477,
+      "modified_utc": "2026-07-28T07:51:49+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 06/The Unwanted Undead Adventurer - Volume 06-2 - Chapter 2 A Welcome Banquet and Rentt’s Origins.mp3",
+      "type": "mp3",
+      "size_bytes": 17469885,
+      "modified_utc": "2026-07-28T07:51:49+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 06/The Unwanted Undead Adventurer - Volume 06-2 - Chapter 2 A Welcome Banquet and Rentt’s Origins.mp4",
+      "type": "mp4",
+      "size_bytes": 52745687,
+      "modified_utc": "2026-07-28T07:51:51+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 06/The Unwanted Undead Adventurer - Volume 06-3 - Chapter 3 Tragedy and Origins.mp3",
+      "type": "mp3",
+      "size_bytes": 29242221,
+      "modified_utc": "2026-07-28T07:51:53+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 06/The Unwanted Undead Adventurer - Volume 06-3 - Chapter 3 Tragedy and Origins.mp4",
+      "type": "mp4",
+      "size_bytes": 86525309,
+      "modified_utc": "2026-07-28T07:52:00+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 06/The Unwanted Undead Adventurer - Volume 06-4 - Chapter 4 The Secret of Hathara.mp3",
+      "type": "mp3",
+      "size_bytes": 22805949,
+      "modified_utc": "2026-07-28T07:51:57+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 06/The Unwanted Undead Adventurer - Volume 06-4 - Chapter 4 The Secret of Hathara.mp4",
+      "type": "mp4",
+      "size_bytes": 68291834,
+      "modified_utc": "2026-07-28T07:52:05+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 06/The Unwanted Undead Adventurer - Volume 06-5 - Bonus Short Stories.mp3",
+      "type": "mp3",
+      "size_bytes": 13389645,
+      "modified_utc": "2026-07-28T07:52:00+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 06/The Unwanted Undead Adventurer - Volume 06-5 - Bonus Short Stories.mp4",
+      "type": "mp4",
+      "size_bytes": 40937723,
+      "modified_utc": "2026-07-28T07:52:06+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-1 - Chapter 1 Vistelya, The Capital.mp3",
+      "type": "mp3",
+      "size_bytes": 10849389,
+      "modified_utc": "2026-07-28T07:50:54+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-1 - Chapter 1 Vistelya, The Capital.mp4",
+      "type": "mp4",
+      "size_bytes": 33291606,
+      "modified_utc": "2026-07-28T07:51:02+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-2 - Chapter 2 Backup.mp3",
+      "type": "mp3",
+      "size_bytes": 29562141,
+      "modified_utc": "2026-07-28T07:51:02+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-2 - Chapter 2 Backup.mp4",
+      "type": "mp4",
+      "size_bytes": 86038106,
+      "modified_utc": "2026-07-28T07:51:06+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-3 - Chapter 3 Numerous Secrets.mp3",
+      "type": "mp3",
+      "size_bytes": 25508349,
+      "modified_utc": "2026-07-28T07:51:05+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-3 - Chapter 3 Numerous Secrets.mp4",
+      "type": "mp4",
+      "size_bytes": 74852477,
+      "modified_utc": "2026-07-28T07:51:10+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-4 - Chapter 4 Vampires of Days Past.mp3",
+      "type": "mp3",
+      "size_bytes": 8295933,
+      "modified_utc": "2026-07-28T07:51:07+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-4 - Chapter 4 Vampires of Days Past.mp4",
+      "type": "mp4",
+      "size_bytes": 26027422,
+      "modified_utc": "2026-07-28T07:51:11+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-5 - Chapter 5 Laura, Head of the Latuule Family.mp3",
+      "type": "mp3",
+      "size_bytes": 8792877,
+      "modified_utc": "2026-07-28T07:51:10+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-5 - Chapter 5 Laura, Head of the Latuule Family.mp4",
+      "type": "mp4",
+      "size_bytes": 27339696,
+      "modified_utc": "2026-07-28T07:51:13+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-6 - Chapter 6 Puchi Suri.mp3",
+      "type": "mp3",
+      "size_bytes": 13908765,
+      "modified_utc": "2026-07-28T07:51:15+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-6 - Chapter 6 Puchi Suri.mp4",
+      "type": "mp4",
+      "size_bytes": 41924929,
+      "modified_utc": "2026-07-28T07:51:17+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-7 - Side Story Noble’s Trust.mp3",
+      "type": "mp3",
+      "size_bytes": 18200541,
+      "modified_utc": "2026-07-28T07:51:17+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-7 - Side Story Noble’s Trust.mp4",
+      "type": "mp4",
+      "size_bytes": 54067388,
+      "modified_utc": "2026-07-28T07:51:20+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-8 - Bonus Short Stories.mp3",
+      "type": "mp3",
+      "size_bytes": 12223965,
+      "modified_utc": "2026-07-28T07:51:20+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 07/The Unwanted Undead Adventurer - Volume 07-8 - Bonus Short Stories.mp4",
+      "type": "mp4",
+      "size_bytes": 37102610,
+      "modified_utc": "2026-07-28T07:51:22+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-1 - Chapter 1 The State of Maalt.mp3",
+      "type": "mp3",
+      "size_bytes": 20452605,
+      "modified_utc": "2026-07-28T07:51:25+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-1 - Chapter 1 The State of Maalt.mp4",
+      "type": "mp4",
+      "size_bytes": 60877009,
+      "modified_utc": "2026-07-28T07:51:27+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-2 - Side Story Isaac Hart.mp3",
+      "type": "mp3",
+      "size_bytes": 1925517,
+      "modified_utc": "2026-07-28T07:51:24+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-2 - Side Story Isaac Hart.mp4",
+      "type": "mp4",
+      "size_bytes": 8331037,
+      "modified_utc": "2026-07-28T07:51:27+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-3 - Chapter 2 Where the Vampire Was.mp3",
+      "type": "mp3",
+      "size_bytes": 17471421,
+      "modified_utc": "2026-07-28T07:51:27+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-3 - Chapter 2 Where the Vampire Was.mp4",
+      "type": "mp4",
+      "size_bytes": 52406602,
+      "modified_utc": "2026-07-28T07:51:33+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-4 - Side Story Isaac Hart.mp3",
+      "type": "mp3",
+      "size_bytes": 3550029,
+      "modified_utc": "2026-07-28T07:51:29+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-4 - Side Story Isaac Hart.mp4",
+      "type": "mp4",
+      "size_bytes": 12870619,
+      "modified_utc": "2026-07-28T07:51:33+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-5 - Chapter 3 The Vampire and the Silver-Haired Man.mp3",
+      "type": "mp3",
+      "size_bytes": 9458685,
+      "modified_utc": "2026-07-28T07:51:32+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-5 - Chapter 3 The Vampire and the Silver-Haired Man.mp4",
+      "type": "mp4",
+      "size_bytes": 29680924,
+      "modified_utc": "2026-07-28T07:51:36+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-6 - Chapter 4 Explanation and Resolution.mp3",
+      "type": "mp3",
+      "size_bytes": 23366205,
+      "modified_utc": "2026-07-28T07:51:36+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-6 - Chapter 4 Explanation and Resolution.mp4",
+      "type": "mp4",
+      "size_bytes": 69228707,
+      "modified_utc": "2026-07-28T07:51:41+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-7 - Side Story Vengeance and the Subconscious.mp3",
+      "type": "mp3",
+      "size_bytes": 6657357,
+      "modified_utc": "2026-07-28T07:51:36+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-7 - Side Story Vengeance and the Subconscious.mp4",
+      "type": "mp4",
+      "size_bytes": 21670567,
+      "modified_utc": "2026-07-28T07:51:41+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-8 - Bonus Short Stories.mp3",
+      "type": "mp3",
+      "size_bytes": 10305597,
+      "modified_utc": "2026-07-28T07:51:40+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 08/The Unwanted Undead Adventurer - Volume 08-8 - Bonus Short Stories.mp4",
+      "type": "mp4",
+      "size_bytes": 31883729,
+      "modified_utc": "2026-07-28T07:51:46+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-1 - Chapter 1 Evaluating Abilities.mp3",
+      "type": "mp3",
+      "size_bytes": 14817213,
+      "modified_utc": "2026-07-28T07:54:57+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-1 - Chapter 1 Evaluating Abilities.mp4",
+      "type": "mp4",
+      "size_bytes": 44732041,
+      "modified_utc": "2026-07-28T07:55:15+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-2 - Chapter 2 Vampire Hunters and Confirmation.mp3",
+      "type": "mp3",
+      "size_bytes": 21998493,
+      "modified_utc": "2026-07-28T07:55:13+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-2 - Chapter 2 Vampire Hunters and Confirmation.mp4",
+      "type": "mp4",
+      "size_bytes": 65283434,
+      "modified_utc": "2026-07-28T07:55:15+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-3 - Chapter 3 Vampiric Techniques.mp3",
+      "type": "mp3",
+      "size_bytes": 10400445,
+      "modified_utc": "2026-07-28T07:55:15+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-3 - Chapter 3 Vampiric Techniques.mp4",
+      "type": "mp4",
+      "size_bytes": 32229149,
+      "modified_utc": "2026-07-28T07:55:20+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-4 - Side Story Isaac the Vampire.mp3",
+      "type": "mp3",
+      "size_bytes": 4234989,
+      "modified_utc": "2026-07-28T07:55:17+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-4 - Side Story Isaac the Vampire.mp4",
+      "type": "mp4",
+      "size_bytes": 14778303,
+      "modified_utc": "2026-07-28T07:55:19+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-5 - Chapter 4 The Tower and the Academy.mp3",
+      "type": "mp3",
+      "size_bytes": 20011101,
+      "modified_utc": "2026-07-28T07:55:20+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-5 - Chapter 4 The Tower and the Academy.mp4",
+      "type": "mp4",
+      "size_bytes": 59729595,
+      "modified_utc": "2026-07-28T07:55:27+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-6 - Side Story Noel Kruege.mp3",
+      "type": "mp3",
+      "size_bytes": 6753405,
+      "modified_utc": "2026-07-28T07:55:21+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-6 - Side Story Noel Kruege.mp4",
+      "type": "mp4",
+      "size_bytes": 22053986,
+      "modified_utc": "2026-07-28T07:55:24+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-7 - Chapter 5 A Request from the Guild.mp3",
+      "type": "mp3",
+      "size_bytes": 23318013,
+      "modified_utc": "2026-07-28T07:55:26+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-7 - Chapter 5 A Request from the Guild.mp4",
+      "type": "mp4",
+      "size_bytes": 69113826,
+      "modified_utc": "2026-07-28T07:55:31+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-8 - Bonus Short Stories.mp3",
+      "type": "mp3",
+      "size_bytes": 8386989,
+      "modified_utc": "2026-07-28T07:55:28+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 09/The Unwanted Undead Adventurer - Volume 09-8 - Bonus Short Stories.mp4",
+      "type": "mp4",
+      "size_bytes": 26532213,
+      "modified_utc": "2026-07-28T07:55:32+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-1 - Chapter 1 The Royal Capital and the Church of the Eastern Sky.mp3",
+      "type": "mp3",
+      "size_bytes": 18963933,
+      "modified_utc": "2026-07-28T07:54:22+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-1 - Chapter 1 The Royal Capital and the Church of the Eastern Sky.mp4",
+      "type": "mp4",
+      "size_bytes": 56852413,
+      "modified_utc": "2026-07-28T07:54:26+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-2 - Side Story Meanwhile, Back in Maalt.mp3",
+      "type": "mp3",
+      "size_bytes": 2205741,
+      "modified_utc": "2026-07-28T07:54:24+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-2 - Side Story Meanwhile, Back in Maalt.mp4",
+      "type": "mp4",
+      "size_bytes": 9089010,
+      "modified_utc": "2026-07-28T07:54:26+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-3 - Chapter 2 To the Palace.mp3",
+      "type": "mp3",
+      "size_bytes": 29700861,
+      "modified_utc": "2026-07-28T07:54:27+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-3 - Chapter 2 To the Palace.mp4",
+      "type": "mp4",
+      "size_bytes": 87524786,
+      "modified_utc": "2026-07-28T07:54:36+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-4 - Chapter 3 The Job with Augurey.mp3",
+      "type": "mp3",
+      "size_bytes": 20267373,
+      "modified_utc": "2026-07-28T07:54:30+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-4 - Chapter 3 The Job with Augurey.mp4",
+      "type": "mp4",
+      "size_bytes": 60592955,
+      "modified_utc": "2026-07-28T07:54:37+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-5 - Chapter 4 The Arrival.mp3",
+      "type": "mp3",
+      "size_bytes": 33464445,
+      "modified_utc": "2026-07-28T07:54:36+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-5 - Chapter 4 The Arrival.mp4",
+      "type": "mp4",
+      "size_bytes": 98187671,
+      "modified_utc": "2026-07-28T07:54:47+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-6 - Chapter 5 A Token of Thanks from the Village Girl.mp3",
+      "type": "mp3",
+      "size_bytes": 15540717,
+      "modified_utc": "2026-07-28T07:54:40+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-6 - Chapter 5 A Token of Thanks from the Village Girl.mp4",
+      "type": "mp4",
+      "size_bytes": 47097404,
+      "modified_utc": "2026-07-28T07:54:45+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-7 - Bonus Short Stories.mp3",
+      "type": "mp3",
+      "size_bytes": 5791965,
+      "modified_utc": "2026-07-28T07:54:43+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 10/The Unwanted Undead Adventurer - Volume 10-7 - Bonus Short Stories.mp4",
+      "type": "mp4",
+      "size_bytes": 19054277,
+      "modified_utc": "2026-07-28T07:55:00+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 11/The Unwanted Undead Adventurer - Volume 11-1 - Chapter 1 Surprise Attack.mp3",
+      "type": "mp3",
+      "size_bytes": 44969853,
+      "modified_utc": "2026-07-28T07:53:47+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 11/The Unwanted Undead Adventurer - Volume 11-1 - Chapter 1 Surprise Attack.mp4",
+      "type": "mp4",
+      "size_bytes": 130930361,
+      "modified_utc": "2026-07-28T07:53:50+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 11/The Unwanted Undead Adventurer - Volume 11-2 - Chapter 2 Departure.mp3",
+      "type": "mp3",
+      "size_bytes": 20381469,
+      "modified_utc": "2026-07-28T07:53:51+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 11/The Unwanted Undead Adventurer - Volume 11-2 - Chapter 2 Departure.mp4",
+      "type": "mp4",
+      "size_bytes": 60845984,
+      "modified_utc": "2026-07-28T07:53:57+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 11/The Unwanted Undead Adventurer - Volume 11-3 - Chapter 3 The Organization.mp3",
+      "type": "mp3",
+      "size_bytes": 52778397,
+      "modified_utc": "2026-07-28T07:53:58+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 11/The Unwanted Undead Adventurer - Volume 11-3 - Chapter 3 The Organization.mp4",
+      "type": "mp4",
+      "size_bytes": 153436798,
+      "modified_utc": "2026-07-28T07:54:25+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 11/The Unwanted Undead Adventurer - Volume 11-4 - Chapter 4 The Saint and the Orphanage.mp3",
+      "type": "mp3",
+      "size_bytes": 15221325,
+      "modified_utc": "2026-07-28T07:54:07+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 11/The Unwanted Undead Adventurer - Volume 11-4 - Chapter 4 The Saint and the Orphanage.mp4",
+      "type": "mp4",
+      "size_bytes": 46200546,
+      "modified_utc": "2026-07-28T07:54:20+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 11/The Unwanted Undead Adventurer - Volume 11-5 - Side Story The Disquieting Woman.mp3",
+      "type": "mp3",
+      "size_bytes": 3550749,
+      "modified_utc": "2026-07-28T07:54:12+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 11/The Unwanted Undead Adventurer - Volume 11-5 - Side Story The Disquieting Woman.mp4",
+      "type": "mp4",
+      "size_bytes": 12832212,
+      "modified_utc": "2026-07-28T07:54:16+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-1 - Chapter 1 An Increase in Saints and the Return to Maalt.mp3",
+      "type": "mp3",
+      "size_bytes": 19108845,
+      "modified_utc": "2026-07-28T07:55:31+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-1 - Chapter 1 An Increase in Saints and the Return to Maalt.mp4",
+      "type": "mp4",
+      "size_bytes": 57535009,
+      "modified_utc": "2026-07-28T07:55:38+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-2 - Chapter 2 Meanwhile, the Apprentices... Part 1.mp3",
+      "type": "mp3",
+      "size_bytes": 16390605,
+      "modified_utc": "2026-07-28T07:55:36+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-2 - Chapter 2 Meanwhile, the Apprentices... Part 1.mp4",
+      "type": "mp4",
+      "size_bytes": 49747793,
+      "modified_utc": "2026-07-28T07:55:40+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-3 - Intermission Lorraine’s Choice.mp3",
+      "type": "mp3",
+      "size_bytes": 5010285,
+      "modified_utc": "2026-07-28T07:55:37+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-3 - Intermission Lorraine’s Choice.mp4",
+      "type": "mp4",
+      "size_bytes": 17103021,
+      "modified_utc": "2026-07-28T07:55:40+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-4 - Chapter 3 Meanwhile, the Apprentices... Part 2.mp3",
+      "type": "mp3",
+      "size_bytes": 24053901,
+      "modified_utc": "2026-07-28T07:55:42+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-4 - Chapter 3 Meanwhile, the Apprentices... Part 2.mp4",
+      "type": "mp4",
+      "size_bytes": 72044414,
+      "modified_utc": "2026-07-28T07:55:48+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-5 - Chapter 4 Meanwhile, the Apprentices... Part 3.mp3",
+      "type": "mp3",
+      "size_bytes": 24995613,
+      "modified_utc": "2026-07-28T07:55:45+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-5 - Chapter 4 Meanwhile, the Apprentices... Part 3.mp4",
+      "type": "mp4",
+      "size_bytes": 74395889,
+      "modified_utc": "2026-07-28T07:55:51+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-6 - Chapter 5 Maalt, Sweet Maalt, and a Visit to the Blacksmith.mp3",
+      "type": "mp3",
+      "size_bytes": 33846093,
+      "modified_utc": "2026-07-28T07:55:51+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-6 - Chapter 5 Maalt, Sweet Maalt, and a Visit to the Blacksmith.mp4",
+      "type": "mp4",
+      "size_bytes": 99739781,
+      "modified_utc": "2026-07-28T07:56:00+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-7 - Chapter 6 A Certain Request.mp3",
+      "type": "mp3",
+      "size_bytes": 21585069,
+      "modified_utc": "2026-07-28T07:55:56+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-7 - Chapter 6 A Certain Request.mp4",
+      "type": "mp4",
+      "size_bytes": 64738056,
+      "modified_utc": "2026-07-28T07:56:00+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-8 - Bonus Short Stories.mp3",
+      "type": "mp3",
+      "size_bytes": 7451949,
+      "modified_utc": "2026-07-28T07:55:59+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 12/The Unwanted Undead Adventurer - Volume 12-8 - Bonus Short Stories.mp4",
+      "type": "mp4",
+      "size_bytes": 23855965,
+      "modified_utc": "2026-07-28T07:56:01+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 13/The Unwanted Undead Adventurer - Volume 13-1 - Chapter 1 A Strange Monster and a New Find.mp3",
+      "type": "mp3",
+      "size_bytes": 28124877,
+      "modified_utc": "2026-07-28T07:56:04+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 13/The Unwanted Undead Adventurer - Volume 13-1 - Chapter 1 A Strange Monster and a New Find.mp4",
+      "type": "mp4",
+      "size_bytes": 83028875,
+      "modified_utc": "2026-07-28T07:56:09+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 13/The Unwanted Undead Adventurer - Volume 13-2 - Intermission At a Certain Castle.mp3",
+      "type": "mp3",
+      "size_bytes": 5712285,
+      "modified_utc": "2026-07-28T07:56:05+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 13/The Unwanted Undead Adventurer - Volume 13-2 - Intermission At a Certain Castle.mp4",
+      "type": "mp4",
+      "size_bytes": 19032246,
+      "modified_utc": "2026-07-28T07:56:08+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 13/The Unwanted Undead Adventurer - Volume 13-3 - Chapter 2 A Report and a Request from a Blacksmith.mp3",
+      "type": "mp3",
+      "size_bytes": 17374317,
+      "modified_utc": "2026-07-28T07:56:09+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 13/The Unwanted Undead Adventurer - Volume 13-3 - Chapter 2 A Report and a Request from a Blacksmith.mp4",
+      "type": "mp4",
+      "size_bytes": 52222117,
+      "modified_utc": "2026-07-28T07:56:16+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 13/The Unwanted Undead Adventurer - Volume 13-4 - Chapter 3 The Cup and the Monster Tamer.mp3",
+      "type": "mp3",
+      "size_bytes": 28436829,
+      "modified_utc": "2026-07-28T07:56:14+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 13/The Unwanted Undead Adventurer - Volume 13-4 - Chapter 3 The Cup and the Monster Tamer.mp4",
+      "type": "mp4",
+      "size_bytes": 83693517,
+      "modified_utc": "2026-07-28T07:56:21+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 13/The Unwanted Undead Adventurer - Volume 13-5 - Chapter 4 To the Maritime Country.mp3",
+      "type": "mp3",
+      "size_bytes": 21825741,
+      "modified_utc": "2026-07-28T07:56:19+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 13/The Unwanted Undead Adventurer - Volume 13-5 - Chapter 4 To the Maritime Country.mp4",
+      "type": "mp4",
+      "size_bytes": 64926549,
+      "modified_utc": "2026-07-28T07:56:23+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 13/The Unwanted Undead Adventurer - Volume 13-6 - Intermission Niedz the Adventurer.mp3",
+      "type": "mp3",
+      "size_bytes": 4545789,
+      "modified_utc": "2026-07-28T07:56:20+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 13/The Unwanted Undead Adventurer - Volume 13-6 - Intermission Niedz the Adventurer.mp4",
+      "type": "mp4",
+      "size_bytes": 15866521,
+      "modified_utc": "2026-07-28T07:56:23+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 14/The Unwanted Undead Adventurer - Volume 14-1 - Chapter 1 Student and Teacher.mp3",
+      "type": "mp3",
+      "size_bytes": 24169197,
+      "modified_utc": "2026-07-28T08:03:09+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 14/The Unwanted Undead Adventurer - Volume 14-1 - Chapter 1 Student and Teacher.mp4",
+      "type": "mp4",
+      "size_bytes": 71424807,
+      "modified_utc": "2026-07-28T08:03:32+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 14/The Unwanted Undead Adventurer - Volume 14-2 - Chapter 2 Dungeon Delving.mp3",
+      "type": "mp3",
+      "size_bytes": 27936045,
+      "modified_utc": "2026-07-28T08:04:00+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 14/The Unwanted Undead Adventurer - Volume 14-2 - Chapter 2 Dungeon Delving.mp4",
+      "type": "mp4",
+      "size_bytes": 82118316,
+      "modified_utc": "2026-07-28T08:04:10+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 14/The Unwanted Undead Adventurer - Volume 14-3 - Chapter 3 Searching the Dungeon.mp3",
+      "type": "mp3",
+      "size_bytes": 22897917,
+      "modified_utc": "2026-07-28T08:04:08+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 14/The Unwanted Undead Adventurer - Volume 14-3 - Chapter 3 Searching the Dungeon.mp4",
+      "type": "mp4",
+      "size_bytes": 67837478,
+      "modified_utc": "2026-07-28T08:04:18+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 14/The Unwanted Undead Adventurer - Volume 14-4 - Chapter 4 The Return and a New Find.mp3",
+      "type": "mp3",
+      "size_bytes": 17452605,
+      "modified_utc": "2026-07-28T08:04:14+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 14/The Unwanted Undead Adventurer - Volume 14-4 - Chapter 4 The Return and a New Find.mp4",
+      "type": "mp4",
+      "size_bytes": 52256006,
+      "modified_utc": "2026-07-28T08:04:22+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 14/The Unwanted Undead Adventurer - Volume 14-5 - Chapter 5 Lorraine’s Monster Tamer Training.mp3",
+      "type": "mp3",
+      "size_bytes": 16811517,
+      "modified_utc": "2026-07-28T08:04:22+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "The Unwanted Undead Adventurer/cleaned/The Unwanted Undead Adventurer - Volume 14/The Unwanted Undead Adventurer - Volume 14-5 - Chapter 5 Lorraine’s Monster Tamer Training.mp4",
+      "type": "mp4",
+      "size_bytes": 50523677,
+      "modified_utc": "2026-07-28T08:04:49+00:00",
+      "availability": "online-only"
+    }
+  ]
+}
