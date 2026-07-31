@@ -1,21 +1,23 @@
+"""Backward-compatible script entry point for the Markdown cleaner CLI."""
+
+from __future__ import annotations
+
+import sys
 from pathlib import Path
 
-from markdownCleaner.pipeline import OCRPipeline
+
+if __package__ in {None, ""}:
+    # Direct execution places only the package directory on sys.path. Add its
+    # parent so the same absolute imports used by module execution still work.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from markdownCleaner.cli import main as cli_main
 
 
-def main():
-    """Run the cleaner against the example input configured in this module."""
-    root = Path(__file__).resolve().parent
-    input_file = root / "Overlord v01.md"
-    config_file = root / "config.yaml"
-
-    pipeline = OCRPipeline(config_file)
-    result = pipeline.run(input_file)
-
-    print("\nPipeline completed.")
-    print(f"Total corrections: {pipeline.context.total_changes}")
-    print(f"Output: {result['output']['markdown']}")
+def main(argv: list[str] | None = None) -> int:
+    """Delegate to the canonical CLI instead of a hard-coded sample document."""
+    return cli_main(argv)
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -56,29 +56,24 @@ class InvisibleProcessor(UnicodeProcessor):
             Expected behavior: Remove invisible characters.
         """
 
-        before = segment.current_text
+        if not self.enabled("invisible_characters", True):
+            return False
 
+        before = segment.current_text
         if not before:
             return False
 
         after = self._clean_text(before)
 
-        if before == after:
-            return False
-
-        segment.current_text = after
-
-        self.record_change(
+        return self.apply_change(
             segment=segment,
             before=before,
             after=after,
             reason="Invisible Unicode character removal",
+            statistic="zero_width_removed",
+            statistic_amount=len(before) - len(after),
             confidence=100.0,
         )
-
-        self.context.increment("zero_width_removed")
-
-        return True
 
     # ---------------------------------------------------------
 
@@ -97,8 +92,6 @@ class InvisibleProcessor(UnicodeProcessor):
 
         result = []
 
-        removed = 0
-
         for char in text:
 
             #
@@ -106,9 +99,6 @@ class InvisibleProcessor(UnicodeProcessor):
             #
 
             if char in ZERO_WIDTH_CHARACTERS:
-
-                removed += 1
-
                 continue
 
             #
@@ -126,12 +116,7 @@ class InvisibleProcessor(UnicodeProcessor):
             if category == "Cc":
 
                 if char in ALLOWED_CONTROL_CHARACTERS:
-
                     result.append(char)
-
-                else:
-
-                    removed += 1
 
                 continue
 
@@ -142,18 +127,8 @@ class InvisibleProcessor(UnicodeProcessor):
             #
 
             if category == "Cf":
-
-                removed += 1
-
                 continue
 
             result.append(char)
-
-        if removed:
-
-            self.context.increment(
-                "zero_width_removed",
-                removed,
-            )
 
         return "".join(result)

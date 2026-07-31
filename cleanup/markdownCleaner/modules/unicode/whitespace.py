@@ -46,8 +46,10 @@ class WhitespaceProcessor(UnicodeProcessor):
             Expected behavior: Normalize whitespace.
         """
 
-        before = segment.current_text
+        if not self.enabled("whitespace", True):
+            return False
 
+        before = segment.current_text
         if not before:
             return False
 
@@ -109,25 +111,19 @@ class WhitespaceProcessor(UnicodeProcessor):
             True,
         ):
 
-            after = self._collapse_spaces(after)
+            after = self._collapse_spaces(
+                after,
+                starts_at_line_boundary=segment.starts_at_line_boundary,
+            )
 
-        if before == after:
-
-            return False
-
-        segment.current_text = after
-
-        self.record_change(
+        return self.apply_change(
             segment=segment,
             before=before,
             after=after,
             reason="Whitespace normalization",
+            statistic="spaces_normalized",
             confidence=100.0,
         )
-
-        self.context.increment("spaces_normalized")
-
-        return True
 
     # ---------------------------------------------------------
 
@@ -176,10 +172,14 @@ class WhitespaceProcessor(UnicodeProcessor):
     def _collapse_spaces(
         self,
         text: str,
+        *,
+        starts_at_line_boundary: bool = True,
     ) -> str:
         """Collapse multiple spaces.
 
-        Does NOT touch newlines.
+        Does not touch newlines. Leading indentation is preserved on real line
+        boundaries, but a synthetic span following inline code/link markup is
+        mid-line and therefore collapses its leading separator normally.
 
         Example:
             ``result = instance._collapse_spaces("Example text.")``
@@ -190,15 +190,19 @@ class WhitespaceProcessor(UnicodeProcessor):
 
         cleaned = []
 
-        for line in lines:
+        for index, line in enumerate(lines):
 
             #
             # Preserve Markdown indentation
             #
 
-            leading = len(line) - len(line.lstrip(" "))
-
-            content = line.lstrip(" ")
+            preserve_indentation = starts_at_line_boundary or index > 0
+            if preserve_indentation:
+                leading = len(line) - len(line.lstrip(" "))
+                content = line.lstrip(" ")
+            else:
+                leading = 0
+                content = line
 
             content = re.sub(
                 r" {2,}",

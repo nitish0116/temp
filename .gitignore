@@ -23,6 +23,7 @@ mp3ToYT/**/*.txt
 
 # Always keep project documentation and dependency manifests visible.
 !**/README.md
+!**/ARCHITECTURE.md
 !**/requirements.txt
 
 # Library visibility switch:

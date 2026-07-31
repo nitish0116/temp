@@ -10,6 +10,8 @@ from .candidate import CorrectionCandidate
 from .dictionary import DictionaryManager
 from .engine import SymSpellEngine
 from .settings import SymSpellSettings
+from .tokens import WORD_PATTERN as TOKEN_WORD_PATTERN
+from ..markdown.segmenter import split_protected_spans
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,10 +29,7 @@ class SpellCorrection:
 class SpellCorrector:
     """Filter SymSpell candidates and preserve source capitalization."""
 
-    WORD_PATTERN = re.compile(
-        r"[A-Za-z]+(?:(?:['\u2019]|\u00e2\u20ac\u2122)"
-        r"[A-Za-z]+|-[A-Za-z]+)*"
-    )
+    WORD_PATTERN = TOKEN_WORD_PATTERN
     INLINE_CODE_PATTERN = re.compile(r"(`+)[^\n]*?\1")
 
     def __init__(
@@ -52,22 +51,16 @@ class SpellCorrector:
     ) -> str:
         """Correct prose tokens while leaving inline-code spans untouched."""
 
-        chunks: list[str] = []
-        position = 0
-        for protected in self.INLINE_CODE_PATTERN.finditer(text):
-            chunks.append(
-                self._process_prose(
-                    text[position : protected.start()],
-                    on_correction,
-                    threshold,
-                )
+        return "".join(
+            span.text
+            if span.protected
+            else self._process_prose(
+                span.text,
+                on_correction,
+                threshold,
             )
-            chunks.append(protected.group(0))
-            position = protected.end()
-        chunks.append(
-            self._process_prose(text[position:], on_correction, threshold)
+            for span in split_protected_spans(text)
         )
-        return "".join(chunks)
 
     def _process_prose(
         self,

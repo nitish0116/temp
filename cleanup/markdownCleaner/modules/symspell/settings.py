@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..core.config import require_bool
+
 
 @dataclass(frozen=True, slots=True)
 class SymSpellSettings:
@@ -68,8 +70,9 @@ class SymSpellSettings:
             ambiguity_margin=float(
                 get("symspell.ambiguity_margin", 2)
             ),
-            auto_protect_proper_nouns=bool(
-                get("symspell.auto_protect_proper_nouns", True)
+            auto_protect_proper_nouns=require_bool(
+                get("symspell.auto_protect_proper_nouns", True),
+                "symspell.auto_protect_proper_nouns",
             ),
             proper_noun_minimum_occurrences=int(
                 get("symspell.proper_noun_min_occurrences", 2)
@@ -80,8 +83,9 @@ class SymSpellSettings:
                     100_000,
                 )
             ),
-            wordfreq_enabled=bool(
-                get("symspell.wordfreq_enabled", True)
+            wordfreq_enabled=require_bool(
+                get("symspell.wordfreq_enabled", True),
+                "symspell.wordfreq_enabled",
             ),
             wordfreq_language=str(
                 get("symspell.wordfreq_language", "en")

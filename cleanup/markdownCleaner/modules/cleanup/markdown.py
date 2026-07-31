@@ -1,7 +1,9 @@
-import re
+from ..core.processor import SegmentProcessor
+from .markup import normalize_inline_markup
+from .protection import protect_markdown
 
 
-class MarkdownProcessor:
+class MarkdownProcessor(SegmentProcessor):
     """Normalize legacy inline HTML and whitespace in editable segments.
 
     This processor belongs to the older segment-oriented ``NovelCleanupStage``
@@ -23,24 +25,6 @@ class MarkdownProcessor:
     """
 
     name = "Markdown"
-
-    def __init__(self, context):
-        """Bind the processor to the shared processing context.
-
-        Args:
-            context: Active context whose ``increment`` method records the
-                ``markdown_cleaned`` metric when a segment is modified.
-
-        Example::
-
-            context = object()
-            processor = MarkdownProcessor(context)
-            assert processor.context is context
-
-        Construction stores the reference only; cleanup begins in ``process``.
-        """
-
-        self.context = context
 
     def process(self, segment):
         """Clean supported inline markup and whitespace in one segment.
@@ -74,32 +58,19 @@ class MarkdownProcessor:
         ``False`` and calls neither ``update`` nor ``increment``.
         """
 
-        text = segment.current_text
+        before = segment.current_text
+        protected = protect_markdown(before)
+        after = protected.restore(normalize_inline_markup(protected.text))
 
-        original = text
+        if after == before:
+            return False
 
-        # HTML line breaks
-
-        text = text.replace("<br>", "\n")
-
-        # underline tags
-
-        text = re.sub(r"</?u>", "", text)
-
-        # remove empty HTML comments
-
-        text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
-
-        # normalize spaces
-
-        text = re.sub(r"[ \t]+", " ", text)
-
-        if text != original:
-
-            segment.update(text)
-
-            self.context.increment("markdown_cleaned")
-
-            return True
-
-        return False
+        segment.update(after)
+        self.record_change(
+            segment=segment,
+            before=before,
+            after=segment.current_text,
+            reason="Legacy inline Markdown/HTML cleanup",
+        )
+        self.context.increment("markdown_cleaned")
+        return True

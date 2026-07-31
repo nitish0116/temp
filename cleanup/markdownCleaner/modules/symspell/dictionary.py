@@ -5,8 +5,9 @@ from __future__ import annotations
 import json
 from importlib import resources
 from pathlib import Path
-import re
 from typing import Iterable
+
+from .tokens import WORD_PATTERN
 
 
 class DictionaryManager:
@@ -104,8 +105,14 @@ class DictionaryManager:
             return
         data = json.loads(path.read_text(encoding="utf-8"))
         words: Iterable[str]
-        if isinstance(data, dict):
-            words = data.keys()
+        if isinstance(data, dict) and "words" in data:
+            words = data["words"] if isinstance(data["words"], list) else []
+        elif isinstance(data, dict):
+            words = [
+                word
+                for word in data
+                if not str(word).startswith("_")
+            ]
         elif isinstance(data, list):
             words = data
         else:
@@ -139,10 +146,7 @@ class DictionaryManager:
     def _add_protected_entry(self, entry: str, frequency: int) -> None:
         """Protect a custom phrase and every token correction can inspect."""
         self.add_word(entry, frequency=frequency, protected=True)
-        for token in re.findall(
-            r"[A-Za-z]+(?:['\u2019][A-Za-z]+|-[A-Za-z]+)*",
-            entry,
-        ):
+        for token in WORD_PATTERN.findall(entry):
             self.add_word(token, frequency=frequency, protected=True)
 
     def add_word(self, word: str, frequency: int = 1, protected: bool = False) -> None:

@@ -1,335 +1,209 @@
-"""
-pipeline.py
-
-Main OCR cleanup pipeline.
-
-Workflow:
-
-Markdown
-    |
-Backup
-    |
-UnicodeStage
-    |
-RegexStage
-    |
-SymSpellStage
-    |
-Export Reports
-"""
+"""End-to-end orchestration for the OCR Markdown cleanup pipeline."""
 
 from __future__ import annotations
 
+import logging
+from pathlib import Path
+from time import perf_counter
+from typing import Any
 
 from markdownCleaner.modules.cleanup.document import DocumentCleanupStage
 from markdownCleaner.modules.cleanup.tts_validation import TTSValidationStage
-from markdownCleaner.modules.symspell.vocabulary import VocabularyCandidateStage
+from markdownCleaner.modules.core.config import PipelineConfig
+from markdownCleaner.modules.core.context import ProcessingContext
 from markdownCleaner.modules.core.logger import (
-    initialize,
     get_logger,
+    initialize as initialize_logging,
 )
+from markdownCleaner.modules.core.stage import PipelineStage, StageResult
+from markdownCleaner.modules.regex.stage import RegexStage
+from markdownCleaner.modules.report.backup import BackupManager
+from markdownCleaner.modules.report.exporter import ReportExporter, ReportOptions
+from markdownCleaner.modules.symspell.stage import SymSpellStage
+from markdownCleaner.modules.symspell.vocabulary import VocabularyCandidateStage
+from markdownCleaner.modules.unicode.stage import UnicodeStage
 
 
-from pathlib import Path
-
-
-from markdownCleaner.modules.report.backup import (
-    BackupManager,
-)
-
-
-from markdownCleaner.modules.report.exporter import (
-    ReportExporter,
-)
-
-
-from markdownCleaner.modules.unicode.stage import (
+DEFAULT_STAGE_TYPES: tuple[type[PipelineStage], ...] = (
+    DocumentCleanupStage,
     UnicodeStage,
-)
-
-
-from markdownCleaner.modules.regex.stage import (
     RegexStage,
-)
-
-
-from markdownCleaner.modules.symspell.stage import (
+    VocabularyCandidateStage,
     SymSpellStage,
-)
-
-
-from markdownCleaner.modules.core.context import (
-    ProcessingContext,
-)
-
-
-from markdownCleaner.modules.core.config import (
-    PipelineConfig,
+    TTSValidationStage,
 )
 
 
 class OCRPipeline:
-    """Coordinate cleanup, validation, backup, and report generation.
+    """Coordinate loading, ordered cleanup stages, and artifact export.
 
-    The pipeline owns one :class:`ProcessingContext`. It loads the source into
-    that context, runs stages in a deliberate order, and finally exports the
-    cleaned Markdown and audit reports. Earlier deterministic cleanup reduces
-    ambiguity for later dictionary correction.
-
-    Workflow::
-
-        source Markdown -> optional backup -> document reconstruction
-        -> Unicode normalization -> deterministic OCR rules
-        -> vocabulary candidate report -> conservative SymSpell correction
-        -> TTS validation -> cleaned Markdown and reports
-
-    Example::
-
-        pipeline = OCRPipeline("config.yaml")
-        result = pipeline.run("book.md", output_directory="output")
-        print(result["output"]["markdown"])
+    A fresh :class:`ProcessingContext` and stage list are created for every
+    :meth:`run`. Callers reusing one output directory for multiple files should
+    pass distinct ``report_subdirectory`` values to avoid replacing companion
+    reports. Stage failures are returned while later stages continue.
     """
 
-    def __init__(
-        self,
-        config_file,
-    ):
-        """Load and validate configuration, then initialize pipeline logging.
+    stage_types = DEFAULT_STAGE_TYPES
 
-        Args:
-            config_file: Path to the YAML configuration used by all stages.
-
-        Stage objects are intentionally deferred until :meth:`initialize`,
-        because several processors require a loaded document context.
-        """
-
+    def __init__(self, config_file: str | Path) -> None:
         self.config = PipelineConfig.load(config_file)
-
         self.config.apply_environment()
-
         self.config.validate()
+        self._configure_logging()
 
-        initialize(
-            self.config.get(
-                "logging.directory",
-                "logs",
-            ),
-            # Optional:
-            # logging.DEBUG if self.config.get("logging.debug", False)
-            # else logging.INFO
+        self.logger = get_logger()
+        self.logger.info("OCR Cleanup Pipeline started.")
+        self.context: ProcessingContext | None = None
+        self.stages: list[PipelineStage] = []
+
+    def _configure_logging(self) -> None:
+        """Apply configured directory, file, and level to the shared logger."""
+
+        directory = self.config.resolve_path(
+            self.config.get("logging.directory", "logs")
+        )
+        configured_file = self.config.get("logging.file")
+        log_file = None
+        if configured_file is not None:
+            configured_path = Path(str(configured_file))
+            if configured_path.is_absolute():
+                log_file = configured_path
+            elif configured_path.parent == Path("."):
+                # A bare filename belongs beneath logging.directory.
+                log_file = configured_path
+            else:
+                # A relative path with directories is config-file-relative.
+                log_file = self.config.resolve_path(configured_path)
+        initialize_logging(
+            directory or "logs",
+            level=self.config.get("logging.level", logging.INFO),
+            log_file=log_file,
         )
 
-        get_logger().info("OCR Cleanup Pipeline started.")
+    def _build_stages(self) -> list[PipelineStage]:
+        """Construct the configured ordered stage workflow."""
 
-        self.context = None
+        return [stage_type(self.config) for stage_type in self.stage_types]
 
-        self.stages = []
-
-    # ---------------------------------------------------------
-
-    def initialize(
-        self,
-        input_file,
-    ):
-        """Load one Markdown document and register its ordered stage workflow.
-
-        Args:
-            input_file: Markdown source path loaded into a fresh context.
-
-        This method resets ``context`` and ``stages`` for each run. Stage order
-        matters: structural cleanup precedes character-level fixes, candidate
-        discovery observes text before SymSpell mutates it, and TTS validation
-        inspects the final cleaned content.
-        """
+    def initialize(self, input_file: str | Path) -> None:
+        """Load one document into a fresh context and construct its stages."""
 
         self.context = ProcessingContext(self.config)
-
-        #
-        # Load markdown
-        #
-
         self.context.load_markdown(input_file)
+        self.stages = self._build_stages()
 
-        #
-        # Register stages
-        #
+    def backup(self, input_file: str | Path) -> Path:
+        """Create a timestamped backup of the original input."""
 
-        self.stages = [
-            DocumentCleanupStage(self.config),
-            UnicodeStage(self.config),
-            RegexStage(self.config),
-            VocabularyCandidateStage(self.config),
-            SymSpellStage(self.config),
-            TTSValidationStage(self.config),
-        ]
-
-    # ---------------------------------------------------------
-
-    def backup(
-        self,
-        input_file,
-    ):
-        """Create a timestamped backup of the original input.
-
-        Args:
-            input_file: Source file to preserve before any processing starts.
-
-        Returns:
-            The backup directory returned by :class:`BackupManager`.
-        """
-
-        manager = BackupManager(
-            self.config.get(
-                "backup.directory",
-                "backup",
-            )
+        backup_directory = self.config.resolve_path(
+            self.config.get("backup.directory", "backup")
         )
-
+        manager = BackupManager(backup_directory or "backup")
         return manager.create_backup(input_file)
 
-    # ---------------------------------------------------------
+    def _require_context(self) -> ProcessingContext:
+        if self.context is None:
+            raise RuntimeError("Pipeline has not been initialized.")
+        return self.context
 
-    def run(
-        self,
-        input_file,
-        *,
-        output_directory=None,
-        output_name=None,
-        report_subdirectory="reports",
-    ):
-        """Execute the end-to-end workflow for one Markdown file.
+    def _execute_stages(self) -> list[StageResult]:
+        """Execute all registered stages and retain failure diagnostics."""
 
-        Args:
-            input_file: Markdown source to clean.
-            output_directory: Optional destination overriding configuration.
-            output_name: Optional meaningful output filename for batch mode.
-            report_subdirectory: Relative directory for this file's reports.
-
-        Returns:
-            A mapping containing the backup path, ordered stage results, output
-            artifact paths, and elapsed time. Individual stage failures remain
-            in the result so callers can report them without losing later-stage
-            diagnostics.
-
-        Example::
-
-            result = OCRPipeline("config.yaml").run(
-                "volume-13.md",
-                output_directory="cleaned",
-                output_name="Tanya Volume 13 - Cleaned.md",
-            )
-        """
-
-        #
-        # Backup first
-        #
-        from time import perf_counter
-
-        start = perf_counter()
-
-        logger = get_logger()
-
-        logger.info(f"Processing: {input_file}")
-
-        backup_path = None
-
-        if self.config.get(
-            "backup.enabled",
-            True,
-        ):
-            backup_path = self.backup(input_file)
-
-            print(f"Backup created: {backup_path}")
-
-        #
-        # Initialize
-        #
-
-        self.initialize(input_file)
-
-        #
-        # Execute stages
-        #
-
-        results = []
+        context = self._require_context()
+        results: list[StageResult] = []
 
         for stage in self.stages:
-
-            result = stage.execute(self.context)
-
-            logger.info(f"{stage.name}: {result.changes} changes")
-
+            result = stage.execute(context)
+            self.logger.info("%s: %s changes", stage.name, result.changes)
             results.append(result)
 
             if result.success:
-
-                print(f"✓ {stage.name}: " f"{result.changes} changes")
-
+                print(f"✓ {stage.name}: {result.changes} changes")
             else:
+                print(f"✗ {stage.name}: {result.error}")
 
-                print(f"✗ {stage.name}: " f"{result.error}")
+        return results
 
-        #
-        # Export output
-        #
+    def _export(
+        self,
+        *,
+        input_file: str | Path,
+        output_directory: str | Path | None,
+        output_name: str | None,
+        report_subdirectory: str | Path,
+    ) -> dict[str, Path]:
+        """Export final artifacts through one integration point."""
 
+        context = self._require_context()
+        configured_output = self.config.resolve_path(
+            self.config.get("paths.output_directory", "output")
+        )
         exporter = ReportExporter(
             output_directory
-            or self.config.get(
-                "paths.output_directory",
-                "output",
-            ),
+            if output_directory is not None
+            else configured_output or "output",
+            report_subdirectory=report_subdirectory,
+            options=ReportOptions.from_config(self.config),
+        )
+        result = exporter.export(
+            cleaned_markdown=context.get_markdown(),
+            source_file=input_file,
+            change_log=context.tracker,
+            output_name=output_name,
+            vocabulary_candidates=context.metadata.get("glossary_candidates", []),
+        )
+        context.output_file = str(result["markdown"])
+        return result
+
+    def run(
+        self,
+        input_file: str | Path,
+        *,
+        output_directory: str | Path | None = None,
+        output_name: str | None = None,
+        report_subdirectory: str | Path = "reports",
+    ) -> dict[str, Any]:
+        """Execute the complete workflow for one Markdown file."""
+
+        started = perf_counter()
+        # Another pipeline instance may have reconfigured the shared logger
+        # since this object was constructed.
+        self._configure_logging()
+        self.logger = get_logger()
+        self.logger.info("Processing: %s", input_file)
+
+        backup_path = None
+        if self.config.get_bool("backup.enabled", True):
+            backup_path = self.backup(input_file)
+            print(f"Backup created: {backup_path}")
+
+        self.initialize(input_file)
+        results = self._execute_stages()
+        context = self._require_context()
+        context.finish()
+
+        export_result = self._export(
+            input_file=input_file,
+            output_directory=output_directory,
+            output_name=output_name,
             report_subdirectory=report_subdirectory,
         )
-
-        export_result = exporter.export(
-            cleaned_markdown=self.context.get_markdown(),
-            source_file=input_file,
-            change_log=self.context.tracker,
-            output_name=output_name,
-            vocabulary_candidates=self.context.metadata.get("glossary_candidates", []),
-        )
-
-        elapsed = perf_counter() - start
 
         return {
             "backup": backup_path,
             "stages": results,
             "output": export_result,
-            "elapsed_seconds": round(
-                elapsed,
-                2,
-            ),
+            "elapsed_seconds": round(perf_counter() - started, 2),
         }
 
 
-# -------------------------------------------------------------
-# Command line execution
-# -------------------------------------------------------------
+def main(argv: list[str] | None = None) -> int:
+    """Delegate the historical pipeline entry point to the canonical CLI."""
+
+    from markdownCleaner.cli import main as cli_main
+
+    return cli_main(argv)
 
 
 if __name__ == "__main__":
-
-    import argparse
-
-    parser = argparse.ArgumentParser(description="OCR Markdown Cleanup Pipeline")
-
-    parser.add_argument("input", help="Input markdown file")
-
-    parser.add_argument(
-        "--config", default="config.yaml", help="Pipeline configuration"
-    )
-
-    args = parser.parse_args()
-
-    pipeline = OCRPipeline(args.config)
-
-    result = pipeline.run(args.input)
-
-    print("\nCompleted")
-
-    print("\nPipeline completed.")
-
-    print(f"Total corrections: " f"{pipeline.context.total_changes}")
-
-    print(f"Output directory: " f"{result['output']['markdown']}")
+    raise SystemExit(main())

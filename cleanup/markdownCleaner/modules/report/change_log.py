@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 
+from copy import deepcopy
 from dataclasses import (
     dataclass,
     asdict,
@@ -16,15 +17,16 @@ from dataclasses import (
 from pathlib import Path
 
 from datetime import UTC, datetime
+from typing import Iterable
 
 
 @dataclass
 class ChangeRecord:
-    """One text correction event.
+    """One text edit or report-only audit event.
 
     Example:
         ``instance = ChangeRecord("RegexOCR", 0, 0, 1, "teh", "the", 98.0, "Safe correction", "2026-01-01T00:00:00")``
-        Expected behavior: One text correction event.
+        Expected behavior: One pipeline audit event.
     """
 
     stage: str
@@ -49,14 +51,14 @@ class ChangeRecord:
 
 
 class ChangeLog:
-    """Stores all pipeline corrections.
+    """Store all pipeline edit and review records.
 
     Example:
         ``instance = ChangeLog()``
-        Expected behavior: Stores all pipeline corrections.
+        Expected behavior: Store all pipeline audit records.
     """
 
-    def __init__(self):
+    def __init__(self, records: Iterable[ChangeRecord] | None = None):
         """Initialize an empty ordered collection of change records.
 
         Example:
@@ -64,7 +66,7 @@ class ChangeLog:
             Expected behavior: Initialize an empty ordered collection of change records.
         """
 
-        self.records = []
+        self.records: list[ChangeRecord] = list(records or ())
 
     # ---------------------------------------------------------
 
@@ -81,11 +83,11 @@ class ChangeLog:
         reason,
         broken_word=None,
     ):
-        """Add correction record.
+        """Add an edit or report-only audit record.
 
         Example:
             ``instance.add(stage="RegexOCR", block_index=0, segment_index=0, line=1, before="teh", after="the", confidence=98.0, reason="Safe correction")``
-            Expected behavior: Add correction record.
+            Expected behavior: Add an audit record.
         """
 
         record = ChangeRecord(
@@ -123,11 +125,11 @@ class ChangeLog:
         self,
         threshold=90.0,
     ):
-        """Return safe automatic corrections.
+        """Return records at or above the confidence threshold.
 
         Example:
             ``result = instance.high_confidence()``
-            Expected behavior: Return safe automatic corrections.
+            Expected behavior: Return high-confidence records.
         """
 
         return [item for item in self.records if item.confidence >= threshold]
@@ -146,6 +148,14 @@ class ChangeLog:
         """
 
         return [item for item in self.records if item.confidence < threshold]
+
+    def with_minimum_confidence(self, threshold: float) -> ChangeLog:
+        """Return an independent log containing records at or above ``threshold``.
+
+        The original log and its mutable record objects are not shared. Report
+        export uses this view when ``include_low_confidence`` is disabled.
+        """
+        return ChangeLog(deepcopy(self.high_confidence(threshold)))
 
     # ---------------------------------------------------------
 

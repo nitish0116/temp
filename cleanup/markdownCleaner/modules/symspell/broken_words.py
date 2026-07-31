@@ -10,6 +10,7 @@ from .dictionary import DictionaryManager
 from .frequency import WordfreqScorer
 from .settings import SymSpellSettings
 from ..markdown.markdown import BlockType
+from ..markdown.segmenter import protected_span_ranges
 
 
 INLINE_MERGE_REASON = "Dictionary-validated OCR broken-word merge"
@@ -112,6 +113,9 @@ class BrokenWordEvaluator:
             "would",
         }
     )
+    BE_CAUSE_BLOCKING_FOLLOWING = frozenset(
+        {"enough", "for", "of", "to"}
+    )
 
     def __init__(
         self,
@@ -129,12 +133,20 @@ class BrokenWordEvaluator:
         right: str,
         *,
         previous: str = "",
+        following: str = "",
         reason: str = INLINE_MERGE_REASON,
         allow_contextual: bool = True,
     ) -> MergeDecision | None:
         """Return a typed decision when joining the pair is sufficiently safe."""
 
         if self._is_acronym_fragment(left) or self._is_acronym_fragment(right):
+            return None
+        if self._context_blocks_merge(
+            left,
+            right,
+            previous=previous,
+            following=following,
+        ):
             return None
 
         combined_source = left + right
@@ -183,6 +195,7 @@ class BrokenWordEvaluator:
                 left,
                 right,
                 previous,
+                following,
                 reason,
             )
         return None
@@ -300,18 +313,13 @@ class BrokenWordEvaluator:
         left: str,
         right: str,
         previous: str,
+        following: str,
         reason: str,
     ) -> MergeDecision | None:
         pair = (left.lower(), right.lower())
         replacement = self.CONTEXTUAL_COMMON_MERGES.get(pair)
         if replacement is None:
             return None
-        if (
-            pair == ("be", "cause")
-            and previous.lower() in self.COMMON_MERGE_BLOCKING_PREVIOUS
-        ):
-            return None
-
         source_evidence = self._corpus_evidence(replacement)
         if source_evidence is None:
             return None
@@ -329,6 +337,24 @@ class BrokenWordEvaluator:
             self._match_case(left + right, replacement),
             evidence,
             reason,
+        )
+
+    def _context_blocks_merge(
+        self,
+        left: str,
+        right: str,
+        *,
+        previous: str,
+        following: str,
+    ) -> bool:
+        """Reject an ambiguous pair when neighboring words form valid prose."""
+
+        if (left.casefold(), right.casefold()) != ("be", "cause"):
+            return False
+        return (
+            previous.casefold()
+            in self.COMMON_MERGE_BLOCKING_PREVIOUS | {"to"}
+            or following.casefold() in self.BE_CAUSE_BLOCKING_FOLLOWING
         )
 
     def _corpus_evidence(self, term: str) -> MergeEvidence | None:
@@ -491,9 +517,7 @@ class BrokenWordMerger:
         """Return all positioned candidates before overlap resolution."""
 
         words = list(self.TOKEN_PATTERN.finditer(text))
-        protected_spans = tuple(
-            match.span() for match in self.INLINE_CODE_PATTERN.finditer(text)
-        )
+        protected_spans = protected_span_ranges(text)
         candidates: list[MergeCandidate] = []
         for pair_index, (left_match, right_match) in enumerate(
             zip(words, words[1:])
@@ -510,10 +534,16 @@ class BrokenWordMerger:
                 if pair_index
                 else ""
             )
+            following = (
+                words[pair_index + 2].group(0)
+                if pair_index + 2 < len(words)
+                else ""
+            )
             decision = self.evaluator.evaluate(
                 left_match.group(0),
                 right_match.group(0),
                 previous=previous,
+                following=following,
             )
             if decision is None:
                 continue
@@ -591,6 +621,17 @@ class BrokenWordMerger:
             if left_match is None or right_match is None:
                 index += 1
                 continue
+            if self._overlaps_any(
+                left_match.start(1),
+                left_match.end(1),
+                protected_span_ranges(left_text),
+            ) or self._overlaps_any(
+                right_match.start(1),
+                right_match.end(1),
+                protected_span_ranges(right_text),
+            ):
+                index += 1
+                continue
 
             previous_words = self.TOKEN_PATTERN.findall(
                 left_text[: left_match.start(1)]
@@ -610,11 +651,15 @@ class BrokenWordMerger:
                 index += 1
                 continue
 
-            before = (
+            broken_word = (
                 left_text[left_match.start(1) :]
-                + "\n\n"
+                + "\n"
+                + separator.current_text
+                + "\n"
                 + right_text[: right_match.end(1)]
             )
+            decision = replace(decision, broken_word=broken_word)
+            before = broken_word
             merged_text = (
                 left_text[: left_match.start(1)]
                 + decision.replacement

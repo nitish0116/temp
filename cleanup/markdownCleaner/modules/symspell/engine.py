@@ -1,217 +1,121 @@
-"""
-modules/symspell/engine.py
-
-Core SymSpell lookup engine.
-
-Provides:
-
-- delete dictionary generation
-- candidate lookup
-- edit distance ranking
-"""
+"""Small delete-index spell-correction engine."""
 
 from __future__ import annotations
 
 from collections import defaultdict
 
-from .candidate import (
-    CorrectionCandidate,
-)
+from .candidate import CorrectionCandidate
 
 
 class SymSpellEngine:
-    """SymSpell implementation.
+    """Index dictionary delete variants and rank nearby words."""
 
-    Example:
-        ``instance = SymSpellEngine()``
-        Expected behavior: SymSpell implementation.
-    """
-
-    def __init__(
-        self,
-        max_edit_distance: int = 2,
-    ):
-        """Initialize empty word and delete indexes for an edit-distance limit.
-
-        Example:
-            ``instance = SymSpellEngine()``
-            Expected behavior: Initialize empty word and delete indexes for an edit-distance limit.
-        """
-
+    def __init__(self, max_edit_distance: int = 2) -> None:
+        if max_edit_distance < 0:
+            raise ValueError("max_edit_distance cannot be negative")
         self.max_edit_distance = max_edit_distance
+        self.words: dict[str, int] = {}
+        self.deletes: defaultdict[str, set[str]] = defaultdict(set)
 
-        #
-        # word -> frequency
-        #
+    def add_word(self, word: str, frequency: int) -> None:
+        """Add a normalized dictionary word and its delete variants."""
 
-        self.words = {}
+        key = word.casefold()
+        if not key:
+            return
+        self.words[key] = max(self.words.get(key, 0), int(frequency))
+        for deletion in self._generate_deletes(key):
+            self.deletes[deletion].add(key)
 
-        #
-        # delete -> possible words
-        #
+    def lookup(self, word: str) -> list[CorrectionCandidate]:
+        """Return candidates within the configured edit-distance bound."""
 
-        self.deletes = defaultdict(set)
-
-    # ---------------------------------------------------------
-
-    def add_word(
-        self,
-        word: str,
-        frequency: int,
-    ):
-        """Add dictionary word.
-
-        Example:
-            ``result = instance.add_word("teh", 1000)``
-            Expected behavior: Add dictionary word.
-        """
-
-        key = word.lower()
-
-        self.words[key] = frequency
-
-        for delete in self._generate_deletes(key):
-
-            self.deletes[delete].add(key)
-
-    # ---------------------------------------------------------
-
-    def lookup(
-        self,
-        word: str,
-    ):
-        """Find correction candidates.
-
-        Example:
-            ``result = instance.lookup("teh")``
-            Expected behavior: Find correction candidates.
-        """
-
-        word = word.lower()
-
-        candidates = []
-
-        #
-        # Exact match
-        #
-
-        if word in self.words:
-
+        query = word.casefold()
+        if query in self.words:
             return []
 
-        deletes = self._generate_deletes(word)
+        possible: set[str] = set()
+        variants = self._generate_deletes(query)
+        variants.add(query)
+        for variant in variants:
+            # A shorter query can itself be a dictionary word's delete key.
+            possible.update(self.deletes.get(variant, ()))
+            # A longer query can produce the exact dictionary word by deletion.
+            if variant in self.words:
+                possible.add(variant)
 
-        possible = set()
-
-        for delete in deletes:
-
-            for candidate in self.deletes.get(delete, []):
-
-                possible.add(candidate)
-
-        for candidate in possible:
-
-            distance = self.edit_distance(
-                word,
-                candidate,
+        candidates: list[CorrectionCandidate] = []
+        for corrected in possible:
+            distance = self.edit_distance(query, corrected)
+            if distance > self.max_edit_distance:
+                continue
+            candidate = CorrectionCandidate(
+                original=query,
+                corrected=corrected,
+                distance=distance,
+                frequency=self.words[corrected],
+                source="symspell",
             )
+            candidate.calculate_confidence()
+            candidates.append(candidate)
 
-            if distance <= (self.max_edit_distance):
+        return sorted(
+            candidates,
+            key=lambda item: (
+                -item.confidence,
+                -item.frequency,
+                item.corrected,
+            ),
+        )
 
-                item = CorrectionCandidate(
-                    original=word,
-                    corrected=candidate,
-                    distance=distance,
-                    frequency=self.words.get(
-                        candidate,
-                        0,
-                    ),
-                    source="symspell",
-                )
+    def _generate_deletes(self, word: str) -> set[str]:
+        """Generate unique strings produced by at most N deletions."""
 
-                item.calculate_confidence()
-
-                candidates.append(item)
-
-        return sorted(candidates, key=lambda x: (-x.confidence))
-
-    # ---------------------------------------------------------
-
-    def _generate_deletes(
-        self,
-        word,
-    ):
-        """Generate delete variants.
-
-        Example:
-            ``result = instance._generate_deletes("teh")``
-            Expected behavior: Generate delete variants.
-        """
-
-        deletes = set()
-
+        deletes: set[str] = set()
         queue = {word}
-
         for _ in range(self.max_edit_distance):
-
-            next_queue = set()
-
+            next_queue: set[str] = set()
             for item in queue:
-
-                for i in range(len(item)):
-
-                    deletion = item[:i] + item[i + 1 :]
-
-                    if deletion not in deletes:
-
-                        deletes.add(deletion)
-
-                        next_queue.add(deletion)
-
+                for index in range(len(item)):
+                    deletion = item[:index] + item[index + 1 :]
+                    if deletion in deletes:
+                        continue
+                    deletes.add(deletion)
+                    next_queue.add(deletion)
             queue = next_queue
-
         return deletes
 
-    # ---------------------------------------------------------
+    @staticmethod
+    def edit_distance(left: str, right: str) -> int:
+        """Return optimal-string-alignment Damerau-Levenshtein distance."""
 
-    def edit_distance(
-        self,
-        a,
-        b,
-    ):
-        """Damerau-Levenshtein distance.
+        rows = len(left) + 1
+        columns = len(right) + 1
+        matrix = [[0] * columns for _ in range(rows)]
+        for row in range(rows):
+            matrix[row][0] = row
+        for column in range(columns):
+            matrix[0][column] = column
 
-        Simplified implementation.
-
-        Example:
-            ``result = instance.edit_distance(a, b)``
-            Expected behavior: Damerau-Levenshtein distance.
-        """
-
-        rows = len(a) + 1
-
-        cols = len(b) + 1
-
-        matrix = [[0 for _ in range(cols)] for _ in range(rows)]
-
-        for i in range(rows):
-
-            matrix[i][0] = i
-
-        for j in range(cols):
-
-            matrix[0][j] = j
-
-        for i in range(1, rows):
-
-            for j in range(1, cols):
-
-                cost = 0 if a[i - 1] == b[j - 1] else 1
-
-                matrix[i][j] = min(
-                    matrix[i - 1][j] + 1,
-                    matrix[i][j - 1] + 1,
-                    matrix[i - 1][j - 1] + cost,
+        for row in range(1, rows):
+            for column in range(1, columns):
+                substitution = (
+                    0 if left[row - 1] == right[column - 1] else 1
                 )
+                matrix[row][column] = min(
+                    matrix[row - 1][column] + 1,
+                    matrix[row][column - 1] + 1,
+                    matrix[row - 1][column - 1] + substitution,
+                )
+                if (
+                    row > 1
+                    and column > 1
+                    and left[row - 1] == right[column - 2]
+                    and left[row - 2] == right[column - 1]
+                ):
+                    matrix[row][column] = min(
+                        matrix[row][column],
+                        matrix[row - 2][column - 2] + 1,
+                    )
 
         return matrix[-1][-1]

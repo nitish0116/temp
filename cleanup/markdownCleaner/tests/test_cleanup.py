@@ -507,6 +507,53 @@ def test_vocabulary_candidates_are_discovered_without_mutating_glossary(tmp_path
     assert rejected_context.metadata["glossary_candidates"] == []
 
 
+def test_vocabulary_candidates_ignore_protected_markdown_content(tmp_path):
+    """Code, tables, and link destinations are not domain-word evidence."""
+    from markdownCleaner.modules.core.config import PipelineConfig
+    from markdownCleaner.modules.core.context import ProcessingContext
+
+    dictionary = tmp_path / "freq.txt"
+    dictionary.write_text(
+        "appeared 10000000\nagain 9000000\ndocs 8000000\n",
+        encoding="utf-8",
+    )
+    source = tmp_path / "sample.md"
+    source.write_text(
+        "Novelterm appeared. Novelterm appeared again. Novelterm appeared.\n\n"
+        "```text\nCodeword Codeword Codeword\n```\n\n"
+        "[Docs](https://example.test/Codeword/Codeword/Codeword)\n\n"
+        "| Label | Value |\n"
+        "|---|---|\n"
+        "| Codeword | Codeword Codeword |\n",
+        encoding="utf-8",
+    )
+    config = PipelineConfig(
+        {
+            "symspell": {
+                "dictionary": str(dictionary),
+                "max_edit_distance": 1,
+            },
+            "vocabulary_candidates": {
+                "enabled": True,
+                "minimum_occurrences": 3,
+                "report_limit": 20,
+            },
+        }
+    )
+    context = ProcessingContext(config)
+    context.load_markdown(source)
+
+    result = VocabularyCandidateStage(config).execute(context)
+    words = {
+        item["word"].casefold()
+        for item in context.metadata["glossary_candidates"]
+    }
+
+    assert result.success
+    assert "novelterm" in words
+    assert "codeword" not in words
+
+
 def test_unsafe_rn_replacement_is_disabled():
     """Ensure the ambiguous OCR replacement from 'rn' remains disabled."""
     assert "rn" not in OCR_CHARACTER_REPLACEMENTS
@@ -525,6 +572,14 @@ def test_heading_normalization():
     source = "### <u>Chapter 1 | The Beginning</u>"
     assert (
         DocumentCleanupStage._normalize_headings(source) == "# Chapter 1: The Beginning"
+    )
+
+
+def test_bare_chapter_heading_has_one_atx_marker():
+    """Normalize a recognized chapter heading even without a subtitle."""
+    assert (
+        DocumentCleanupStage._normalize_headings("### Chapter 1")
+        == "# Chapter 1"
     )
 
 
@@ -942,7 +997,7 @@ def test_symspell_merges_dictionary_word_across_artificial_blank_line(tmp_path):
     assert record.reason == (
         "Dictionary-validated OCR cross-block broken-word merge"
     )
-    assert record.broken_word == "ener gy"
+    assert record.broken_word == "ener \n\ngy"
 
 
 def test_false_atx_heading_is_demoted_and_context_rejoined():
@@ -1264,6 +1319,12 @@ Paragraph two.
     assert "◆" not in heading_cleaned
     assert "##" not in heading_cleaned
     assert "###" not in heading_cleaned
+
+    emphasized_heading = 'Before.\n**## ◆◇◆◇◆?**\nAfter.'
+    emphasized_cleaned = DECORATIVE_SEPARATOR_LINE.sub("", emphasized_heading)
+    assert "◆" not in emphasized_cleaned
+    assert "##" not in emphasized_cleaned
+
     assert "Paragraph one." in cleaned
     assert "Paragraph two." in cleaned
 

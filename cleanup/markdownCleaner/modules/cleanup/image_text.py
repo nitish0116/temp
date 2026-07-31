@@ -1,7 +1,9 @@
-import re
+from ..core.processor import SegmentProcessor
+from .markup import PICTURE_BLOCK
+from .protection import protect_markdown
 
 
-class ImageTextProcessor:
+class ImageTextProcessor(SegmentProcessor):
     """Remove legacy picture-text marker blocks from editable segments.
 
     This small processor supports older segment-oriented cleanup workflows.
@@ -26,24 +28,6 @@ class ImageTextProcessor:
     """
 
     name = "ImageText"
-
-    def __init__(self, context):
-        """Bind the processor to the shared processing context.
-
-        Args:
-            context: Active context whose ``increment`` method receives the
-                ``image_text_removed`` metric when a segment changes.
-
-        Example::
-
-            context = object()
-            processor = ImageTextProcessor(context)
-            assert processor.context is context
-
-        Construction does not inspect or modify document content.
-        """
-
-        self.context = context
 
     def process(self, segment):
         """Delete all marked picture OCR blocks from one editable segment.
@@ -76,14 +60,19 @@ class ImageTextProcessor:
         are not called.
         """
 
-        pattern = r"<!-- Start of picture text -->.*?" r"<!-- End of picture text -->"
+        before = segment.current_text
+        protected = protect_markdown(before)
+        cleaned = protected.restore(PICTURE_BLOCK.sub("", protected.text))
 
-        cleaned = re.sub(pattern, "", segment.current_text, flags=re.DOTALL)
-
-        if cleaned != segment.current_text:
+        if cleaned != before:
 
             segment.update(cleaned)
-
+            self.record_change(
+                segment=segment,
+                before=before,
+                after=segment.current_text,
+                reason="Removed marked picture OCR block",
+            )
             self.context.increment("image_text_removed")
 
             return True

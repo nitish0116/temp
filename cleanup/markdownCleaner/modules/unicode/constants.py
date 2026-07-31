@@ -127,7 +127,7 @@ QUOTES = {
 
 DASHES = {
     "‐": "-",  # Hyphen
-    "-": "-",  # Non-breaking hyphen
+    "‑": "-",  # Non-breaking hyphen
     "‒": "-",  # Figure dash
     "–": "-",  # En dash
     "—": "-",  # Em dash

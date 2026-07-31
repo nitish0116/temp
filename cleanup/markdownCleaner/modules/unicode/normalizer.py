@@ -95,26 +95,18 @@ class UnicodeNormalizer(UnicodeProcessor):
             before,
         )
 
-        if before == after:
-
-            return False
-
-        segment.current_text = after
-
-        self.record_change(
+        changed = self.apply_change(
             segment=segment,
             before=before,
             after=after,
             reason=(f"Unicode {self.form} normalization"),
+            statistic="normalized",
             confidence=100.0,
         )
 
-        self.context.increment(
-            "normalized",
-        )
+        if changed:
+            self.logger.debug(
+                f"{self.name}: normalized segment {segment.segment_index}"
+            )
 
-        self.logger.debug(
-            f"{self.name}: normalized " f"segment {segment.segment_index}"
-        )
-
-        return True
+        return changed

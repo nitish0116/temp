@@ -9,66 +9,67 @@ Typical calls::
     python -m markdownCleaner.cli --learn-words sitrep noncoms
     python -m markdownCleaner.cli --reject-words offense humor
 
-The first two forms process one file, the third performs a folder batch, and
-the final form updates the configured glossary without running cleanup.
+The public helpers in this module remain compatibility façades.  Cohesive
+implementations live in :mod:`markdownCleaner.commands` so report transforms
+and command workflows can be tested without invoking the entire CLI.
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
-from collections import Counter
-from dataclasses import asdict
-from datetime import datetime
 from pathlib import Path
 
-from markdownCleaner.pipeline import OCRPipeline
-from markdownCleaner.modules.report.exporter import meaningful_output_name
-from markdownCleaner.modules.core.config import PipelineConfig
-from markdownCleaner.modules.symspell.vocabulary import (
-    merge_approved_words,
-    merge_learned_words,
-    merge_rejected_words,
+from markdownCleaner.commands.batch import (
+    markdown_files,
+    run_batch,
+    safe_report_name,
+    unique_batch_output_name,
 )
+from markdownCleaner.commands.execution import (
+    configured_output_root,
+    execute_pipeline,
+)
+from markdownCleaner.commands.parser import build_parser as _build_parser
+from markdownCleaner.commands.reports import (
+    markdown_code,
+    write_batch_glossary_candidates,
+    write_batch_summary,
+    write_simplified_glossary_candidates,
+)
+from markdownCleaner.commands.review import (
+    ReviewRequest,
+    apply_review_request,
+    review_action_count,
+    review_request,
+)
+from markdownCleaner.modules.core.config import PipelineConfig
+from markdownCleaner.modules.report.exporter import ReportOptions
+from markdownCleaner.pipeline import OCRPipeline
 
 
-def _markdown_files(root: Path, recursive: bool) -> list[Path]:
-    """Return sorted Markdown files found below ``root``.
-
-    Args:
-        root: Directory to search.
-        recursive: Search all descendants when true; otherwise inspect only
-            direct children.
-
-    Example:
-        ``_markdown_files(Path("books"), recursive=True)`` finds Markdown in
-        ``books`` and each volume subdirectory.
-    """
-    iterator = root.rglob("*.md") if recursive else root.glob("*.md")
-    return sorted(path for path in iterator if path.is_file())
+def _markdown_files(
+    root: Path,
+    recursive: bool,
+    *,
+    excluded_roots: tuple[Path, ...] = (),
+) -> list[Path]:
+    """Return sorted Markdown files found below ``root``."""
+    return markdown_files(
+        root,
+        recursive,
+        excluded_roots=excluded_roots,
+    )
 
 
 def _safe_report_name(relative_file: Path) -> Path:
     """Create a collision-free report folder while retaining folder context."""
-    readable = Path(meaningful_output_name(relative_file)).stem
-    readable = readable.removesuffix(" - Cleaned")
-    return Path("reports") / readable
+    return safe_report_name(relative_file)
 
 
 def _unique_batch_output_name(filename: str, used_names: set[str]) -> str:
-    """Return a case-insensitively unique filename for one output directory.
-
-    The supplied set is updated in place. For example, requesting ``Book.md``
-    twice returns ``Book.md`` and then ``Book (2).md``.
-    """
-    path = Path(filename)
-    candidate = path.name
-    number = 2
-    while candidate.casefold() in used_names:
-        candidate = f"{path.stem} ({number}){path.suffix}"
-        number += 1
-    used_names.add(candidate.casefold())
-    return candidate
+    """Return a case-insensitively unique output filename."""
+    return unique_batch_output_name(filename, used_names)
 
 
 def _run_one(
@@ -79,42 +80,20 @@ def _run_one(
     output_name: str | None = None,
     report_subdirectory: Path | str = "reports",
 ) -> tuple[dict, int, list[dict], list[dict]]:
-    """Run the configured pipeline for one Markdown source.
-
-    Args:
-        source: Markdown file to clean.
-        config: YAML configuration file used to construct the pipeline.
-        output_directory: Optional destination overriding the configured path.
-        output_name: Optional filename, primarily used to avoid batch clashes.
-        report_subdirectory: Report location relative to the output directory.
-
-    Returns:
-        A tuple containing the pipeline result mapping, total logged change
-        count, serializable change records, and vocabulary candidates. Failed
-        stages are summarized in ``result["pipeline_error"]`` so batch callers
-        can apply their policy.
-    """
-    pipeline = OCRPipeline(config)
-    result = pipeline.run(
+    """Run one Markdown source using the historical tuple return contract."""
+    return execute_pipeline(
         source,
+        config=config,
         output_directory=output_directory,
         output_name=output_name,
         report_subdirectory=report_subdirectory,
-    )
-    records = [asdict(record) for record in pipeline.context.tracker.records]
-    candidates = list(pipeline.context.metadata.get("glossary_candidates", []))
-    failed_stages = [stage for stage in result["stages"] if not stage.success]
-    if failed_stages:
-        details = "; ".join(f"{stage.stage}: {stage.error}" for stage in failed_stages)
-        result["pipeline_error"] = f"Pipeline stage failure(s): {details}"
-    return result, pipeline.context.total_changes, records, candidates
+        pipeline_factory=OCRPipeline,
+    ).as_legacy_tuple()
 
 
 def _md_code(value: object) -> str:
     """Return text safe for a fenced Markdown code block."""
-    text = "" if value is None else str(value)
-    # Avoid accidentally closing our own fence.
-    return text.replace("```", "` ` `")
+    return markdown_code(value)
 
 
 def _write_batch_summary(
@@ -125,388 +104,77 @@ def _write_batch_summary(
     report_name: str = "batch_summary.md",
 ) -> Path:
     """Write one aggregate Markdown report for the entire batch run."""
-    report_dir = output_root / "reports"
-    report_dir.mkdir(parents=True, exist_ok=True)
-    report_path = report_dir / report_name
-
-    succeeded = sum(1 for item in entries if item["status"] == "success")
-    failed = sum(1 for item in entries if item["status"] == "failed")
-    total_changes = sum(item.get("changes", 0) for item in entries)
-    total_elapsed = sum(float(item.get("elapsed_seconds", 0) or 0) for item in entries)
-
-    stage_totals: Counter[str] = Counter()
-    for item in entries:
-        for stage_name, count in item.get("stage_counts", {}).items():
-            stage_totals[stage_name] += int(count or 0)
-
-    lines: list[str] = [
-        "# Batch Cleanup Summary",
-        "",
-        f"- Generated: {datetime.now().isoformat(timespec='seconds')}",
-        f"- Input root: `{source_root}`",
-        f"- Output root: `{output_root}`",
-        f"- Files discovered: {len(entries)}",
-        f"- Succeeded: {succeeded}",
-        f"- Failed: {failed}",
-        f"- Total changes logged: {total_changes}",
-        f"- Total pipeline time: {total_elapsed:.2f} seconds",
-        "",
-        "## Aggregate changes by stage",
-        "",
-        "| Stage | Changes |",
-        "|---|---:|",
-    ]
-
-    if stage_totals:
-        for stage_name, count in stage_totals.items():
-            lines.append(f"| {stage_name} | {count} |")
-    else:
-        lines.append("| — | 0 |")
-
-    lines.extend(
-        [
-            "",
-            "## Per-file results",
-            "",
-            "| File | Status | Changes | Time (s) | Output |",
-            "|---|---|---:|---:|---|",
-        ]
+    return write_batch_summary(
+        output_root,
+        source_root=source_root,
+        entries=entries,
+        report_name=report_name,
     )
-
-    for item in entries:
-        output = item.get("output") or "—"
-        error = item.get("error")
-        status = item["status"]
-        if error:
-            status = f"{status}: {str(error).replace('|', '/')}"
-        lines.append(
-            f"| `{item['relative_path']}` | {status} | {item.get('changes', 0)} | "
-            f"{float(item.get('elapsed_seconds', 0) or 0):.2f} | `{output}` |"
-        )
-
-    lines.extend(["", "## Detailed changes", ""])
-
-    for item in entries:
-        lines.append(f"### {item['relative_path']}")
-        lines.append("")
-        lines.append(f"Status: **{item['status']}**  ")
-        lines.append(f"Changes: **{item.get('changes', 0)}**")
-        lines.append("")
-
-        if item.get("error"):
-            lines.extend(["Error:", "", "```text", _md_code(item["error"]), "```", ""])
-            continue
-
-        stage_counts = item.get("stage_counts", {})
-        if stage_counts:
-            lines.extend(["Stage totals:", "", "| Stage | Changes |", "|---|---:|"])
-            for stage_name, count in stage_counts.items():
-                lines.append(f"| {stage_name} | {count} |")
-            lines.append("")
-
-        records = item.get("records", [])
-        if not records:
-            lines.extend(["No change records were logged.", ""])
-            continue
-
-        for number, record in enumerate(records, 1):
-            location = f"line {record.get('line', 0)}"
-            stage = record.get("stage", "Unknown")
-            reason = record.get("reason", "")
-            confidence = record.get("confidence", "")
-            broken_word = record.get("broken_word")
-            lines.append(f"#### Change {number} — {stage} ({location})")
-            lines.append("")
-            lines.append(f"- Reason: {reason}")
-            lines.append(f"- Confidence: {confidence}")
-            if broken_word:
-                lines.append(f"- Broken word: `{broken_word}`")
-            lines.append("")
-            lines.append("Before:")
-            lines.append("")
-            lines.append("```text")
-            lines.append(_md_code(record.get("before", "")))
-            lines.append("```")
-            lines.append("")
-            lines.append("After:")
-            lines.append("")
-            lines.append("```text")
-            lines.append(_md_code(record.get("after", "")))
-            lines.append("```")
-            lines.append("")
-
-    report_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
-    return report_path
 
 
 def _write_batch_glossary_candidates(
     output_root: Path,
     entries: list[dict],
 ) -> Path:
-    """Aggregate per-file vocabulary candidates into one batch JSON report.
-
-    Candidates are merged case-insensitively, occurrences are totaled, and each
-    source file retains its own occurrence count and line references.
-
-    Example:
-        Two entries for ``Degurechaff`` from separate volumes become one item
-        whose ``files`` list identifies both source documents.
-    """
-    import json
-
-    combined: dict[str, dict] = {}
-    for entry in entries:
-        relative_path = str(entry.get("relative_path", ""))
-        for candidate in entry.get("glossary_candidates", []):
-            word = str(candidate.get("word", "")).strip()
-            if not word:
-                continue
-            key = word.casefold()
-            occurrences = int(candidate.get("occurrences", 0) or 0)
-            aggregate = combined.setdefault(
-                key,
-                {
-                    "word": word,
-                    "occurrences": 0,
-                    "files": [],
-                    "suggested_correction": candidate.get("suggested_correction"),
-                    "edit_distance": candidate.get("edit_distance"),
-                    "confidence": candidate.get("confidence"),
-                    "classification": candidate.get("classification", "unknown"),
-                    "classification_confidence": candidate.get(
-                        "classification_confidence", 0.0
-                    ),
-                    "classification_basis": candidate.get(
-                        "classification_basis", "not classified"
-                    ),
-                    "status": "pending_review",
-                },
-            )
-            aggregate["occurrences"] += occurrences
-            aggregate["files"].append(
-                {
-                    "file": relative_path,
-                    "occurrences": occurrences,
-                    "lines": list(candidate.get("lines", [])),
-                }
-            )
-            current_confidence = aggregate.get("confidence")
-            candidate_confidence = candidate.get("confidence")
-            if candidate_confidence is not None and (
-                current_confidence is None or candidate_confidence > current_confidence
-            ):
-                aggregate["suggested_correction"] = candidate.get(
-                    "suggested_correction"
-                )
-                aggregate["edit_distance"] = candidate.get("edit_distance")
-                aggregate["confidence"] = candidate_confidence
-
-            if aggregate.get("classification") == "unknown" and candidate.get(
-                "classification"
-            ) in {"noun", "adjective", "verb"}:
-                aggregate["classification"] = candidate["classification"]
-                aggregate["classification_confidence"] = candidate.get(
-                    "classification_confidence", 0.0
-                )
-                aggregate["classification_basis"] = candidate.get(
-                    "classification_basis", "not classified"
-                )
-
-    values = sorted(
-        combined.values(),
-        key=lambda item: (-item["occurrences"], item["word"].casefold()),
-    )
-    report_dir = output_root / "reports"
-    report_dir.mkdir(parents=True, exist_ok=True)
-    report_path = report_dir / "glossary_candidates.json"
-    report_path.write_text(
-        json.dumps(values, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    return report_path
+    """Aggregate and write per-file vocabulary candidates."""
+    return write_batch_glossary_candidates(output_root, entries)
 
 
 def _write_simplified_glossary_candidates(
-    source: Path, output: Path | None = None
+    source: Path,
+    output: Path | None = None,
 ) -> Path:
-    """Write a compact candidate report containing only review essentials.
-
-    Args:
-        source: Master ``glossary_candidates.json`` report.
-        output: Optional destination. By default, writes
-            ``glossary_candidates_simplified.json`` beside ``source``.
-
-    Returns:
-        The resolved path of the simplified JSON report.
-    """
-    import json
-
-    source = source.resolve()
-    if not source.is_file():
-        raise ValueError(f"Glossary candidate report not found: {source}")
-    try:
-        candidates = json.loads(source.read_text(encoding="utf-8-sig"))
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"Invalid JSON in {source}: line {exc.lineno}, column {exc.colno}"
-        ) from exc
-    if not isinstance(candidates, list):
-        raise ValueError("Master glossary candidate JSON must contain a list.")
-
-    simplified = []
-    for index, candidate in enumerate(candidates, 1):
-        if not isinstance(candidate, dict):
-            raise ValueError(f"Candidate {index} must be a JSON object.")
-        simplified.append(
-            {
-                "word": candidate.get("word"),
-                "occurrences": candidate.get("occurrences", 0),
-                "suggested_correction": candidate.get("suggested_correction"),
-                "classification": candidate.get("classification", "unknown"),
-
-            }
-        )
-
-    target = (
-        output.resolve()
-        if output
-        else source.with_name(f"{source.stem}_simplified.json")
-    )
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(
-        json.dumps(simplified, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    return target
+    """Write a compact candidate report containing review essentials."""
+    return write_simplified_glossary_candidates(source, output)
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser for all supported CLI call signatures.
+    """Build the parser for every supported CLI call signature."""
+    return _build_parser(Path(__file__).with_name("config.yaml"))
 
-    Supported forms::
 
-        markdownCleaner INPUT.md [--output DIR] [--config FILE]
-        markdownCleaner INPUT_DIR [--recursive] [--continue-on-error]
-        markdownCleaner --approve-words WORD [WORD ...] [--glossary-file FILE]
-        markdownCleaner --learn-words WORD [WORD ...] [--learned-file FILE]
-        markdownCleaner --reject-words WORD [WORD ...] [--rejected-file FILE]
-        markdownCleaner --simplify-candidates glossary_candidates.json
+def _run_single_file(source: Path, *, config: Path, output_root: Path | None) -> int:
+    """Execute and print the single-file workflow."""
+    try:
+        result, changes, _records, _candidates = _run_one(
+            source,
+            config=config,
+            output_directory=output_root,
+        )
+    except Exception as exc:  # CLI boundary: present a stable failure contract.
+        print(f"ERROR: {source}: {exc}", file=sys.stderr)
+        return 2
 
-    ``python -m markdownCleaner.cli`` can replace ``markdownCleaner`` when the
-    project is run directly from source.
-    """
-    parser = argparse.ArgumentParser(
-        description="Clean OCR/PDF-extracted novel Markdown for TTS. Input may be a file or folder.",
-    )
-    parser.add_argument(
-        "input",
-        type=Path,
-        nargs="?",
-        help="Input Markdown file or a folder containing .md files",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        default=None,
-        help="Output directory. Defaults to paths.output_directory from config.yaml",
-    )
-    parser.add_argument(
-        "-r",
-        "--recursive",
-        action="store_true",
-        help="When input is a folder, process .md files in all subfolders",
-    )
-    parser.add_argument(
-        "--config",
-        type=Path,
-        default=Path(__file__).with_name("config.yaml"),
-        help="Path to YAML configuration file",
-    )
-    parser.add_argument(
-        "--batch-report-name",
-        default="batch_summary.md",
-        help="Filename for the combined batch report (default: batch_summary.md)",
-    )
-    parser.add_argument(
-        "--continue-on-error",
-        action="store_true",
-        help="Continue processing remaining files if one file fails",
-    )
-    parser.add_argument(
-        "--approve-words",
-        nargs="+",
-        metavar="WORD",
-        help="Explicitly add reviewed terms to custom_words.json, then exit",
-    )
-    parser.add_argument(
-        "--glossary-file",
-        type=Path,
-        default=None,
-        help="Glossary to update with --approve-words (defaults to symspell.glossary)",
-    )
-    parser.add_argument(
-        "--learn-words",
-        nargs="+",
-        metavar="WORD",
-        help="Safely add reviewed terms to learned_words.json, then exit",
-    )
-    parser.add_argument(
-        "--learned-file",
-        type=Path,
-        default=None,
-        help="File to update with --learn-words (defaults to symspell.learned)",
-    )
-    parser.add_argument(
-        "--reject-words",
-        nargs="+",
-        metavar="WORD",
-        help="Suppress reviewed terms from future glossary candidate reports",
-    )
-    parser.add_argument(
-        "--rejected-file",
-        type=Path,
-        default=None,
-        help=(
-            "File to update with --reject-words "
-            "(defaults to vocabulary_candidates.rejected)"
-        ),
-    )
-    parser.add_argument(
-        "--simplify-candidates",
-        type=Path,
-        metavar="MASTER_JSON",
-        help=(
-            "Write a simplified glossary candidate JSON containing only word, "
-            "occurrences, and suggested_correction, then exit"
-        ),
-    )
-    parser.add_argument(
-        "--simplified-output",
-        type=Path,
-        default=None,
-        help="Optional destination used with --simplify-candidates",
-    )
-    return parser
+    print(f"\nClean Markdown: {result['output']['markdown']}")
+    print(f"Changes logged: {changes}")
+    if result.get("pipeline_error"):
+        print(f"ERROR: {result['pipeline_error']}", file=sys.stderr)
+        return 2
+    return 0
+
+
+def _run_review_action(
+    request: ReviewRequest,
+    *,
+    config: Path,
+    parser: argparse.ArgumentParser,
+) -> int:
+    """Persist one reviewed-word action and print its outcome."""
+    try:
+        result = apply_review_request(request, config)
+    except Exception as exc:
+        parser.error(str(exc))
+    print(f"{result.label}: {result.target}")
+    added = ", ".join(result.added) if result.added else "none"
+    print(f"Added {len(result.added)} term(s): {added}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     """Execute the requested CLI workflow and return a process exit code.
 
-    Args:
-        argv: Arguments without the executable name. Passing ``None`` reads
-            ``sys.argv``; passing a list supports programmatic calls such as
-            ``main(["book.md", "--output", "cleaned"])``.
-
-    Workflow:
-        1. Resolve and validate the configuration.
-        2. Approve glossary words and exit, if requested.
-        3. Run one file directly, or discover and process a folder batch.
-        4. Write per-file reports plus an aggregate report for folder runs.
-
-    Returns:
-        ``0`` on success, ``1`` when a folder contains no Markdown, and ``2``
-        when one or more pipeline stages or files fail.
+    ``0`` means success, ``1`` means a folder contained no Markdown, and ``2``
+    means at least one file or pipeline stage failed.
     """
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -514,7 +182,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.simplify_candidates:
         try:
             target = _write_simplified_glossary_candidates(
-                args.simplify_candidates, args.simplified_output
+                args.simplify_candidates,
+                args.simplified_output,
             )
         except (ValueError, OSError) as exc:
             parser.error(str(exc))
@@ -527,216 +196,86 @@ def main(argv: list[str] | None = None) -> int:
     if not config.exists():
         parser.error(f"Config file not found: {config}")
 
-    review_actions = [args.approve_words, args.learn_words, args.reject_words]
-    if sum(bool(action) for action in review_actions) > 1:
+    if review_action_count(args) > 1:
         parser.error(
             "--approve-words, --learn-words, and --reject-words are mutually exclusive"
         )
-
-    if any(review_actions):
-        loaded_config = PipelineConfig.load(config)
-        learning = bool(args.learn_words)
-        rejecting = bool(args.reject_words)
-        explicit_file = (
-            args.rejected_file
-            if rejecting
-            else args.learned_file if learning else args.glossary_file
+    requested_review = review_request(args)
+    if requested_review:
+        return _run_review_action(
+            requested_review,
+            config=config,
+            parser=parser,
         )
-        config_key = (
-            "vocabulary_candidates.rejected"
-            if rejecting
-            else "symspell.learned" if learning else "symspell.glossary"
-        )
-        default_file = (
-            "data/rejected_words.json"
-            if rejecting
-            else "data/learned_words.json" if learning else "data/custom_words.json"
-        )
-        target = (
-            explicit_file.resolve()
-            if explicit_file
-            else Path(
-                loaded_config.resolve_path(loaded_config.get(config_key, default_file))
-            )
-        )
-        try:
-            added = (
-                merge_rejected_words(target, args.reject_words)
-                if rejecting
-                else (
-                    merge_learned_words(target, args.learn_words)
-                    if learning
-                    else merge_approved_words(target, args.approve_words)
-                )
-            )
-        except (ValueError, OSError) as exc:
-            parser.error(str(exc))
-        label = (
-            "Rejected words"
-            if rejecting
-            else "Learned words" if learning else "Glossary"
-        )
-        print(f"{label}: {target}")
-        print(f"Added {len(added)} term(s): {', '.join(added) if added else 'none'}")
-        return 0
 
     if args.input is None:
         parser.error("input is required unless a word-review command is used")
     source = args.input.resolve()
     output_root = args.output.resolve() if args.output else None
-
     if not source.exists():
         parser.error(f"Input path not found: {source}")
 
-    # Single-file mode keeps the familiar reports/ directory.
     if source.is_file():
         if source.suffix.lower() != ".md":
             parser.error(f"Input file must be Markdown (.md): {source}")
-        result, changes, _records, _candidates = _run_one(
-            source,
-            config=config,
-            output_directory=output_root,
-        )
-        print(f"\nClean Markdown: {result['output']['markdown']}")
-        print(f"Changes logged: {changes}")
-        if result.get("pipeline_error"):
-            print(f"ERROR: {result['pipeline_error']}", file=sys.stderr)
-            return 2
-        return 0
+        return _run_single_file(source, config=config, output_root=output_root)
 
-    # Folder mode.
-    files = _markdown_files(source, args.recursive)
+    try:
+        if output_root is None:
+            output_root = configured_output_root(
+                config,
+                pipeline_factory=OCRPipeline,
+            )
+        loaded_config = PipelineConfig.load(config)
+        loaded_config.validate()
+        report_options = ReportOptions.from_config(loaded_config)
+        artifact_roots = [output_root]
+        if loaded_config.get_bool("backup.enabled", True):
+            configured_backup = loaded_config.resolve_path(
+                loaded_config.get("backup.directory", "backup")
+            )
+            if configured_backup is None:
+                raise ValueError("backup.directory cannot be null")
+            artifact_roots.append(Path(configured_backup))
+        if any(path.resolve() == source for path in artifact_roots):
+            raise ValueError(
+                "output and backup directories must not equal the input folder"
+            )
+        excluded_roots = [
+            path
+            for path in artifact_roots
+            if path.resolve().is_relative_to(source)
+        ]
+    except Exception as exc:  # CLI boundary: normalize folder setup failures.
+        print(f"ERROR: {config}: {exc}", file=sys.stderr)
+        return 2
+    files = _markdown_files(
+        source,
+        args.recursive,
+        excluded_roots=tuple(excluded_roots),
+    )
     if not files:
         print(f"No Markdown files found in: {source}", file=sys.stderr)
         return 1
 
-    # Resolve the configured output root once so relative folder structure can
-    # be preserved across all files.
-    if output_root is None:
-        probe = OCRPipeline(config)
-        output_root = Path(
-            probe.config.get("paths.output_directory", "output")
-        ).resolve()
-
-    succeeded = 0
-    failed = 0
-    total_changes = 0
-    batch_entries: list[dict] = []
-    used_output_names: dict[Path, set[str]] = {}
-
-    print(f"Found {len(files)} Markdown file(s).")
-    for index, file in enumerate(files, 1):
-        relative = file.relative_to(source)
-        target_dir = output_root / relative.parent
-        report_dir = _safe_report_name(relative)
-        directory_names = used_output_names.setdefault(target_dir, set())
-        output_name = _unique_batch_output_name(
-            meaningful_output_name(file),
-            directory_names,
+    try:
+        return run_batch(
+            source,
+            files=files,
+            config=config,
+            output_root=output_root,
+            continue_on_error=args.continue_on_error,
+            report_name=args.batch_report_name,
+            run_one=_run_one,
+            write_summary=_write_batch_summary,
+            write_candidates=_write_batch_glossary_candidates,
+            report_options=report_options,
         )
-
-        print(f"\n[{index}/{len(files)}] {relative}")
-        try:
-            result, changes, records, candidates = _run_one(
-                file,
-                config=config,
-                output_directory=target_dir,
-                output_name=output_name,
-                report_subdirectory=report_dir,
-            )
-            total_changes += changes
-            stage_counts = {stage.stage: stage.changes for stage in result["stages"]}
-            pipeline_error = result.get("pipeline_error")
-            if pipeline_error:
-                failed += 1
-                batch_entries.append(
-                    {
-                        "relative_path": str(relative),
-                        "status": "failed",
-                        "changes": changes,
-                        "elapsed_seconds": result.get("elapsed_seconds", 0),
-                        "stage_counts": stage_counts,
-                        "records": records,
-                        "glossary_candidates": candidates,
-                        "output": str(result["output"]["markdown"]),
-                        "error": pipeline_error,
-                    }
-                )
-                print(f"ERROR: {file}: {pipeline_error}", file=sys.stderr)
-                if not args.continue_on_error:
-                    summary_path = _write_batch_summary(
-                        output_root,
-                        source_root=source,
-                        entries=batch_entries,
-                        report_name=args.batch_report_name,
-                    )
-                    candidates_path = _write_batch_glossary_candidates(
-                        output_root, batch_entries
-                    )
-                    print(f"Batch summary: {summary_path}")
-                    print(f"Batch glossary candidates: {candidates_path}")
-                    return 2
-            else:
-                succeeded += 1
-                batch_entries.append(
-                    {
-                        "relative_path": str(relative),
-                        "status": "success",
-                        "changes": changes,
-                        "elapsed_seconds": result.get("elapsed_seconds", 0),
-                        "stage_counts": stage_counts,
-                        "records": records,
-                        "glossary_candidates": candidates,
-                        "output": str(result["output"]["markdown"]),
-                    }
-                )
-                print(f"Output: {result['output']['markdown']}")
-        except Exception as exc:  # CLI boundary: report error and decide policy.
-            failed += 1
-            batch_entries.append(
-                {
-                    "relative_path": str(relative),
-                    "status": "failed",
-                    "changes": 0,
-                    "elapsed_seconds": 0,
-                    "stage_counts": {},
-                    "records": [],
-                    "glossary_candidates": [],
-                    "output": None,
-                    "error": str(exc),
-                }
-            )
-            print(f"ERROR: {file}: {exc}", file=sys.stderr)
-            if not args.continue_on_error:
-                summary_path = _write_batch_summary(
-                    output_root,
-                    source_root=source,
-                    entries=batch_entries,
-                    report_name=args.batch_report_name,
-                )
-                candidates_path = _write_batch_glossary_candidates(
-                    output_root, batch_entries
-                )
-                print(f"Batch summary: {summary_path}")
-                print(f"Batch glossary candidates: {candidates_path}")
-                return 2
-
-    summary_path = _write_batch_summary(
-        output_root,
-        source_root=source,
-        entries=batch_entries,
-        report_name=args.batch_report_name,
-    )
-    candidates_path = _write_batch_glossary_candidates(output_root, batch_entries)
-
-    print("\nBatch completed")
-    print(f"Succeeded: {succeeded}")
-    print(f"Failed: {failed}")
-    print(f"Total changes logged: {total_changes}")
-    print(f"Output directory: {output_root}")
-    print(f"Batch summary: {summary_path}")
-    print(f"Batch glossary candidates: {candidates_path}")
-    return 0 if failed == 0 else 2
+    except Exception as exc:
+        # Aggregate report creation happens after per-file processing, so keep
+        # failures at the same stable CLI boundary as pipeline exceptions.
+        print(f"ERROR: {source}: {exc}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

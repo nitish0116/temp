@@ -15,6 +15,7 @@ from .constants import (
     QUOTE_TRANSLATION,
     DASH_TRANSLATION,
     ELLIPSIS_TRANSLATION,
+    PUNCTUATION_TRANSLATION,
 )
 
 
@@ -51,61 +52,34 @@ class PunctuationProcessor(UnicodeProcessor):
             Expected behavior: Normalize punctuation.
         """
 
-        before = segment.current_text
+        if not self.enabled("punctuation", True):
+            return False
 
+        before = segment.current_text
         if not before:
 
             return False
 
-        after = before
+        normalize_quotes = self.enabled("normalize_quotes", True)
+        normalize_dashes = self.enabled("normalize_dashes", True)
+        normalize_ellipsis = self.enabled("normalize_ellipsis", True)
 
-        #
-        # Quotes
-        #
+        if normalize_quotes and normalize_dashes and normalize_ellipsis:
+            after = before.translate(PUNCTUATION_TRANSLATION)
+        else:
+            after = before
+            if normalize_quotes:
+                after = after.translate(QUOTE_TRANSLATION)
+            if normalize_dashes:
+                after = after.translate(DASH_TRANSLATION)
+            if normalize_ellipsis:
+                after = after.translate(ELLIPSIS_TRANSLATION)
 
-        if self.enabled(
-            "normalize_quotes",
-            True,
-        ):
-
-            after = after.translate(QUOTE_TRANSLATION)
-
-        #
-        # Dashes
-        #
-
-        if self.enabled(
-            "normalize_dashes",
-            True,
-        ):
-
-            after = after.translate(DASH_TRANSLATION)
-
-        #
-        # Ellipsis
-        #
-
-        if self.enabled(
-            "normalize_ellipsis",
-            True,
-        ):
-
-            after = after.translate(ELLIPSIS_TRANSLATION)
-
-        if before == after:
-
-            return False
-
-        segment.current_text = after
-
-        self.record_change(
+        return self.apply_change(
             segment=segment,
             before=before,
             after=after,
             reason="Unicode punctuation normalization",
+            statistic="punctuation_normalized",
             confidence=100.0,
         )
-
-        self.context.increment("punctuation_normalized")
-
-        return True

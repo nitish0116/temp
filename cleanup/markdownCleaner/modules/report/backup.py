@@ -80,8 +80,10 @@ class BackupManager:
             "original_file": str(source),
             "backup_file": str(destination),
             "created": datetime.now().isoformat(),
-            "sha256": self._hash_file(source),
-            "size": source.stat().st_size,
+            # Describe the immutable copy, not a source that another process
+            # could modify between ``copy2`` and metadata generation.
+            "sha256": self._hash_file(destination),
+            "size": destination.stat().st_size,
         }
 
         self._write_metadata(

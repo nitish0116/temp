@@ -6,14 +6,12 @@ Base class for Unicode cleanup processors.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from email.policy import default
-
-from ..core.context import ProcessingContext
+from ..core.config import require_bool
+from ..core.processor import SegmentProcessor
 from ..markdown.segmenter import MarkdownSegment
 
 
-class UnicodeProcessor(ABC):
+class UnicodeProcessor(SegmentProcessor):
     """Base class for every Unicode cleanup processor.
 
     Responsibilities
@@ -30,22 +28,7 @@ class UnicodeProcessor(ABC):
     #: Display name used in logs/reports
     name = "Unicode"
 
-    def __init__(self, context: ProcessingContext):
-        """Bind shared processing services and Unicode configuration.
-
-        Example:
-            ``instance = UnicodeProcessor(context)``
-            Expected behavior: Bind shared processing services and Unicode configuration.
-        """
-
-        self.context = context
-        self.config = context.config
-        self.logger = context.logger
-        self.tracker = context.tracker
-
-    # ---------------------------------------------------------
-
-    def enabled(self, key, default=True):
+    def enabled(self, key: str, default: bool = True) -> bool:
         """Return whether a named Unicode correction is enabled.
 
         Example:
@@ -56,54 +39,38 @@ class UnicodeProcessor(ABC):
 
         fixes = unicode_config.get("fixes", {})
 
-        return fixes.get(key, default)
+        return require_bool(
+            fixes.get(key, default),
+            f"unicode.fixes.{key}",
+        )
 
-    @abstractmethod
-    def process(
-        self,
-        segment: MarkdownSegment,
-    ) -> bool:
-        """Process a segment.
-
-        Returns
-        -------
-        bool
-            True if the processor modified the segment.
-
-        Example:
-            ``result = instance.process(segment)``
-            Expected behavior: Process a segment.
-        """
-        raise NotImplementedError
-
-    # ---------------------------------------------------------
-
-    def record_change(
+    def apply_change(
         self,
         *,
         segment: MarkdownSegment,
         before: str,
         after: str,
         reason: str,
+        statistic: str,
+        statistic_amount: int = 1,
         confidence: float = 100.0,
-    ) -> None:
-        """Record a change in the shared ChangeTracker.
+    ) -> bool:
+        """Commit and audit one Unicode transformation.
 
-        Example:
-            ``instance.record_change(segment=segment, before="teh", after="the", reason="Safe correction")``
-            Expected behavior: Record a change in the shared ChangeTracker.
+        All Unicode processors use this method so segment mutation, tracker
+        records, and statistics cannot silently drift apart. ``False`` is
+        returned for a no-op and no audit/statistic side effect is produced.
         """
-
         if before == after:
-            return
+            return False
 
-        self.tracker.add(
-            stage=self.name,
-            block_index=segment.block_index,
-            segment_index=segment.segment_index,
-            line=segment.start_line,
+        segment.current_text = after
+        self.record_change(
+            segment=segment,
             before=before,
             after=after,
             confidence=confidence,
             reason=reason,
         )
+        self.context.increment(statistic, statistic_amount)
+        return True

@@ -1,14 +1,8 @@
-"""
-markdown.py
+"""Typed Markdown block model and conservative structure-preserving parser.
 
-Part 2A.1
-Core document model and parser skeleton.
-
-This module is responsible for representing a Markdown document as a
-collection of typed blocks. Later stages will populate the parser with
-code fence detection, table extraction, HTML preservation, etc.
-
-Nothing in this file modifies text.
+Only narrative paragraph blocks are editable. Markdown syntax, code, HTML, and
+other structural blocks remain protected so cleanup stages cannot accidentally
+rewrite them.
 """
 
 from __future__ import annotations
@@ -17,118 +11,95 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
-from typing import List, Optional
+from typing import Iterator
+
+import yaml
+
 
 HEADING_ATX = re.compile(r"^\s{0,3}#{1,6}\s+.+$")
 HEADING_SETEXT = re.compile(r"^[=-]{3,}\s*$")
-
 HORIZONTAL_RULE = re.compile(r"^\s{0,3}((\*\s*){3,}|(-\s*){3,}|(_\s*){3,})\s*$")
-
 BLOCKQUOTE = re.compile(r"^\s{0,3}>\s?.*$")
-
 LIST_ITEM = re.compile(r"^\s{0,3}([*+-]|\d+[.)])\s+.+$")
-
-TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
-
+TABLE_ROW = re.compile(r"^\s*\|?.*\|.*\|?\s*$")
 TABLE_SEPARATOR = re.compile(r"^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$")
-
 FOOTNOTE = re.compile(r"^\[\^[^\]]+\]:\s+.*$")
-
 IMAGE_ONLY = re.compile(r"^\s*!\[[^\]]*\]\([^)]+\)\s*$")
-
 LINK_ONLY = re.compile(r"^\s*\[[^\]]+\]\([^)]+\)\s*$")
-
 REFERENCE_LINK = re.compile(r"^\s*\[[^\]]+\]:\s+\S+.*$")
-
-
-# ==========================================================
-# Block Types
-# ==========================================================
+FENCE_PATTERN = re.compile(r"^(\s*)(`{3,}|~{3,})(.*)$")
+HTML_START = re.compile(r"^\s*<([A-Za-z][A-Za-z0-9]*)\b")
+HTML_COMMENT_START = re.compile(r"^\s*<!--")
+HTML_COMMENT_END = re.compile(r"-->\s*$")
+HTML_DECLARATION = re.compile(r"^\s*<![A-Za-z]")
+HTML_AUTOLINK = re.compile(
+    r"^\s*<(?:https?://[^ <>]+|mailto:[^ <>]+|[^ <>@]+@[^ <>@]+)>\s*$",
+    re.IGNORECASE,
+)
+HTML_VOID_TAGS = frozenset(
+    {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+)
 
 
 class BlockType(Enum):
-    """Logical Markdown block types.
-
-    Example:
-        ``member = BlockType.PARAGRAPH``
-        Expected behavior: Logical Markdown block types.
-    """
+    """Logical Markdown block types."""
 
     UNKNOWN = auto()
-
     BLANK = auto()
-
     PARAGRAPH = auto()
-
     HEADING = auto()
-
     CODE_FENCE = auto()
-
     INLINE_CODE = auto()
-
     TABLE = auto()
-
     HTML = auto()
-
     IMAGE = auto()
-
     LINK = auto()
-
     FOOTNOTE = auto()
-
     BLOCKQUOTE = auto()
-
     LIST = auto()
-
     HORIZONTAL_RULE = auto()
-
     YAML_FRONTMATTER = auto()
-
-
-# ==========================================================
-# Markdown Block
-# ==========================================================
 
 
 @dataclass(slots=True)
 class MarkdownBlock:
-    """Represents one logical block inside the document.
-
-    Example:
-        ``instance = MarkdownBlock(BlockType.PARAGRAPH, "Example text.", 1, 1)``
-        Expected behavior: Represents one logical block inside the document.
-    """
+    """Represent one logical block and its original source location."""
 
     block_type: BlockType
-
     text: str
-
     start_line: int
-
     end_line: int
-
     editable: bool = True
-
     metadata: dict = field(default_factory=dict)
+    current_text: str | None = None
 
-    current_text: str = ""
+    def __post_init__(self) -> None:
+        if self.current_text is None:
+            self.current_text = self.text
 
     def line_count(self) -> int:
-        """Return the number of source lines occupied by this block.
+        """Return the number of source lines occupied by this block."""
 
-        Example:
-            ``result = instance.line_count()``
-            Expected behavior: Return the number of source lines occupied by this block.
-        """
         return self.end_line - self.start_line + 1
 
     def copy(self) -> "MarkdownBlock":
-        """Return an independent copy of this Markdown block.
+        """Return an independent copy, including the current edited text."""
 
-        Example:
-            ``result = instance.copy()``
-            Expected behavior: Return an independent copy of this Markdown block.
-        """
         return MarkdownBlock(
             block_type=self.block_type,
             text=self.text,
@@ -136,21 +107,13 @@ class MarkdownBlock:
             end_line=self.end_line,
             editable=self.editable,
             metadata=dict(self.metadata),
+            current_text=self.current_text,
         )
 
-    def __repr__(self):
-        """Return a concise debugging representation of this block.
-
-        Example:
-            ``result = instance.__repr__()``
-            Expected behavior: Return a concise debugging representation of this block.
-        """
-
-        preview = self.text.replace("\n", "\\n")
-
+    def __repr__(self) -> str:
+        preview = self.content.replace("\n", "\\n")
         if len(preview) > 60:
             preview = preview[:57] + "..."
-
         return (
             f"<MarkdownBlock "
             f"type={self.block_type.name} "
@@ -159,695 +122,362 @@ class MarkdownBlock:
             f"text='{preview}'>"
         )
 
-    def __post_init__(self):
-        """Initialize mutable block text from its original value.
+    def update(self, value: str) -> None:
+        """Replace the block's current editable text."""
 
-        Example:
-            ``result = instance.__post_init__()``
-            Expected behavior: Initialize mutable block text from its original value.
-        """
-        if not self.current_text:
-            self.current_text = self.text
-
-    def update(self, value: str):
-        """Replace the block's current editable text.
-
-        Example:
-            ``instance.update("value")``
-            Expected behavior: Replace the block's current editable text.
-        """
         self.current_text = value
 
     @property
     def content(self) -> str:
-        """Compatibility alias for code that expects ``block.content``.
+        """Compatibility alias for the current block text."""
 
-        Example:
-            ``value = instance.content``
-            Expected behavior: Compatibility alias for code that expects ``block.content``.
-        """
-        return self.current_text
+        return self.current_text if self.current_text is not None else ""
 
     @content.setter
     def content(self, value: str) -> None:
-        """Replace the block text through the compatibility property.
-
-        Example:
-            ``instance.content = "value"``
-            Expected behavior: Replace the block text through the compatibility property.
-        """
-
         self.current_text = value
-
-
-# ==========================================================
-# Markdown Document
-# ==========================================================
 
 
 @dataclass
 class MarkdownDocument:
-    """Store parsed Markdown blocks in their original document order.
+    """Store parsed Markdown blocks in source order."""
 
-    Editable prose blocks can be transformed independently while protected code,
-    HTML, and structural blocks survive reconstruction unchanged.
+    source: Path | None = None
+    blocks: list[MarkdownBlock] = field(default_factory=list)
+    trailing_newline: bool = False
 
-    Example::
-
-        document = parse_markdown("# Chapter 1\n\nStory text.")
-        for block in document.editable_blocks():
-            block.update(block.current_text.strip())
-        cleaned = document.to_markdown()
-    """
-
-    source: Optional[Path] = None
-
-    blocks: List[MarkdownBlock] = field(default_factory=list)
-
-    def add(self, block: MarkdownBlock):
-        """Append a parsed block in document order.
-
-        Example:
-            ``instance.add(block)``
-            Expected behavior: Append a parsed block in document order.
-        """
-
+    def add(self, block: MarkdownBlock) -> None:
         self.blocks.append(block)
 
-    def __len__(self):
-        """Return the number of parsed blocks.
-
-        Example:
-            ``result = instance.__len__()``
-            Expected behavior: Return the number of parsed blocks.
-        """
-
+    def __len__(self) -> int:
         return len(self.blocks)
 
-    def __iter__(self):
-        """Iterate over parsed blocks in document order.
-
-        Example:
-            ``result = instance.__iter__()``
-            Expected behavior: Iterate over parsed blocks in document order.
-        """
-
+    def __iter__(self) -> Iterator[MarkdownBlock]:
         return iter(self.blocks)
 
-    def editable_blocks(self):
-        """Yield blocks whose prose content may be edited.
+    def editable_blocks(self) -> Iterator[MarkdownBlock]:
+        """Yield blocks whose narrative content may be edited."""
 
-        Example:
-            ``result = instance.editable_blocks()``
-            Expected behavior: Yield blocks whose prose content may be edited.
-        """
+        return (block for block in self.blocks if block.editable)
 
-        for block in self.blocks:
+    def protected_blocks(self) -> Iterator[MarkdownBlock]:
+        """Yield structural blocks that must remain unchanged."""
 
-            if block.editable:
-                yield block
-
-    def protected_blocks(self):
-        """Yield structural blocks that must remain unchanged.
-
-        Example:
-            ``result = instance.protected_blocks()``
-            Expected behavior: Yield structural blocks that must remain unchanged.
-        """
-
-        for block in self.blocks:
-
-            if not block.editable:
-                yield block
+        return (block for block in self.blocks if not block.editable)
 
     def rebuild(self) -> str:
-        """Reconstruct markdown exactly as stored.
+        """Compatibility alias for :meth:`to_markdown`."""
 
-        Example:
-            ``result = instance.rebuild()``
-            Expected behavior: Reconstruct markdown exactly as stored.
-        """
+        return self.to_markdown()
 
-        return "\n".join(block.current_text for block in self.blocks)
+    def statistics(self) -> dict[str, int]:
+        """Return block counts grouped by block type."""
 
-    def statistics(self):
-        """Return block counts grouped by block type.
-
-        Example:
-            ``result = instance.statistics()``
-            Expected behavior: Return block counts grouped by block type.
-        """
-
-        stats = {}
-
+        statistics: dict[str, int] = {}
         for block in self.blocks:
-
             name = block.block_type.name
-
-            stats[name] = stats.get(name, 0) + 1
-
-        return stats
+            statistics[name] = statistics.get(name, 0) + 1
+        return statistics
 
     def to_markdown(self) -> str:
-        """Rebuild the markdown exactly as parsed.
+        """Rebuild normalized-LF Markdown while preserving final-newline state."""
 
-        Example:
-            ``result = instance.to_markdown()``
-            Expected behavior: Rebuild the markdown exactly as parsed.
-        """
-        # Blocks are parsed from ``splitlines()`` (without line endings),
-        # so a newline must be reinserted between adjacent blocks.
-        return "\n".join(block.current_text for block in self.blocks)
-
-
-# ==========================================================
-# Parser Skeleton
-# ==========================================================
-
-import re
-
-FENCE_PATTERN = re.compile(r"^(\s*)(`{3,}|~{3,})(.*)$")
-HTML_START = re.compile(r"^\s*<([A-Za-z][A-Za-z0-9]*)\b")
-HTML_END = re.compile(r".*</([A-Za-z][A-Za-z0-9]*)>\s*$")
+        markdown = "\n".join(block.content for block in self.blocks)
+        if self.trailing_newline:
+            markdown += "\n"
+        return markdown
 
 
 class MarkdownParser:
-    """Parse Markdown into typed blocks while preserving source structure.
+    """Parse Markdown into editable prose and protected structural blocks."""
 
-    Fenced code, HTML blocks, tables, lists, headings, quotes, separators, and
-    prose receive distinct block types. Cleanup stages can therefore edit
-    narrative text without corrupting protected Markdown syntax.
+    @staticmethod
+    def _block(
+        block_type: BlockType,
+        lines: list[str],
+        start: int,
+        end: int | None = None,
+        *,
+        editable: bool = False,
+    ) -> MarkdownBlock:
+        """Build a block from inclusive zero-based line indexes."""
 
-    Example:
-        ``instance = MarkdownParser()``
-        Expected behavior: Parse Markdown into typed blocks while preserving source structure.
-    """
+        final = start if end is None else end
+        return MarkdownBlock(
+            block_type=block_type,
+            text="\n".join(lines[start : final + 1]),
+            start_line=start + 1,
+            end_line=final + 1,
+            editable=editable,
+        )
+
+    @staticmethod
+    def _is_paragraph_boundary(lines: list[str], index: int) -> bool:
+        """Return whether ``lines[index]`` starts a protected block."""
+
+        current = lines[index]
+        total = len(lines)
+        return bool(
+            not current.strip()
+            or HEADING_ATX.match(current)
+            or (
+                index + 1 < total
+                and current.strip()
+                and HEADING_SETEXT.match(lines[index + 1])
+            )
+            or HORIZONTAL_RULE.match(current)
+            or BLOCKQUOTE.match(current)
+            or LIST_ITEM.match(current)
+            or (
+                index + 1 < total
+                and TABLE_ROW.match(current)
+                and TABLE_SEPARATOR.match(lines[index + 1])
+            )
+            or FOOTNOTE.match(current)
+            or REFERENCE_LINK.match(current)
+            or IMAGE_ONLY.match(current)
+            or LINK_ONLY.match(current)
+            or FENCE_PATTERN.match(current)
+            or current.startswith(("    ", "\t"))
+            or HTML_COMMENT_START.match(current)
+            or HTML_DECLARATION.match(current)
+            or HTML_START.match(current)
+        )
+
+    @staticmethod
+    def _frontmatter_end(lines: list[str]) -> int | None:
+        """Return a closing delimiter only for mapping-shaped YAML metadata."""
+
+        for end in range(1, len(lines)):
+            if lines[end].strip() != "---":
+                continue
+            try:
+                data = yaml.safe_load("\n".join(lines[1:end]))
+            except yaml.YAMLError:
+                return None
+            return end if isinstance(data, dict) else None
+        return None
+
+    @staticmethod
+    def _html_block_end(
+        lines: list[str],
+        start: int,
+        opening: re.Match[str],
+    ) -> int:
+        """Find a matching close without swallowing an unclosed document tail."""
+
+        line = lines[start]
+        tag = opening.group(1)
+        if (
+            tag.casefold() in HTML_VOID_TAGS
+            or line.rstrip().endswith("/>")
+            or HTML_AUTOLINK.match(line)
+        ):
+            return start
+
+        closing = re.compile(rf".*</{re.escape(tag)}>\s*$", re.IGNORECASE)
+        for index in range(start, len(lines)):
+            if closing.match(lines[index]):
+                return index
+
+        # CommonMark-style block HTML remains protected until a blank-line
+        # boundary when its explicit close is absent.
+        index = start
+        while index + 1 < len(lines) and lines[index + 1].strip():
+            index += 1
+        return index
+
+    @staticmethod
+    def _html_comment_end(lines: list[str], start: int) -> int:
+        """Find a bounded HTML comment, or protect only its unclosed opener."""
+
+        for index in range(start, len(lines)):
+            if HTML_COMMENT_END.search(lines[index]):
+                return index
+
+        index = start
+        while index + 1 < len(lines) and lines[index + 1].strip():
+            index += 1
+        return index
+
+    @staticmethod
+    def _is_closing_fence(line: str, opening_marker: str) -> bool:
+        """Return whether a line is a valid close for the opening fence."""
+
+        character = re.escape(opening_marker[0])
+        return bool(
+            re.fullmatch(
+                rf"[ \t]{{0,3}}{character}{{{len(opening_marker)},}}[ \t]*",
+                line,
+            )
+        )
 
     def parse(self, markdown: str) -> MarkdownDocument:
-        """Parse Markdown text into a structured document model.
+        """Parse Markdown while retaining block order and final-newline state."""
 
-                        ``MarkdownParser().parse("# Dawn
-
-                Hello.").statistics()`` returns
-                        counts for the heading, blank, and paragraph block types.
-
-                Example:
-                    ``result = instance.parse("# Chapter 1
-
-        Story.")`` demonstrates this behavior: Parse Markdown text into a structured document model.
-
-        Example:
-            ``result = instance.parse("# Chapter 1\n\nStory.")``
-            Expected behavior: Parse Markdown text into a structured document model.
-        """
-
-        document = MarkdownDocument()
         lines = markdown.splitlines()
-
-        i = 0
-
+        document = MarkdownDocument(
+            trailing_newline=markdown.endswith(("\n", "\r")),
+        )
         total = len(lines)
+        index = 0
 
-        while i < total:
+        while index < total:
+            line = lines[index]
 
-            line = lines[i]
-
-            #
-            # Blank line
-            #
-            if line.strip() == "":
-
-                document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.BLANK,
-                        text="",
-                        start_line=i + 1,
-                        end_line=i + 1,
-                        editable=False,
-                    )
-                )
-
-                i += 1
+            if not line.strip():
+                document.add(self._block(BlockType.BLANK, lines, index))
+                index += 1
                 continue
 
-            #
-            # YAML front matter
-            #
-            if i == 0 and line.strip() == "---":
-
-                start = i
-
-                i += 1
-
-                while i < total:
-
-                    if lines[i].strip() == "---":
-
-                        break
-
-                    i += 1
-
-                end = min(i, total - 1)
-
-                document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.YAML_FRONTMATTER,
-                        text="\n".join(lines[start : end + 1]),
-                        start_line=start + 1,
-                        end_line=end + 1,
-                        editable=False,
+            if index == 0 and line.strip() == "---":
+                end = self._frontmatter_end(lines)
+                if end is not None:
+                    document.add(
+                        self._block(
+                            BlockType.YAML_FRONTMATTER,
+                            lines,
+                            index,
+                            end,
+                        )
                     )
-                )
+                    index = end + 1
+                    continue
 
-                i = end + 1
+            fence = FENCE_PATTERN.match(line)
+            if fence:
+                marker = fence.group(2)
+                start = index
+                index += 1
+                while index < total and not self._is_closing_fence(
+                    lines[index],
+                    marker,
+                ):
+                    index += 1
+                end = min(index, total - 1)
+                document.add(self._block(BlockType.CODE_FENCE, lines, start, end))
+                index = end + 1
                 continue
 
-            #
-            # Fenced code block
-            #
-            match = FENCE_PATTERN.match(line)
-
-            if match:
-
-                marker = match.group(2)
-
-                start = i
-
-                i += 1
-
-                while i < total:
-
-                    current = lines[i]
-
-                    if current.strip().startswith(marker):
-
-                        break
-
-                    i += 1
-
-                end = min(i, total - 1)
-
+            if line.startswith(("    ", "\t")):
+                start = index
+                index += 1
+                while index < total and lines[index].startswith(("    ", "\t")):
+                    index += 1
                 document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.CODE_FENCE,
-                        text="\n".join(lines[start : end + 1]),
-                        start_line=start + 1,
-                        end_line=end + 1,
-                        editable=False,
-                    )
+                    self._block(BlockType.CODE_FENCE, lines, start, index - 1)
                 )
-
-                i = end + 1
-
                 continue
 
-            #
-            # Indented code block
-            #
-            if line.startswith("    ") or line.startswith("\t"):
-
-                start = i
-
-                i += 1
-
-                while i < total:
-
-                    current = lines[i]
-
-                    if current.startswith("    ") or current.startswith("\t"):
-
-                        i += 1
-
-                        continue
-
-                    break
-
-                end = i - 1
-
-                document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.CODE_FENCE,
-                        text="\n".join(lines[start : end + 1]),
-                        start_line=start + 1,
-                        end_line=end + 1,
-                        editable=False,
-                    )
-                )
-
+            if HTML_COMMENT_START.match(line):
+                start = index
+                end = self._html_comment_end(lines, index)
+                document.add(self._block(BlockType.HTML, lines, start, end))
+                index = end + 1
                 continue
 
-            #
-            # HTML block
-            #
-            if HTML_START.match(line):
-
-                start = i
-
-                if HTML_END.match(line):
-
-                    end = i
-
-                else:
-
-                    i += 1
-
-                    while i < total:
-
-                        if HTML_END.match(lines[i]):
-
-                            break
-
-                        i += 1
-
-                    end = min(i, total - 1)
-
-                document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.HTML,
-                        text="\n".join(lines[start : end + 1]),
-                        start_line=start + 1,
-                        end_line=end + 1,
-                        editable=False,
-                    )
-                )
-
-                i = end + 1
-
+            if HTML_DECLARATION.match(line):
+                document.add(self._block(BlockType.HTML, lines, index))
+                index += 1
                 continue
 
-            #
-            # Normal paragraph
-            #
-            # ======================================================
-            # ATX heading
-            # ======================================================
+            html = HTML_START.match(line)
+            if html:
+                end = self._html_block_end(lines, index, html)
+                document.add(self._block(BlockType.HTML, lines, index, end))
+                index = end + 1
+                continue
+
             if HEADING_ATX.match(line):
-
-                document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.HEADING,
-                        text=line,
-                        start_line=i + 1,
-                        end_line=i + 1,
-                        editable=False,
-                    )
-                )
-
-                i += 1
+                document.add(self._block(BlockType.HEADING, lines, index))
+                index += 1
                 continue
 
-            # ======================================================
-            # Setext heading (previous line + underline)
-            # ======================================================
             if (
-                i + 1 < total
-                and lines[i].strip() != ""
-                and HEADING_SETEXT.match(lines[i + 1])
+                index + 1 < total
+                and line.strip()
+                and HEADING_SETEXT.match(lines[index + 1])
             ):
-
                 document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.HEADING,
-                        text=lines[i] + "\n" + lines[i + 1],
-                        start_line=i + 1,
-                        end_line=i + 2,
-                        editable=False,
-                    )
+                    self._block(BlockType.HEADING, lines, index, index + 1)
                 )
-
-                i += 2
+                index += 2
                 continue
 
-            # ======================================================
-            # Horizontal rule
-            # ======================================================
             if HORIZONTAL_RULE.match(line):
-
-                document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.HORIZONTAL_RULE,
-                        text=line,
-                        start_line=i + 1,
-                        end_line=i + 1,
-                        editable=False,
-                    )
-                )
-
-                i += 1
+                document.add(self._block(BlockType.HORIZONTAL_RULE, lines, index))
+                index += 1
                 continue
 
-            # ======================================================
-            # Blockquote
-            # ======================================================
             if BLOCKQUOTE.match(line):
-
-                start = i
-                quote = [line]
-
-                i += 1
-
-                while i < total and BLOCKQUOTE.match(lines[i]):
-
-                    quote.append(lines[i])
-                    i += 1
-
+                start = index
+                index += 1
+                while index < total and BLOCKQUOTE.match(lines[index]):
+                    index += 1
                 document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.BLOCKQUOTE,
-                        text="\n".join(quote),
-                        start_line=start + 1,
-                        end_line=i,
-                        editable=False,
-                    )
+                    self._block(BlockType.BLOCKQUOTE, lines, start, index - 1)
                 )
-
                 continue
 
-            # ======================================================
-            # List block
-            # ======================================================
             if LIST_ITEM.match(line):
-
-                start = i
-                items = [line]
-
-                i += 1
-
-                while i < total:
-
-                    current = lines[i]
-
-                    if LIST_ITEM.match(current):
-
-                        items.append(current)
-                        i += 1
+                start = index
+                index += 1
+                while index < total:
+                    current = lines[index]
+                    if LIST_ITEM.match(current) or current.startswith(("    ", "\t")):
+                        index += 1
                         continue
-
-                    if current.startswith("    ") or current.startswith("\t"):
-
-                        items.append(current)
-                        i += 1
-                        continue
-
                     break
-
-                document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.LIST,
-                        text="\n".join(items),
-                        start_line=start + 1,
-                        end_line=i,
-                        editable=False,
-                    )
-                )
-
+                document.add(self._block(BlockType.LIST, lines, start, index - 1))
                 continue
 
-            # ======================================================
-            # Table block
-            # ======================================================
             if (
-                i + 1 < total
+                index + 1 < total
                 and TABLE_ROW.match(line)
-                and TABLE_SEPARATOR.match(lines[i + 1])
+                and TABLE_SEPARATOR.match(lines[index + 1])
             ):
-
-                start = i
-                rows = [line, lines[i + 1]]
-
-                i += 2
-
-                while i < total and TABLE_ROW.match(lines[i]):
-
-                    rows.append(lines[i])
-                    i += 1
-
-                document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.TABLE,
-                        text="\n".join(rows),
-                        start_line=start + 1,
-                        end_line=i,
-                        editable=False,
-                    )
-                )
-
+                start = index
+                index += 2
+                while index < total and TABLE_ROW.match(lines[index]):
+                    index += 1
+                document.add(self._block(BlockType.TABLE, lines, start, index - 1))
                 continue
 
-            # ======================================================
-            # Footnote definition
-            # ======================================================
             if FOOTNOTE.match(line):
-
-                start = i
-                foot = [line]
-
-                i += 1
-
-                while i < total and (
-                    lines[i].startswith("    ") or lines[i].startswith("\t")
-                ):
-
-                    foot.append(lines[i])
-                    i += 1
-
+                start = index
+                index += 1
+                while index < total and lines[index].startswith(("    ", "\t")):
+                    index += 1
                 document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.FOOTNOTE,
-                        text="\n".join(foot),
-                        start_line=start + 1,
-                        end_line=i,
-                        editable=False,
-                    )
+                    self._block(BlockType.FOOTNOTE, lines, start, index - 1)
                 )
-
                 continue
 
-            # ======================================================
-            # Reference link definition
-            # ======================================================
             if REFERENCE_LINK.match(line):
-
-                document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.LINK,
-                        text=line,
-                        start_line=i + 1,
-                        end_line=i + 1,
-                        editable=False,
-                    )
-                )
-
-                i += 1
+                document.add(self._block(BlockType.LINK, lines, index))
+                index += 1
                 continue
 
-            # ======================================================
-            # Standalone image
-            # ======================================================
             if IMAGE_ONLY.match(line):
-
-                document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.IMAGE,
-                        text=line,
-                        start_line=i + 1,
-                        end_line=i + 1,
-                        editable=False,
-                    )
-                )
-
-                i += 1
+                document.add(self._block(BlockType.IMAGE, lines, index))
+                index += 1
                 continue
 
-            # ======================================================
-            # Standalone link
-            # ======================================================
             if LINK_ONLY.match(line):
-
-                document.add(
-                    MarkdownBlock(
-                        block_type=BlockType.LINK,
-                        text=line,
-                        start_line=i + 1,
-                        end_line=i + 1,
-                        editable=False,
-                    )
-                )
-
-                i += 1
+                document.add(self._block(BlockType.LINK, lines, index))
+                index += 1
                 continue
 
-            # ======================================================
-            # Editable paragraph
-            # ======================================================
-            start = i
-            paragraph = [line]
-
-            i += 1
-
-            while i < total:
-
-                current = lines[i]
-
-                if current.strip() == "":
-                    break
-
-                if HEADING_ATX.match(current):
-                    break
-
-                if (
-                    i + 1 < total
-                    and lines[i].strip() != ""
-                    and HEADING_SETEXT.match(lines[i + 1])
-                ):
-                    break
-
-                if HORIZONTAL_RULE.match(current):
-                    break
-
-                if BLOCKQUOTE.match(current):
-                    break
-
-                if LIST_ITEM.match(current):
-                    break
-
-                if (
-                    i + 1 < total
-                    and TABLE_ROW.match(current)
-                    and TABLE_SEPARATOR.match(lines[i + 1])
-                ):
-                    break
-
-                if FOOTNOTE.match(current):
-                    break
-
-                if REFERENCE_LINK.match(current):
-                    break
-
-                if IMAGE_ONLY.match(current):
-                    break
-
-                if LINK_ONLY.match(current):
-                    break
-
-                if FENCE_PATTERN.match(current):
-                    break
-
-                if current.startswith("    ") or current.startswith("\t"):
-                    break
-
-                if HTML_START.match(current):
-                    break
-
-                paragraph.append(current)
-                i += 1
-
+            start = index
+            index += 1
+            while index < total and not self._is_paragraph_boundary(lines, index):
+                index += 1
             document.add(
-                MarkdownBlock(
-                    block_type=BlockType.PARAGRAPH,
-                    text="\n".join(paragraph),
-                    start_line=start + 1,
-                    end_line=i,
+                self._block(
+                    BlockType.PARAGRAPH,
+                    lines,
+                    start,
+                    index - 1,
                     editable=True,
                 )
             )
@@ -855,15 +485,7 @@ class MarkdownParser:
         return document
 
 
-# ==========================================================
-# Convenience API
-# ==========================================================
-
-
 def parse_markdown(text: str) -> MarkdownDocument:
-    """Parse Markdown text using a fresh default parser.
-
-    This convenience function is equivalent to ``MarkdownParser().parse(text)``.
-    """
+    """Parse Markdown text using a fresh default parser."""
 
     return MarkdownParser().parse(text)

@@ -14,6 +14,7 @@ from .engine import SymSpellEngine
 from .frequency import WordfreqScorer
 from .settings import SymSpellSettings
 from ..core.stage import PipelineStage, StageResult
+from ..markdown.segmenter import MarkdownSegment, process_editable_spans
 
 
 class SymSpellStage(PipelineStage):
@@ -116,15 +117,18 @@ class SymSpellStage(PipelineStage):
             merger=merger,
         )
         for segment in context.iter_segments():
-            segment.current_text = self._merge_broken_words(
-                segment,
-                merger=merger,
-            )
-            segment.current_text = self._process_text(
-                segment,
-                self.settings.confidence_threshold,
-                corrector=corrector,
-            )
+            def process(editable: MarkdownSegment) -> None:
+                editable.current_text = self._merge_broken_words(
+                    editable,
+                    merger=merger,
+                )
+                editable.current_text = self._process_text(
+                    editable,
+                    self.settings.confidence_threshold,
+                    corrector=corrector,
+                )
+
+            process_editable_spans(segment, process)
         return StageResult(
             stage=self.name,
             changes=context.total_changes - start_changes,

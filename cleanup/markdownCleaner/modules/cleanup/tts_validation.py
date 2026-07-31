@@ -54,7 +54,14 @@ class TTSValidationStage(PipelineStage):
         paragraphs prefer a nearby word boundary. For example,
         ``validation_chunks("# Dawn\n\nThe story begins.")`` returns
         ``["Dawn", "The story begins."]``.
+
+        Raises:
+            ValueError: If ``chunk_size`` is not positive. Rejecting an invalid
+                bound prevents the oversized-paragraph loop from stalling.
         """
+        if chunk_size <= 0:
+            raise ValueError("TTS validation chunk_size must be greater than zero")
+
         chunks: list[str] = []
         for paragraph in re.split(r"\n\s*\n+", text):
             value = re.sub(r"(?m)^\s*#{1,6}\s*", "", paragraph).strip()
@@ -78,6 +85,9 @@ class TTSValidationStage(PipelineStage):
             ``issues("R&D <draft>")`` reports ``XML_BRACKETS`` and
             ``RAW_AMPERSAND``. Already escaped ``&amp;`` is not reported as raw.
         """
+        if minimum_alpha < 0:
+            raise ValueError("TTS validation minimum_alpha cannot be negative")
+
         found: list[str] = []
         alpha = sum(char.isalpha() for char in chunk)
         if alpha < minimum_alpha:

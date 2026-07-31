@@ -6,11 +6,25 @@ Generate human-readable OCR cleanup summary report.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 
 from pathlib import Path
 
 from datetime import datetime
+
+
+def _table_cell(value: object) -> str:
+    """Escape a value for a single Markdown table cell."""
+    return str(value).replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
+
+
+def _fenced_block(value: object) -> str:
+    """Render arbitrary text in a fence longer than any contained backtick run."""
+    text = str(value)
+    longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
+    fence = "`" * max(3, longest + 1)
+    return f"{fence}\n{text}\n{fence}\n\n"
 
 
 class SummaryReporter:
@@ -39,150 +53,76 @@ class SummaryReporter:
 
     # ---------------------------------------------------------
 
-    def generate(
-        self,
-        output_file,
-        source_file=None,
-    ):
-        """Generate markdown summary report.
+    def render(self, source_file=None, *, generated_at: str | None = None) -> str:
+        """Return the complete Markdown report without writing to disk.
 
-        Args:
-            output_file:
-                Report markdown path
-
-            source_file:
-                Original processed file name
-
-        Example:
-            ``result = instance.generate(output_file)``
-            Expected behavior: Generate markdown summary report.
+        Separating rendering from I/O makes report behavior straightforward to
+        test. Review excerpts use adaptive code fences, so OCR text containing
+        triple backticks cannot corrupt the report structure.
         """
-
-        output_path = Path(output_file)
-
-        output_path.parent.mkdir(
-            parents=True,
-            exist_ok=True,
+        generated_at = generated_at or datetime.now().isoformat()
+        records = self.change_log.records
+        review_items = self.change_log.needs_review(self.review_threshold)
+        automatic_count = len(
+            self.change_log.high_confidence(self.review_threshold)
         )
+        stage_counter = Counter(record.stage for record in records)
 
-        lines = []
-
-        #
-        # Header
-        #
-
-        lines.append("# OCR Cleanup Report\n\n")
-
-        lines.append("Generated:\n\n")
-
-        lines.append(f"{datetime.now().isoformat()}\n\n")
-
-        #
-        # Source file
-        #
-
+        lines = [
+            "# OCR Cleanup Report\n\n",
+            "Generated:\n\n",
+            f"{generated_at}\n\n",
+        ]
         if source_file:
+            lines.extend(["## File\n\n", f"{source_file}\n\n"])
 
-            lines.append("## File\n\n")
-
-            lines.append(f"{source_file}\n\n")
-
-        #
-        # Total changes
-        #
-
-        total_changes = self.change_log.total_changes()
-
-        lines.append("## Summary\n\n")
-
-        lines.append(f"Total corrections: {total_changes}\n\n")
-
-        #
-        # Stage statistics
-        #
-
-        lines.append("## Changes by Stage\n\n")
-
-        stage_counter = Counter()
-
-        for record in self.change_log.records:
-
-            stage_counter[record.stage] += 1
-
+        lines.extend(
+            [
+                "## Summary\n\n",
+                f"Total audit records: {len(records)}\n\n",
+                "## Changes by Stage\n\n",
+            ]
+        )
         if stage_counter:
-
-            lines.append("| Stage | Changes |\n")
-
-            lines.append("|---|---:|\n")
-
-            for stage, count in sorted(stage_counter.items()):
-
-                lines.append(f"| {stage} | {count} |\n")
-
+            lines.extend(["| Stage | Changes |\n", "|---|---:|\n"])
+            lines.extend(
+                f"| {_table_cell(stage)} | {count} |\n"
+                for stage, count in sorted(stage_counter.items())
+            )
         else:
-
             lines.append("No changes recorded.\n")
 
-        #
-        # Confidence statistics
-        #
-
-        lines.append("\n## Confidence\n\n")
-
-        automatic_count = len(self.change_log.high_confidence(self.review_threshold))
-
-        review_count = len(self.change_log.needs_review(self.review_threshold))
-
-        lines.append(f"Threshold: {self.review_threshold}%\n\n")
-
-        lines.append(f"Automatic corrections: {automatic_count}\n\n")
-
-        lines.append(f"Review required: {review_count}\n\n")
-
-        #
-        # Review section
-        #
-
-        review_items = self.change_log.needs_review(self.review_threshold)
-
-        if review_items:
-
-            lines.append("## Review Required\n\n")
-
-            for index, item in enumerate(
-                review_items,
-                start=1,
-            ):
-
-                lines.append(f"### {index}\n\n")
-
-                lines.append("Before:\n\n")
-
-                lines.append("```\n")
-
-                lines.append(f"{item.before}\n")
-
-                lines.append("```\n\n")
-
-                lines.append("After:\n\n")
-
-                lines.append("```\n")
-
-                lines.append(f"{item.after}\n")
-
-                lines.append("```\n\n")
-
-                lines.append(f"Confidence: {item.confidence}%\n\n")
-
-                lines.append(f"Reason: {item.reason}\n\n")
-
-        #
-        # Write report
-        #
-
-        output_path.write_text(
-            "".join(lines),
-            encoding="utf-8",
+        lines.extend(
+            [
+                "\n## Confidence\n\n",
+                f"Threshold: {self.review_threshold}%\n\n",
+                f"High-confidence records: {automatic_count}\n\n",
+                f"Review required: {len(review_items)}\n\n",
+            ]
         )
 
+        if review_items:
+            lines.append("## Review Required\n\n")
+            for index, item in enumerate(review_items, start=1):
+                lines.extend(
+                    [
+                        f"### {index}\n\n",
+                        "Before:\n\n",
+                        _fenced_block(item.before),
+                        "After:\n\n",
+                        _fenced_block(item.after),
+                        f"Confidence: {item.confidence}%\n\n",
+                        f"Reason: {item.reason}\n\n",
+                    ]
+                )
+                if item.broken_word:
+                    lines.append(f"Broken word: {item.broken_word}\n\n")
+
+        return "".join(lines)
+
+    def generate(self, output_file, source_file=None):
+        """Generate a Markdown summary report and return its path."""
+        output_path = Path(output_file)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(self.render(source_file), encoding="utf-8")
         return output_path

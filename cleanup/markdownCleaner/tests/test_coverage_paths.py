@@ -205,7 +205,7 @@ def test_change_log_filters_and_summary_export(tmp_path):
         tmp_path / "summary.md", "book.md"
     )
     report = summary.read_text(encoding="utf-8")
-    assert "Total corrections: 2" in report
+    assert "Total audit records: 2" in report
     assert "Review Required" in report
     assert "book.md" in report
 

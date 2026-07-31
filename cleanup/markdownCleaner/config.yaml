@@ -1,24 +1,16 @@
-pipeline:
-  name: "Novel OCR Cleanup"
-  version: "2.0"
-
 paths:
-  backup_directory: "backup"
-  output_directory: "output"
-  temp_directory: "temp"
+  # Relative paths are resolved from this configuration file.
+  output_directory: "../output"
 
 backup:
   enabled: true
-  directory: "backup"
-  keep_history: true
-  include_hash: true
+  directory: "../backup"
 
 cleanup:
   enabled: true
-  remove_picture_ocr: true
   remove_front_matter: true
   # Sequence-independent cleanup: only explicitly named sections are removed.
-  # Other sections are always retained regardless of where they appear.
+  # Other enabled cleanup policies (metadata, tails, footnotes) apply separately.
   excluded_sections:
     - "Afterword"
     - "Aferword"
@@ -26,8 +18,8 @@ cleanup:
     - "Character Profile"
     - "Character Profles"
     - "Character Profle"
-  # Picture OCR modes: safe | keep | remove. Safe preserves readable captions,
-  # profiles, diagrams, etc. and removes only likely gibberish.
+  # Picture OCR modes: safe | keep | remove. Safe retains picture text that
+  # passes conservative language/readability checks.
   picture_ocr_mode: "safe"
   remove_promotional_tail: true
   remove_publisher_tail: true
@@ -115,8 +107,9 @@ report:
   export_json: true
   export_summary: true
   include_low_confidence: true
+  review_threshold: 85
 
 logging:
   level: "INFO"
-  directory: "logs"
-  file: "logs/pipeline.log"
+  directory: "../logs"
+  file: "../logs/pipeline.log"

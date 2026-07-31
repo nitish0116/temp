@@ -3,239 +3,96 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-import json
-from pathlib import Path
-import re
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 
 from ..core.stage import PipelineStage, StageResult
+from ..markdown.segmenter import MarkdownSegment, split_protected_spans
 from .dictionary import DictionaryManager
 from .engine import SymSpellEngine
-
-
-WORD = re.compile(r"[A-Za-z]+(?:['’][A-Za-z]+|-[A-Za-z]+)*")
-TERM = re.compile(rf"{WORD.pattern}(?:\s+{WORD.pattern})*")
-LEARNED_DESCRIPTION = (
-    "Words explicitly reviewed by the user. Add entries with "
-    "`python -m markdownCleaner.cli --learn-words WORD ...`."
+from .tokens import TERM_PATTERN
+from .tokens import WORD_PATTERN
+from .vocabulary_classification import classify_candidate
+from .vocabulary_store import (
+    LEARNED_DESCRIPTION,
+    REJECTED_DESCRIPTION,
+    load_reviewed_words,
+    merge_approved_words,
+    merge_learned_words,
+    merge_rejected_words,
+    merge_words as _merge_words,
+    word_list as _word_list,
 )
-REJECTED_DESCRIPTION = (
-    "Reviewed terms intentionally excluded from glossary candidate reports. "
-    "They are not protected from SymSpell correction. Add entries with "
-    "`python -m markdownCleaner.cli --reject-words WORD ...`."
-)
-
-DETERMINERS = {"a", "an", "the", "this", "that", "these", "those", "each", "every"}
-SUBJECT_PRONOUNS = {"i", "you", "he", "she", "it", "we", "they"}
-MODALS = {"can", "could", "may", "might", "must", "shall", "should", "will", "would"}
-COPULAS = {"am", "are", "be", "been", "being", "is", "was", "were", "become", "seem"}
-DEGREE_WORDS = {
-    "fairly",
-    "less",
-    "more",
-    "most",
-    "quite",
-    "rather",
-    "so",
-    "too",
-    "very",
-}
-NOUN_TITLES = {
-    "captain",
-    "colonel",
-    "doctor",
-    "general",
-    "major",
-    "mr",
-    "mrs",
-    "professor",
-}
 
 
-def classify_candidate(
-    word: str, contexts: list[tuple[str | None, str | None]] | None = None
-) -> tuple[str, float, str]:
-    """Conservatively infer whether a candidate is a noun, adjective, or verb.
-
-    Votes come from the words immediately before and after each occurrence.
-    No suffix or spelling rule is used. Conflicting or weak contexts remain
-    ``unknown`` rather than receiving a misleading category.
-
-    Examples:
-        ``classify_candidate("armored", [("an", "vehicle")])`` returns an
-        adjective, while ``classify_candidate("armored", [("they", "the")])``
-        returns a verb.
-    """
-    value = word.strip()
-    if not value:
-        return "unknown", 0.0, "empty candidate"
-    votes: Counter[str] = Counter()
-    evidence: Counter[str] = Counter()
-    for previous, following in contexts or []:
-        previous = previous.casefold() if previous else None
-        following = following.casefold() if following else None
-        if previous == "to" or previous in MODALS:
-            votes["verb"] += 3
-            evidence["infinitive/modal context"] += 1
-        if previous in SUBJECT_PRONOUNS and following in DETERMINERS:
-            votes["verb"] += 3
-            evidence["subject + candidate + object context"] += 1
-        if following in DETERMINERS:
-            votes["verb"] += 2
-            evidence["candidate followed by determiner/object"] += 1
-        if previous in DEGREE_WORDS or previous in COPULAS:
-            votes["adjective"] += 2
-            evidence["degree/copular context"] += 1
-        if previous in NOUN_TITLES or following in COPULAS:
-            votes["noun"] += 3
-            evidence["title or subject-before-copula context"] += 1
-        if previous in DETERMINERS:
-            category = (
-                "noun" if following in COPULAS or following is None else "adjective"
-            )
-            votes[category] += 2
-            evidence[f"determiner + {category} context"] += 1
-
-    if not votes:
-        return "unknown", 0.0, "insufficient contextual evidence"
-    ranked = votes.most_common()
-    winner, score = ranked[0]
-    runner_up = ranked[1][1] if len(ranked) > 1 else 0
-    if score == runner_up:
-        return "unknown", 0.0, "conflicting contextual evidence"
-    confidence = round(min(0.95, 0.55 + (score - runner_up) * 0.1), 2)
-    basis = evidence.most_common(1)[0][0]
-    return winner, confidence, basis
+WORD = WORD_PATTERN
+TERM = TERM_PATTERN
 
 
-def _word_list(data, *, label: str) -> list[str]:
-    """Extract words from legacy or structured vocabulary JSON.
+@dataclass(slots=True)
+class VocabularyInventory:
+    """Bounded occurrence evidence collected from one document."""
 
-    Example:
-        ``_word_list({"words": ["sitrep"]}, label="Learned words")`` returns
-        ``["sitrep"]``. Legacy JSON lists and word-keyed objects remain valid.
-    """
-    if isinstance(data, list):
-        return [str(word) for word in data]
-    if isinstance(data, dict):
-        if "words" in data:
-            words = data["words"]
-            if not isinstance(words, list):
-                raise ValueError(f"{label} JSON field 'words' must be a list.")
-            return [str(word) for word in words]
-        return [str(word) for word in data if not str(word).startswith("_")]
-    raise ValueError(f"{label} JSON must contain a list or object.")
-
-
-def _merge_words(
-    path: str | Path,
-    words: list[str],
-    *,
-    structured: bool,
-    description: str = LEARNED_DESCRIPTION,
-) -> list[str]:
-    """Validate, deduplicate, sort, and persist reviewed vocabulary.
-
-    Example:
-        ``_merge_words(path, ["sitrep"], structured=True)`` writes a readable
-        object containing instructions and a sorted ``words`` list.
-    """
-    target = Path(path)
-    existing: list[str] = []
-    if target.exists():
-        try:
-            data = json.loads(target.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ValueError(
-                f"Invalid JSON in {target}: line {exc.lineno}, column {exc.colno}. "
-                "Use the appropriate CLI word-review command to update it safely."
-            ) from exc
-        existing = _word_list(data, label="Vocabulary")
-
-    by_key = {word.casefold(): word for word in existing if word.strip()}
-    added: list[str] = []
-    for raw in words:
-        word = str(raw).strip()
-        if not TERM.fullmatch(word) or len(word) < 2:
-            raise ValueError(f"Invalid vocabulary word: {raw!r}")
-        if word.casefold() not in by_key:
-            by_key[word.casefold()] = word
-            added.append(word)
-
-    target.parent.mkdir(parents=True, exist_ok=True)
-    values = sorted(by_key.values(), key=str.casefold)
-    data = {"_description": description, "words": values} if structured else values
-    target.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    counts: Counter[str] = field(default_factory=Counter)
+    forms: dict[str, Counter[str]] = field(
+        default_factory=lambda: defaultdict(Counter)
     )
-    return added
-
-
-def merge_approved_words(path: str | Path, words: list[str]) -> list[str]:
-    """Merge explicitly approved terms into a JSON glossary.
-
-    Existing list- or object-based glossaries are accepted. Terms are validated,
-    deduplicated case-insensitively, sorted for stable review, and written as a
-    JSON list. Nothing is added without appearing in ``words``.
-
-    Example::
-
-        added = merge_approved_words(
-            "data/custom_words.json", ["sitrep", "Ainz Ooal Gown"]
-        )
-
-    Returns:
-        The newly inserted terms; existing terms are omitted from this list.
-
-    Raises:
-        ValueError: If the glossary shape or an approved term is invalid.
-    """
-    return _merge_words(path, words, structured=False)
-
-
-def merge_learned_words(path: str | Path, words: list[str]) -> list[str]:
-    """Safely add reviewed terms to the structured learned-word file.
-
-    Example:
-        ``merge_learned_words("data/learned_words.json", ["sitrep", "noncoms"])``
-        validates and adds only terms that are not already present.
-    """
-    return _merge_words(path, words, structured=True)
-
-
-def merge_rejected_words(path: str | Path, words: list[str]) -> list[str]:
-    """Persist terms that should not reappear as glossary candidates.
-
-    Example:
-        ``merge_rejected_words("data/rejected_words.json", ["offense"])``
-        suppresses ``offense`` from future candidate reports without protecting
-        it from SymSpell correction.
-    """
-    return _merge_words(
-        path,
-        words,
-        structured=True,
-        description=REJECTED_DESCRIPTION,
+    lines: dict[str, list[int]] = field(
+        default_factory=lambda: defaultdict(list)
     )
+    contexts: dict[
+        str,
+        list[tuple[str | None, str | None]],
+    ] = field(default_factory=lambda: defaultdict(list))
 
+    @classmethod
+    def collect(cls, text: str) -> "VocabularyInventory":
+        """Collect token forms, working lines, and bounded local contexts."""
 
-def load_reviewed_words(path: str | Path | None) -> set[str]:
-    """Load a reviewed-word file as normalized, case-insensitive keys.
+        inventory = cls()
+        inventory.add_text(text)
+        return inventory
 
-    Example:
-        ``load_reviewed_words("data/rejected_words.json")`` returns a set such
-        as ``{"offense", "humor"}``; a missing path returns an empty set.
-    """
-    if not path:
-        return set()
-    target = Path(path)
-    if not target.exists():
-        return set()
-    data = json.loads(target.read_text(encoding="utf-8"))
-    return {
-        word.strip().casefold()
-        for word in _word_list(data, label="Reviewed words")
-        if word.strip()
-    }
+    @classmethod
+    def collect_segments(
+        cls,
+        segments: Iterable[MarkdownSegment],
+    ) -> "VocabularyInventory":
+        """Collect evidence only from editable Markdown prose spans."""
+
+        inventory = cls()
+        for segment in segments:
+            line_offset = 0
+            for span in split_protected_spans(segment.get_text()):
+                if not span.protected:
+                    inventory.add_text(
+                        span.text,
+                        start_line=segment.start_line + line_offset,
+                    )
+                line_offset += span.text.count("\n")
+        return inventory
+
+    def add_text(self, text: str, *, start_line: int = 1) -> None:
+        """Add one text span while retaining its working-document line."""
+
+        for line_number, line in enumerate(text.splitlines(), start_line):
+            tokens = WORD.findall(line)
+            for index, token in enumerate(tokens):
+                key = token.casefold()
+                self.counts[key] += 1
+                self.forms[key][token] += 1
+                if len(self.lines[key]) < 10:
+                    self.lines[key].append(line_number)
+                if len(self.contexts[key]) < 20:
+                    previous = tokens[index - 1] if index else None
+                    following = (
+                        tokens[index + 1]
+                        if index + 1 < len(tokens)
+                        else None
+                    )
+                    self.contexts[key].append(
+                        (previous, following)
+                    )
 
 
 class VocabularyCandidateStage(PipelineStage):
@@ -269,7 +126,6 @@ class VocabularyCandidateStage(PipelineStage):
             ``result = instance.process(context)``
             Expected behavior: Collect and report repeated unknown terms as review-only candidates.
         """
-        text = context.current_markdown or context.original_markdown
         manager = DictionaryManager(
             dictionary_path=context.config.resolve_path(
                 context.config.get("symspell.dictionary", "builtin:en-82k")
@@ -294,22 +150,9 @@ class VocabularyCandidateStage(PipelineStage):
             )
         )
 
-        counts: Counter[str] = Counter()
-        forms: dict[str, Counter[str]] = defaultdict(Counter)
-        lines: dict[str, list[int]] = defaultdict(list)
-        contexts: dict[str, list[tuple[str | None, str | None]]] = defaultdict(list)
-        for line_number, line in enumerate(text.splitlines(), 1):
-            tokens = WORD.findall(line)
-            for index, token in enumerate(tokens):
-                key = token.casefold()
-                counts[key] += 1
-                forms[key][token] += 1
-                if len(lines[key]) < 10:
-                    lines[key].append(line_number)
-                if len(contexts[key]) < 20:
-                    previous = tokens[index - 1] if index else None
-                    following = tokens[index + 1] if index + 1 < len(tokens) else None
-                    contexts[key].append((previous, following))
+        inventory = VocabularyInventory.collect_segments(
+            context.iter_segments()
+        )
 
         engine = SymSpellEngine(
             max_edit_distance=int(context.config.get("symspell.max_edit_distance", 2))
@@ -327,7 +170,7 @@ class VocabularyCandidateStage(PipelineStage):
         if limit <= 0:
             context.metadata["glossary_candidates"] = candidates
             return StageResult(stage=self.name, changes=0)
-        for key, count in counts.most_common():
+        for key, count in inventory.counts.most_common():
             if (
                 count < minimum
                 or key in rejected
@@ -337,16 +180,16 @@ class VocabularyCandidateStage(PipelineStage):
                 continue
             if len(key) < 4 or not key.isalpha():
                 continue
-            display = forms[key].most_common(1)[0][0]
+            display = inventory.forms[key].most_common(1)[0][0]
             classification, classification_confidence, classification_basis = (
-                classify_candidate(display, contexts[key])
+                classify_candidate(display, inventory.contexts[key])
             )
             suggestions = engine.lookup(key)
             best = suggestions[0] if suggestions else None
             item = {
                 "word": display,
                 "occurrences": count,
-                "lines": lines[key],
+                "lines": inventory.lines[key],
                 "suggested_correction": best.corrected if best else None,
                 "edit_distance": best.distance if best else None,
                 "confidence": round(best.confidence, 2) if best else None,
@@ -360,7 +203,11 @@ class VocabularyCandidateStage(PipelineStage):
                 stage=self.name,
                 block_index=-1,
                 segment_index=-1,
-                line=lines[key][0] if lines[key] else 0,
+                line=(
+                    inventory.lines[key][0]
+                    if inventory.lines[key]
+                    else 0
+                ),
                 before=display,
                 after=display,
                 confidence=0.0,

@@ -1,109 +1,245 @@
-# markdownCleaner v6
+# markdownCleaner
 
-OCR/PDF-extracted novel Markdown cleanup aimed at text-to-speech preparation.
+`markdownCleaner` prepares OCR- or PDF-extracted novel Markdown for
+text-to-speech. It preserves Markdown structure, applies conservative text
+repairs, and writes audit records for processor edits, aggregate
+whole-document transformations, and review findings.
+
+The cleaner never performs a blanket whitespace join or a global `rn -> m`
+replacement. Broken-word merges require deterministic rules, dictionary
+evidence, corpus-frequency evidence, or an explicitly approved custom term.
+
+## Install and run
+
+Python 3.11 or newer is required.
+
+Run commands from the directory that contains the `markdownCleaner` package:
+
+```powershell
+cd C:\Users\z005537p\NitishWork\HM\temp\cleanup
+python -m pip install -r markdownCleaner\requirements.txt
+python -m markdownCleaner "books\Volume 01.md"
+```
+
+`python -m markdownCleaner` is the canonical entry point. The refactored
+package also retains these compatibility entry points:
+
+```powershell
+python -m markdownCleaner.cli --help
+python -m markdownCleaner.pipeline --help
+python markdownCleaner\runner.py --help
+```
+
+In a source checkout, run the module forms from `cleanup`, the directory
+containing the `markdownCleaner` package. The direct `runner.py` form also
+bootstraps that package parent when it is invoked by path from another working
+directory.
+
+Choose an output directory or another configuration:
+
+```powershell
+python -m markdownCleaner "books\Volume 01.md" -o cleaned
+python -m markdownCleaner "books\Volume 01.md" --config my_config.yaml
+```
+
+Process every Markdown file directly in a folder:
+
+```powershell
+python -m markdownCleaner books -o cleaned
+```
+
+Include subfolders and continue after individual failures:
+
+```powershell
+python -m markdownCleaner books -o cleaned --recursive --continue-on-error
+```
+
+Folder mode discovers files before processing and preserves relative
+subfolders. Within each target directory in one batch run, cleaned names are
+compared case-insensitively; generated-name collisions receive numeric
+suffixes such as ` (2)`, and their per-file report folders derive corresponding
+unique readable names. When recursion is enabled, configured output and backup
+subtrees inside the input folder are excluded, so prior generated Markdown is
+not reprocessed. An output or backup directory cannot equal the input folder.
+Exit code `0` means success, `1` means no Markdown files were found, and `2`
+means at least one file or pipeline stage failed.
 
 ## Pipeline
 
-1. Backup original file
-2. `DocumentCleanup`
-   - removes picture OCR and residual HTML comments
-   - removes title/copyright/publisher/table-of-contents front matter
-   - treats a standalone `Afterword` heading as a hard cutoff and removes everything from it to EOF
-   - removes common back matter and footnotes
-   - includes the former `NovelCleanup` behavior
-   - recognizes real `Prologue`, `Chapter`, `Interlude`, and `Epilogue` headings
-   - demotes false converter headings such as `## then—` back into prose
-   - reconstructs PDF-wrapped paragraphs
-   - strips Markdown emphasis for TTS
-   - normalizes blank lines
-3. `Unicode` normalization
-4. `RegexOCR` conservative deterministic fixes
-5. `SymSpell` safe dictionary correction
-6. Export clean Markdown and reports
+The stages run in this order:
 
-## Install
+1. Create a timestamped source backup when backup is enabled.
+2. `DocumentCleanup` removes configured non-narrative material, handles
+   picture OCR, converts Setext headings to ATX Markdown, normalizes recognized
+   narrative headings to one `#`, reconstructs wrapped prose, strips emphasis
+   when configured, and reports suspicious OCR lines.
+3. `Unicode` normalizes Unicode, invisible characters, ligatures, whitespace,
+   and punctuation.
+4. `RegexOCR` applies deterministic character, broken-word, hyphenation, and
+   repeated-character rules.
+5. `VocabularyCandidates` reports repeated unknown terms for review without
+   changing the document or glossary.
+6. `SymSpell` merges dictionary-validated OCR word splits and applies
+   high-confidence spelling corrections.
+7. `TTSValidation` reports possible TTS or SSML problems without changing text.
+8. The exporter writes cleaned Markdown and enabled companion reports.
 
-```bash
-pip install -r requirements.txt
-```
+Structural Markdown blocks are protected from segment-level correction. This
+includes headings, fenced and indented code, HTML blocks, tables, lists, block
+quotes, standalone links and images, footnotes, front matter, and horizontal
+rules. Within editable prose, inline code, inline HTML, autolinks, reference
+identifiers, and link destinations—including destinations with balanced
+parentheses—remain literal. Visible labels in explicit inline links and full
+reference links embedded in ordinary prose remain eligible for cleanup;
+collapsed and shortcut reference identifiers remain protected.
 
-## CLI: one file
+`DocumentCleanup` may still deliberately normalize headings or remove
+configured front matter, footnotes, glossary notes, metadata, and explicitly
+excluded sections. Literal blocks are restored exactly as represented in the
+loaded document when retained; a protected block located inside an
+intentionally removed region is removed with that region. A failed stage is
+rolled back before later stages run, so partial edits and partial audit records
+are not exported.
 
-```bash
-python -m markdownCleaner.cli "book.md"
-```
+`changes` counts audit records. For the two report-only stages, those records
+are findings rather than text mutations.
 
-Choose an output directory:
+## Outputs
 
-```bash
-python -m markdownCleaner.cli "book.md" -o cleaned
-```
-
-Use another config file:
-
-```bash
-python -m markdownCleaner.cli "book.md" --config my_config.yaml
-```
-
-## CLI: every Markdown file in a folder
-
-Process only `.md` files directly inside a folder:
-
-```bash
-python -m markdownCleaner.cli books -o cleaned
-```
-
-Process the folder and every subfolder recursively:
-
-```bash
-python -m markdownCleaner.cli books -o cleaned --recursive
-```
-
-Continue with the remaining books when one file fails:
-
-```bash
-python -m markdownCleaner.cli books -o cleaned --recursive --continue-on-error
-```
-
-Folder mode preserves relative subfolders. For example:
+With the default configuration, paths are resolved relative to
+`markdownCleaner\config.yaml`:
 
 ```text
-books/
-├── Volume 01.md
-└── side/
-    └── Volume 02.md
+cleanup/
+|-- backup/
+|   `-- <timestamp>/
+|       |-- <original file>.md
+|       `-- metadata.json
+|-- logs/
+|   `-- pipeline.log
+`-- output/
+    |-- <title> - Cleaned.md
+    `-- reports/
+        |-- changes.json
+        |-- summary.md
+        `-- glossary_candidates.json
 ```
 
-becomes:
+A folder run also writes:
 
 ```text
-cleaned/
-├── Volume_01_clean.md
-├── reports/
-│   └── Volume_01/
-│       ├── changes.json
-│       └── summary.md
-└── side/
-    ├── Volume_02_clean.md
-    └── reports/
-        └── Volume_02/
-            ├── changes.json
-            └── summary.md
+<output>\reports\batch_summary.md
+<output>\reports\glossary_candidates.json
 ```
 
-Each input file also receives its own timestamped backup. Backup timestamps include microseconds so batch jobs cannot collide when multiple files start within the same second.
+Folder runs place each file's reports beneath its preserved relative output
+folder, for example
+`<output>\subfolder\reports\<cleaned-stem>\summary.md`. The two paths above are
+the aggregate batch reports.
 
-## SymSpell safety
+Each change record contains stage and working-document location, before and
+after text, confidence, reason, timestamp, and an optional `broken_word`.
+Location fields describe the document as it existed when that stage recorded
+the event; they are not immutable coordinates in the original source.
+Whole-document transformations may summarize multiple edits in one line-`0`
+record. OCR merge records populate `broken_word` with the exact source
+fragments and intervening whitespace, such as `ener gy`.
 
-SymSpell is enabled by default and uses the 82k English frequency dictionary shipped with `symspellpy` for edit-distance correction. The broader `wordfreq` English corpus supplies frequency evidence for OCR-split word merging, including inflected forms omitted by the compact dictionary. High-confidence corrections are auto-applied while glossary terms, repeated proper nouns, mixed-case names, acronyms, and ambiguous candidates are protected.
+The exporter refuses to overwrite the input Markdown itself. Stable generated
+paths may replace artifacts from an earlier run; automatic numeric suffixes
+prevent collisions among files discovered in the same folder run, not with
+files already present on disk.
 
-Add book-specific names to:
+## Custom words and review
 
-```text
-data/custom_words.json
+Known names and phrases belong in `data\custom_words.json`. Prefer the CLI so
+input is validated and duplicates are handled case-insensitively:
+
+```powershell
+python -m markdownCleaner --approve-words "Arthur Leywin" "Jarrod Redner"
 ```
 
-The unsafe global `rn -> m` rule remains disabled.
+Multiword entries protect both the full phrase and its tokens. This lets a
+source such as `Arthur Ley win` use the approved `Leywin` evidence while also
+preventing the correct name from being replaced by an unrelated suggestion.
+
+Other review workflows are:
+
+```powershell
+python -m markdownCleaner --learn-words "sitrep" "noncoms"
+python -m markdownCleaner --reject-words "candidateToSuppress"
+python -m markdownCleaner --simplify-candidates output\reports\glossary_candidates.json
+```
+
+- Approved words are book/domain terms used as protected dictionary evidence.
+- Learned words are explicitly reviewed protected terms.
+- Rejected words are omitted from future vocabulary-candidate reports; they do
+  not become correction targets.
+- Simplifying a candidate report produces only `word`, `occurrences`, and
+  `suggested_correction`, leaving the master report unchanged.
+
+The vocabulary-candidate stage never writes any of these files automatically.
+
+## Configuration
+
+Edit `config.yaml` or pass `--config`. Relative path values stored in the
+selected configuration—including output, backup, logging, dictionaries, and
+reviewed-word files—are resolved from that configuration file's directory.
+The one logging exception is a bare `logging.file` filename, which is placed
+under the resolved `logging.directory`.
+Relative paths passed explicitly as CLI arguments, such as `--output` or
+`--glossary-file`, are resolved from the current shell directory.
+Boolean settings must use YAML `true` or `false`; quoted strings such as
+`"false"` are rejected instead of being treated as truthy.
+
+Important groups are:
+
+| Group | Purpose |
+|---|---|
+| `paths` | Cleaned Markdown output directory |
+| `backup` | Backup enablement and destination |
+| `cleanup` | Picture OCR, metadata, excluded sections, footnotes, emphasis, and OCR-noise reporting |
+| `unicode.fixes` | Individual Unicode processor switches |
+| `regex.corrections` | Individual deterministic OCR correction switches |
+| `symspell` | Dictionaries, confidence/frequency bounds, protected terms, and merge limits |
+| `vocabulary_candidates` | Repeated-term threshold, report limit, and rejected-word file |
+| `tts_validation` | Report-only TTS chunk checks |
+| `report` | JSON/summary exports, confidence filtering, and review threshold |
+| `logging` | Log level and destination |
+
+`cleanup.picture_ocr_mode` accepts `safe`, `keep`, or `remove`. In `safe` mode,
+language-like picture text that passes conservative readability checks is
+retained while likely OCR noise is removed. Use `keep` when short labels or
+two-word captions must always survive.
+
+`cleanup.excluded_sections` is a list of explicitly removable section names.
+Removal stops at the next recognized structural heading; the cleaner does not
+discard everything after an assumed book position. Set the list to `[]` to
+disable this explicit section-name policy; front-matter, footnote, promotional,
+publisher-tail, and other enabled cleanup policies still apply.
+
+Disabling `regex.enabled` or
+`regex.corrections.broken_hyphen_words.enabled` also disables dehyphenation
+during whole-document paragraph reconstruction.
+
+When `report.enabled` is false, only cleaned Markdown is exported and folder
+mode writes no aggregate reports. When reports are enabled:
+
+- `report.export_json` controls each file's `changes.json`.
+- `report.export_summary` controls each file's `summary.md` and the aggregate
+  `batch_summary.md`.
+- `glossary_candidates.json` is always written per file and, in folder mode,
+  as an aggregate report.
+- setting `report.include_low_confidence` to false filters change records at
+  `report.review_threshold` in the per-file change reports and aggregate batch
+  summary. It does not alter glossary candidates, the in-memory audit log, or
+  the full change total printed by the CLI.
+
+The only environment override is:
+
+```powershell
+$env:OCR_OUTPUT_DIR = "D:\cleaned-books"
+```
 
 ## Python API
 
@@ -111,93 +247,35 @@ The unsafe global `rn -> m` rule remains disabled.
 from markdownCleaner.pipeline import OCRPipeline
 
 pipeline = OCRPipeline("markdownCleaner/config.yaml")
-result = pipeline.run("book.md")
+result = pipeline.run("books/Volume 01.md")
+
 print(result["output"]["markdown"])
+print(pipeline.context.total_changes)
 ```
 
-## v7 profile/back-matter behavior
+One `OCRPipeline` instance may process multiple files sequentially. Every call
+to `run()` creates a fresh processing context and stage list. If those calls
+share an output directory, pass a distinct relative `report_subdirectory` for
+each file; otherwise later calls replace the earlier `changes.json`,
+`summary.md`, and `glossary_candidates.json`. Also choose distinct
+`output_name` values when generated Markdown names could collide. Folder mode
+does both automatically within a run.
 
-- `Character Profiles` is retained in the final Markdown.
-- Picture-text OCR is removed from the main story but preserved inside the actual Character Profiles section.
-- `Afterword` and OCR variant `Aferword` are hard cutoffs; everything from that heading onward is removed.
-- `Story N | Title` headings are supported in addition to Chapter/Prologue/Epilogue headings.
-- False converter headings are demoted, and em-dash continuations such as `And then—` / `## —something` are rejoined.
-
-## Generalized sequence-independent cleanup (v8)
-
-The document cleaner does not assume a specific novel layout or section order.
-It no longer discards everything before the first Chapter/Story or everything
-after an Afterword. Unknown sections and existing Markdown headings are preserved
-by default.
-
-Cleanup is local and configurable:
-
-- `cleanup.picture_ocr_mode: safe` keeps readable OCR from images (captions,
-  diagrams, profile cards, maps, labels) and removes only likely gibberish.
-  Set it to `keep` to preserve all picture OCR or `remove` to discard all of it.
-- `cleanup.excluded_sections` removes only explicitly named sections. Removal
-  stops at the next recognized section heading, so later content is preserved.
-- `cleanup.remove_front_matter` removes only clearly identified local metadata
-  sections/lines such as Copyright or Contents; it does not truncate the document
-  based on where the first narrative heading appears.
-- Existing unknown Markdown headings are preserved. Strong structural headings
-  such as Chapter, Story, Part, Book, Volume, Act, Section, Prologue, Epilogue,
-  Appendix, Character Profiles, Glossary, and similar headings are normalized.
-- Structured multi-line blocks are preserved using content heuristics rather than
-  switching into a special mode after any particular section name.
-
-Example configuration:
-
-```yaml
-cleanup:
-  enabled: true
-  remove_picture_ocr: true
-  picture_ocr_mode: "safe"   # safe | keep | remove
-  remove_front_matter: true
-  excluded_sections:
-    - "Afterword"
-    - "Aferword"
-  remove_footnotes: true
-  strip_markdown_emphasis: true
+```python
+pipeline.run(
+    "books/Volume 02.md",
+    report_subdirectory="reports/volume-02",
+)
 ```
 
-To retain Afterword as well, set `excluded_sections: []`.
+## Development
 
-## Combined batch summary report
+Architecture, invariants, and extension guidance are in
+[ARCHITECTURE.md](ARCHITECTURE.md).
 
-When the CLI processes a folder, it now writes one aggregate report for the entire batch run in addition to the existing per-file reports:
+Run the cleaner tests from `cleanup`:
 
-```text
-<output>/reports/batch_summary.md
+```powershell
+python -m pytest markdownCleaner\tests -q
+python -m pytest markdownCleaner\tests --cov=markdownCleaner
 ```
-
-The combined report contains:
-
-- total files discovered, succeeded, and failed
-- total changes across the complete batch
-- aggregate change counts by pipeline stage
-- per-file status, elapsed time, output path, and stage counts
-- every logged change from every processed file, grouped by source file, including reason, confidence, before text, and after text
-- partial change records for files where a later pipeline stage fails
-
-Example:
-
-```bash
-python -m markdownCleaner.cli books -o cleaned --recursive
-```
-
-Use a custom aggregate report filename with:
-
-```bash
-python -m markdownCleaner.cli books -o cleaned --recursive \
-  --batch-report-name all_changes.md
-```
-
-Single-file mode continues to create only the normal per-file reports.
-
-
-## Generalized cleanup additions
-
-The document cleanup stage now removes explicit publication metadata wherever it occurs rather than assuming a fixed novel sequence. It recognizes standalone Copyright, Contents/Table of Contents, Yen/J-Novel publisher sections, common ebook navigation blocks, and standard publisher boilerplate. It also removes high-confidence raw OCR gibberish, front-cover picture OCR when locally adjacent to metadata, and standalone decorative separators such as `◆◇◆◇◆`.
-
-`Afterword` remains an explicitly excluded section by default, but later recognized sections such as `Bonus Short Stories`, `Character Profiles`, and appendices are preserved. Converter headings such as `[chapter] 0 Prologue` are normalized to Markdown headings.

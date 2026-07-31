@@ -65,31 +65,20 @@ class LigatureProcessor(UnicodeProcessor):
 
         after = before.translate(LIGATURE_TRANSLATION)
 
-        if before == after:
-
-            return False
-
-        segment.current_text = after
-
         replacements = self._count_changes(
             before,
             after,
         )
 
-        self.record_change(
+        return self.apply_change(
             segment=segment,
             before=before,
             after=after,
             reason="Ligature normalization",
+            statistic="ligatures_fixed",
+            statistic_amount=replacements,
             confidence=100.0,
         )
-
-        self.context.increment(
-            "ligatures_fixed",
-            replacements,
-        )
-
-        return True
 
     # ---------------------------------------------------------
 
@@ -107,10 +96,7 @@ class LigatureProcessor(UnicodeProcessor):
             Expected behavior: Count number of ligature characters replaced.
         """
 
-        count = 0
-
-        for char in LIGATURES:
-
-            count += before.count(char)
-
-        return count
+        # ``after`` remains part of this helper's long-standing signature for
+        # compatibility with focused callers and tests.
+        del after
+        return sum(before.count(char) for char in LIGATURES)
