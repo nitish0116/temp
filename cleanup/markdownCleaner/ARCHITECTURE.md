@@ -165,6 +165,9 @@ allowed only between adjacent editable paragraphs with a safe boundary.
 Custom multiword entries are tokenized as well as stored as phrases. For
 example, approving `Arthur Leywin` protects `Arthur`, `Leywin`, and the complete
 phrase, allowing `Ley win` to be recognized without a title-specific regex.
+The repeated-character regex processor loads the same custom, learned, and
+configured protected tokens before reducing standalone character runs. It
+also preserves valid uppercase Roman numerals independently of the glossary.
 
 ## Configuration and paths
 

@@ -118,7 +118,7 @@ class DictionaryManager:
         else:
             return
         for word in words:
-            self._add_protected_entry(str(word), frequency=100_000)
+            self.protect_entry(str(word), frequency=100_000)
 
     def _load_learned_words(self, path: Path) -> None:
         """Load user-approved learned words as protected vocabulary.
@@ -141,13 +141,16 @@ class DictionaryManager:
         else:
             words = data if isinstance(data, list) else []
         for word in words:
-            self._add_protected_entry(str(word), frequency=1)
+            self.protect_entry(str(word), frequency=1)
 
-    def _add_protected_entry(self, entry: str, frequency: int) -> None:
+    def protect_entry(self, entry: str, frequency: int = 1) -> None:
         """Protect a custom phrase and every token correction can inspect."""
         self.add_word(entry, frequency=frequency, protected=True)
         for token in WORD_PATTERN.findall(entry):
             self.add_word(token, frequency=frequency, protected=True)
+
+    # Backward-compatible private name retained for existing callers.
+    _add_protected_entry = protect_entry
 
     def add_word(self, word: str, frequency: int = 1, protected: bool = False) -> None:
         """Add or update a normalized word and optionally protect it.

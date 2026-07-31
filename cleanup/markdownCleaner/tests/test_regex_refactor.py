@@ -200,6 +200,47 @@ def test_processor_switches_work_for_direct_callers() -> None:
     assert not context.tracker.records
 
 
+def test_repeated_character_processor_preserves_roman_numerals() -> None:
+    context = _context()
+    segment = _segment("Ivsaar III met Chapter XXX under King VIII.")
+
+    assert not RepeatedCharacterProcessor(context).process(segment)
+    assert segment.current_text == "Ivsaar III met Chapter XXX under King VIII."
+    assert context.statistics.get("repeated_characters_fixed", 0) == 0
+    assert not context.tracker.records
+
+
+def test_repeated_character_processor_honors_custom_protected_tokens(
+    tmp_path,
+) -> None:
+    glossary = tmp_path / "custom_words.json"
+    glossary.write_text(
+        '["Ivsaar III", "QQQ"]\n',
+        encoding="utf-8",
+    )
+    context = ProcessingContext(
+        PipelineConfig(
+            {
+                "regex": {
+                    "enabled": True,
+                    "corrections": {
+                        "repeated_characters": {"enabled": True},
+                    },
+                },
+                "symspell": {"glossary": str(glossary)},
+            }
+        )
+    )
+    segment = _segment("Ivsaar III uses QQQ, while AAA is OCR noise.")
+
+    assert RepeatedCharacterProcessor(context).process(segment)
+    assert segment.current_text == (
+        "Ivsaar III uses QQQ, while A is OCR noise."
+    )
+    assert context.statistics["repeated_characters_fixed"] == 1
+    assert len(context.tracker.records) == 1
+
+
 def test_regex_stage_registers_number_letter_correction_exactly_once() -> None:
     context = _context()
     stage = RegexStage(context.config)

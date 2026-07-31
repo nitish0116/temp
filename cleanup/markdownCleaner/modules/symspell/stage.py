@@ -66,7 +66,7 @@ class SymSpellStage(PipelineStage):
         self.dictionary.load()
 
         for word in self.settings.protected_terms:
-            self.dictionary.protect(word)
+            self.dictionary.protect_entry(word)
 
         if self.settings.auto_protect_proper_nouns:
             self._protect_document_terms(context.current_markdown)

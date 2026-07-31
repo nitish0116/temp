@@ -162,6 +162,9 @@ python -m markdownCleaner --approve-words "Arthur Leywin" "Jarrod Redner"
 Multiword entries protect both the full phrase and its tokens. This lets a
 source such as `Arthur Ley win` use the approved `Leywin` evidence while also
 preventing the correct name from being replaced by an unrelated suggestion.
+Protected tokens are honored by SymSpell and repeated-character cleanup.
+Valid uppercase Roman numerals are also preserved, so a name such as
+`Ivsaar III` is not reduced to `Ivsaar I`.
 
 Other review workflows are:
 
