@@ -310,6 +310,83 @@ def test_dictionary_loads_structured_learned_words(tmp_path):
     assert not manager.contains("_description")
 
 
+def test_multiword_glossary_protects_each_correctable_token(tmp_path):
+    """Keep a name in a custom phrase from being corrected independently."""
+    from markdownCleaner.modules.core.config import PipelineConfig
+    from markdownCleaner.modules.core.context import ProcessingContext
+    from markdownCleaner.modules.symspell.stage import SymSpellStage
+
+    dictionary = tmp_path / "freq.txt"
+    dictionary.write_text("redder 109461\n", encoding="utf-8")
+    glossary = tmp_path / "custom_words.json"
+    glossary.write_text('["Jarrod Redner"]\n', encoding="utf-8")
+    source = tmp_path / "sample.md"
+    source.write_text("I'm Jarrod Redner.", encoding="utf-8")
+    config = PipelineConfig(
+        {
+            "paths": {"output_directory": str(tmp_path / "out")},
+            "backup": {"enabled": False},
+            "symspell": {
+                "enabled": True,
+                "dictionary": str(dictionary),
+                "glossary": str(glossary),
+                "max_edit_distance": 1,
+                "max_auto_edit_distance": 1,
+                "minimum_candidate_frequency": 1000,
+                "auto_protect_proper_nouns": False,
+                "wordfreq_enabled": False,
+            },
+        }
+    )
+    context = ProcessingContext(config)
+    context.load_markdown(source)
+
+    result = SymSpellStage(config).execute(context)
+
+    assert result.success
+    assert context.get_markdown() == "I'm Jarrod Redner."
+    assert context.total_changes == 0
+
+
+def test_protected_glossary_token_merges_known_ocr_fragments(tmp_path):
+    """Let an approved joined name override valid standalone fragments."""
+    from markdownCleaner.modules.core.config import PipelineConfig
+    from markdownCleaner.modules.core.context import ProcessingContext
+    from markdownCleaner.modules.symspell.stage import SymSpellStage
+
+    dictionary = tmp_path / "freq.txt"
+    dictionary.write_text(
+        "arthur 1000000\nley 1000000\nwin 1000000\n",
+        encoding="utf-8",
+    )
+    glossary = tmp_path / "custom_words.json"
+    glossary.write_text('["Arthur Leywin"]\n', encoding="utf-8")
+    source = tmp_path / "sample.md"
+    source.write_text("Arthur Ley win stepped forward.", encoding="utf-8")
+    config = PipelineConfig(
+        {
+            "paths": {"output_directory": str(tmp_path / "out")},
+            "backup": {"enabled": False},
+            "symspell": {
+                "enabled": True,
+                "dictionary": str(dictionary),
+                "glossary": str(glossary),
+                "broken_word_merge_minimum_frequency": 50000,
+                "auto_protect_proper_nouns": False,
+                "wordfreq_enabled": False,
+            },
+        }
+    )
+    context = ProcessingContext(config)
+    context.load_markdown(source)
+
+    result = SymSpellStage(config).execute(context)
+
+    assert result.success
+    assert context.get_markdown() == "Arthur Leywin stepped forward."
+    assert context.tracker.records[0].broken_word == "Ley win"
+
+
 def test_cli_can_update_learned_words_without_manual_json_editing(tmp_path):
     """Provide a safe CLI workflow for adding reviewed learned terms."""
     import json
@@ -624,7 +701,7 @@ def test_symspell_merges_dictionary_validated_ocr_word_splits(tmp_path):
         "Howev er, the profes sor chose a profes sion and spoke expres sionlessly. "
         "Another Profes sor stared expres sinless at Viri on and two Viri ons. "
         "The conjur er joined other conjur ers and upperclass men. "
-        "Look in side and tell some one about rare word.",
+        "Look in side and tell some one about rare word and an SS-class beast.",
         encoding="utf-8",
     )
     config = PipelineConfig(
@@ -672,6 +749,7 @@ def test_symspell_merges_dictionary_validated_ocr_word_splits(tmp_path):
     assert "in side" in cleaned
     assert "some one" in cleaned
     assert "rare word" in cleaned
+    assert "an SS-class" in cleaned
 
 
 def test_wordfreq_scores_words_missing_from_symspell_dictionary(tmp_path):
@@ -824,6 +902,47 @@ def test_wordfreq_merges_rare_out_prefixed_inflection(tmp_path):
     assert json.loads(change_log.read_text(encoding="utf-8"))[0]["broken_word"] == (
         "outdu eled"
     )
+
+
+def test_symspell_merges_dictionary_word_across_artificial_blank_line(tmp_path):
+    """Recover a word and sentence split across a PDF page/block boundary."""
+    from markdownCleaner.modules.core.config import PipelineConfig
+    from markdownCleaner.modules.core.context import ProcessingContext
+    from markdownCleaner.modules.symspell.stage import SymSpellStage
+
+    dictionary = tmp_path / "freq.txt"
+    dictionary.write_text("energy 50000000\ninner 1000000\nwas 1000000\n", encoding="utf-8")
+    source = tmp_path / "sample.md"
+    source.write_text(
+        f"{'Earlier context ' * 40}inner ener \n\ngy was utilized.",
+        encoding="utf-8",
+    )
+    config = PipelineConfig(
+        {
+            "paths": {"output_directory": str(tmp_path / "out")},
+            "backup": {"enabled": False},
+            "symspell": {
+                "enabled": True,
+                "dictionary": str(dictionary),
+                "wordfreq_enabled": False,
+                "broken_word_merge_minimum_frequency": 50000,
+                "auto_protect_proper_nouns": False,
+            },
+        }
+    )
+    context = ProcessingContext(config)
+    context.load_markdown(source)
+
+    result = SymSpellStage(config).execute(context)
+
+    assert result.success
+    assert "inner energy was utilized" in context.get_markdown()
+    assert "\n\ngy was" not in context.get_markdown()
+    record = context.tracker.records[0]
+    assert record.reason == (
+        "Dictionary-validated OCR cross-block broken-word merge"
+    )
+    assert record.broken_word == "ener gy"
 
 
 def test_false_atx_heading_is_demoted_and_context_rejoined():

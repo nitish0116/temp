@@ -81,9 +81,17 @@ def test_regex_processors_cover_corrections_and_helpers():
     """Exercise every deterministic OCR processor and its no-change path."""
     context = _context()
 
-    broken = _segment("some one saw every thing")
+    broken = _segment(
+        "some one saw every thing; move to one side, then repair toone example"
+    )
     assert BrokenWordProcessor(context).process(broken)
     assert "someone" in broken.current_text and "everything" in broken.current_text
+    assert "to one side" in broken.current_text
+    assert "to one example" in broken.current_text
+    assert "toone" not in broken.current_text
+    assert context.tracker.records[0].broken_word == (
+        "some one, every thing, toone"
+    )
     assert not BrokenWordProcessor(context).process(_segment("ordinary prose"))
 
     hyphenated = _segment("inter-\nnational")

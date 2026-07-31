@@ -43,6 +43,29 @@ class RegexProcessor(ABC):
 
     # ------------------------------------------------------
 
+    def correction_enabled(
+        self,
+        key: str,
+        default: bool = True,
+    ) -> bool:
+        """Return the enabled state of one regex correction.
+
+        Both the documented ``{"enabled": true}`` form and a direct boolean
+        are accepted so programmatic configurations remain concise.
+        """
+
+        value = self.config.get(
+            f"regex.corrections.{key}",
+            default,
+        )
+
+        if isinstance(value, dict):
+            value = value.get("enabled", default)
+
+        return bool(value)
+
+    # ------------------------------------------------------
+
     @abstractmethod
     def process(
         self,
@@ -70,6 +93,7 @@ class RegexProcessor(ABC):
         after: str,
         reason: str,
         confidence: float,
+        broken_word: str | None = None,
     ):
         """Record a non-empty segment transformation in the shared change log.
 
@@ -90,4 +114,5 @@ class RegexProcessor(ABC):
             after=after,
             confidence=confidence,
             reason=reason,
+            broken_word=broken_word,
         )

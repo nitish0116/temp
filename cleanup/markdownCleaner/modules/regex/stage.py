@@ -13,10 +13,6 @@ from ..core.stage import (
     StageResult,
 )
 
-from .ocr_characters import (
-    OCRCharacterProcessor,
-)
-
 from .broken_words import (
     BrokenWordProcessor,
 )
@@ -82,12 +78,32 @@ class RegexStage(PipelineStage):
             Expected behavior: Construct regex processors in their required execution order.
         """
 
-        self.processors = [
-            OCRCharacterProcessor(context),
-            BrokenWordProcessor(context),
-            HyphenationProcessor(context),
-            RepeatedCharacterProcessor(context),
-        ]
+        number_letters = NumberLetterProcessor(context)
+        broken_words = BrokenWordProcessor(context)
+        hyphenation = HyphenationProcessor(context)
+        repeated_characters = RepeatedCharacterProcessor(context)
+
+        self.processors = []
+
+        if any(
+            number_letters.correction_enabled(key)
+            for key in (
+                "zero_to_o",
+                "one_to_l",
+                "five_to_s",
+                "eight_to_b",
+            )
+        ):
+            self.processors.append(number_letters)
+
+        if broken_words.correction_enabled("broken_words"):
+            self.processors.append(broken_words)
+
+        if hyphenation.correction_enabled("broken_hyphen_words"):
+            self.processors.append(hyphenation)
+
+        if repeated_characters.correction_enabled("repeated_characters"):
+            self.processors.append(repeated_characters)
 
     # ---------------------------------------------------------
 
@@ -118,7 +134,6 @@ class RegexStage(PipelineStage):
 
             if not segment.current_text.strip():
                 continue
-            original = segment.current_text
 
             for processor in self.processors:
 

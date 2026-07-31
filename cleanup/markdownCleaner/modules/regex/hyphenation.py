@@ -55,7 +55,7 @@ class HyphenationProcessor(RegexProcessor):
 
         before = segment.current_text
 
-        if not before:
+        if not before or not self.correction_enabled("broken_hyphen_words"):
 
             return False
 

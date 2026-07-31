@@ -3,16 +3,16 @@ modules/regex/constants.py
 
 OCR correction rules and regex patterns.
 
-This module contains only:
-    - replacement dictionaries
-    - regex patterns
-    - compiled regex objects
-    - confidence values
+This module contains declarative rule definitions, replacement dictionaries,
+compiled patterns, and confidence values. Mutation and audit logging remain in
+the processors that consume these definitions.
 """
 
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
+from enum import Enum
 
 # ============================================================
 # OCR Character Confusion
@@ -66,10 +66,17 @@ NUMBER_LETTER_REPLACEMENTS = {
 
 
 NUMBER_LETTER_CONFIDENCE = {
-    "0": 80.0,
+    "0": 85.0,
     "1": 80.0,
-    "5": 70.0,
-    "8": 70.0,
+    "5": 75.0,
+    "8": 75.0,
+}
+
+NUMBER_LETTER_CONFIG_KEYS = {
+    "0": "zero_to_o",
+    "1": "one_to_l",
+    "5": "five_to_s",
+    "8": "eight_to_b",
 }
 
 
@@ -84,24 +91,94 @@ Examples:
 
     some thing
     every thing
-    to gether
+    any body
 
 """
 
-BROKEN_WORD_PATTERNS = [
-    # OCR inserted a space inside a compound word.
-    (
-        re.compile(
-            r"\b(to|some|every|any|no|what|where)\s+(thing|one|body)\b",
+
+class BoundaryCorrection(str, Enum):
+    """Direction of a deterministic word-boundary correction."""
+
+    JOIN = "join"
+    SPLIT = "split"
+
+
+class BoundaryEvidence(str, Enum):
+    """The OCR extraction defect evidenced by a boundary rule."""
+
+    INSERTED_BOUNDARY = "ocr_inserted_boundary"
+    MISSING_BOUNDARY = "ocr_missing_boundary"
+
+
+@dataclass(frozen=True)
+class BrokenWordRule:
+    """One explicit, auditable word-boundary correction rule."""
+
+    name: str
+    pattern: re.Pattern[str]
+    correction: BoundaryCorrection
+    evidence: BoundaryEvidence
+    confidence: float
+
+    def replacement_for(self, match: re.Match[str]) -> str:
+        """Build a replacement while retaining the matched token's casing."""
+
+        separator = "" if self.correction is BoundaryCorrection.JOIN else " "
+        return match.group("left") + separator + match.group("right")
+
+
+def _join_rule(left: str, right: str) -> BrokenWordRule:
+    """Create an exact same-line compound-word join rule."""
+
+    return BrokenWordRule(
+        name=f"join_{left}_{right}",
+        pattern=re.compile(
+            rf"\b(?P<left>{left})[ \t]+(?P<right>{right})\b",
             re.IGNORECASE,
         ),
-        r"\1\2",
-        85.0,
-    ),
-    # OCR/PDF extraction accidentally removed a required word boundary.
-    (re.compile(r"\btoone(?=['’]s\b)", re.IGNORECASE), "to one", 99.0),
-    (re.compile(r"\bnoone\b", re.IGNORECASE), "no one", 99.0),
-]
+        correction=BoundaryCorrection.JOIN,
+        evidence=BoundaryEvidence.INSERTED_BOUNDARY,
+        confidence=85.0,
+    )
+
+
+def _split_rule(left: str, right: str) -> BrokenWordRule:
+    """Create an exact missing-boundary repair rule."""
+
+    return BrokenWordRule(
+        name=f"split_{left}_{right}",
+        pattern=re.compile(
+            rf"\b(?P<left>{left})(?P<right>{right})\b",
+            re.IGNORECASE,
+        ),
+        correction=BoundaryCorrection.SPLIT,
+        evidence=BoundaryEvidence.MISSING_BOUNDARY,
+        confidence=99.0,
+    )
+
+
+# This is deliberately an exact whitelist.  Building a Cartesian product from
+# prefixes and suffixes also creates invalid corrections such as
+# ``what one -> whatone`` and ``where body -> wherebody``.
+BROKEN_WORD_RULES: tuple[BrokenWordRule, ...] = (
+    _join_rule("some", "thing"),
+    _join_rule("some", "one"),
+    _join_rule("some", "body"),
+    _join_rule("every", "thing"),
+    _join_rule("every", "one"),
+    _join_rule("every", "body"),
+    _join_rule("any", "thing"),
+    _join_rule("any", "one"),
+    _join_rule("any", "body"),
+    _join_rule("no", "thing"),
+    _join_rule("no", "body"),
+    _split_rule("to", "one"),
+    _split_rule("no", "one"),
+)
+
+# Backward-compatible import name.  Its entries are now typed rules rather
+# than positional tuples.
+BROKEN_WORD_PATTERNS = BROKEN_WORD_RULES
 
 
 # ============================================================
@@ -123,7 +200,7 @@ becomes:
 
 
 HYPHENATION_PATTERN = re.compile(
-    r"(\w+)-\s*\n\s*(\w+)",
+    r"(\w+)-[ \t]*\r?\n[ \t]*(\w+)",
 )
 
 
@@ -135,11 +212,11 @@ HYPHENATION_CONFIDENCE = 98.0
 # ============================================================
 
 """
-OCR duplication.
+Standalone OCR noise made from one character repeated three or more times.
 
 Examples:
 
-    helllo -> hello
+    aaaa -> a
 
 """
 

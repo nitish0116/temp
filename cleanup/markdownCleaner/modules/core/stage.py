@@ -52,9 +52,12 @@ class PipelineStage(ABC):
 
     Subclasses declare ``name`` and, where applicable, ``config_section``.
     They may prepare resources in :meth:`initialize`, but implement their work
-    in :meth:`process`. Callers should invoke :meth:`execute`, which applies the
-    enabled flag, timestamps the run, updates context statistics, and converts
-    exceptions into unsuccessful :class:`StageResult` objects.
+    in :meth:`process`. Segment-oriented stages may edit
+    ``segment.current_text``; whole-document stages must use
+    ``context.replace_markdown()``. Callers should invoke :meth:`execute`, which
+    applies the enabled flag, timestamps the run, synchronizes successful
+    segment edits to ``context.current_markdown``, updates context statistics,
+    and converts exceptions into unsuccessful :class:`StageResult` objects.
 
     Stage workflow::
 
@@ -62,6 +65,7 @@ class PipelineStage(ABC):
           -> is_enabled()
           -> initialize(context)
           -> process(context)
+          -> update_markdown() when successful
           -> add timing and statistics
           -> StageResult
 
@@ -98,9 +102,13 @@ class PipelineStage(ABC):
         """Run the complete stage lifecycle against a processing context.
 
         Disabled stages return a successful zero-change result immediately.
-        Enabled stages initialize, process, timestamp, and publish statistics.
-        Exceptions are logged and returned as failed results so the pipeline can
-        finish its remaining stages and produce diagnostic reports.
+        Enabled stages initialize and process their active document. When
+        ``process`` returns a successful result, editable segment changes are
+        committed to ``context.current_markdown`` before this method returns.
+        This stage-boundary synchronization guarantees that the next stage's
+        ``initialize`` hook observes all earlier edits. Exceptions are logged
+        and returned as failed results so the pipeline can finish its remaining
+        stages and produce diagnostic reports.
 
         Example:
             ``result = instance.execute(context)``
@@ -123,6 +131,10 @@ class PipelineStage(ABC):
             self.initialize(context)
 
             result = self.process(context)
+
+            if result.success:
+
+                context.update_markdown()
 
             result.started = started
 

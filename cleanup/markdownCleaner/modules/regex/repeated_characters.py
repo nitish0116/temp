@@ -1,12 +1,16 @@
 """
 modules/regex/repeated_characters.py
 
-Fix OCR repeated character errors.
+Fix standalone repeated-character OCR noise.
 
 Examples:
 
-    helllo  -> hello
-    boook   -> book
+    aaaa  -> a
+    bbbb  -> b
+
+Internal runs such as ``helllo`` are deliberately left for dictionary-backed
+correction because reducing them without lexical evidence can damage valid
+words.
 
 """
 
@@ -52,7 +56,7 @@ class RepeatedCharacterProcessor(RegexProcessor):
 
         before = segment.current_text
 
-        if not before:
+        if not before or not self.correction_enabled("repeated_characters"):
 
             return False
 

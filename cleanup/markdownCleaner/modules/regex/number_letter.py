@@ -23,6 +23,11 @@ import re
 
 from ..markdown.segmenter import MarkdownSegment
 
+from .constants import (
+    NUMBER_LETTER_CONFIDENCE,
+    NUMBER_LETTER_CONFIG_KEYS,
+    NUMBER_LETTER_REPLACEMENTS,
+)
 from .processor import RegexProcessor
 
 
@@ -36,20 +41,11 @@ class NumberLetterProcessor(RegexProcessor):
 
     name = "NumberLetter"
 
-    # OCR digit substitutions
-    REPLACEMENTS = {
-        "0": "o",
-        "1": "l",
-        "5": "s",
-        "8": "b",
-    }
+    REPLACEMENTS = NUMBER_LETTER_REPLACEMENTS
 
-    CONFIDENCE = {
-        "0": 85.0,
-        "1": 80.0,
-        "5": 75.0,
-        "8": 75.0,
-    }
+    CONFIDENCE = NUMBER_LETTER_CONFIDENCE
+
+    TOKEN_PATTERN = re.compile(r"(?<![A-Za-z0-9])[A-Za-z0-9]+(?![A-Za-z0-9])")
 
     # ---------------------------------------------------------
 
@@ -73,7 +69,7 @@ class NumberLetterProcessor(RegexProcessor):
 
             return False
 
-        after = self._process_words(before)
+        after, corrected_digits = self._transform(before)
 
         if before == after:
 
@@ -86,12 +82,40 @@ class NumberLetterProcessor(RegexProcessor):
             before=before,
             after=after,
             reason="OCR number-letter correction",
-            confidence=80.0,
+            confidence=sum(
+                self.CONFIDENCE[digit] for digit in corrected_digits
+            )
+            / len(corrected_digits),
         )
 
-        self.context.increment("number_letter_fixed")
+        self.context.increment(
+            "number_letter_fixed",
+            len(corrected_digits),
+        )
 
         return True
+
+    # ---------------------------------------------------------
+
+    def _transform(
+        self,
+        text: str,
+    ) -> tuple[str, list[str]]:
+        """Correct eligible alphanumeric spans without rebuilding whitespace."""
+
+        corrected_digits = []
+
+        def replace(match: re.Match[str]) -> str:
+            word = match.group(0)
+            fixed = self._fix_word(word)
+
+            if fixed != word:
+                digit = next(character for character in word if character.isdigit())
+                corrected_digits.append(digit)
+
+            return fixed
+
+        return self.TOKEN_PATTERN.sub(replace, text), corrected_digits
 
     # ---------------------------------------------------------
 
@@ -106,15 +130,7 @@ class NumberLetterProcessor(RegexProcessor):
             Expected behavior: Process only alphabetic word tokens.
         """
 
-        words = text.split()
-
-        result = []
-
-        for word in words:
-
-            result.append(self._fix_word(word))
-
-        return " ".join(result)
+        return self._transform(text)[0]
 
     # ---------------------------------------------------------
 
@@ -129,20 +145,62 @@ class NumberLetterProcessor(RegexProcessor):
             Expected behavior: Fix digits appearing inside a word.
         """
 
-        if not self._contains_letters_and_digits(word):
+        if not self._is_ocr_word_candidate(word):
 
             return word
 
-        fixed = word
+        digit = next(character for character in word if character.isdigit())
 
-        for digit, letter in self.REPLACEMENTS.items():
+        return word.replace(
+            digit,
+            self.REPLACEMENTS[digit],
+            1,
+        )
 
-            fixed = fixed.replace(
-                digit,
-                letter,
-            )
+    # ---------------------------------------------------------
 
-        return fixed
+    def _is_ocr_word_candidate(
+        self,
+        word: str,
+    ) -> bool:
+        """Reject numeric values and identifier-like alphanumeric tokens."""
+
+        if not self._contains_letters_and_digits(word):
+            return False
+
+        digits = [
+            (index, character)
+            for index, character in enumerate(word)
+            if character.isdigit()
+        ]
+
+        # Multiple digits strongly indicate an identifier (R2D2, A10) rather
+        # than a single OCR-confused character.
+        if len(digits) != 1:
+            return False
+
+        index, digit = digits[0]
+        config_key = NUMBER_LETTER_CONFIG_KEYS.get(digit)
+
+        if config_key is None or not self.correction_enabled(config_key):
+            return False
+
+        letters = [character for character in word if character.isalpha()]
+
+        # Preserve short/all-capital identifiers such as R2D.
+        if len(letters) < 2 or all(character.isupper() for character in letters):
+            return False
+
+        # A confused digit may begin a word (1ife) or occur between letters
+        # (l0ve).  A trailing digit is more likely a real version/identifier.
+        if index == 0:
+            return len(word) >= 3 and word[1:].isalpha()
+
+        return (
+            index < len(word) - 1
+            and word[index - 1].isalpha()
+            and word[index + 1].isalpha()
+        )
 
     # ---------------------------------------------------------
 
