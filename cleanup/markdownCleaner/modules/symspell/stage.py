@@ -171,6 +171,7 @@ class SymSpellStage(PipelineStage):
         )
         minimum_zipf = float(self.get_config("wordfreq_minimum_zipf", 2.5))
         changes = 0
+        broken_words: list[str] = []
 
         def merge_score(left: str, right: str) -> int:
             combined = left + right
@@ -211,6 +212,27 @@ class SymSpellStage(PipelineStage):
                     )
                 if base_frequency >= minimum_frequency:
                     return base_frequency
+            # Productive ``out-`` verbs can be valid while the full rare
+            # inflection is absent from both dictionaries. For example,
+            # ``outdu eled`` is based on the common verb ``duel``. Requiring
+            # an inflectional ending and strong evidence for the unprefixed
+            # root avoids treating arbitrary ``out ...`` phrases as words.
+            lowered = combined.lower()
+            if lowered.startswith("out") and lowered.endswith(("ed", "ing")):
+                prefixed_base = (
+                    lowered[:-2] if lowered.endswith("ed") else lowered[:-3]
+                )
+                root = prefixed_base[3:]
+                if len(root) >= 3:
+                    root_frequency = self.dictionary.frequency(root)
+                    root_zipf = self.frequency_scorer.zipf(root)
+                    if root_zipf >= minimum_zipf:
+                        return max(
+                            root_frequency,
+                            self.frequency_scorer.rank(root),
+                        )
+                    if root_frequency >= minimum_frequency:
+                        return root_frequency
             # The compact dictionary omits some valid derivatives such as
             # "petrification". A detached suffix is still strong extraction
             # evidence when neither fragment is independently known.
@@ -227,7 +249,7 @@ class SymSpellStage(PipelineStage):
         after = before
         for _ in range(3):
             words = list(re.finditer(r"[A-Za-z]{2,}", after))
-            candidates: list[tuple[int, int, int, int]] = []
+            candidates: list[tuple[int, int, int, int, str]] = []
             for pair_index, (left_match, right_match) in enumerate(
                 zip(words, words[1:])
             ):
@@ -248,19 +270,28 @@ class SymSpellStage(PipelineStage):
                         )
                 if score:
                     candidates.append(
-                        (score, pair_index, left_match.end(), right_match.start())
+                        (
+                            score,
+                            pair_index,
+                            left_match.end(),
+                            right_match.start(),
+                            after[left_match.start() : right_match.end()],
+                        )
                     )
             # Competing overlaps are resolved by joined-word frequency. This
             # makes ``mana ma nipulation`` choose ``ma+nipulation`` rather than
             # the lower-frequency dictionary entry ``mana+ma`` ("manama").
             spaces_to_remove: list[tuple[int, int]] = []
             used_word_indices: set[int] = set()
-            for _, pair_index, start, end in sorted(candidates, reverse=True):
+            for _, pair_index, start, end, broken_word in sorted(
+                candidates, reverse=True
+            ):
                 pair_words = {pair_index, pair_index + 1}
                 if pair_words & used_word_indices:
                     continue
                 used_word_indices.update(pair_words)
                 spaces_to_remove.append((start, end))
+                broken_words.append(broken_word)
             if not spaces_to_remove:
                 break
             updated = after
@@ -281,6 +312,7 @@ class SymSpellStage(PipelineStage):
                 after=after,
                 confidence=97.0,
                 reason="Dictionary-validated OCR broken-word merge",
+                broken_word=", ".join(broken_words),
             )
             self.context.increment("broken_words_fixed", changes)
         return after

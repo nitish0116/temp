@@ -45,6 +45,8 @@ class ChangeRecord:
 
     timestamp: str
 
+    broken_word: str | None = None
+
 
 class ChangeLog:
     """Stores all pipeline corrections.
@@ -77,6 +79,7 @@ class ChangeLog:
         after,
         confidence,
         reason,
+        broken_word=None,
     ):
         """Add correction record.
 
@@ -95,6 +98,7 @@ class ChangeLog:
             confidence=confidence,
             reason=reason,
             timestamp=datetime.now(UTC).isoformat(),
+            broken_word=broken_word,
         )
 
         self.records.append(record)

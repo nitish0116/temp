@@ -214,10 +214,13 @@ def _write_batch_summary(
             stage = record.get("stage", "Unknown")
             reason = record.get("reason", "")
             confidence = record.get("confidence", "")
+            broken_word = record.get("broken_word")
             lines.append(f"#### Change {number} — {stage} ({location})")
             lines.append("")
             lines.append(f"- Reason: {reason}")
             lines.append(f"- Confidence: {confidence}")
+            if broken_word:
+                lines.append(f"- Broken word: `{broken_word}`")
             lines.append("")
             lines.append("Before:")
             lines.append("")

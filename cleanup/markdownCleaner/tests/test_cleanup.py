@@ -721,6 +721,111 @@ def test_wordfreq_scores_words_missing_from_symspell_dictionary(tmp_path):
     assert "lexicographical" in context.get_markdown()
 
 
+def test_wordfreq_merges_reported_inflection_splits(tmp_path):
+    """Keep reported OCR splits covered as the merge heuristics evolve."""
+    from markdownCleaner.modules.core.config import PipelineConfig
+    from markdownCleaner.modules.core.context import ProcessingContext
+    from markdownCleaner.modules.symspell.frequency import WordfreqScorer
+    from markdownCleaner.modules.symspell.stage import SymSpellStage
+
+    expected_words = (
+        "carried worried hurriedly married instantly constantly substantial "
+        "constant instant Professor nagging dragging tugging begging remained "
+        "ascenders experiments Experience experienced experimentation "
+        "experimenting different However"
+    )
+    source_words = (
+        "car ried, wor ried, hur riedly, mar ried, in stantly, con stantly, "
+        "sub stantial, con stant, in stant, Pro fessor, nag ging, drag ging, "
+        "tug ging, beg ging, re mained, as cenders, experi ments, Experi ence, "
+        "experi enced, experi mentation, experi menting, dif ferent, Howev er"
+    )
+    accepted = {word.lower() for word in expected_words.split()}
+    scorer = WordfreqScorer(
+        lookup=lambda word, language, wordlist: (
+            3.4 if word.lower() in accepted else 0.0
+        )
+    )
+    dictionary = tmp_path / "freq.txt"
+    dictionary.write_text("ordinary 1000000\n", encoding="utf-8")
+    source = tmp_path / "sample.md"
+    source.write_text(source_words, encoding="utf-8")
+    config = PipelineConfig(
+        {
+            "paths": {"output_directory": str(tmp_path / "out")},
+            "backup": {"enabled": False},
+            "symspell": {
+                "enabled": True,
+                "dictionary": str(dictionary),
+                "wordfreq_enabled": False,
+                "wordfreq_minimum_zipf": 2.5,
+                "broken_word_merge_minimum_frequency": 50000,
+                "auto_protect_proper_nouns": False,
+            },
+        }
+    )
+    context = ProcessingContext(config)
+    context.load_markdown(source)
+    stage = SymSpellStage(config)
+    stage.initialize(context)
+    stage.frequency_scorer = scorer
+    stage.initialize = lambda active_context: None
+
+    result = stage.execute(context)
+
+    assert result.success
+    assert context.get_markdown() == expected_words.replace(" ", ", ")
+
+
+def test_wordfreq_merges_rare_out_prefixed_inflection(tmp_path):
+    """Use the common root as evidence for a rare productive out-verb."""
+    from markdownCleaner.modules.core.config import PipelineConfig
+    from markdownCleaner.modules.core.context import ProcessingContext
+    from markdownCleaner.modules.symspell.frequency import WordfreqScorer
+    from markdownCleaner.modules.symspell.stage import SymSpellStage
+
+    scorer = WordfreqScorer(
+        lookup=lambda word, language, wordlist: 3.65 if word == "duel" else 0.0
+    )
+    dictionary = tmp_path / "freq.txt"
+    dictionary.write_text("ordinary 1000000\n", encoding="utf-8")
+    source = tmp_path / "sample.md"
+    source.write_text("He was outdu eled in battle.", encoding="utf-8")
+    config = PipelineConfig(
+        {
+            "paths": {"output_directory": str(tmp_path / "out")},
+            "backup": {"enabled": False},
+            "symspell": {
+                "enabled": True,
+                "dictionary": str(dictionary),
+                "wordfreq_enabled": False,
+                "wordfreq_minimum_zipf": 2.5,
+                "broken_word_merge_minimum_frequency": 50000,
+                "auto_protect_proper_nouns": False,
+            },
+        }
+    )
+    context = ProcessingContext(config)
+    context.load_markdown(source)
+    stage = SymSpellStage(config)
+    stage.initialize(context)
+    stage.frequency_scorer = scorer
+    stage.initialize = lambda active_context: None
+
+    result = stage.execute(context)
+
+    assert result.success
+    assert context.get_markdown() == "He was outdueled in battle."
+    assert context.tracker.records[0].broken_word == "outdu eled"
+    change_log = tmp_path / "changes.json"
+    context.tracker.export_json(change_log)
+    import json
+
+    assert json.loads(change_log.read_text(encoding="utf-8"))[0]["broken_word"] == (
+        "outdu eled"
+    )
+
+
 def test_false_atx_heading_is_demoted_and_context_rejoined():
     """Demote a false ATX heading and rejoin it to its narrative context."""
     source = 'And\n\n## then—\n\n"A scream?"'
