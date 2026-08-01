@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
 import gzip
 import hashlib
 import json
@@ -13,6 +12,7 @@ from pathlib import Path
 
 import audit_hyphens as audit
 import classify_ambiguous_hyphens as evidence
+from md_audio import review_records
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -125,7 +125,11 @@ def update_cache(
     library: Path, cache_path: Path, rebuild: bool = False
 ) -> tuple[list[tuple[str, dict[str, object]]], dict[str, int]]:
     """Refresh only new or modified files and remove deleted cache entries."""
-    cache = load_cache(cache_path) if not rebuild else {"schema_version": 1, "files": {}}
+    cache = (
+        load_cache(cache_path)
+        if not rebuild
+        else {"schema_version": CACHE_SCHEMA_VERSION, "files": {}}
+    )
     old_files = cache["files"]
     new_files: dict[str, object] = {}
     hits = 0
@@ -164,12 +168,12 @@ def records_from_cache(
     cached_files: list[tuple[str, dict[str, object]]],
     genuine: set[str],
     max_contexts: int,
-) -> tuple[dict[str, object], dict]:
+) -> tuple[dict[str, object], evidence.PunctuationIndex]:
     """Aggregate unique cached files into audit and punctuation records."""
     occurrences: Counter[str] = Counter()
     variants: dict[str, Counter[str]] = defaultdict(Counter)
     contexts: dict[str, list[dict[str, object]]] = defaultdict(list)
-    punctuation_index: dict = defaultdict(Counter)
+    punctuation_index: evidence.PunctuationIndex = defaultdict(Counter)
     seen_digests: set[str] = set()
     duplicates = 0
 
@@ -234,7 +238,7 @@ def run_pipeline(
     )
     evidence.merge_decisions(main_record, resolved)
 
-    generated_at = datetime.now(timezone.utc).isoformat()
+    generated_at = review_records.utc_timestamp()
     main_record["generated_at"] = generated_at
     main_record["ambiguous_output"] = audit.portable_path(ambiguous_output)
     main_record["cross_evidence_output"] = audit.portable_path(evidence_output)
@@ -270,6 +274,7 @@ def run_pipeline(
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse integrated hyphen-review pipeline arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", type=Path, default=DEFAULT_LIBRARY)
     parser.add_argument("--main-output", type=Path, default=DEFAULT_MAIN)
@@ -287,6 +292,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    """Run the integrated cached review pipeline and print its summary."""
     args = parse_args()
     if not args.library.is_dir():
         raise SystemExit(f"Library folder does not exist: {args.library}")

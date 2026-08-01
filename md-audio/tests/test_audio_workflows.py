@@ -222,11 +222,8 @@ def test_sapi_synthesis_and_encoding_commands(monkeypatch, tmp_path):
         app.synthesize_wav(["..."], tmp_path / "out.wav")
     monkeypatch.setattr(app, "ensure_ffmpeg", lambda: "ffmpeg")
     app.convert_wav_to_mp3(tmp_path / "in.wav", tmp_path / "out.mp3")
-    temporary = tmp_path / "chapter_tmp.mp3"
-    temporary.write_bytes(b"mp3")
     app.convert_wav_to_mp3_with_chapters(tmp_path / "in.wav", tmp_path / "chapter.mp3", [1])
-    assert (tmp_path / "chapter.mp3").exists()
-    assert commands
+    assert len(commands) >= 3
 
 
 def test_convert_one_sapi_and_edge_workflows(monkeypatch, tmp_path):

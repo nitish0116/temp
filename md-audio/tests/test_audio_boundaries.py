@@ -60,13 +60,19 @@ def test_mp3_duration_estimate_uses_speakable_words_and_chapter_silence(tmp_path
 
     assert estimate_mp3_duration(markdown, words_per_minute=60) == 14.0
     assert estimate_mp3_duration(source, words_per_minute=60) == 14.0
+    assert estimate_mp3_duration(
+        source,
+        words_per_minute=60,
+        chapter_markers=True,
+        chapter_marker_duration=2.0,
+    ) == 18.0
     adjacent_headings = "# Chapter 1\n# Chapter 2\n\nOne two three four five."
     assert estimate_mp3_duration(
         adjacent_headings,
         words_per_minute=60,
         chapter_markers=True,
         chapter_marker_duration=2.0,
-    ) == 11.0
+    ) == 13.0
     assert format_duration(3661) == "1:01:01"
 
 

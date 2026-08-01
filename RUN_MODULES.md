@@ -1,27 +1,22 @@
 # Running the Repository Tools
 
 This is the common command reference for the runnable modules and scripts in
-this repository. Run the examples from the repository root:
-
-```text
-D:\Git\Projects\nitish0116\temp
-```
-
-The examples use the shared virtual environment at
-`D:\Git\Projects\.venv`.
+this repository. Run the examples from the repository root. Commands use
+repository-relative paths so they work in any clone.
 
 ## Start a PowerShell session
 
 ```powershell
-Set-Location "D:\Git\Projects\nitish0116\temp"
-& "D:\Git\Projects\.venv\Scripts\Activate.ps1"
+Set-Location "C:\path\to\repository"
+& ".\.venv\Scripts\Activate.ps1"
 python -c "import sys; print(sys.executable)"
 ```
 
-The final command should print:
+The final command should print the Python executable inside your environment,
+for example:
 
 ```text
-D:\Git\Projects\.venv\Scripts\python.exe
+C:\path\to\repository\.venv\Scripts\python.exe
 ```
 
 Install the repository dependencies if needed:
@@ -147,7 +142,14 @@ implementation modules and are not standalone CLI programs.
 
 ## 3. Markdown to audio
 
-Script: `md-audio\md_to_audio.py`
+Entry point: `md-audio\md_to_audio.py`
+
+Install its Python dependency if it was not installed with the combined command
+above:
+
+```powershell
+python -m pip install -r md-audio\requirements.txt
+```
 
 List local Windows voices:
 
@@ -178,6 +180,12 @@ python md-audio\md_to_audio.py `
     --cue-file
 ```
 
+`--chapter-markers` inserts silence only with the Edge backend. SAPI produces
+one continuous WAV and does not expose the chunk timings needed for accurate
+silence insertion. `--cue-file` works with either backend and writes a `.cue`
+file plus a `_youtube_chapters.txt` file; timestamps are approximate and need
+`ffprobe` on `PATH`.
+
 Convert a directory:
 
 ```powershell
@@ -197,6 +205,50 @@ python md-audio\md_to_audio.py `
     --estimate-duration `
     --words-per-minute 150
 ```
+
+The estimate is based on speakable words after narration preparation. It is not
+a measurement of generated audio. Folder inputs print one result per immediate
+`.md` child and a total; audio folder conversion is also non-recursive.
+
+### Edge hyphen-review pipeline
+
+Edge conversion automatically loads
+`md-audio\library-hyphen-review.json`. Only entries with `status: "replace"`
+are applied at narration time; the Markdown source is never changed. Override
+the record for one run with `--hyphen-review-json`.
+
+Regenerate the decided, ambiguous, and cross-evidence review records with the
+integrated pipeline:
+
+```powershell
+python md-audio\build_hyphen_reviews.py
+```
+
+The default pipeline recursively scans `Library` and incrementally updates the
+portable content-addressed cache at
+`md-audio\.hyphen-review-cache.json.gz`. Unchanged files are hashed but are not
+decoded or regex-scanned. Force a full rescan after changing extraction rules:
+
+```powershell
+python md-audio\build_hyphen_reviews.py --rebuild-cache
+```
+
+Run it against another library with explicit repository-relative or absolute
+paths:
+
+```powershell
+python md-audio\build_hyphen_reviews.py `
+    --library "Library" `
+    --main-output "md-audio\library-hyphen-review.json" `
+    --ambiguous-output "md-audio\library-hyphen-review-ambiguous.json" `
+    --evidence-output "md-audio\library-hyphen-review-cross-evidence.json" `
+    --cache "md-audio\.hyphen-review-cache.json.gz"
+```
+
+`audit_hyphens.py` and `classify_ambiguous_hyphens.py` are lower-level tools
+for focused manual work. The normal entry point is
+`build_hyphen_reviews.py`. See `md-audio\README.md` for their record formats,
+the refactored package layout, and narration-preparation details.
 
 ## 4. Markdown to accessible PDF
 

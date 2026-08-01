@@ -1,361 +1,241 @@
-# md-audio — Markdown to Audio Converter
+# md-audio
 
-Convert Markdown files into spoken MP3 or WAV narration using either local Windows voices or Microsoft Edge TTS neural voices.
+Convert Markdown files to MP3 or WAV narration with Microsoft Edge TTS or
+Windows SAPI. The converter supports single files and non-recursive folder
+batches, duration estimates, optional chapter silence for Edge output, and
+approximate CUE/YouTube chapter metadata.
 
----
+Run all examples from the repository root.
 
-## System Requirements
+## Requirements
 
-| Requirement | Details |
+- Python 3.10 or later.
+- `edge-tts` for the Edge backend (installed from `requirements.txt`).
+- Windows and PowerShell for the SAPI backend.
+- `ffmpeg` on `PATH` for MP3 encoding and Edge chunk concatenation.
+- `ffprobe` on `PATH` for meaningful CUE timestamps.
+- Network access while synthesizing with Edge TTS.
+
+Install the Python dependency:
+
+```powershell
+python -m pip install -r md-audio\requirements.txt
+```
+
+## Basic conversion
+
+List voices before choosing one:
+
+```powershell
+# Installed Windows SAPI voices
+python md-audio\md_to_audio.py --list-voices
+
+# Recommended Edge voices and aliases
+python md-audio\md_to_audio.py --backend edge --list-voices
+
+# Full Edge catalog
+python md-audio\md_to_audio.py --backend edge --list-voices --all-voices
+```
+
+Create an offline SAPI MP3:
+
+```powershell
+python md-audio\md_to_audio.py `
+    "Library\cleaned\book.md" `
+    "Library\audio\book.mp3" `
+    --backend sapi `
+    --voice David
+```
+
+Create an Edge neural-voice MP3:
+
+```powershell
+python md-audio\md_to_audio.py `
+    "Library\cleaned\book.md" `
+    "Library\audio\book.mp3" `
+    --backend edge `
+    --voice Aria `
+    --edge-workers 8
+```
+
+Convert every Markdown file immediately inside a folder:
+
+```powershell
+python md-audio\md_to_audio.py `
+    "Library\cleaned" `
+    "Library\audio" `
+    --backend edge `
+    --voice Aria
+```
+
+Folder conversion is intentionally non-recursive. Output filenames preserve
+the source Markdown stem. Edge always writes MP3; SAPI accepts MP3 or WAV for a
+single-file target and uses MP3 for folder batches.
+
+## Duration estimation
+
+Estimate playback time without calling a speech backend or creating audio:
+
+```powershell
+python md-audio\md_to_audio.py `
+    "Library\cleaned\book.md" `
+    --estimate-duration `
+    --words-per-minute 150
+```
+
+A folder input prints one estimate per Markdown file and a total. The public
+`estimate_mp3_duration()` function accepts either Markdown text or a
+`pathlib.Path` and returns seconds. Estimates count only content that survives
+narration preparation; they are not measured audio durations.
+
+## Chapters and cue metadata
+
+For Edge output, `--chapter-markers` inserts silence at recognized chapter or
+section boundaries:
+
+```powershell
+python md-audio\md_to_audio.py `
+    "Library\cleaned\book.md" `
+    "Library\audio\book.mp3" `
+    --backend edge `
+    --chapter-markers `
+    --chapter-marker-duration 2.0 `
+    --cue-file
+```
+
+Recognized conventional headings include chapters, sections, parts, volumes,
+acts, scenes, prologues, epilogues, interludes, Roman numerals, and numbered
+headings. CUE generation treats every Markdown heading as a scene boundary, so
+date and location headings are also included.
+
+`--cue-file` writes both `book.cue` and
+`book_youtube_chapters.txt`. Timestamps are estimates distributed by chunk
+character count, not exact per-chunk timing. If `ffprobe` is unavailable, the
+files can still be written but their timestamps resolve to zero.
+
+SAPI creates one continuous WAV and currently cannot insert accurate silence at
+chunk boundaries. Use Edge when chapter silence is required. SAPI still removes
+internal chapter markers from spoken text.
+
+## Narration preparation
+
+Before text reaches a speech backend, the reusable narration layer:
+
+- removes Markdown fence markers and heading hashes;
+- drops ornament-only separator lines;
+- strips configured trailing mixed alphanumeric OCR noise;
+- rejoins hard-wrapped prose into paragraphs;
+- splits long text at sentence, phrase, or word boundaries; and
+- merges fragments too small for a reliable TTS request.
+
+This is narration-specific preparation. It does not modify the source Markdown
+file and is not a replacement for `markdownCleaner`.
+
+## Edge hyphen narration review
+
+Edge conversion always loads
+`md-audio/library-hyphen-review.json` by default. Only candidates with
+`"status": "replace"` and non-empty replacement text are applied. Entries
+marked `review` or `genuine` are inert. Replacements occur only at the Edge TTS
+boundary; source Markdown remains unchanged.
+
+Override the record for a run with:
+
+```powershell
+python md-audio\md_to_audio.py `
+    "Library\cleaned\book.md" `
+    --backend edge `
+    --hyphen-review-json "md-audio\another-review.json"
+```
+
+The built-in forms `be-a -> be, a` and `be-an -> be, an` remain available.
+Case is preserved for title-case and uppercase tokens.
+
+### Integrated review pipeline
+
+Build all review records with the cached integrated command:
+
+```powershell
+python md-audio\build_hyphen_reviews.py
+```
+
+Defaults are derived from the repository layout. The command recursively scans
+`Library` and writes:
+
+| File | Meaning |
 |---|---|
-| Python | 3.10 or later |
-| OS | Windows (SAPI backend requires Windows; Edge backend works anywhere) |
-| PowerShell | Required for the SAPI backend; built into Windows 10/11 |
-| ffmpeg | Required for MP3 output and Edge TTS chunk concatenation. Can be installed via package manager or manually downloaded. The script provides installation instructions if ffmpeg is missing. |
+| `library-hyphen-review.json` | Automatically decided genuine and replacement entries loaded by Edge conversion. |
+| `library-hyphen-review-ambiguous.json` | Entries that remain unsafe to decide automatically. |
+| `library-hyphen-review-cross-evidence.json` | Decisions supported by matching punctuation elsewhere in the library. |
+| `.hyphen-review-cache.json.gz` | Portable content-addressed scan cache. |
 
----
-
-## Installation
-
-1. Clone or copy the `md-audio` folder to your machine.
-2. Install the Python dependency:
+The cache uses repository-relative paths and SHA-256 content digests. Unchanged
+files are read for hashing but are not decoded or regex-scanned. New or modified
+files are rescanned; deleted paths are removed. Force a full parse after changing
+scan rules:
 
 ```powershell
-pip install -r requirements.txt
+python md-audio\build_hyphen_reviews.py --rebuild-cache
 ```
 
-3. Install `ffmpeg` using your system package manager:
-   - **Windows (winget):** `winget install ffmpeg`
-   - **Windows (choco):** `choco install ffmpeg`
-   - **macOS (brew):** `brew install ffmpeg`
-   - **Linux (apt):** `sudo apt install ffmpeg`
-   - **Manual:** Download from https://ffmpeg.org/download.html
-
-> The `edge-tts` package is only required if you use `--backend edge`.
-> The default SAPI backend has no external Python dependencies.
->
-> If you forget to install ffmpeg, the script will print helpful installation instructions when you try to use MP3 output.
-
----
-
-## Quick Start
+Use explicit paths when running against a different library or writing review
+artifacts elsewhere:
 
 ```powershell
-# Convert a single Markdown file (SAPI backend, default voice)
-python md_to_audio.py "book.md"
-
-# Convert a whole folder
-python md_to_audio.py "C:\path\to\folder"
-
-# Use Edge TTS (neural, higher quality)
-python md_to_audio.py --backend edge "book.md"
-
-# Increase Edge parallel chunk workers (faster on good network)
-python md_to_audio.py --backend edge --voice Aria --edge-workers 8 "book.md"
-
-# Quiet mode (reduced step/progress logging)
-python md_to_audio.py --backend edge --voice Aria --quiet "book.md"
-
-# Specify a voice by simple alias
-python md_to_audio.py --voice Dave "book.md"
-python md_to_audio.py --backend edge --voice Aria "book.md"
-
-# Write output to a specific file
-python md_to_audio.py "book.md" "output.mp3"
-
-# Write batch output to a different folder
-python md_to_audio.py ".\books" ".\audio-output"
-
-# Estimate playback time without creating audio
-python md_to_audio.py --estimate-duration "book.md"
+python md-audio\build_hyphen_reviews.py `
+    --library "D:\Books\Library" `
+    --main-output "md-audio\library-hyphen-review.json" `
+    --ambiguous-output "md-audio\library-hyphen-review-ambiguous.json" `
+    --evidence-output "md-audio\library-hyphen-review-cross-evidence.json" `
+    --cache "md-audio\.hyphen-review-cache.json.gz"
 ```
 
----
+The lower-level `audit_hyphens.py` and
+`classify_ambiguous_hyphens.py` commands remain available for focused manual
+work, but `build_hyphen_reviews.py` is the normal pipeline entry point.
 
-## Command-line Reference
+## Important options
 
-```
-python md_to_audio.py [input_path] [output_path] [options]
-```
-
-| Argument | Description |
+| Option | Purpose |
 |---|---|
-| `input_path` | Markdown file or folder. Defaults to the only `.md` file in the script directory. |
-| `output_path` | Destination `.mp3` or `.wav` file, or output folder for batch conversion. Defaults to beside the input. |
-| `--backend sapi` | Use local Windows SAPI voices (default, offline). |
-| `--backend edge` | Use Edge TTS neural voices (online, 300+ voices). |
-| `--voice NAME` | Voice alias or exact voice name (see Voice Selection below). |
-| `--list-voices` | List available voices for the selected backend and exit. |
-| `--all-voices` | Show the full Edge voice catalog when listing voices. |
-| `--edge-workers N` | Max concurrent Edge chunk requests (Edge backend only, default `6`). |
-| `--quiet` | Reduce console output by hiding step-by-step progress logs. |
-| `--chapter-markers` | Insert silence markers at chapter/section endings for audiobook navigation. |
-| `--chapter-marker-duration SECONDS` | Duration of silence at chapter endings (default `2.0` seconds). |
-| `--keep-intermediate-wav` | Keep the temporary WAV when producing MP3 output (SAPI only). |
-| `--chunk-size N` | Max characters per speech chunk (default 2500). |
-| `--estimate-duration` | Print expected playback time and exit without creating audio. |
-| `--words-per-minute N` | Speaking rate for duration estimates (default `150`). |
+| `--backend {sapi,edge}` | Select the speech backend; default is SAPI. |
+| `--voice NAME` | Use an alias or exact installed/catalog voice name. |
+| `--edge-workers N` | Maximum concurrent Edge requests; default is 6. |
+| `--chunk-size N` | Override automatic chunk sizing; minimum effective value is 400. |
+| `--quiet` | Hide step-level progress messages. |
+| `--keep-intermediate-wav` | Preserve SAPI's WAV when producing MP3. |
+| `--chapter-markers` | Insert chapter silence for Edge output. |
+| `--chapter-marker-duration N` | Set Edge chapter silence in seconds; default is 2.0. |
+| `--cue-file` | Write approximate CUE and YouTube chapter files. |
+| `--estimate-duration` | Estimate playback time and exit. |
+| `--words-per-minute N` | Set the estimate rate; default is 150. |
 
----
+Run `python md-audio\md_to_audio.py --help` for the authoritative CLI
+reference.
 
-## Voice Selection
+## Architecture
 
-Run `--list-voices` first to see what's available.
-
-```powershell
-# List local Windows voices
-python md_to_audio.py --list-voices
-
-# List Edge voices (aliases + recommended)
-python md_to_audio.py --backend edge --list-voices
-
-# List all 300+ Edge voices
-python md_to_audio.py --backend edge --list-voices --all-voices
-```
-
-### SAPI built-in aliases
-
-| Alias | Voice |
+| Path | Responsibility |
 |---|---|
-| `Dave`, `David` | Microsoft David Desktop (en-US male) |
-| `Zira`, `Zee` | Microsoft Zira Desktop (en-US female) |
-| `Haruka`, `Japanese` | Microsoft Haruka Desktop (ja-JP female) |
+| `md_to_audio.py` | Compatibility CLI, Edge/SAPI integration, subprocess execution, and batch reporting. |
+| `md_audio/narration.py` | Pure Markdown preparation, chunking, and duration estimation. |
+| `md_audio/paths.py` | Input discovery and shared Edge/SAPI output resolution. |
+| `md_audio/cues.py` | Duration allocation plus CUE/YouTube metadata writing. |
+| `md_audio/review_records.py` | Shared portable paths, timestamps, and validated review JSON I/O. |
+| `audit_hyphens.py` | Initial token audit and conservative classification. |
+| `classify_ambiguous_hyphens.py` | Cross-library punctuation-evidence classification. |
+| `build_hyphen_reviews.py` | Integrated incremental review pipeline and cache. |
 
-### Edge TTS aliases
+The top-level functions re-exported by `md_to_audio.py` are retained for
+compatibility. New backend-independent code should import from `md_audio`.
 
-| Alias | Voice |
-|---|---|
-| `Aria` | en-US-AriaNeural |
-| `Jenny`, `Zira` | en-US-JennyNeural |
-| `Dave`, `David`, `Guy` | en-US-GuyNeural |
-| `Haruka`, `Nanami`, `Japanese` | ja-JP-NanamiNeural |
+## Testing
 
-You can also pass any exact voice name from `--list-voices --all-voices` directly to `--voice`.
-
-At the Edge TTS boundary, `be-a` and `be-an` are changed to `be, a` and
-`be, an`. The comma produces a slightly stronger, voice-dependent pause without
-custom SSML. Other hyphenated words, such as `half-sigh`, are left unchanged.
-
-### Auditing hyphenated text
-
-Before adding more narration replacements, create a review record from cleaned
-Markdown. The audit prefers the full-volume file in each folder, preventing
-chapter files from being counted a second time:
+Run the module tests from the repository root:
 
 ```powershell
-python audit_hyphens.py "C:\path\to\cleaned" "hyphen-review.json"
+python -m pytest md-audio\tests -q
 ```
 
-To audit a mixed library containing multiple processing stages, scan every
-recursive Markdown file while removing only byte-identical copies:
-
-```powershell
-python audit_hyphens.py "C:\path\to\Library" "library-hyphen-review.json" --all-files
-```
-
-Add `--auto-classify` to annotate every candidate with an explainable decision,
-confidence, and reason:
-
-```powershell
-python audit_hyphens.py "C:\path\to\Library" "library-hyphen-review.json" --all-files --auto-classify
-```
-
-The classifier marks high-confidence compounds as `genuine` and probable lost
-punctuation as `replace`, using a comma in the proposed narration. Ambiguous
-forms are moved to `library-hyphen-review-ambiguous.json`; they are never guessed
-or enabled automatically.
-
-Edge conversion automatically loads `library-hyphen-review.json` from beside
-`md_to_audio.py`. Only its `status: "replace"` entries are used:
-
-```powershell
-python md_to_audio.py "book.md" --backend edge
-```
-
-Use `--hyphen-review-json` only to override that default with another decided
-review record.
-
-Run the complete audit and both classification passes with one command. Defaults
-are resolved from the repository layout, so this works from any current folder:
-
-```powershell
-python build_hyphen_reviews.py
-```
-
-This generates the decided, ambiguous, and cross-evidence JSON files. Paths
-stored inside them are repository-relative, making the records portable across
-clones and operating systems. A token is never decided merely because it is rare
-or absent from a dictionary.
-
-The pipeline keeps a portable `.hyphen-review-cache.json.gz`. It uses relative
-paths and SHA-256 content digests rather than timestamps, so the cache can be
-committed and reused by another clone or operating system. On later runs files
-are hashed, but unchanged content is not decoded or regex-scanned; only new or
-modified files are parsed, and deleted files are removed. Force a complete
-rescan after changing extraction rules with:
-
-```powershell
-python build_hyphen_reviews.py --rebuild-cache
-```
-
-Each candidate includes its occurrence count and up to three source contexts.
-Entries remain inert while their status is `review`. After checking an entry,
-set it to `replace` and supply its narration replacement, or set it to `genuine`.
-Speech stutters and a small, conservative set of known compounds are excluded
-automatically.
-
----
-
-## Output Formats
-
-| Format | SAPI backend | Edge backend |
-|---|---|---|
-| MP3 | Yes (via ffmpeg, 16 kHz mono 32 kbps) | Yes (native from Edge, 24 kHz mono) |
-| WAV | Yes | No |
-
----
-
-## Performance Tuning (Edge Backend)
-
-The Edge backend now supports parallel chunk narration via `--edge-workers`.
-
-- Higher values usually reduce total conversion time.
-- Very high values may be limited by network quality, API throttling, or local CPU.
-- Start with `6` to `8`, then adjust if needed.
-
-### Example
-
-```powershell
-python md_to_audio.py --backend edge --voice Aria --edge-workers 8 ".\\books" ".\\output"
-```
-
-Use `--quiet` when running long batch jobs and you want less console noise:
-
-```powershell
-python md_to_audio.py --backend edge --voice Aria --edge-workers 8 --quiet ".\\books" ".\\output"
-```
-
-### Measured results on this machine (tiny excerpt benchmark)
-
-| Workers | Time (s) | Output bytes |
-|---|---:|---:|
-| 1 | 30.25 | 3,116,397 |
-| 4 | 9.70 | 3,116,397 |
-| 8 | 5.40 | 3,116,397 |
-
-Recommended starting point: `--edge-workers 8`.
-
----
-
-## Chapter Markers for Audiobook Navigation
-
-Add silence markers at chapter and section endings to help listeners navigate audiobooks.
-
-### How It Works
-
-The script automatically detects chapter headings (Chapter, Section, Part, Volume, Act, etc.) in your Markdown and can insert brief silence gaps at those boundaries. This makes audiobooks easier to pause and resume between chapters.
-
-### Usage
-
-```powershell
-# Add chapter markers (default 2 seconds of silence)
-python md_to_audio.py --chapter-markers "book.md" "output.mp3"
-
-# Customize marker duration (e.g., 1.5 seconds)
-python md_to_audio.py --chapter-markers --chapter-marker-duration 1.5 "book.md" "output.mp3"
-
-# Use with Edge backend
-python md_to_audio.py --backend edge --voice Aria --chapter-markers --chapter-marker-duration 2.0 "book.md" "output.mp3"
-```
-
-### Options
-
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `--chapter-markers` | Flag | Off | Enable chapter ending markers |
-| `--chapter-marker-duration` | Float | 2.0 | Silence duration in seconds at chapter endings |
-
-### Supported Heading Formats
-
-The script recognizes the following as chapter/section markers:
-
-- `# Chapter 1`, `# Section 1.2`, `# Part I`
-- `# Prologue`, `# Epilogue`, `# Afterword`
-- `# Act 1`, `# Scene 1`, `# Episode 1`
-- `# Side Story`, `# Interlude`, `# Arc 1`
-- `# I`, `# II`, `# III` (Roman numerals)
-- `# 1`, `# 2`, `# 3` (Regular numbering)
-
-### Implementation Details
-
-**Edge Backend:** Generates dedicated silence MP3 chunks and inserts them during concatenation.
-
-**SAPI Backend:** Skips chapter markers during synthesis; silence insertion is planned for future versions.
-
----
-
-## Code Documentation
-
-All functions and methods in `md_to_audio.py` include comprehensive docstrings with:
-
-- **Purpose**: Clear description of what the function does
-- **Parameters**: Detailed explanation of each parameter and its type
-- **Return values**: Description of return types and values
-- **Exceptions**: Any exceptions that may be raised
-- **Usage context**: When and how the function is used
-
-To view docstrings while working with the code:
-
-```python
-import md_to_audio
-help(md_to_audio.log_step)
-help(md_to_audio.convert_one_edge)
-help(md_to_audio.parse_args)
-```
-
-Or access them via the Python REPL or IDE's documentation viewer.
-
----
-
-## Files
-
-| File | Purpose |
-|---|---|
-| `md_to_audio.py` | Main script — handles both SAPI and Edge backends |
-| `requirements.txt` | Python package dependencies |
-| `books/` | Source Markdown files |
-| `output/` | Generated audio files |
-
----
-
-## What Gets Cleaned Before Narration
-
-The converter pre-processes Markdown to remove common ebook-export artifacts before passing text to the speech engine:
-
-- Markdown code-fence markers (`` ``` `` and `~~~`)
-- Markdown heading hashes (`#`, `##`, …)
-- Decorative Unicode ornament characters (scene-break glyphs, box-drawing, etc.)
-- OCR noise tokens (mixed alphanumeric junk from scanned pages)
-- Hard line-wrapping is rejoined into flowing paragraphs
-
----
-
-## Examples
-
-```powershell
-# Single file, default voice (David, SAPI)
-python md_to_audio.py "The Unwanted Undead Adventurer - Volume 04.md"
-
-# Single file, female Edge voice
-python md_to_audio.py --backend edge --voice Jenny "Volume 04.md"
-
-# Whole folder with Edge Aria voice, output to different folder
-python md_to_audio.py --backend edge --voice Aria ".\books" ".\audio"
-
-# WAV output (SAPI only)
-python md_to_audio.py "Volume 04.md" "Volume 04.wav"
-
-# Check what voices are on this machine
-python md_to_audio.py --list-voices
-python md_to_audio.py --backend edge --list-voices
-```
+The tests mock speech services and media subprocesses, so they do not synthesize
+real audio or require network access.

@@ -5,12 +5,12 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
+
+from md_audio import review_records
 
 
 HYPHENATED_RE = re.compile(r"\b[^\W\d_]+(?:-[^\W\d_]+)+\b", re.UNICODE)
@@ -59,10 +59,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 
 def portable_path(path: Path, base: Path = REPOSITORY_ROOT) -> str:
     """Return a relative metadata path without embedding a machine-specific root."""
-    try:
-        return Path(os.path.relpath(path.resolve(), base.resolve())).as_posix()
-    except ValueError:
-        return path.name
+    return review_records.portable_path(path, base)
 
 
 def is_stutter(token: str) -> bool:
@@ -303,7 +300,7 @@ def assemble_audit(
 
     return {
         "schema_version": 1,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": review_records.utc_timestamp(),
         "source_root": portable_path(root),
         "selection_mode": selection_mode,
         "markdown_files_discovered": discovered_count,
@@ -322,6 +319,7 @@ def assemble_audit(
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse standalone hyphen-audit command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input_folder", type=Path, help="Folder containing cleaned Markdown")
     parser.add_argument("output_json", type=Path, help="Review record to create")
@@ -350,6 +348,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    """Run the standalone audit and optionally split automatic decisions."""
     args = parse_args()
     if not args.input_folder.is_dir():
         raise SystemExit(f"Input folder does not exist: {args.input_folder}")
@@ -371,17 +370,9 @@ def main() -> int:
             f"{args.output_json.stem}-ambiguous{args.output_json.suffix}"
         )
         audit["ambiguous_output"] = portable_path(ambiguous_output)
-    args.output_json.parent.mkdir(parents=True, exist_ok=True)
-    args.output_json.write_text(
-        json.dumps(audit, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    review_records.write_review_record(args.output_json, audit)
     if ambiguous_audit is not None and ambiguous_output is not None:
-        ambiguous_output.parent.mkdir(parents=True, exist_ok=True)
-        ambiguous_output.write_text(
-            json.dumps(ambiguous_audit, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        review_records.write_review_record(ambiguous_output, ambiguous_audit)
     written_candidates = len(audit["candidates"])
     print(
         f"Scanned {audit['files_scanned']} files ({audit['selection_mode']}); "

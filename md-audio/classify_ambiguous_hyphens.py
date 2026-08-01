@@ -5,10 +5,10 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
-import json
 from pathlib import Path
 import re
+
+from md_audio import review_records
 
 
 WORD = r"[^\W\d_]+"
@@ -18,11 +18,13 @@ PUNCTUATED_PAIR_RE = re.compile(
 )
 WORD_RE = re.compile(WORD, re.UNICODE)
 SEPARATOR_NAMES = {",": "comma", "—": "em dash", ";": "semicolon", ":": "colon"}
+PunctuationKey = tuple[str, str, tuple[str, ...], tuple[str, ...]]
+PunctuationIndex = dict[PunctuationKey, Counter[str]]
 
 
 def context_signature(
     text: str, start: int, end: int, left: str, right: str
-) -> tuple[str, str, tuple[str, ...], tuple[str, ...]]:
+) -> PunctuationKey:
     """Identify a word pair using up to two surrounding words on each side."""
     before = [match.group(0).casefold() for match in WORD_RE.finditer(text[:start])][-2:]
     after = [match.group(0).casefold() for match in WORD_RE.finditer(text[end:])][:2]
@@ -31,11 +33,9 @@ def context_signature(
 
 def build_punctuation_index(
     library: Path,
-) -> dict[tuple[str, str, tuple[str, ...], tuple[str, ...]], Counter[str]]:
+) -> PunctuationIndex:
     """Index punctuated pairs plus surrounding words from every Markdown line."""
-    index: dict[
-        tuple[str, str, tuple[str, ...], tuple[str, ...]], Counter[str]
-    ] = defaultdict(Counter)
+    index: PunctuationIndex = defaultdict(Counter)
     for path in sorted(library.rglob("*.md")):
         for line in path.read_text(encoding="utf-8").splitlines():
             for match in PUNCTUATED_PAIR_RE.finditer(line):
@@ -52,9 +52,7 @@ def build_punctuation_index(
 
 def classify_with_evidence(
     candidate: dict[str, object],
-    punctuation_index: dict[
-        tuple[str, str, tuple[str, ...], tuple[str, ...]], Counter[str]
-    ],
+    punctuation_index: PunctuationIndex,
 ) -> dict[str, object] | None:
     """Return a replacement decision when another source preserves punctuation."""
     token = candidate.get("token")
@@ -91,9 +89,7 @@ def classify_with_evidence(
 
 def classify_record(
     ambiguous: dict[str, object],
-    punctuation_index: dict[
-        tuple[str, str, tuple[str, ...], tuple[str, ...]], Counter[str]
-    ],
+    punctuation_index: PunctuationIndex,
 ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
     """Split an ambiguous record into evidence-resolved and unresolved entries."""
     resolved: list[dict[str, object]] = []
@@ -127,6 +123,7 @@ def merge_decisions(main_record: dict[str, object], resolved: list[dict[str, obj
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse cross-evidence classifier command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("ambiguous_json", type=Path)
     parser.add_argument("library_folder", type=Path)
@@ -145,18 +142,17 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_record(path: Path) -> dict[str, object]:
-    value = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(value, dict) or not isinstance(value.get("candidates"), list):
-        raise SystemExit(f"Review JSON has no candidates list: {path}")
-    return value
+    """Load and validate a hyphen-review record."""
+    return review_records.load_review_record(path)
 
 
 def write_record(path: Path, record: dict[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    """Write a hyphen-review record as formatted UTF-8 JSON."""
+    review_records.write_review_record(path, record)
 
 
 def main() -> int:
+    """Resolve candidates with punctuation evidence and update review files."""
     args = parse_args()
     ambiguous = load_record(args.ambiguous_json)
     main_review = load_record(args.main_review_json)
@@ -167,7 +163,7 @@ def main() -> int:
     resolved, unresolved = classify_record(ambiguous, punctuation_index)
     merge_decisions(main_review, resolved)
 
-    generated_at = datetime.now(timezone.utc).isoformat()
+    generated_at = review_records.utc_timestamp()
     remaining = dict(ambiguous)
     remaining["generated_at"] = generated_at
     remaining["ambiguous_candidates"] = len(unresolved)

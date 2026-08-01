@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""Convert Markdown files to narrated MP3 or WAV audio.
+
+This compatibility entry point owns backend integration (Edge TTS, Windows
+SAPI, ffmpeg, and ffprobe).  Backend-independent narration, path, and cue logic
+lives in :mod:`md_audio` so it can be tested and reused without audio tooling.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -17,26 +24,28 @@ import time
 import traceback
 from pathlib import Path
 
+from md_audio.cues import estimate_chunk_durations_ms, write_cue_file
+from md_audio.narration import (
+    CHAPTER_END_MARKER,
+    DEFAULT_NARRATION_WORDS_PER_MINUTE,
+    choose_chunk_size_and_chunks,
+    estimate_mp3_duration,
+    format_duration,
+    is_decorative_separator,
+    is_speakable_chunk,
+    narration_paragraphs,
+    narration_paragraphs_with_scene_markers,
+    split_speech_chunk,
+)
+from md_audio.paths import (
+    clean_stem,
+    collect_input_paths,
+    default_input_path,
+    default_output_path,
+    resolve_conversion_targets,
+    source_output_stem,
+)
 
-HEADING_RE = re.compile(
-    r"^(?:"
-    r"(?:prologue|epilogue|afterword|foreword|preface|introduction|conclusion"
-    r"|appendix|appendices|glossary|index|notes|footnotes|bibliography"
-    r"|acknowledg(?:e)?ments|about(?:\s+the\s+author)?|newsletter"
-    r"|contents|table\s+of\s+contents|copyright|dedication|illustrations?)"
-    r"|(?:chapter|section|part|book|volume|act|scene|episode|interlude"
-    r"|intermission|side\s+story|story|arc|appendix)\b(?:[\s:.-].*)?"
-    r"|(?:[ivxlcdm]+|\d+)[\s:.-]+.+"
-    r")\s*$",
-    re.IGNORECASE,
-)
-ORNAMENT_RE = re.compile(
-    r"[\u25A0-\u25FF\u2600-\u26FF\u2700-\u27BF\u2500-\u257F\u2580-\u259F\u2B00-\u2BFF\uFFF0-\uFFFF]"
-)
-OCR_JUNK_RE = re.compile(r"(?:\s+(?=\S*[A-Za-z])(?=\S*[0-9])[A-Za-z0-9_-]{5,})+$")
-FENCE_RE = re.compile(r"^\s*(?:`{3,}|~{3,})[^`~]*\s*$")
-LEADING_HASH_RE = re.compile(r"^#{1,6}[ \t]*")
-SENTENCE_END_RE = re.compile(r"[.!?…:;\"')\]]\s*$")
 VOICE_ALIASES = {
     "dave": "david",
     "david": "david",
@@ -71,19 +80,12 @@ EDGE_RECOMMENDED_VOICES = [
 
 QUIET = False
 EDGE_RETRY_ATTEMPTS = 7
-MIN_SPEAKABLE_ALPHA = 4
-DEFAULT_NARRATION_WORDS_PER_MINUTE = 150.0
 EDGE_TTS_HYPHEN_TOKEN_RE = re.compile(r"\b[^\W\d_]+(?:-[^\W\d_]+)+\b", re.UNICODE)
 DEFAULT_EDGE_TTS_HYPHEN_REPLACEMENTS = {"be-a": "be, a", "be-an": "be, an"}
 EDGE_TTS_HYPHEN_REPLACEMENTS = DEFAULT_EDGE_TTS_HYPHEN_REPLACEMENTS.copy()
 DEFAULT_HYPHEN_REVIEW_PATH = Path(__file__).resolve().with_name(
     "library-hyphen-review.json"
 )
-
-
-def is_speakable_chunk(text: str, minimum_alpha: int = MIN_SPEAKABLE_ALPHA) -> bool:
-    """Return whether a chunk contains enough language for a TTS request."""
-    return sum(character.isalpha() for character in text) >= minimum_alpha
 
 
 def escape_ssml_text(text: str) -> str:
@@ -134,13 +136,6 @@ def configure_edge_tts_hyphen_replacements(path: Path | None) -> int:
     if path is not None:
         EDGE_TTS_HYPHEN_REPLACEMENTS.update(load_hyphen_review_replacements(path))
     return len(EDGE_TTS_HYPHEN_REPLACEMENTS)
-
-
-def is_decorative_separator(text: str) -> bool:
-    """Return whether a line contains only ornaments and Markdown wrappers."""
-    without_ornaments = ORNAMENT_RE.sub("", text)
-    without_wrappers = re.sub(r"[\s*_~`.,;:!?=+\-]+", "", without_ornaments)
-    return not without_wrappers
 
 
 def log_step(message: str) -> None:
@@ -246,7 +241,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--chapter-markers",
         action="store_true",
-        help="Insert silence markers at chapter/section endings for audiobook navigation.",
+        help="Insert Edge-only silence at chapter/section endings.",
     )
     parser.add_argument(
         "--chapter-marker-duration",
@@ -278,112 +273,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def choose_chunk_size_and_chunks(
-    markdown_text: str,
-    backend: str,
-    requested_chunk_size: int | None,
-    edge_workers: int,
-    quiet: bool,
-    chapter_markers: bool = False,
-) -> tuple[int, list[str]]:
-    """
-    Pick a chunk size based on chunk count pressure, then return generated chunks.
-
-    If the user specifies --chunk-size, that value is used directly.
-    Otherwise this auto-tuner adjusts chunk size to keep total chunk counts
-    in a smoother range for each backend.
-    """
-    if requested_chunk_size is not None:
-        size = max(400, requested_chunk_size)
-        return size, narration_paragraphs(markdown_text, size, chapter_markers)
-
-    # Backend-aware baseline and limits.
-    if backend == "edge":
-        size = 2600
-        min_size = 1200
-        max_size = 6000
-        target_chunks = max(1200, 1400 + (edge_workers * 120))
-    else:
-        size = 2200
-        min_size = 1200
-        max_size = 4500
-        target_chunks = 1000
-
-    chunks = narration_paragraphs(markdown_text, size, chapter_markers)
-    chunk_count = len(chunks)
-
-    # Tune using measured chunk count from current file.
-    for _ in range(6):
-        if chunk_count == 0:
-            break
-
-        new_size = size
-        if chunk_count > int(target_chunks * 1.8) and size < max_size:
-            new_size = min(max_size, int(size * 1.45))
-        elif chunk_count > target_chunks and size < max_size:
-            new_size = min(max_size, int(size * 1.22))
-        elif chunk_count < int(target_chunks * 0.35) and size > min_size:
-            new_size = max(min_size, int(size * 0.88))
-
-        if new_size == size:
-            break
-
-        size = new_size
-        chunks = narration_paragraphs(markdown_text, size, chapter_markers)
-        chunk_count = len(chunks)
-
-    if not quiet:
-        print(f"[STEP] Auto-selected chunk size: {size} (chunks: {chunk_count})")
-    return size, chunks
-
-
-def estimate_mp3_duration(
-    markdown: str | Path,
-    words_per_minute: float = DEFAULT_NARRATION_WORDS_PER_MINUTE,
-    chapter_markers: bool = False,
-    chapter_marker_duration: float = 2.0,
-) -> float:
-    """Return the expected MP3 playback duration in seconds.
-
-    ``markdown`` may be Markdown text or a path to a UTF-8 Markdown file. Only
-    text that survives normal narration preparation is counted. Optional
-    chapter-marker silence is included in the result.
-    """
-    if words_per_minute <= 0:
-        raise ValueError("words_per_minute must be greater than zero")
-    if chapter_marker_duration < 0:
-        raise ValueError("chapter_marker_duration cannot be negative")
-
-    markdown_text = (
-        markdown.read_text(encoding="utf-8")
-        if isinstance(markdown, Path)
-        else markdown
-    )
-    chunks = narration_paragraphs(
-        markdown_text,
-        chunk_size=6000,
-        chapter_markers=chapter_markers,
-    )
-    spoken_words = sum(
-        len(re.findall(r"\b[^\W_]+(?:['’][^\W_]+)*\b", chunk, re.UNICODE))
-        for chunk in chunks
-        if chunk != "[CHAPTER_END]"
-    )
-    marker_count = sum(chunk == "[CHAPTER_END]" for chunk in chunks)
-    return (
-        spoken_words / words_per_minute * 60.0
-        + marker_count * chapter_marker_duration
-    )
-
-
-def format_duration(seconds: float) -> str:
-    """Format a duration as ``H:MM:SS`` using nearest-second rounding."""
-    total_seconds = max(0, round(seconds))
-    hours, remainder = divmod(total_seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    return f"{hours}:{minutes:02d}:{seconds:02d}"
-
-
 def print_duration_estimates(args: argparse.Namespace) -> int:
     """Print duration estimates for the selected Markdown file or folder."""
     if args.words_per_minute <= 0:
@@ -396,11 +285,12 @@ def print_duration_estimates(args: argparse.Namespace) -> int:
     )
     input_paths = collect_input_paths(input_path)
     total_seconds = 0.0
+    include_chapter_silence = args.chapter_markers and args.backend == "edge"
     for path in input_paths:
         seconds = estimate_mp3_duration(
             path,
             words_per_minute=args.words_per_minute,
-            chapter_markers=args.chapter_markers,
+            chapter_markers=include_chapter_silence,
             chapter_marker_duration=args.chapter_marker_duration,
         )
         total_seconds += seconds
@@ -469,238 +359,6 @@ def print_final_report(
         print(f"\nError log: {error_log_path}")
 
 
-def default_input_path(script_path: Path) -> Path:
-    """
-    Locate the default input markdown file when none is specified.
-
-    If the script directory contains exactly one .md file, returns it.
-    Otherwise raises an error requiring explicit input specification.
-
-    Args:
-        script_path (Path): Path to the script file (used to find parent directory).
-
-    Returns:
-        Path: The only .md file found in the script directory.
-
-    Raises:
-        SystemExit: If the directory contains zero or multiple .md files.
-    """
-    matches = sorted(script_path.parent.glob("*.md"))
-    if len(matches) == 1:
-        return matches[0]
-    raise SystemExit(
-        "Specify an input markdown path when the folder contains multiple .md files."
-    )
-
-
-def clean_stem(path: Path) -> str:
-    """
-    Generate a clean output filename from a markdown file path.
-
-    Removes bracketed/parenthesized metadata, normalizes whitespace,
-    extracts and normalizes volume/book numbers, and removes duplicate tokens.
-    Transforms paths like "The Unwanted Undead Adventurer - Volume 04 [Source].md"
-    into "The Unwanted Undead Adventurer Volume 4".
-
-    Args:
-        path (Path): The input file path to clean.
-
-    Returns:
-        str: A cleaned, deduplicated filename stem suitable for output files.
-    """
-    stem = path.stem
-    stem = re.sub(r"\[[^\]]*\]", "", stem)
-    stem = re.sub(r"\([^\)]*\)", "", stem)
-    stem = stem.replace("_", " ")
-    stem = re.sub(r"\s*-\s*", " - ", stem)
-    stem = re.sub(r"\s+", " ", stem).strip(" -_.")
-    stem = re.sub(r"[<>:\"/\\|?*]", "", stem).strip(" .")
-
-    volume_match = re.search(
-        r"\b(?:volume|vol\.?|book)\s*0*(\d+)\b", stem, re.IGNORECASE
-    )
-    if volume_match:
-        title_part = stem[: volume_match.start()].strip(" -_.")
-        if title_part:
-            stem = f"{title_part} Volume {int(volume_match.group(1))}"
-
-    deduped = []
-    for token in stem.split():
-        if not deduped or deduped[-1].lower() != token.lower():
-            deduped.append(token)
-
-    return " ".join(deduped) or "converted"
-
-
-def source_output_stem(path: Path) -> str:
-    """Return the original input filename stem for output naming."""
-    return path.stem or "converted"
-
-
-def split_speech_chunk(text: str, max_length: int) -> list[str]:
-    """
-    Split a paragraph into speech chunks at sentence/phrase boundaries.
-
-    Breaks text at natural boundaries (periods, exclamation/question marks,
-    commas, colons) to avoid splitting words. Falls back to word boundaries
-    if no natural break exists within the first half of the chunk.
-
-    Args:
-        text (str): Raw text to split into smaller chunks.
-        max_length (int): Maximum characters per returned chunk.
-
-    Returns:
-        list[str]: List of text chunks, each <= max_length characters,
-                   split at natural boundaries when possible.
-    """
-    remaining = re.sub(r"\s+", " ", text).strip()
-    parts: list[str] = []
-
-    while len(remaining) > max_length:
-        slice_text = remaining[:max_length]
-        boundary = max(
-            slice_text.rfind("."),
-            slice_text.rfind("!"),
-            slice_text.rfind("?"),
-            slice_text.rfind(";"),
-            slice_text.rfind(","),
-            slice_text.rfind(":"),
-        )
-        if boundary < max_length // 2:
-            boundary = slice_text.rfind(" ")
-        if boundary < 0:
-            boundary = max_length - 1
-
-        chunk = remaining[: boundary + 1].strip()
-        if chunk:
-            parts.append(chunk)
-        remaining = remaining[boundary + 1 :].strip()
-
-    if remaining:
-        parts.append(remaining)
-
-    return parts
-
-
-def narration_paragraphs(
-    markdown_text: str, chunk_size: int, chapter_markers: bool = False
-) -> list[str]:
-    """
-    Extract and prepare narration chunks from markdown text.
-
-    Parses markdown to remove headings, code fences, ornament characters,
-    and OCR junk while preserving paragraph flow. Groups lines into logical
-    paragraphs, then splits them into chunks at sentence boundaries.
-
-    Processing includes:
-    - Removal of markdown code fences (``` and ~~~)
-    - Removal of markdown heading hashes
-    - Removal of decorative Unicode ornament characters
-    - Removal of OCR noise tokens
-    - Rejoining hard-wrapped lines into flowing paragraphs
-    - Chunk splitting at sentence boundaries
-    - Optional chapter ending markers for audiobook navigation
-
-    Args:
-        markdown_text (str): Raw markdown content to parse.
-        chunk_size (int): Maximum characters per narration chunk.
-        chapter_markers (bool): If True, insert [CHAPTER_END] markers after chapters.
-
-    Returns:
-        list[str]: List of text chunks ready for speech synthesis,
-                   each <= chunk_size characters. Includes [CHAPTER_END] markers if enabled.
-    """
-    paragraph: list[str] = []
-    out: list[str] = []
-    pending_prefix = ""
-    last_was_chapter = False
-
-    def flush() -> None:
-        if paragraph:
-            joined = re.sub(r"\s+", " ", " ".join(paragraph)).strip()
-            if joined:
-                out.append(joined)
-            paragraph.clear()
-
-    for raw in markdown_text.splitlines():
-        if FENCE_RE.match(raw):
-            continue
-        if is_decorative_separator(raw):
-            flush()
-            continue
-
-        line = ORNAMENT_RE.sub("", raw).strip()
-        if not line:
-            flush()
-            continue
-
-        line = LEADING_HASH_RE.sub("", line).strip()
-        if not line:
-            flush()
-            continue
-
-        if HEADING_RE.match(line):
-            flush()
-            # Insert chapter end marker before this chapter heading (not first chapter)
-            if (
-                chapter_markers
-                and out
-                and not (len(out) > 0 and "[CHAPTER_END]" in out[-1])
-            ):
-                if last_was_chapter:
-                    out.append("[CHAPTER_END]")
-            tail = re.search(r"\s+([IA])$", line)
-            if tail:
-                pending_prefix = tail.group(1) + " "
-                line = line[: tail.start()].rstrip()
-            out.append(line)
-            last_was_chapter = True
-            continue
-
-        previous = None
-        while line and line != previous:
-            previous = line
-            line = OCR_JUNK_RE.sub("", line).rstrip()
-
-        if not line:
-            flush()
-            continue
-
-        if pending_prefix and not paragraph:
-            line = pending_prefix + line
-            pending_prefix = ""
-
-        paragraph.append(line)
-        last_was_chapter = False
-        if SENTENCE_END_RE.search(line):
-            flush()
-
-    flush()
-
-    # Add final chapter marker if enabled
-    if chapter_markers and out and last_was_chapter and out[-1] != "[CHAPTER_END]":
-        out.append("[CHAPTER_END]")
-
-    chunks: list[str] = []
-    for item in out:
-        chunks.extend(split_speech_chunk(item, chunk_size))
-
-    # Post-filter: remove/merge chunks that would cause NoAudioReceived.
-    # Edge TTS raises NoAudioReceived when given fewer than ~4 alphabetic
-    # characters (e.g. 'it.', '-', '. "ie'). These arise from sentences
-    # split across blank lines in the source markdown.
-    filtered: list[str] = []
-    for chunk in chunks:
-        if chunk == "[CHAPTER_END]" or is_speakable_chunk(chunk):
-            filtered.append(chunk)
-        elif filtered:
-            # Append orphaned fragment to previous chunk (preserves audio).
-            filtered[-1] = filtered[-1].rstrip() + " " + chunk.strip()
-        # else: stray symbol with nothing speakable — silently drop.
-
-    return filtered
-
-
 def generate_silence_chunk(duration: float) -> str:
     """
     Generate a special silence marker string for chapter endings.
@@ -759,120 +417,6 @@ def create_silence_mp3(output_path: Path, duration: float) -> None:
         raise RuntimeError("Silence generation timed out")
 
 
-def narration_paragraphs_with_scene_markers(
-    markdown_text: str, chunk_size: int
-) -> tuple[list[str], dict[int, str]]:
-    """
-    Like narration_paragraphs() but also returns a scene/chapter map.
-
-    Every markdown heading (## ...) is treated as a scene boundary regardless
-    of whether it matches HEADING_RE. This is correct for Tanya-style files
-    where headings are date/location stamps rather than "Chapter N" labels.
-
-    Returns:
-        (chunks, scene_map) where scene_map maps chunk index (0-based) to the
-        heading title that begins at that chunk position.
-    """
-    paragraph: list[str] = []
-    out: list = []  # items: plain str OR ("__SCENE__", title)
-    pending_prefix = ""
-
-    def flush() -> None:
-        if paragraph:
-            joined = re.sub(r"\s+", " ", " ".join(paragraph)).strip()
-            if joined:
-                out.append(joined)
-            paragraph.clear()
-
-    for raw in markdown_text.splitlines():
-        if FENCE_RE.match(raw):
-            continue
-        if is_decorative_separator(raw):
-            flush()
-            continue
-        line = ORNAMENT_RE.sub("", raw).strip()
-        if not line:
-            flush()
-            continue
-        # Detect ANY markdown heading (not just HEADING_RE matches)
-        hash_match = re.match(r"^(#{1,6})\s+(.*)", line)
-        if hash_match:
-            flush()
-            title = hash_match.group(2).strip()
-            # Strip trailing OCR junk from heading titles
-            title = OCR_JUNK_RE.sub("", title).strip()
-            if title:
-                out.append(("__SCENE__", title))
-            continue
-        line = LEADING_HASH_RE.sub("", line).strip()
-        if not line:
-            flush()
-            continue
-        if HEADING_RE.match(line):
-            flush()
-            tail = re.search(r"\s+([IA])$", line)
-            if tail:
-                pending_prefix = tail.group(1) + " "
-                line = line[: tail.start()].rstrip()
-            out.append(line)
-            continue
-        previous = None
-        while line and line != previous:
-            previous = line
-            line = OCR_JUNK_RE.sub("", line).rstrip()
-        if not line:
-            flush()
-            continue
-        if pending_prefix and not paragraph:
-            line = pending_prefix + line
-            pending_prefix = ""
-        paragraph.append(line)
-        if SENTENCE_END_RE.search(line):
-            flush()
-
-    flush()
-
-    # Build raw chunks and track which raw index each scene begins at
-    raw_chunks: list[str] = []
-    raw_scene_before: dict[int, str] = {}  # raw_chunk_index -> scene title
-    pending_scene: str | None = None
-
-    for item in out:
-        if isinstance(item, tuple) and item[0] == "__SCENE__":
-            pending_scene = item[1]
-        else:
-            sub = split_speech_chunk(item, chunk_size)
-            if sub and pending_scene is not None:
-                raw_scene_before[len(raw_chunks)] = pending_scene
-                pending_scene = None
-            raw_chunks.extend(sub)
-
-    # Post-filter (same as narration_paragraphs)
-    MIN_ALPHA = 4
-    filtered: list[str] = []
-    old_to_new: dict[int, int] = {}
-    for old_idx, chunk in enumerate(raw_chunks):
-        alpha = sum(c.isalpha() for c in chunk)
-        if alpha >= MIN_ALPHA:
-            old_to_new[old_idx] = len(filtered)
-            filtered.append(chunk)
-        elif filtered:
-            old_to_new[old_idx] = len(filtered) - 1
-            filtered[-1] = filtered[-1].rstrip() + " " + chunk.strip()
-
-    # Remap scene markers to filtered indices
-    scene_map: dict[int, str] = {}
-    for old_idx, title in raw_scene_before.items():
-        for scan in range(old_idx, len(raw_chunks)):
-            if scan in old_to_new:
-                new_idx = old_to_new[scan]
-                if new_idx not in scene_map:
-                    scene_map[new_idx] = title
-                break
-
-    return filtered, scene_map
-
-
 def get_audio_duration_ms(audio_path: Path) -> int:
     """Return audio duration in milliseconds via ffprobe. Returns 0 on failure."""
     ffprobe = shutil.which("ffprobe")
@@ -899,103 +443,31 @@ def get_audio_duration_ms(audio_path: Path) -> int:
         return 0
 
 
-def estimate_chunk_durations_ms(chunks: list[str], total_ms: int) -> list[int]:
-    """Distribute total_ms across chunks proportionally by character count."""
-    total_chars = sum(len(c) for c in chunks)
-    if total_chars == 0 or total_ms == 0:
-        return [0] * len(chunks)
-    result, allocated = [], 0
-    for i, chunk in enumerate(chunks):
-        if i == len(chunks) - 1:
-            result.append(total_ms - allocated)
-        else:
-            d = round(len(chunk) / total_chars * total_ms)
-            result.append(d)
-            allocated += d
-    return result
-
-
-def write_cue_file(
-    output_mp3: Path,
-    scene_map: dict[int, str],
-    chunks: list[str],
-    total_ms: int,
-) -> tuple[Path, Path]:
-    """
-    Write a .cue sheet and a YouTube chapters text file for the output MP3.
-
-    The .cue file lists every scene/chapter heading with its start time,
-    derived by distributing total_ms across chunks proportionally by character
-    count (accurate to within a few seconds for typical narration).
-
-    The _youtube_chapters.txt file contains the same data formatted for
-    pasting directly into a YouTube video description.
-
-    Args:
-        output_mp3:  Path to the final MP3 file.
-        scene_map:   {chunk_index: scene_title} from narration_paragraphs_with_scene_markers().
-        chunks:      The full list of narration chunks (for timing estimation).
-        total_ms:    Total audio duration in milliseconds.
-
-    Returns:
-        (cue_path, youtube_path): Paths to the two written files.
-    """
-    # Build per-chunk cumulative start times
-    durations = estimate_chunk_durations_ms(chunks, total_ms)
-    cumulative: list[int] = []
-    running = 0
-    for d in durations:
-        cumulative.append(running)
-        running += d
-
-    # Collect scene entries in order
-    scenes: list[tuple[int, str]] = []
-    for chunk_idx in sorted(scene_map):
-        start_ms = cumulative[chunk_idx] if chunk_idx < len(cumulative) else 0
-        scenes.append((start_ms, scene_map[chunk_idx]))
-
-    # Ensure first scene starts at 0:00 (YouTube requirement)
-    if scenes and scenes[0][0] != 0:
-        scenes.insert(0, (0, scenes[0][1]))
-    if not scenes:
-        scenes = [(0, output_mp3.stem)]
-
-    def ms_to_cue(ms: int) -> str:
-        """Convert milliseconds to CUE MM:SS:FF format (75 frames/sec)."""
-        total_s = ms // 1000
-        frames = (ms % 1000) * 75 // 1000
-        return f"{total_s // 60:02d}:{total_s % 60:02d}:{frames:02d}"
-
-    def ms_to_yt(ms: int) -> str:
-        """Convert milliseconds to YouTube H:MM:SS or M:SS timestamp."""
-        total_s = ms // 1000
-        h = total_s // 3600
-        m = (total_s % 3600) // 60
-        s = total_s % 60
-        return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
-
-    # Write .cue file
-    cue_path = output_mp3.with_suffix(".cue")
-    cue_lines = [f'FILE "{output_mp3.name}" MP3']
-    for track_num, (start_ms, title) in enumerate(scenes, start=1):
-        cue_lines.append(f"  TRACK {track_num:02d} AUDIO")
-        cue_lines.append(f'    TITLE "{title}"')
-        cue_lines.append(f"    INDEX 01 {ms_to_cue(start_ms)}")
-    cue_path.write_text("\n".join(cue_lines) + "\n", encoding="utf-8")
-
-    # Write YouTube chapters text file
-    yt_path = output_mp3.with_name(output_mp3.stem + "_youtube_chapters.txt")
-    yt_lines = ["Paste these timestamps into the YouTube video description:", ""]
-    for start_ms, title in scenes:
-        yt_lines.append(f"{ms_to_yt(start_ms)} {title}")
-    yt_lines += [
-        "",
-        "Note: YouTube requires at least 3 timestamps and the first must be 0:00.",
-        "Chapters appear automatically once the video is published.",
-    ]
-    yt_path.write_text("\n".join(yt_lines) + "\n", encoding="utf-8")
-
-    return cue_path, yt_path
+def _write_requested_cue(
+    input_path: Path,
+    output_path: Path,
+    chunk_size: int,
+    enabled: bool,
+) -> None:
+    """Write optional CUE/YouTube metadata for a completed audio file."""
+    if not enabled:
+        return
+    log_step("Generating CUE sheet and YouTube chapters file")
+    markdown_text = input_path.read_text(encoding="utf-8")
+    cue_chunks, scene_map = narration_paragraphs_with_scene_markers(
+        markdown_text, chunk_size
+    )
+    if not scene_map:
+        print("[INFO] No headings found in markdown — CUE file skipped.")
+        return
+    cue_path, youtube_path = write_cue_file(
+        output_path,
+        scene_map,
+        cue_chunks,
+        get_audio_duration_ms(output_path),
+    )
+    print(f"CUE sheet  : {cue_path}")
+    print(f"YT chapters: {youtube_path}")
 
 
 def ensure_ffmpeg() -> str:
@@ -1241,7 +713,7 @@ async def _edge_synthesize_chunks_async(
     synthesis_chunks: list[tuple[int, str]] = []
 
     for idx, chunk in enumerate(chunks):
-        if chunk == "[CHAPTER_END]":
+        if chunk == CHAPTER_END_MARKER:
             chapter_marker_indices[idx] = chapter_marker_duration
         elif is_speakable_chunk(chunk):
             synthesis_chunks.append((idx, chunk))
@@ -1524,80 +996,20 @@ def convert_one_edge(
     print(f"Created: {output_path}")
     print(f"Size: {final_size:,} bytes")
 
-    # CUE file generation
-    if cue_file:
-        log_step("Generating CUE sheet and YouTube chapters file")
-        markdown_text = input_path.read_text(encoding="utf-8")
-        cue_chunks, scene_map = narration_paragraphs_with_scene_markers(
-            markdown_text, effective_chunk_size
-        )
-        total_ms = get_audio_duration_ms(output_path)
-        if scene_map:
-            cue_path, yt_path = write_cue_file(
-                output_path, scene_map, cue_chunks, total_ms
-            )
-            print(f"CUE sheet  : {cue_path}")
-            print(f"YT chapters: {yt_path}")
-        else:
-            print("[INFO] No headings found in markdown — CUE file skipped.")
+    _write_requested_cue(input_path, output_path, effective_chunk_size, cue_file)
 
     return effective_chunk_size, len(chunks), final_size
 
 
 def resolve_edge_targets(args: argparse.Namespace) -> list[tuple[Path, Path]]:
-    """
-    Resolve input/output paths for Edge TTS batch or single-file conversion.
-
-    Handles three scenarios:
-    1. Single file: input_file -> output.mp3 (or specified file)
-    2. Folder: converts all .md files in folder -> output_dir/*.mp3
-    3. Default: auto-selects single .md file in script directory
-
-    Args:
-        args (argparse.Namespace): Parsed arguments with input_path, output_path.
-
-    Returns:
-        list[tuple[Path, Path]]: List of (source_md, dest_mp3) path pairs.
-
-    Raises:
-        SystemExit: If input path not found, no .md files in folder,
-                    or output_path is invalid for folder batch conversion.
-    """
-    input_path = (
-        Path(args.input_path).resolve()
-        if args.input_path
-        else default_input_path(Path(__file__).resolve())
+    """Resolve Edge inputs to MP3 targets using the shared path policy."""
+    targets = resolve_conversion_targets(
+        args.input_path,
+        args.output_path,
+        Path(__file__).resolve(),
+        allowed_extensions=frozenset({".mp3"}),
     )
-    input_paths = collect_input_paths(input_path)
-    raw = None
-    if args.output_path:
-        raw = Path(args.output_path)
-        if not raw.is_absolute():
-            raw = (input_path if input_path.is_dir() else input_path.parent) / raw
-        raw = raw.resolve()
-    targets: list[tuple[Path, Path]] = []
-    if len(input_paths) > 1:
-        out_dir = input_path if raw is None else raw
-        if out_dir.suffix:
-            raise SystemExit(
-                "When converting a folder, output_path must be a directory, not a file."
-            )
-        for src in input_paths:
-            targets.append(
-                (src, (out_dir / f"{source_output_stem(src)}.mp3").resolve())
-            )
-        return targets
-    src = input_paths[0]
-    if raw is None:
-        out = (src.parent / f"{source_output_stem(src)}.mp3").resolve()
-    elif raw.suffix:
-        if raw.suffix.lower() != ".mp3":
-            raise SystemExit("Edge TTS output must end in .mp3.")
-        out = raw
-    else:
-        out = (raw / f"{source_output_stem(src)}.mp3").resolve()
-    targets.append((src, out))
-    return targets
+    return [(source, output) for source, output, _ in targets]
 
 
 def list_edge_voices(show_all: bool = False) -> int:
@@ -1875,66 +1287,14 @@ def convert_wav_to_mp3_with_chapters(
     chapter_marker_positions: list[int],
     chapter_marker_duration: float = 2.0,
 ) -> None:
+    """Encode SAPI WAV output while preserving the legacy chapter API.
+
+    SAPI currently produces one continuous WAV, so the chunk boundary timings
+    needed to insert accurate silence are unavailable.  The arguments are kept
+    for API compatibility; use the Edge backend when chapter silence is needed.
     """
-    Convert a WAV file to MP3 and insert chapter ending silence markers.
-
-    This is a more complex operation that requires:
-    1. Converting the WAV to MP3
-    2. Splitting the MP3 into segments corresponding to chunks
-    3. Inserting silence between chapters
-
-    For simplicity, this version converts to MP3 first, then inserts silence
-    based on estimated chunk positions.
-
-    Args:
-        wav_path (Path): Source WAV file to convert.
-        mp3_path (Path): Destination MP3 file path.
-        chapter_marker_positions (list[int]): List of chunk indices where chapters end.
-        chapter_marker_duration (float): Duration of silence at chapter ends in seconds.
-
-    Returns:
-        None (output MP3 is saved to disk).
-
-    Raises:
-        SystemExit: If ffmpeg is not found or encoding fails.
-    """
-    ffmpeg = ensure_ffmpeg()
-
-    # First, convert WAV to MP3 as usual
-    tmp_mp3_path = mp3_path.with_stem(mp3_path.stem + "_tmp")
-    subprocess.run(
-        [
-            ffmpeg,
-            "-y",
-            "-i",
-            str(wav_path),
-            "-codec:a",
-            "libmp3lame",
-            "-ac",
-            "1",
-            "-ar",
-            "16000",
-            "-b:a",
-            "32k",
-            str(tmp_mp3_path),
-        ],
-        check=True,
-    )
-
-    # For now, just rename the temp file since proper chapter marker insertion
-    # requires knowing exact audio durations for each chunk, which is complex
-    # Future enhancement: parse MP3 headers or use ffprobe to determine chunk lengths
-    # and insert silence at precise positions
-    if chapter_marker_positions:
-        # This is where we would insert silence, but for now we'll keep the simple MP3
-        # A full implementation would require:
-        # 1. ffprobe to get MP3 duration
-        # 2. Calculate average chunk duration
-        # 3. Use ffmpeg concat filter to insert silence segments
-        # 4. Concatenate with inserted silence
-        pass
-
-    tmp_mp3_path.rename(mp3_path)
+    del chapter_marker_positions, chapter_marker_duration
+    convert_wav_to_mp3(wav_path, mp3_path)
 
 
 def convert_wav_to_mp3(wav_path: Path, mp3_path: Path) -> None:
@@ -1975,131 +1335,14 @@ def convert_wav_to_mp3(wav_path: Path, mp3_path: Path) -> None:
     )
 
 
-def collect_input_paths(input_path: Path) -> list[Path]:
-    """
-    Collect markdown file paths from the given input location.
-
-    If input is a directory, finds all .md files within it (sorted).
-    If input is a file, returns it as a single-item list.
-
-    Args:
-        input_path (Path): Directory or file path to collect from.
-
-    Returns:
-        list[Path]: List of .md file paths to process.
-
-    Raises:
-        SystemExit: If input path not found, or directory contains no .md files.
-    """
-    if input_path.is_dir():
-        matches = sorted(path for path in input_path.glob("*.md") if path.is_file())
-        if not matches:
-            raise SystemExit(f"No .md files were found in: {input_path}")
-        return matches
-
-    if input_path.is_file():
-        return [input_path]
-
-    raise SystemExit(f"Input path was not found: {input_path}")
-
-
-def default_output_path(input_path: Path, extension: str) -> Path:
-    """
-    Generate the default output file path for a given input markdown file.
-
-    Places output file in the same directory as input with the cleaned stem
-    name and specified extension (e.g., 'book.md' -> 'book.mp3').
-
-    Args:
-        input_path (Path): Source markdown file path.
-        extension (str): File extension for output (e.g., '.mp3', '.wav').
-
-    Returns:
-        Path: Absolute path to default output file location.
-    """
-    return (
-        input_path.parent / f"{source_output_stem(input_path)}{extension}"
-    ).resolve()
-
-
 def resolve_targets(args: argparse.Namespace) -> list[tuple[Path, Path, str]]:
-    """
-    Resolve input/output paths for SAPI batch or single-file conversion.
-
-    Handles three scenarios:
-    1. Single file: input_file -> output.mp3 (or output.wav, or specified)
-    2. Folder: converts all .md files in folder -> output_dir/*.mp3
-    3. Default: auto-selects single .md file in script directory
-
-    Args:
-        args (argparse.Namespace): Parsed arguments with input_path, output_path.
-
-    Returns:
-        list[tuple[Path, Path, str]]: List of (source_md, dest_audio, extension) tuples.
-
-    Raises:
-        SystemExit: If input path not found, no .md files in folder,
-                    output extension is not .mp3 or .wav, or output_path
-                    is invalid for folder batch conversion.
-    """
-    script_path = Path(__file__).resolve()
-    input_path = (
-        Path(args.input_path).resolve()
-        if args.input_path
-        else default_input_path(script_path)
+    """Resolve SAPI inputs to MP3 or WAV targets using the shared path policy."""
+    return resolve_conversion_targets(
+        args.input_path,
+        args.output_path,
+        Path(__file__).resolve(),
+        allowed_extensions=frozenset({".mp3", ".wav"}),
     )
-    input_paths = collect_input_paths(input_path)
-
-    if args.output_path:
-        raw_output_path = Path(args.output_path)
-        if not raw_output_path.is_absolute():
-            raw_output_path = (
-                input_path if input_path.is_dir() else input_path.parent
-            ) / raw_output_path
-        raw_output_path = raw_output_path.resolve()
-    else:
-        raw_output_path = None
-
-    targets: list[tuple[Path, Path, str]] = []
-
-    if len(input_paths) > 1:
-        if raw_output_path is None:
-            output_directory = input_path
-            output_extension = ".mp3"
-        else:
-            output_extension = raw_output_path.suffix.lower()
-            if output_extension:
-                raise SystemExit(
-                    "When converting a folder, output_path must be a directory, not a file."
-                )
-            output_extension = ".mp3"
-            output_directory = raw_output_path
-
-        for source_path in input_paths:
-            output_path = (
-                output_directory
-                / f"{source_output_stem(source_path)}{output_extension}"
-            ).resolve()
-            targets.append((source_path, output_path, output_extension))
-
-        return targets
-
-    source_path = input_paths[0]
-    if raw_output_path is None:
-        output_path = default_output_path(source_path, ".mp3")
-    elif raw_output_path.suffix:
-        output_path = raw_output_path
-    else:
-        output_path = (
-            raw_output_path / f"{source_output_stem(source_path)}.mp3"
-        ).resolve()
-
-    extension = output_path.suffix.lower()
-    if extension not in {".mp3", ".wav"}:
-        raise SystemExit("Output path must end in .mp3 or .wav.")
-
-    targets.append((source_path, output_path, extension))
-    return targets
 
 
 def convert_one(
@@ -2161,8 +1404,8 @@ def convert_one(
     # For SAPI, filter out chapter markers and track their positions
     chapter_marker_positions = []
     synthesis_chunks = []
-    for idx, chunk in enumerate(chunks):
-        if chunk == "[CHAPTER_END]":
+    for chunk in chunks:
+        if chunk == CHAPTER_END_MARKER:
             chapter_marker_positions.append(len(synthesis_chunks))
         else:
             synthesis_chunks.append(chunk)
@@ -2189,7 +1432,10 @@ def convert_one(
         try:
             if chapter_markers and chapter_marker_positions:
                 if not quiet:
-                    print("[STEP] Inserting chapter ending silence markers...")
+                    print(
+                        "[INFO] SAPI chapter silence is unavailable; "
+                        "encoding continuous audio."
+                    )
                 convert_wav_to_mp3_with_chapters(
                     wav_path,
                     output_path,
@@ -2207,22 +1453,7 @@ def convert_one(
     print(f"Created: {output_path}")
     print(f"Size: {final_size:,} bytes")
 
-    # CUE file generation
-    if cue_file:
-        log_step("Generating CUE sheet and YouTube chapters file")
-        markdown_text = input_path.read_text(encoding="utf-8")
-        cue_chunks, scene_map = narration_paragraphs_with_scene_markers(
-            markdown_text, effective_chunk_size
-        )
-        total_ms = get_audio_duration_ms(output_path)
-        if scene_map:
-            cue_path, yt_path = write_cue_file(
-                output_path, scene_map, cue_chunks, total_ms
-            )
-            print(f"CUE sheet  : {cue_path}")
-            print(f"YT chapters: {yt_path}")
-        else:
-            print("[INFO] No headings found in markdown — CUE file skipped.")
+    _write_requested_cue(input_path, output_path, effective_chunk_size, cue_file)
 
     return effective_chunk_size, len(chunks), final_size
 
@@ -2290,57 +1521,22 @@ def _finish_batch(
     return 1 if failures else 0
 
 
-def main() -> int:
-    """
-    Main entry point for the markdown-to-audio converter.
+def _run_conversion_batch(
+    targets: list[tuple[Path, ...]],
+    backend: str,
+    args: argparse.Namespace,
+    voice_name: str | None,
+) -> int:
+    """Convert resolved targets and produce one normalized batch report."""
+    results: list[dict[str, str]] = []
+    failures: list[dict[str, str]] = []
 
-    Parses command-line arguments, sets global state (quiet mode),
-    routes to appropriate backend (Edge or SAPI), and processes
-    either a single file or batch of files.
-
-    Execution flow:
-    1. Parse and validate CLI arguments
-    2. Set quiet mode from arguments
-    3. Handle --list-voices request if specified
-    4. Validate configuration (e.g., --edge-workers >= 1)
-    5. Resolve input/output file paths
-    6. Convert each file using the selected backend
-
-    Returns:
-        int: Exit code (0 on success, non-zero on error).
-
-    Raises:
-        SystemExit: On configuration errors or file processing failures.
-    """
-    global QUIET
-    args = parse_args()
-    QUIET = args.quiet
-    if args.estimate_duration:
-        return print_duration_estimates(args)
-    if args.backend == "edge":
-        log_step("Backend selected: Edge TTS")
-        if args.list_voices:
-            log_step("Listing Edge voices")
-            return list_edge_voices(show_all=args.all_voices)
-        if args.edge_workers < 1:
-            raise SystemExit("--edge-workers must be at least 1.")
-        review_path = getattr(
-            args, "hyphen_review_json", DEFAULT_HYPHEN_REVIEW_PATH
-        ) or DEFAULT_HYPHEN_REVIEW_PATH
-        replacement_count = configure_edge_tts_hyphen_replacements(review_path)
-        log_step(
-            f"Loaded {replacement_count} Edge hyphen narration replacements "
-            f"from {review_path}"
-        )
-        voice_name = resolve_edge_voice(args.voice or "Aria")
-        targets = resolve_edge_targets(args)
-        log_step(f"Resolved {len(targets)} input file(s)")
-        results: list[dict[str, str]] = []
-        failures: list[dict[str, str]] = []
-        for index, (input_path, output_path) in enumerate(targets, start=1):
-            log_step(f"Processing file {index}/{len(targets)} -> {output_path.name}")
-            started = time.perf_counter()
-            try:
+    for index, target in enumerate(targets, start=1):
+        input_path, output_path = target[:2]
+        log_step(f"Processing file {index}/{len(targets)} -> {output_path.name}")
+        started = time.perf_counter()
+        try:
+            if backend == "edge":
                 used_chunk_size, chunk_count, final_size = convert_one_edge(
                     input_path,
                     output_path,
@@ -2352,52 +1548,20 @@ def main() -> int:
                     args.chapter_marker_duration,
                     cue_file=args.cue_file,
                 )
-                elapsed = time.perf_counter() - started
-                results.append(
-                    _passed_result(
-                        input_path,
-                        output_path,
-                        used_chunk_size,
-                        chunk_count,
-                        final_size,
-                        elapsed,
-                    )
+            else:
+                extension = target[2]
+                used_chunk_size, chunk_count, final_size = convert_one(
+                    input_path,
+                    output_path,
+                    extension,
+                    args.keep_intermediate_wav,
+                    args.chunk_size,
+                    voice_name,
+                    args.quiet,
+                    args.chapter_markers,
+                    args.chapter_marker_duration,
+                    cue_file=args.cue_file,
                 )
-            except BaseException as exc:
-                if isinstance(exc, KeyboardInterrupt):
-                    raise
-                result, failure = _failed_result(input_path, output_path, exc)
-                print(f"[ERROR] Failed: {input_path.name} -> {result['error']}")
-                results.append(result)
-                failures.append(failure)
-
-        return _finish_batch(results, failures, "edge", targets[0][1].parent)
-    log_step("Backend selected: SAPI")
-    if args.list_voices:
-        log_step("Listing SAPI voices")
-        return list_sapi_voices()
-    targets = resolve_targets(args)
-    voice_name = resolve_voice_name(args.voice)
-    log_step(f"Resolved {len(targets)} input file(s)")
-    results: list[dict[str, str]] = []
-    failures: list[dict[str, str]] = []
-    for index, (input_path, output_path, extension) in enumerate(targets, start=1):
-        log_step(f"Processing file {index}/{len(targets)} -> {output_path.name}")
-        started = time.perf_counter()
-        try:
-            used_chunk_size, chunk_count, final_size = convert_one(
-                input_path,
-                output_path,
-                extension,
-                args.keep_intermediate_wav,
-                args.chunk_size,
-                voice_name,
-                args.quiet,
-                args.chapter_markers,
-                args.chapter_marker_duration,
-                cue_file=args.cue_file,
-            )
-            elapsed = time.perf_counter() - started
             results.append(
                 _passed_result(
                     input_path,
@@ -2405,7 +1569,7 @@ def main() -> int:
                     used_chunk_size,
                     chunk_count,
                     final_size,
-                    elapsed,
+                    time.perf_counter() - started,
                 )
             )
         except BaseException as exc:
@@ -2416,7 +1580,42 @@ def main() -> int:
             results.append(result)
             failures.append(failure)
 
-    return _finish_batch(results, failures, "sapi", targets[0][1].parent)
+    return _finish_batch(results, failures, backend, targets[0][1].parent)
+
+
+def main() -> int:
+    """Validate CLI settings, select a backend, and run the conversion batch."""
+    global QUIET
+    args = parse_args()
+    QUIET = args.quiet
+
+    if args.estimate_duration:
+        return print_duration_estimates(args)
+
+    if args.backend == "edge":
+        log_step("Backend selected: Edge TTS")
+        if args.list_voices:
+            return list_edge_voices(show_all=args.all_voices)
+        if args.edge_workers < 1:
+            raise SystemExit("--edge-workers must be at least 1.")
+        review_path = getattr(args, "hyphen_review_json", DEFAULT_HYPHEN_REVIEW_PATH)
+        review_path = review_path or DEFAULT_HYPHEN_REVIEW_PATH
+        replacement_count = configure_edge_tts_hyphen_replacements(review_path)
+        log_step(
+            f"Loaded {replacement_count} Edge hyphen narration replacements "
+            f"from {review_path}"
+        )
+        voice_name = resolve_edge_voice(args.voice or "Aria")
+        targets: list[tuple[Path, ...]] = resolve_edge_targets(args)
+    else:
+        log_step("Backend selected: SAPI")
+        if args.list_voices:
+            return list_sapi_voices()
+        voice_name = resolve_voice_name(args.voice)
+        targets = resolve_targets(args)
+
+    log_step(f"Resolved {len(targets)} input file(s)")
+    return _run_conversion_batch(targets, args.backend, args, voice_name)
 
 
 if __name__ == "__main__":
