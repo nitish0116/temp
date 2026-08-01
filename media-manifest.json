@@ -3,11 +3,11 @@
   "media_root": "OneDrive/Library",
   "hashes_included": false,
   "summary": {
-    "file_count": 385,
-    "total_size_bytes": 26033950048,
+    "file_count": 407,
+    "total_size_bytes": 27059128310,
     "by_type": {
-      "mp3": 193,
-      "mp4": 192
+      "mp3": 204,
+      "mp4": 203
     }
   },
   "files": [
@@ -1458,6 +1458,160 @@
       "type": "mp4",
       "size_bytes": 80574665,
       "modified_utc": "2026-07-28T08:13:54+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 1/The Beginning After the End - V 01 Ch 0-3.mp3",
+      "type": "mp3",
+      "size_bytes": 12517389,
+      "modified_utc": "2026-07-31T13:47:33+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 1/The Beginning After the End - V 01 Ch 0-3.mp4",
+      "type": "mp4",
+      "size_bytes": 37727841,
+      "modified_utc": "2026-07-31T13:47:35+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 1/The Beginning After the End - V 01 Ch 12-15.mp3",
+      "type": "mp3",
+      "size_bytes": 30965613,
+      "modified_utc": "2026-07-31T13:47:35+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 1/The Beginning After the End - V 01 Ch 12-15.mp4",
+      "type": "mp4",
+      "size_bytes": 89252560,
+      "modified_utc": "2026-07-31T13:47:43+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 1/The Beginning After the End - V 01 Ch 16-18.mp3",
+      "type": "mp3",
+      "size_bytes": 20691213,
+      "modified_utc": "2026-07-31T13:47:41+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 1/The Beginning After the End - V 01 Ch 16-18.mp4",
+      "type": "mp4",
+      "size_bytes": 60413274,
+      "modified_utc": "2026-07-31T13:47:44+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 1/The Beginning After the End - V 01 Ch 19-21.mp3",
+      "type": "mp3",
+      "size_bytes": 17132781,
+      "modified_utc": "2026-07-31T13:47:44+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 1/The Beginning After the End - V 01 Ch 19-21.mp4",
+      "type": "mp4",
+      "size_bytes": 50501316,
+      "modified_utc": "2026-07-31T13:47:50+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 1/The Beginning After the End - V 01 Ch 4-7.mp3",
+      "type": "mp3",
+      "size_bytes": 20174685,
+      "modified_utc": "2026-07-31T13:47:47+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 1/The Beginning After the End - V 01 Ch 4-7.mp4",
+      "type": "mp4",
+      "size_bytes": 59302314,
+      "modified_utc": "2026-07-31T13:47:52+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 1/The Beginning After the End - V 01 Ch 8-11.mp3",
+      "type": "mp3",
+      "size_bytes": 25960077,
+      "modified_utc": "2026-07-31T13:47:53+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 1/The Beginning After the End - V 01 Ch 8-11.mp4",
+      "type": "mp4",
+      "size_bytes": 75167211,
+      "modified_utc": "2026-07-31T13:47:57+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 2/The Beginning After the End - V 02 ch 22-25.mp3",
+      "type": "mp3",
+      "size_bytes": 27655053,
+      "modified_utc": "2026-07-31T13:47:56+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 2/The Beginning After the End - V 02 ch 22-25.mp4",
+      "type": "mp4",
+      "size_bytes": 79559863,
+      "modified_utc": "2026-07-31T13:48:01+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 2/The Beginning After the End - V 02 ch 26-29.mp3",
+      "type": "mp3",
+      "size_bytes": 26993901,
+      "modified_utc": "2026-07-31T13:48:03+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 2/The Beginning After the End - V 02 ch 26-29.mp4",
+      "type": "mp4",
+      "size_bytes": 77811014,
+      "modified_utc": "2026-07-31T13:48:04+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 2/The Beginning After the End - V 02 ch 30-33.mp3",
+      "type": "mp3",
+      "size_bytes": 28990845,
+      "modified_utc": "2026-07-31T13:48:07+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 2/The Beginning After the End - V 02 ch 30-33.mp4",
+      "type": "mp4",
+      "size_bytes": 83424888,
+      "modified_utc": "2026-07-31T13:48:13+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 2/The Beginning After the End - V 02 ch 34-37.mp3",
+      "type": "mp3",
+      "size_bytes": 27099405,
+      "modified_utc": "2026-07-31T13:48:08+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 2/The Beginning After the End - V 02 ch 34-37.mp4",
+      "type": "mp4",
+      "size_bytes": 78169342,
+      "modified_utc": "2026-07-31T13:48:15+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 2/The Beginning After the End - V 02 ch 38-42.mp3",
+      "type": "mp3",
+      "size_bytes": 24543117,
+      "modified_utc": "2026-07-31T13:48:13+00:00",
+      "availability": "online-only"
+    },
+    {
+      "path": "TBAtE/output/Cleaned/Volume 2/The Beginning After the End - V 02 ch 38-42.mp4",
+      "type": "mp4",
+      "size_bytes": 71124560,
+      "modified_utc": "2026-07-31T13:48:18+00:00",
       "availability": "online-only"
     },
     {
