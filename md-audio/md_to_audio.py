@@ -5,6 +5,7 @@ import argparse
 import asyncio
 from datetime import datetime
 import html
+import json
 import os
 import random
 import re
@@ -72,6 +73,12 @@ QUIET = False
 EDGE_RETRY_ATTEMPTS = 7
 MIN_SPEAKABLE_ALPHA = 4
 DEFAULT_NARRATION_WORDS_PER_MINUTE = 150.0
+EDGE_TTS_HYPHEN_TOKEN_RE = re.compile(r"\b[^\W\d_]+(?:-[^\W\d_]+)+\b", re.UNICODE)
+DEFAULT_EDGE_TTS_HYPHEN_REPLACEMENTS = {"be-a": "be, a", "be-an": "be, an"}
+EDGE_TTS_HYPHEN_REPLACEMENTS = DEFAULT_EDGE_TTS_HYPHEN_REPLACEMENTS.copy()
+DEFAULT_HYPHEN_REVIEW_PATH = Path(__file__).resolve().with_name(
+    "library-hyphen-review.json"
+)
 
 
 def is_speakable_chunk(text: str, minimum_alpha: int = MIN_SPEAKABLE_ALPHA) -> bool:
@@ -82,6 +89,51 @@ def is_speakable_chunk(text: str, minimum_alpha: int = MIN_SPEAKABLE_ALPHA) -> b
 def escape_ssml_text(text: str) -> str:
     """Escape user text exactly once before it enters an SSML-based backend."""
     return html.escape(html.unescape(text), quote=False)
+
+
+def normalize_edge_tts_prosody(text: str) -> str:
+    """Apply approved, Edge-only narration replacements to hyphenated tokens."""
+    def replace(match: re.Match[str]) -> str:
+        token = match.group(0)
+        replacement = EDGE_TTS_HYPHEN_REPLACEMENTS.get(token.casefold())
+        if replacement is None:
+            return token
+        if token.isupper():
+            return replacement.upper()
+        if token[0].isupper() and replacement[0].islower():
+            return replacement[0].upper() + replacement[1:]
+        return replacement
+
+    return EDGE_TTS_HYPHEN_TOKEN_RE.sub(replace, text)
+
+
+def load_hyphen_review_replacements(path: Path) -> dict[str, str]:
+    """Load only approved ``status: replace`` entries from a review record."""
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"Could not load hyphen review JSON '{path}': {exc}") from exc
+    candidates = record.get("candidates") if isinstance(record, dict) else None
+    if not isinstance(candidates, list):
+        raise SystemExit(f"Hyphen review JSON has no candidates list: {path}")
+    replacements: dict[str, str] = {}
+    for candidate in candidates:
+        if not isinstance(candidate, dict) or candidate.get("status") != "replace":
+            continue
+        token = candidate.get("token")
+        replacement = candidate.get("replacement")
+        if isinstance(token, str) and token and isinstance(replacement, str) and replacement:
+            replacements[token.casefold()] = replacement
+    return replacements
+
+
+def configure_edge_tts_hyphen_replacements(path: Path | None) -> int:
+    """Reset built-ins and optionally add approved replacements from a record."""
+    global EDGE_TTS_HYPHEN_REPLACEMENTS
+    EDGE_TTS_HYPHEN_REPLACEMENTS = DEFAULT_EDGE_TTS_HYPHEN_REPLACEMENTS.copy()
+    if path is not None:
+        EDGE_TTS_HYPHEN_REPLACEMENTS.update(load_hyphen_review_replacements(path))
+    return len(EDGE_TTS_HYPHEN_REPLACEMENTS)
 
 
 def is_decorative_separator(text: str) -> bool:
@@ -176,6 +228,15 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=6,
         help="Maximum concurrent Edge TTS chunk requests (Edge backend only).",
+    )
+    parser.add_argument(
+        "--hyphen-review-json",
+        type=Path,
+        default=DEFAULT_HYPHEN_REVIEW_PATH,
+        help=(
+            "Classified Edge narration review JSON. Defaults to "
+            "library-hyphen-review.json beside this script."
+        ),
     )
     parser.add_argument(
         "--quiet",
@@ -1106,7 +1167,7 @@ async def _edge_synthesize_chunk(text: str, voice_name: str, output_path: Path) 
             # internally. Normalize any pre-encoded entities at this boundary
             # so the client escapes exactly once rather than speaking "amp".
             communicate = edge_tts.Communicate(
-                text=html.unescape(text),
+                text=normalize_edge_tts_prosody(html.unescape(text)),
                 voice=voice_name,
             )
             await communicate.save(str(output_path))
@@ -2263,6 +2324,14 @@ def main() -> int:
             return list_edge_voices(show_all=args.all_voices)
         if args.edge_workers < 1:
             raise SystemExit("--edge-workers must be at least 1.")
+        review_path = getattr(
+            args, "hyphen_review_json", DEFAULT_HYPHEN_REVIEW_PATH
+        ) or DEFAULT_HYPHEN_REVIEW_PATH
+        replacement_count = configure_edge_tts_hyphen_replacements(review_path)
+        log_step(
+            f"Loaded {replacement_count} Edge hyphen narration replacements "
+            f"from {review_path}"
+        )
         voice_name = resolve_edge_voice(args.voice or "Aria")
         targets = resolve_edge_targets(args)
         log_step(f"Resolved {len(targets)} input file(s)")

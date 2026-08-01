@@ -132,6 +132,78 @@ python md_to_audio.py --backend edge --list-voices --all-voices
 
 You can also pass any exact voice name from `--list-voices --all-voices` directly to `--voice`.
 
+At the Edge TTS boundary, `be-a` and `be-an` are changed to `be, a` and
+`be, an`. The comma produces a slightly stronger, voice-dependent pause without
+custom SSML. Other hyphenated words, such as `half-sigh`, are left unchanged.
+
+### Auditing hyphenated text
+
+Before adding more narration replacements, create a review record from cleaned
+Markdown. The audit prefers the full-volume file in each folder, preventing
+chapter files from being counted a second time:
+
+```powershell
+python audit_hyphens.py "C:\path\to\cleaned" "hyphen-review.json"
+```
+
+To audit a mixed library containing multiple processing stages, scan every
+recursive Markdown file while removing only byte-identical copies:
+
+```powershell
+python audit_hyphens.py "C:\path\to\Library" "library-hyphen-review.json" --all-files
+```
+
+Add `--auto-classify` to annotate every candidate with an explainable decision,
+confidence, and reason:
+
+```powershell
+python audit_hyphens.py "C:\path\to\Library" "library-hyphen-review.json" --all-files --auto-classify
+```
+
+The classifier marks high-confidence compounds as `genuine` and probable lost
+punctuation as `replace`, using a comma in the proposed narration. Ambiguous
+forms are moved to `library-hyphen-review-ambiguous.json`; they are never guessed
+or enabled automatically.
+
+Edge conversion automatically loads `library-hyphen-review.json` from beside
+`md_to_audio.py`. Only its `status: "replace"` entries are used:
+
+```powershell
+python md_to_audio.py "book.md" --backend edge
+```
+
+Use `--hyphen-review-json` only to override that default with another decided
+review record.
+
+Run the complete audit and both classification passes with one command. Defaults
+are resolved from the repository layout, so this works from any current folder:
+
+```powershell
+python build_hyphen_reviews.py
+```
+
+This generates the decided, ambiguous, and cross-evidence JSON files. Paths
+stored inside them are repository-relative, making the records portable across
+clones and operating systems. A token is never decided merely because it is rare
+or absent from a dictionary.
+
+The pipeline keeps a portable `.hyphen-review-cache.json.gz`. It uses relative
+paths and SHA-256 content digests rather than timestamps, so the cache can be
+committed and reused by another clone or operating system. On later runs files
+are hashed, but unchanged content is not decoded or regex-scanned; only new or
+modified files are parsed, and deleted files are removed. Force a complete
+rescan after changing extraction rules with:
+
+```powershell
+python build_hyphen_reviews.py --rebuild-cache
+```
+
+Each candidate includes its occurrence count and up to three source contexts.
+Entries remain inert while their status is `review`. After checking an entry,
+set it to `replace` and supply its narration replacement, or set it to `genuine`.
+Speech stutters and a small, conservative set of known compounds are excluded
+automatically.
+
 ---
 
 ## Output Formats

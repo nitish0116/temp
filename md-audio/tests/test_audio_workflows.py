@@ -2,6 +2,7 @@
 
 import asyncio
 from argparse import Namespace
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -101,17 +102,25 @@ def test_edge_voice_resolution_and_listing(monkeypatch, capsys):
 
 
 def test_edge_synthesis_single_and_batch(monkeypatch, tmp_path):
+    requested_texts = []
+
     class Communicate:
         def __init__(self, text, voice):
             self.text = text
+            requested_texts.append(text)
 
         async def save(self, path):
             Path(path).write_bytes(b"audio")
 
     monkeypatch.setattr(app, "_require_edge_tts", lambda: SimpleNamespace(Communicate=Communicate))
     out = tmp_path / "one.mp3"
-    asyncio.run(app._edge_synthesize_chunk("Readable &amp; text", "voice", out))
+    asyncio.run(
+        app._edge_synthesize_chunk(
+            "Readable &amp; text: be-a, BE-AN, and half-sigh", "voice", out
+        )
+    )
     assert out.read_bytes() == b"audio"
+    assert requested_texts == ["Readable & text: be, a, BE, AN, and half-sigh"]
     empty = tmp_path / "empty.mp3"
     asyncio.run(app._edge_synthesize_chunk("...", "voice", empty))
     assert empty.exists() and empty.stat().st_size == 0
@@ -122,6 +131,36 @@ def test_edge_synthesis_single_and_batch(monkeypatch, tmp_path):
         )
     )
     assert len(paths) == 2 and markers == {1: 1.5}
+
+
+def test_hyphen_review_loads_only_approved_replacements(tmp_path):
+    review = tmp_path / "review.json"
+    review.write_text(
+        json.dumps(
+            {
+                "candidates": [
+                    {"token": "story-an", "status": "replace", "replacement": "story, an"},
+                    {"token": "mana-rich", "status": "review", "replacement": None},
+                    {"token": "half-sigh", "status": "genuine", "replacement": None},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    count = app.configure_edge_tts_hyphen_replacements(review)
+
+    assert count == 3
+    assert app.normalize_edge_tts_prosody(
+        "Story-an example; mana-rich; half-sigh; BE-AN"
+    ) == "Story, an example; mana-rich; half-sigh; BE, AN"
+
+
+def test_default_hyphen_review_is_beside_converter():
+    assert app.DEFAULT_HYPHEN_REVIEW_PATH == Path(app.__file__).resolve().with_name(
+        "library-hyphen-review.json"
+    )
+    assert app.DEFAULT_HYPHEN_REVIEW_PATH.is_file()
 
 
 def test_edge_concat_variants(monkeypatch, tmp_path):

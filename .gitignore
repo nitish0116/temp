@@ -18,6 +18,11 @@ mp3ToYT/**/*.txt
 *.pdf
 *.json
 !media-manifest.json
+!md-audio/library-hyphen-review.json
+!md-audio/library-hyphen-review-ambiguous.json
+!md-audio/library-hyphen-review-cross-evidence.json
+md-audio/.hyphen-review-cache.json
+!md-audio/.hyphen-review-cache.json.gz
 .pytest-runs/
 .pytest-tmp/
 
