@@ -26,6 +26,10 @@ from markdownCleaner.commands.batch import (
     safe_report_name,
     unique_batch_output_name,
 )
+from markdownCleaner.commands.broken_word_review import (
+    promote_review,
+    run_review_pipeline,
+)
 from markdownCleaner.commands.execution import (
     configured_output_root,
     execute_pipeline,
@@ -170,6 +174,99 @@ def _run_review_action(
     return 0
 
 
+def _config_relative_default(config: PipelineConfig, relative: str) -> Path:
+    """Resolve a generated review artifact beside the selected configuration."""
+
+    resolved = config.resolve_path(relative)
+    if resolved is None:  # The supplied defaults are always concrete paths.
+        raise ValueError(f"Could not resolve review path: {relative}")
+    return Path(resolved)
+
+
+def _run_broken_word_review(
+    args: argparse.Namespace,
+    *,
+    config: PipelineConfig,
+    parser: argparse.ArgumentParser,
+) -> int:
+    """Build cached broken-word decisions and ambiguous review records."""
+
+    library = args.build_broken_word_review.resolve()
+    main_output = (
+        args.broken_word_review_output.resolve()
+        if args.broken_word_review_output
+        else _config_relative_default(config, "data/broken_word_review.json")
+    )
+    ambiguous_output = (
+        args.broken_word_ambiguous_output.resolve()
+        if args.broken_word_ambiguous_output
+        else _config_relative_default(
+            config, "data/broken_word_review_ambiguous.json"
+        )
+    )
+    cache_path = (
+        args.broken_word_review_cache.resolve()
+        if args.broken_word_review_cache
+        else _config_relative_default(
+            config, "data/.broken_word_review_cache.json.gz"
+        )
+    )
+    try:
+        result = run_review_pipeline(
+            library,
+            config=config,
+            main_output=main_output,
+            ambiguous_output=ambiguous_output,
+            cache_path=cache_path,
+            max_contexts=args.max_broken_word_contexts,
+            rebuild_cache=args.rebuild_broken_word_cache,
+        )
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
+    print(f"Broken-word review: {main_output}")
+    print(f"Ambiguous review: {ambiguous_output}")
+    print(
+        f"Files: {result['cache_hits']} cached, "
+        f"{result['cache_misses']} scanned, "
+        f"{result['cache_removed']} removed; "
+        f"{result['accepted']} accepted, {result['rejected']} rejected, "
+        f"{result['ambiguous']} ambiguous."
+    )
+    return 0
+
+
+def _promote_broken_word_review(
+    args: argparse.Namespace,
+    *,
+    config: PipelineConfig,
+    parser: argparse.ArgumentParser,
+) -> int:
+    """Promote reviewed boundary decisions into the configured stable store."""
+
+    review_path = args.promote_broken_word_review.resolve()
+    configured = config.get(
+        "symspell.broken_word_decisions",
+        "data/broken_word_decisions.json",
+    )
+    if args.broken_word_decisions_file:
+        decisions_path = args.broken_word_decisions_file.resolve()
+    else:
+        resolved = config.resolve_path(configured)
+        if resolved is None:
+            parser.error("symspell.broken_word_decisions cannot be null")
+        decisions_path = Path(resolved)
+    try:
+        result = promote_review(review_path, decisions_path)
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
+    print(f"Broken-word decisions: {decisions_path}")
+    print(
+        f"Promoted {result['promoted']} candidate(s); "
+        f"ignored {result['ignored']} unresolved candidate(s)."
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Execute the requested CLI workflow and return a process exit code.
 
@@ -196,9 +293,20 @@ def main(argv: list[str] | None = None) -> int:
     if not config.exists():
         parser.error(f"Config file not found: {config}")
 
-    if review_action_count(args) > 1:
+    try:
+        loaded_config = PipelineConfig.load(config)
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
+
+    workflow_count = (
+        review_action_count(args)
+        + bool(args.build_broken_word_review)
+        + bool(args.promote_broken_word_review)
+    )
+    if workflow_count > 1:
         parser.error(
-            "--approve-words, --learn-words, and --reject-words are mutually exclusive"
+            "word-review, broken-word scan, and promotion commands are "
+            "mutually exclusive"
         )
     requested_review = review_request(args)
     if requested_review:
@@ -206,6 +314,54 @@ def main(argv: list[str] | None = None) -> int:
             requested_review,
             config=config,
             parser=parser,
+        )
+
+    broken_word_option_used = any(
+        (
+            args.broken_word_review_output,
+            args.broken_word_ambiguous_output,
+            args.broken_word_review_cache,
+            args.rebuild_broken_word_cache,
+            args.broken_word_decisions_file,
+        )
+    ) or args.max_broken_word_contexts != 3
+    if args.build_broken_word_review:
+        if args.broken_word_decisions_file:
+            parser.error(
+                "--broken-word-decisions-file requires "
+                "--promote-broken-word-review"
+            )
+        try:
+            loaded_config.validate()
+        except ValueError as exc:
+            parser.error(str(exc))
+        return _run_broken_word_review(
+            args,
+            config=loaded_config,
+            parser=parser,
+        )
+    if args.promote_broken_word_review:
+        scan_only_options = any(
+            (
+                args.broken_word_review_output,
+                args.broken_word_ambiguous_output,
+                args.broken_word_review_cache,
+                args.rebuild_broken_word_cache,
+            )
+        ) or args.max_broken_word_contexts != 3
+        if scan_only_options:
+            parser.error(
+                "broken-word scan options require --build-broken-word-review"
+            )
+        return _promote_broken_word_review(
+            args,
+            config=loaded_config,
+            parser=parser,
+        )
+    if broken_word_option_used:
+        parser.error(
+            "broken-word options require --build-broken-word-review or "
+            "--promote-broken-word-review"
         )
 
     if args.input is None:
@@ -226,7 +382,6 @@ def main(argv: list[str] | None = None) -> int:
                 config,
                 pipeline_factory=OCRPipeline,
             )
-        loaded_config = PipelineConfig.load(config)
         loaded_config.validate()
         report_options = ReportOptions.from_config(loaded_config)
         artifact_roots = [output_root]

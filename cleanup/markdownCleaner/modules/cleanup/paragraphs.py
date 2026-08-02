@@ -120,6 +120,7 @@ def reconstruct_paragraphs(
     text: str,
     *,
     dehyphenate: bool = True,
+    preserve_hyphen_line_breaks: bool = False,
     heading_predicate: Callable[[str], bool] = is_heading,
     special_predicate: Callable[[str], bool] = is_list_or_special,
     structured_predicate: Callable[[list[str]], bool] = looks_structured_lines,
@@ -150,6 +151,14 @@ def reconstruct_paragraphs(
                     and re.match(r"^[a-z]", line)
                 ):
                     joined = joined[:-1] + line
+                elif (
+                    preserve_hyphen_line_breaks
+                    and joined.endswith("-")
+                    and re.match(r"^[a-z]", line)
+                ):
+                    # Preserve the source line boundary until the dictionary
+                    # stage can distinguish a broken word from a compound.
+                    joined += "\n" + line
                 else:
                     joined += " " + line
             blocks.append(joined)
@@ -174,6 +183,12 @@ def reconstruct_paragraphs(
                 and re.match(r"^[a-z]", block)
             ):
                 merged.append(left[:-1] + block.lstrip())
+            elif (
+                preserve_hyphen_line_breaks
+                and left.endswith("-")
+                and re.match(r"^[a-z]", block)
+            ):
+                merged.append(left + "\n" + block.lstrip())
             elif left.endswith("—") and block.lstrip().startswith("—"):
                 merged.append(left + block.lstrip()[1:])
             else:

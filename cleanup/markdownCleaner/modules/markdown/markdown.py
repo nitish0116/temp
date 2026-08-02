@@ -1,8 +1,9 @@
 """Typed Markdown block model and conservative structure-preserving parser.
 
-Only narrative paragraph blocks are editable. Markdown syntax, code, HTML, and
-other structural blocks remain protected so cleanup stages cannot accidentally
-rewrite them.
+The parser identifies structure conservatively. ProcessingContext may expose
+visible prose inside headings, lists, blockquotes, tables, footnotes, and links
+to Markdown-aware processors while code, destinations, HTML, YAML, and control
+syntax remain protected.
 """
 
 from __future__ import annotations

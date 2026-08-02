@@ -1,5 +1,7 @@
 """Basic regression tests for the destructive OCR and structure bugs."""
 
+import json
+
 from markdownCleaner.modules.cleanup.document import (
     DECORATIVE_SEPARATOR_LINE,
     DocumentCleanupStage,
@@ -759,6 +761,27 @@ def test_symspell_merges_dictionary_validated_ocr_word_splits(tmp_path):
         "Look in side and tell some one about rare word and an SS-class beast.",
         encoding="utf-8",
     )
+    decisions = tmp_path / "broken_word_decisions.json"
+    decisions.write_text(
+        json.dumps(
+            {
+                "accepted": {
+                    "be cause": {
+                        "replacement": "because",
+                        "blocked_previous": [
+                            "can", "could", "may", "might", "must", "shall",
+                            "should", "to", "will", "would"
+                        ],
+                        "blocked_following": ["enough", "for", "of", "to"],
+                    },
+                    "expres sinless": "expressionless",
+                    "upperclass men": "upperclassmen",
+                },
+                "rejected": [],
+            }
+        ),
+        encoding="utf-8",
+    )
     config = PipelineConfig(
         {
             "paths": {"output_directory": str(tmp_path / "out")},
@@ -766,6 +789,7 @@ def test_symspell_merges_dictionary_validated_ocr_word_splits(tmp_path):
             "symspell": {
                 "enabled": True,
                 "dictionary": str(dictionary),
+                "broken_word_decisions": str(decisions),
                 "max_edit_distance": 2,
                 "max_auto_edit_distance": 1,
                 "confidence_threshold": 92,

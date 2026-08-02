@@ -49,6 +49,8 @@ class ChangeRecord:
 
     broken_word: str | None = None
 
+    applied: bool = True
+
 
 class ChangeLog:
     """Store all pipeline edit and review records.
@@ -82,6 +84,7 @@ class ChangeLog:
         confidence,
         reason,
         broken_word=None,
+        applied=True,
     ):
         """Add an edit or report-only audit record.
 
@@ -101,6 +104,7 @@ class ChangeLog:
             reason=reason,
             timestamp=datetime.now(UTC).isoformat(),
             broken_word=broken_word,
+            applied=applied,
         )
 
         self.records.append(record)
@@ -118,6 +122,11 @@ class ChangeLog:
         """
 
         return len(self.records)
+
+    def total_applied(self) -> int:
+        """Return the number of audit records representing applied mutations."""
+
+        return sum(record.applied for record in self.records)
 
     # ---------------------------------------------------------
 
@@ -140,14 +149,18 @@ class ChangeLog:
         self,
         threshold=85.0,
     ):
-        """Return uncertain changes.
+        """Return low-confidence or unapplied records requiring review.
 
         Example:
             ``result = instance.needs_review()``
             Expected behavior: Return uncertain changes.
         """
 
-        return [item for item in self.records if item.confidence < threshold]
+        return [
+            item
+            for item in self.records
+            if not item.applied or item.confidence < threshold
+        ]
 
     def with_minimum_confidence(self, threshold: float) -> ChangeLog:
         """Return an independent log containing records at or above ``threshold``.

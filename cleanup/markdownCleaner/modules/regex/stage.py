@@ -6,7 +6,6 @@ from ..core.context import ProcessingContext
 from ..core.processor import SegmentProcessor
 from ..core.stage import SegmentProcessingStage
 from .broken_words import BrokenWordProcessor
-from .hyphenation import HyphenationProcessor
 from .number_letter import NumberLetterProcessor
 from .repeated_characters import RepeatedCharacterProcessor
 
@@ -26,7 +25,6 @@ class RegexStage(SegmentProcessingStage):
 
         number_letters = NumberLetterProcessor(context)
         broken_words = BrokenWordProcessor(context)
-        hyphenation = HyphenationProcessor(context)
         repeated_characters = RepeatedCharacterProcessor(context)
 
         processors: list[SegmentProcessor] = []
@@ -42,8 +40,8 @@ class RegexStage(SegmentProcessingStage):
             processors.append(number_letters)
         if broken_words.correction_enabled("broken_words"):
             processors.append(broken_words)
-        if hyphenation.correction_enabled("broken_hyphen_words"):
-            processors.append(hyphenation)
+        # Hyphenated line breaks are resolved later by SymSpell, where both
+        # joined-word and genuine-compound evidence are available.
         if repeated_characters.correction_enabled("repeated_characters"):
             processors.append(repeated_characters)
         return processors

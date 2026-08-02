@@ -63,8 +63,11 @@ class SummaryReporter:
         generated_at = generated_at or datetime.now().isoformat()
         records = self.change_log.records
         review_items = self.change_log.needs_review(self.review_threshold)
-        automatic_count = len(
-            self.change_log.high_confidence(self.review_threshold)
+        applied_count = sum(item.applied for item in records)
+        proposed_count = len(records) - applied_count
+        automatic_count = sum(
+            item.applied and item.confidence >= self.review_threshold
+            for item in records
         )
         stage_counter = Counter(record.stage for record in records)
 
@@ -80,6 +83,8 @@ class SummaryReporter:
             [
                 "## Summary\n\n",
                 f"Total audit records: {len(records)}\n\n",
+                f"Applied mutations: {applied_count}\n\n",
+                f"Report-only/suppressed proposals: {proposed_count}\n\n",
                 "## Changes by Stage\n\n",
             ]
         )
@@ -113,6 +118,7 @@ class SummaryReporter:
                         _fenced_block(item.after),
                         f"Confidence: {item.confidence}%\n\n",
                         f"Reason: {item.reason}\n\n",
+                        f"Applied: {'yes' if item.applied else 'no'}\n\n",
                     ]
                 )
                 if item.broken_word:

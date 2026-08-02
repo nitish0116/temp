@@ -90,13 +90,28 @@ class ProcessingContext:
         return self.document
 
     def _create_segments(self) -> None:
-        """Create editable wrappers for paragraph blocks in document order."""
+        """Create wrappers for visible prose while retaining Markdown syntax.
+
+        Code, raw HTML, YAML, separators, and blank blocks remain completely
+        protected. Visible labels and prose inside headings, lists, quotes,
+        tables, footnotes, and links pass through Markdown-aware span guards.
+        """
 
         document = self._require_document()
         self.segments = []
 
+        visible_text_blocks = {
+            BlockType.PARAGRAPH,
+            BlockType.HEADING,
+            BlockType.TABLE,
+            BlockType.BLOCKQUOTE,
+            BlockType.LIST,
+            BlockType.FOOTNOTE,
+            BlockType.IMAGE,
+            BlockType.LINK,
+        }
         for block_index, block in enumerate(document.blocks):
-            if block.block_type is not BlockType.PARAGRAPH:
+            if block.block_type not in visible_text_blocks:
                 continue
 
             self.segments.append(
@@ -108,6 +123,7 @@ class ProcessingContext:
                     line_number=block.start_line,
                     start_line=block.start_line,
                     end_line=block.end_line,
+                    block_type=block.block_type,
                 )
             )
 

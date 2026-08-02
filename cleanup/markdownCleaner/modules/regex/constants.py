@@ -127,21 +127,6 @@ class BrokenWordRule:
         return match.group("left") + separator + match.group("right")
 
 
-def _join_rule(left: str, right: str) -> BrokenWordRule:
-    """Create an exact same-line compound-word join rule."""
-
-    return BrokenWordRule(
-        name=f"join_{left}_{right}",
-        pattern=re.compile(
-            rf"\b(?P<left>{left})[ \t]+(?P<right>{right})\b",
-            re.IGNORECASE,
-        ),
-        correction=BoundaryCorrection.JOIN,
-        evidence=BoundaryEvidence.INSERTED_BOUNDARY,
-        confidence=85.0,
-    )
-
-
 def _split_rule(left: str, right: str) -> BrokenWordRule:
     """Create an exact missing-boundary repair rule."""
 
@@ -157,21 +142,10 @@ def _split_rule(left: str, right: str) -> BrokenWordRule:
     )
 
 
-# This is deliberately an exact whitelist.  Building a Cartesian product from
-# prefixes and suffixes also creates invalid corrections such as
-# ``what one -> whatone`` and ``where body -> wherebody``.
+# Joined-word decisions live in data/broken_word_decisions.json, where they can
+# be reviewed without adding code conditions. This deterministic stage retains
+# only missing-boundary repairs whose intended direction is unambiguous.
 BROKEN_WORD_RULES: tuple[BrokenWordRule, ...] = (
-    _join_rule("some", "thing"),
-    _join_rule("some", "one"),
-    _join_rule("some", "body"),
-    _join_rule("every", "thing"),
-    _join_rule("every", "one"),
-    _join_rule("every", "body"),
-    _join_rule("any", "thing"),
-    _join_rule("any", "one"),
-    _join_rule("any", "body"),
-    _join_rule("no", "thing"),
-    _join_rule("no", "body"),
     _split_rule("to", "one"),
     _split_rule("no", "one"),
 )

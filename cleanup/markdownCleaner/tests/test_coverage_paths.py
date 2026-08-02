@@ -73,7 +73,7 @@ def test_unicode_processors_cover_changes_and_noops():
 
     punctuation = _segment("“Hello”—don’t wait…")
     assert PunctuationProcessor(context).process(punctuation)
-    assert punctuation.current_text == '"Hello"-don\'t wait...'
+    assert punctuation.current_text == '"Hello"—don\'t wait...'
     assert not PunctuationProcessor(context).process(_segment("Plain text."))
 
 
@@ -85,12 +85,12 @@ def test_regex_processors_cover_corrections_and_helpers():
         "some one saw every thing; move to one side, then repair toone example"
     )
     assert BrokenWordProcessor(context).process(broken)
-    assert "someone" in broken.current_text and "everything" in broken.current_text
+    assert "some one" in broken.current_text and "every thing" in broken.current_text
     assert "to one side" in broken.current_text
     assert "to one example" in broken.current_text
     assert "toone" not in broken.current_text
     assert context.tracker.records[0].broken_word == (
-        "some one, every thing, toone"
+        "toone"
     )
     assert not BrokenWordProcessor(context).process(_segment("ordinary prose"))
 

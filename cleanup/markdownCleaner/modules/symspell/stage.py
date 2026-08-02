@@ -10,6 +10,7 @@ from .broken_words import (
 )
 from .corrector import SpellCorrection, SpellCorrector
 from .dictionary import DictionaryManager
+from .decisions import BrokenWordDecisions
 from .engine import SymSpellEngine
 from .frequency import WordfreqScorer
 from .settings import SymSpellSettings
@@ -31,14 +32,6 @@ class SymSpellStage(PipelineStage):
     config_section = "symspell"
     WORD_PATTERN = SpellCorrector.WORD_PATTERN
     DETACHED_OCR_SUFFIXES = BrokenWordEvaluator.DETACHED_OCR_SUFFIXES
-    CONTEXTUAL_COMMON_MERGES = (
-        BrokenWordEvaluator.CONTEXTUAL_COMMON_MERGES
-    )
-    JOINED_OCR_CORRECTIONS = BrokenWordEvaluator.JOINED_OCR_CORRECTIONS
-    COMMON_MERGE_BLOCKING_PREVIOUS = (
-        BrokenWordEvaluator.COMMON_MERGE_BLOCKING_PREVIOUS
-    )
-
     def __init__(self, config):
         """Initialize immutable settings before dictionaries are loaded."""
 
@@ -47,6 +40,7 @@ class SymSpellStage(PipelineStage):
         self.dictionary: DictionaryManager | None = None
         self.engine: SymSpellEngine | None = None
         self.frequency_scorer = WordfreqScorer(enabled=False)
+        self.decisions = BrokenWordDecisions()
 
     def initialize(self, context) -> None:
         """Load vocabularies, protect document terms, and build the index."""
@@ -64,6 +58,9 @@ class SymSpellStage(PipelineStage):
             ),
         )
         self.dictionary.load()
+        self.decisions = BrokenWordDecisions.load(
+            context.config.resolve_path(self.settings.broken_word_decisions)
+        )
 
         for word in self.settings.protected_terms:
             self.dictionary.protect_entry(word)
@@ -142,6 +139,7 @@ class SymSpellStage(PipelineStage):
             dictionary=self.dictionary,
             frequency_scorer=self.frequency_scorer,
             settings=self.settings,
+            decisions=self.decisions,
         )
         return BrokenWordMerger(evaluator, self.settings)
 
@@ -190,8 +188,24 @@ class SymSpellStage(PipelineStage):
         """Merge high-confidence OCR spaces inside one editable segment."""
 
         active_merger = merger or self._make_merger()
-        result = active_merger.merge_inline(segment.current_text)
-        if not result.decisions:
+        source = segment.current_text
+        hyphen_setting = self.config.get(
+            "regex.corrections.broken_hyphen_words", True
+        )
+        if isinstance(hyphen_setting, dict):
+            hyphen_setting = hyphen_setting.get("enabled", True)
+        hyphen_result = (
+            active_merger.merge_line_hyphenations(source)
+            if hyphen_setting is True
+            else None
+        )
+        after_hyphens = hyphen_result.text if hyphen_result else source
+        result = active_merger.merge_inline(after_hyphens)
+        decisions = (
+            (hyphen_result.decisions if hyphen_result else ())
+            + result.decisions
+        )
+        if not decisions:
             return result.text
 
         context = self.context
@@ -200,17 +214,17 @@ class SymSpellStage(PipelineStage):
             block_index=segment.block_index,
             segment_index=segment.segment_index,
             line=segment.start_line,
-            before=segment.current_text,
+            before=source,
             after=result.text,
             confidence=min(
-                decision.confidence for decision in result.decisions
+                decision.confidence for decision in decisions
             ),
-            reason=result.decisions[0].reason,
+            reason=decisions[0].reason,
             broken_word=", ".join(
-                decision.broken_word for decision in result.decisions
+                decision.broken_word for decision in decisions
             ),
         )
-        context.increment("broken_words_fixed", result.changes)
+        context.increment("broken_words_fixed", len(decisions))
         return result.text
 
     def _process_text(

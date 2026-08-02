@@ -168,7 +168,12 @@ def test_context_strips_utf8_bom_before_markdown_classification(tmp_path) -> Non
 
     assert not context.original_markdown.startswith("\ufeff")
     assert context.document.blocks[0].block_type is BlockType.HEADING
-    assert context.segments[0].current_text == "Narrative."
+    paragraph = next(
+        segment
+        for segment in context.segments
+        if segment.block_type is BlockType.PARAGRAPH
+    )
+    assert paragraph.current_text == "Narrative."
 
 
 def test_markdown_block_copy_preserves_current_text_independently() -> None:

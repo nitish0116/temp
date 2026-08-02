@@ -1,0 +1,22 @@
+{
+  "rules": [
+    {
+      "source": "form",
+      "suggestion": "from",
+      "previous": ["away", "different", "differ", "far", "free", "protect", "recover", "separate"],
+      "confidence": 65
+    },
+    {
+      "source": "modem",
+      "suggestion": "modern",
+      "following": ["age", "day", "design", "era", "society", "technology", "world"],
+      "confidence": 70
+    },
+    {
+      "source": "he",
+      "suggestion": "be",
+      "previous": ["could", "may", "might", "must", "shall", "should", "to", "will", "would"],
+      "confidence": 55
+    }
+  ]
+}

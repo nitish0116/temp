@@ -8,26 +8,20 @@ backup:
 
 cleanup:
   enabled: true
+  # Content-removal policies are opt-in. A cleaner should preserve legitimate
+  # front/back matter, profiles, notes, and publisher material by default.
   remove_front_matter: true
-  # Sequence-independent cleanup: only explicitly named sections are removed.
-  # Other enabled cleanup policies (metadata, tails, footnotes) apply separately.
-  excluded_sections:
-    - "Afterword"
-    - "Aferword"
-    - "Character Profiles"
-    - "Character Profile"
-    - "Character Profles"
-    - "Character Profle"
+  excluded_sections: ["Character Profiles", "Afterword"]
   # Picture OCR modes: safe | keep | remove. Safe retains picture text that
   # passes conservative language/readability checks.
-  picture_ocr_mode: "safe"
+  picture_ocr_mode: "remove"
   remove_promotional_tail: true
   remove_publisher_tail: true
   remove_glossary_footnotes: true
   remove_footnotes: true
   strip_markdown_emphasis: true
   # Report suspicious whole-document OCR lines but never delete them.
-  report_ocr_noise: true
+  report_ocr_noise: false
   ocr_noise_report_limit: 100
 
 tts_validation:
@@ -37,10 +31,26 @@ tts_validation:
   minimum_alpha: 4
   report_limit: 200
 
+mutation:
+  # Proposals below this confidence remain in reports but are not applied.
+  minimum_confidence: 90
+  # Set true for a dry run that reports every proposed mutation.
+  report_only: false
+
+page_artifacts:
+  enabled: true
+  # Start conservatively; use "remove" only after reviewing reports.
+  mode: "report_only"
+  minimum_occurrences: 3
+  minimum_line_gap: 12
+  maximum_length: 80
+  report_limit: 100
+
 unicode:
   enabled: true
   normalize_form: "NFKC"
   fixes:
+    mojibake: true
     ligatures: true
     invisible_characters: true
     whitespace: true
@@ -71,6 +81,7 @@ symspell:
   dictionary: "builtin:en-82k"
   glossary: "data/custom_words.json"
   learned: "data/learned_words.json"
+  broken_word_decisions: "data/broken_word_decisions.json"
   max_edit_distance: 2
   max_auto_edit_distance: 1
   confidence_threshold: 92
@@ -86,6 +97,8 @@ symspell:
   wordfreq_minimum_zipf: 2.5
   # Bounded retries allow chained fragments to merge without an open-ended loop.
   maximum_merge_passes: 3
+  # Joined words must beat genuine hyphenated compounds by this Zipf margin.
+  dehyphenation_zipf_margin: 0.5
   ambiguity_margin: 2
   auto_protect_proper_nouns: true
   proper_noun_min_occurrences: 2
@@ -101,6 +114,12 @@ vocabulary_candidates:
   report_limit: 200
   # Reviewed terms that should no longer appear as pending candidates.
   rejected: "data/rejected_words.json"
+
+contextual_real_words:
+  # Known-word substitutions are uncertain and therefore report-only.
+  enabled: true
+  rules: "data/contextual_word_rules.json"
+  report_limit: 200
 
 report:
   enabled: true

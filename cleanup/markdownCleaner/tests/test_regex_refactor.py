@@ -46,10 +46,10 @@ def _segment(text: str) -> MarkdownSegment:
 @pytest.mark.parametrize(
     ("source", "expected", "changed", "count"),
     [
-        ("some one", "someone", True, 1),
-        ("every thing", "everything", True, 1),
-        ("any body", "anybody", True, 1),
-        ("no body", "nobody", True, 1),
+        ("some one", "some one", False, 0),
+        ("every thing", "every thing", False, 0),
+        ("any body", "any body", False, 0),
+        ("no body", "no body", False, 0),
         ("no one", "no one", False, 0),
         ("to one", "to one", False, 0),
         ("noone", "no one", True, 1),
@@ -80,35 +80,27 @@ def test_broken_word_applications_distinguish_join_and_split_evidence() -> None:
 
     applications = processor.find_applications(segment.current_text)
 
-    assert [item.broken_word for item in applications] == [
-        "some one",
-        "toone",
-        "every\tthing",
-    ]
+    assert [item.broken_word for item in applications] == ["toone"]
     assert [item.correction for item in applications] == [
-        BoundaryCorrection.JOIN,
         BoundaryCorrection.SPLIT,
-        BoundaryCorrection.JOIN,
     ]
     assert [item.evidence for item in applications] == [
-        BoundaryEvidence.INSERTED_BOUNDARY,
         BoundaryEvidence.MISSING_BOUNDARY,
-        BoundaryEvidence.INSERTED_BOUNDARY,
     ]
 
     assert processor.process(segment)
-    assert segment.current_text == "someone, to one, everything"
-    assert context.statistics["broken_words_fixed"] == 3
+    assert segment.current_text == "some one, to one, every\tthing"
+    assert context.statistics["broken_words_fixed"] == 1
     assert len(context.tracker.records) == 1
     assert context.tracker.records[0].broken_word == (
-        "some one, toone, every\tthing"
+        "toone"
     )
     assert context.tracker.records[0].reason == (
-        "OCR broken word merge and boundary repair"
+        "OCR missing word-boundary repair"
     )
 
     assert not processor.process(segment)
-    assert context.statistics["broken_words_fixed"] == 3
+    assert context.statistics["broken_words_fixed"] == 1
     assert len(context.tracker.records) == 1
 
 

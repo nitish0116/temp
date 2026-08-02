@@ -478,3 +478,60 @@ def test_legacy_runner_delegates_to_the_canonical_cli(monkeypatch):
     monkeypatch.setattr(runner, "cli_main", lambda argv: 7)
 
     assert runner.main(["book.md"]) == 7
+
+
+def test_broken_word_review_cli_runs_without_a_cleaning_input(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    config = tmp_path / "config.yaml"
+    config.write_text(
+        "paths:\n"
+        "  output_directory: output\n"
+        "backup:\n"
+        "  enabled: false\n"
+        "symspell:\n"
+        "  broken_word_decisions: data/decisions.json\n",
+        encoding="utf-8",
+    )
+    library = tmp_path / "library"
+    library.mkdir()
+    captured: dict[str, object] = {}
+
+    def run(library_path, **kwargs):
+        captured["library"] = library_path
+        captured.update(kwargs)
+        return {
+            "files": 1,
+            "decided": 2,
+            "accepted": 1,
+            "rejected": 1,
+            "ambiguous": 3,
+            "cache_hits": 0,
+            "cache_misses": 1,
+            "cache_removed": 0,
+        }
+
+    monkeypatch.setattr("markdownCleaner.cli.run_review_pipeline", run)
+
+    exit_code = main(
+        [
+            "--config",
+            str(config),
+            "--build-broken-word-review",
+            str(library),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["library"] == library
+    assert captured["main_output"] == tmp_path / "data/broken_word_review.json"
+    assert captured["ambiguous_output"] == (
+        tmp_path / "data/broken_word_review_ambiguous.json"
+    )
+    assert captured["cache_path"] == (
+        tmp_path / "data/.broken_word_review_cache.json.gz"
+    )
+    output = capsys.readouterr().out
+    assert "1 accepted, 1 rejected, 3 ambiguous" in output

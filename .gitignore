@@ -19,6 +19,7 @@ mp3ToYT/**/*.txt
 *.pdf
 *.json
 !cleanup/markdownCleaner/data/*.json
+!cleanup/markdownCleaner/tests/fixtures/*.json
 !media-manifest.json
 !md-audio/library-hyphen-review.json
 !md-audio/library-hyphen-review-ambiguous.json

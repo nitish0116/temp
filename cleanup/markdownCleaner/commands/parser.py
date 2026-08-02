@@ -116,4 +116,60 @@ def build_parser(default_config: Path = DEFAULT_CONFIG) -> argparse.ArgumentPars
         default=None,
         help="Optional destination used with --simplify-candidates",
     )
+    parser.add_argument(
+        "--build-broken-word-review",
+        type=Path,
+        metavar="LIBRARY",
+        help=(
+            "Scan a Markdown library with a portable cache and create "
+            "classified broken-word review records, then exit"
+        ),
+    )
+    parser.add_argument(
+        "--broken-word-review-output",
+        type=Path,
+        default=None,
+        help="Main high-confidence broken-word review JSON",
+    )
+    parser.add_argument(
+        "--broken-word-ambiguous-output",
+        type=Path,
+        default=None,
+        help="Separate JSON for unresolved broken-word candidates",
+    )
+    parser.add_argument(
+        "--broken-word-review-cache",
+        type=Path,
+        default=None,
+        help="Portable incremental scan cache (.json or .json.gz)",
+    )
+    parser.add_argument(
+        "--rebuild-broken-word-cache",
+        action="store_true",
+        help="Discard the broken-word cache and rescan every Markdown file",
+    )
+    parser.add_argument(
+        "--max-broken-word-contexts",
+        type=int,
+        default=3,
+        help="Maximum example contexts retained per candidate (default: 3)",
+    )
+    parser.add_argument(
+        "--promote-broken-word-review",
+        type=Path,
+        metavar="REVIEW_JSON",
+        help=(
+            "Copy accepted/rejected candidates from a review JSON into the "
+            "configured decision store, then exit"
+        ),
+    )
+    parser.add_argument(
+        "--broken-word-decisions-file",
+        type=Path,
+        default=None,
+        help=(
+            "Decision store used with --promote-broken-word-review; defaults "
+            "to symspell.broken_word_decisions"
+        ),
+    )
     return parser

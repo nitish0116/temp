@@ -115,12 +115,14 @@ def _change_lines(number: int, record: Mapping[str, object]) -> list[str]:
     stage = record.get("stage", "Unknown")
     reason = record.get("reason", "")
     confidence = record.get("confidence", "")
+    applied = bool(record.get("applied", True))
     broken_word = record.get("broken_word")
     lines = [
         f"#### Change {number} — {stage} ({location})",
         "",
         f"- Reason: {reason}",
         f"- Confidence: {confidence}",
+        f"- Applied: {'yes' if applied else 'no'}",
     ]
     if broken_word:
         lines.append(f"- Broken word: `{broken_word}`")

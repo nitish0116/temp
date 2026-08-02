@@ -20,6 +20,10 @@ from markdownCleaner.modules.symspell.corrector import (
     SpellCorrector,
 )
 from markdownCleaner.modules.symspell.dictionary import DictionaryManager
+from markdownCleaner.modules.symspell.decisions import (
+    AcceptedBoundary,
+    BrokenWordDecisions,
+)
 from markdownCleaner.modules.symspell.engine import SymSpellEngine
 from markdownCleaner.modules.symspell.frequency import WordfreqScorer
 from markdownCleaner.modules.symspell.settings import SymSpellSettings
@@ -41,12 +45,14 @@ def _settings(**overrides) -> SymSpellSettings:
 def _merger(
     dictionary: DictionaryManager,
     settings: SymSpellSettings | None = None,
+    decisions: BrokenWordDecisions | None = None,
 ) -> BrokenWordMerger:
     active_settings = settings or _settings()
     evaluator = BrokenWordEvaluator(
         dictionary,
         WordfreqScorer(enabled=False),
         active_settings,
+        decisions,
     )
     return BrokenWordMerger(evaluator, active_settings)
 
@@ -90,6 +96,11 @@ def test_evaluator_returns_typed_evidence_and_final_joined_replacement():
         dictionary,
         WordfreqScorer(enabled=False),
         _settings(),
+        BrokenWordDecisions(
+            accepted={
+                "expres sinless": AcceptedBoundary("expressionless")
+            }
+        ),
     )
 
     dictionary_decision = evaluator.evaluate("atten", "tion")
@@ -106,7 +117,7 @@ def test_evaluator_returns_typed_evidence_and_final_joined_replacement():
     assert corrected_join.replacement == "expressionless"
     assert (
         corrected_join.evidence.kind
-        is MergeEvidenceKind.JOINED_OCR_CORRECTION
+        is MergeEvidenceKind.REVIEWED_DECISION
     )
 
 
@@ -148,7 +159,25 @@ def test_merger_preserves_valid_be_cause_context():
     """A common joined word cannot override a valid noun phrase."""
     dictionary = DictionaryManager()
     dictionary.add_word("because", 40_000_000)
-    merger = _merger(dictionary)
+    merger = _merger(
+        dictionary,
+        decisions=BrokenWordDecisions(
+            accepted={
+                "be cause": AcceptedBoundary(
+                    "because",
+                    blocked_previous=frozenset(
+                        {
+                            "can", "could", "may", "might", "must",
+                            "shall", "should", "to", "will", "would",
+                        }
+                    ),
+                    blocked_following=frozenset(
+                        {"enough", "for", "of", "to"}
+                    ),
+                )
+            }
+        ),
+    )
 
     result = merger.merge_inline(
         "It appeared to be cause for concern, be cause they left."

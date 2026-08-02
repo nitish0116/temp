@@ -14,6 +14,7 @@ class SymSpellSettings:
     dictionary: str = "builtin:en-82k"
     glossary: str | None = None
     learned: str | None = None
+    broken_word_decisions: str | None = None
     protected_terms: tuple[str, ...] = ()
     max_edit_distance: int = 2
     maximum_auto_edit_distance: int = 1
@@ -30,6 +31,7 @@ class SymSpellSettings:
     wordfreq_wordlist: str = "large"
     wordfreq_minimum_zipf: float = 2.5
     maximum_merge_passes: int = 3
+    dehyphenation_zipf_margin: float = 0.5
 
     @classmethod
     def from_config(cls, config) -> "SymSpellSettings":
@@ -45,6 +47,9 @@ class SymSpellSettings:
             ),
             glossary=_optional_text(get("symspell.glossary")),
             learned=_optional_text(get("symspell.learned")),
+            broken_word_decisions=_optional_text(
+                get("symspell.broken_word_decisions")
+            ),
             protected_terms=tuple(
                 str(term)
                 for term in (get("symspell.protected", []) or [])
@@ -98,6 +103,9 @@ class SymSpellSettings:
             ),
             maximum_merge_passes=int(
                 get("symspell.maximum_merge_passes", 3)
+            ),
+            dehyphenation_zipf_margin=float(
+                get("symspell.dehyphenation_zipf_margin", 0.5)
             ),
         )
 

@@ -8,6 +8,7 @@ from time import perf_counter
 from typing import Any
 
 from markdownCleaner.modules.cleanup.document import DocumentCleanupStage
+from markdownCleaner.modules.cleanup.page_artifacts import PageArtifactStage
 from markdownCleaner.modules.cleanup.tts_validation import TTSValidationStage
 from markdownCleaner.modules.core.config import PipelineConfig
 from markdownCleaner.modules.core.context import ProcessingContext
@@ -20,16 +21,19 @@ from markdownCleaner.modules.regex.stage import RegexStage
 from markdownCleaner.modules.report.backup import BackupManager
 from markdownCleaner.modules.report.exporter import ReportExporter, ReportOptions
 from markdownCleaner.modules.symspell.stage import SymSpellStage
+from markdownCleaner.modules.symspell.contextual import ContextualRealWordStage
 from markdownCleaner.modules.symspell.vocabulary import VocabularyCandidateStage
 from markdownCleaner.modules.unicode.stage import UnicodeStage
 
 
 DEFAULT_STAGE_TYPES: tuple[type[PipelineStage], ...] = (
+    PageArtifactStage,
     DocumentCleanupStage,
     UnicodeStage,
     RegexStage,
     VocabularyCandidateStage,
     SymSpellStage,
+    ContextualRealWordStage,
     TTSValidationStage,
 )
 

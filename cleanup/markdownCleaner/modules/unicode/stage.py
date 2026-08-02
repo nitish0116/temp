@@ -7,6 +7,7 @@ from ..core.processor import SegmentProcessor
 from ..core.stage import SegmentProcessingStage
 from .invisible import InvisibleProcessor
 from .ligatures import LigatureProcessor
+from .mojibake import MojibakeProcessor
 from .normalizer import UnicodeNormalizer
 from .punctuation import PunctuationProcessor
 from .whitespace import WhitespaceProcessor
@@ -25,6 +26,7 @@ class UnicodeStage(SegmentProcessingStage):
         """Construct processors in normalization dependency order."""
 
         return [
+            MojibakeProcessor(context),
             UnicodeNormalizer(context),
             InvisibleProcessor(context),
             LigatureProcessor(context),

@@ -7,6 +7,7 @@ from enum import Enum
 import re
 
 from .dictionary import DictionaryManager
+from .decisions import BrokenWordDecisions
 from .frequency import WordfreqScorer
 from .settings import SymSpellSettings
 from ..markdown.markdown import BlockType
@@ -25,12 +26,12 @@ class MergeEvidenceKind(str, Enum):
     PROTECTED_TERM = "protected-term"
     DICTIONARY_FREQUENCY = "dictionary-frequency"
     WORDFREQ = "wordfreq"
-    JOINED_OCR_CORRECTION = "joined-ocr-correction"
     REGULAR_PLURAL = "regular-plural"
     ADVERB_DERIVATION = "adverb-derivation"
     PRODUCTIVE_OUT_VERB = "productive-out-verb"
     DETACHED_OCR_SUFFIX = "detached-ocr-suffix"
-    CONTEXTUAL_COMMON_WORD = "contextual-common-word"
+    REVIEWED_DECISION = "reviewed-decision"
+    LINE_BREAK_DEHYPHENATION = "line-break-dehyphenation"
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,39 +94,17 @@ class BrokenWordEvaluator:
     """Evaluate one adjacent token pair using ordered lexical rules."""
 
     DETACHED_OCR_SUFFIXES = frozenset({"tion", "tions"})
-    CONTEXTUAL_COMMON_MERGES = {
-        ("be", "cause"): "because",
-        ("upperclass", "men"): "upperclassmen",
-    }
-    JOINED_OCR_CORRECTIONS = {
-        "expressinless": "expressionless",
-    }
-    COMMON_MERGE_BLOCKING_PREVIOUS = frozenset(
-        {
-            "can",
-            "could",
-            "may",
-            "might",
-            "must",
-            "shall",
-            "should",
-            "will",
-            "would",
-        }
-    )
-    BE_CAUSE_BLOCKING_FOLLOWING = frozenset(
-        {"enough", "for", "of", "to"}
-    )
-
     def __init__(
         self,
         dictionary: DictionaryManager,
         frequency_scorer: WordfreqScorer,
         settings: SymSpellSettings,
+        decisions: BrokenWordDecisions | None = None,
     ) -> None:
         self.dictionary = dictionary
         self.frequency_scorer = frequency_scorer
         self.settings = settings
+        self.decisions = decisions or BrokenWordDecisions()
 
     def evaluate(
         self,
@@ -135,20 +114,41 @@ class BrokenWordEvaluator:
         previous: str = "",
         following: str = "",
         reason: str = INLINE_MERGE_REASON,
-        allow_contextual: bool = True,
     ) -> MergeDecision | None:
         """Return a typed decision when joining the pair is sufficiently safe."""
 
-        if self._is_acronym_fragment(left) or self._is_acronym_fragment(right):
+        if self.decisions.is_rejected(left, right):
             return None
-        if self._context_blocks_merge(
+        if self.decisions.is_context_blocked(
             left,
             right,
             previous=previous,
             following=following,
         ):
             return None
+        reviewed = self.decisions.accepted_replacement(
+            left,
+            right,
+            previous=previous,
+            following=following,
+        )
+        if reviewed is not None:
+            evidence = MergeEvidence(
+                kind=MergeEvidenceKind.REVIEWED_DECISION,
+                term=reviewed.casefold(),
+                rank=self.settings.broken_word_merge_minimum_frequency,
+                detail="accepted in broken-word decision store",
+            )
+            return self._decision(
+                left,
+                right,
+                self._match_case(left + right, reviewed),
+                evidence,
+                reason,
+            )
 
+        if self._is_acronym_fragment(left) or self._is_acronym_fragment(right):
+            return None
         combined_source = left + right
         combined = combined_source.lower()
         protected = self.dictionary.is_protected(combined)
@@ -190,15 +190,70 @@ class BrokenWordEvaluator:
             if decision is not None:
                 return decision
 
-        if allow_contextual:
-            return self._evaluate_contextual(
-                left,
-                right,
-                previous,
-                following,
-                reason,
-            )
         return None
+
+    def evaluate_line_hyphenation(
+        self,
+        left: str,
+        right: str,
+    ) -> MergeDecision | None:
+        """Join a line-broken hyphen only when joined-form evidence wins.
+
+        A reviewed rejection always preserves the compound. A reviewed
+        acceptance or protected joined term always joins. Otherwise the joined
+        form must be common and beat the hyphenated form by the configured
+        Zipf margin.
+        """
+
+        if self.decisions.is_rejected(left, right):
+            return None
+        reviewed = self.decisions.accepted_replacement(left, right)
+        combined_source = left + right
+        combined = combined_source.casefold()
+        if reviewed is not None:
+            replacement = self._match_case(combined_source, reviewed)
+            evidence = MergeEvidence(
+                kind=MergeEvidenceKind.REVIEWED_DECISION,
+                term=replacement.casefold(),
+                rank=self.settings.broken_word_merge_minimum_frequency,
+                detail="accepted line-break dehyphenation",
+            )
+            return self._decision(
+                left, right, replacement, evidence,
+                "Dictionary/context-validated OCR line-break dehyphenation",
+            )
+        joined_zipf = self.frequency_scorer.zipf(combined)
+        compound_zipf = self.frequency_scorer.zipf(
+            f"{left.casefold()}-{right.casefold()}"
+        )
+        dictionary_frequency = self.dictionary.frequency(combined)
+        protected = self.dictionary.is_protected(combined)
+        corpus_supported = (
+            joined_zipf >= self.settings.wordfreq_minimum_zipf
+            and joined_zipf
+            >= compound_zipf + self.settings.dehyphenation_zipf_margin
+        )
+        # A plain dictionary contains joined words but normally contains no
+        # hyphenated forms, so it cannot safely distinguish ``international``
+        # from ``well-being`` by itself. Without comparative corpus evidence,
+        # preserve the hyphen unless the joined term was explicitly protected.
+        if not (protected or corpus_supported):
+            return None
+        evidence = MergeEvidence(
+            kind=MergeEvidenceKind.LINE_BREAK_DEHYPHENATION,
+            term=combined,
+            rank=max(dictionary_frequency, self.frequency_scorer.rank(combined)),
+            dictionary_frequency=dictionary_frequency,
+            zipf=joined_zipf,
+            detail=f"joined Zipf {joined_zipf:.2f}; hyphenated Zipf {compound_zipf:.2f}",
+        )
+        return self._decision(
+            left,
+            right,
+            combined_source,
+            evidence,
+            "Dictionary/context-validated OCR line-break dehyphenation",
+        )
 
     def _evaluate_joined_form(
         self,
@@ -217,28 +272,6 @@ class BrokenWordEvaluator:
                 evidence,
                 reason,
             )
-
-        corrected_join = self.JOINED_OCR_CORRECTIONS.get(combined)
-        if corrected_join:
-            corrected_evidence = self._corpus_evidence(corrected_join)
-            if corrected_evidence is not None:
-                evidence = MergeEvidence(
-                    kind=MergeEvidenceKind.JOINED_OCR_CORRECTION,
-                    term=corrected_join,
-                    rank=corrected_evidence.rank,
-                    dictionary_frequency=(
-                        corrected_evidence.dictionary_frequency
-                    ),
-                    zipf=corrected_evidence.zipf,
-                    detail=f"{combined} -> {corrected_join}",
-                )
-                return self._decision(
-                    left,
-                    right,
-                    self._match_case(combined_source, corrected_join),
-                    evidence,
-                    reason,
-                )
 
         if combined.endswith("s"):
             singular = combined[:-1]
@@ -307,55 +340,6 @@ class BrokenWordEvaluator:
                 reason,
             )
         return None
-
-    def _evaluate_contextual(
-        self,
-        left: str,
-        right: str,
-        previous: str,
-        following: str,
-        reason: str,
-    ) -> MergeDecision | None:
-        pair = (left.lower(), right.lower())
-        replacement = self.CONTEXTUAL_COMMON_MERGES.get(pair)
-        if replacement is None:
-            return None
-        source_evidence = self._corpus_evidence(replacement)
-        if source_evidence is None:
-            return None
-        evidence = MergeEvidence(
-            kind=MergeEvidenceKind.CONTEXTUAL_COMMON_WORD,
-            term=replacement,
-            rank=source_evidence.rank,
-            dictionary_frequency=source_evidence.dictionary_frequency,
-            zipf=source_evidence.zipf,
-            detail=f"contextual pair {left} {right}",
-        )
-        return self._decision(
-            left,
-            right,
-            self._match_case(left + right, replacement),
-            evidence,
-            reason,
-        )
-
-    def _context_blocks_merge(
-        self,
-        left: str,
-        right: str,
-        *,
-        previous: str,
-        following: str,
-    ) -> bool:
-        """Reject an ambiguous pair when neighboring words form valid prose."""
-
-        if (left.casefold(), right.casefold()) != ("be", "cause"):
-            return False
-        return (
-            previous.casefold()
-            in self.COMMON_MERGE_BLOCKING_PREVIOUS | {"to"}
-            or following.casefold() in self.BE_CAUSE_BLOCKING_FOLLOWING
-        )
 
     def _corpus_evidence(self, term: str) -> MergeEvidence | None:
         dictionary_frequency = self.dictionary.frequency(term)
@@ -463,12 +447,14 @@ class BrokenWordMerger:
     INLINE_CODE_PATTERN = re.compile(r"(`+)[^\n]*?\1")
     LEFT_BOUNDARY_PATTERN = re.compile(r"\b([A-Za-z]{2,})([ \t]*)$")
     RIGHT_BOUNDARY_PATTERN = re.compile(r"^([a-z]{2,})\b")
+    LINE_HYPHENATION_PATTERN = re.compile(
+        r"\b([A-Za-z]{2,})-[ \t]*\r?\n[ \t]*([a-z]{2,})\b"
+    )
     SAFE_CROSS_BLOCK_EVIDENCE = frozenset(
         {
             MergeEvidenceKind.PROTECTED_TERM,
             MergeEvidenceKind.DICTIONARY_FREQUENCY,
             MergeEvidenceKind.WORDFREQ,
-            MergeEvidenceKind.JOINED_OCR_CORRECTION,
         }
     )
 
@@ -512,6 +498,44 @@ class BrokenWordMerger:
             )
             current = updated
         return MergeResult(text=current, decisions=tuple(applied))
+
+    def merge_line_hyphenations(self, text: str) -> MergeResult:
+        """Resolve only hyphens proven to occur at source line boundaries."""
+
+        decisions: list[MergeDecision] = []
+
+        def replace_match(match: re.Match[str]) -> str:
+            left, right = match.group(1), match.group(2)
+            decision = self.evaluator.evaluate_line_hyphenation(left, right)
+            if decision is None:
+                # Preserve a genuine compound while removing the OCR wrap.
+                replacement = f"{left}-{right}"
+                evidence = MergeEvidence(
+                    kind=MergeEvidenceKind.LINE_BREAK_DEHYPHENATION,
+                    term=replacement.casefold(),
+                    rank=self.evaluator.frequency_scorer.rank(replacement),
+                    zipf=self.evaluator.frequency_scorer.zipf(replacement),
+                    detail="joined form lacked evidence over hyphenated form",
+                )
+                decision = MergeDecision(
+                    broken_word=match.group(0),
+                    replacement=replacement,
+                    rank=evidence.rank,
+                    confidence=99.0,
+                    reason=(
+                        "Preserved hyphenated compound while removing OCR line wrap"
+                    ),
+                    evidence=evidence,
+                )
+                decisions.append(decision)
+                return replacement
+            decisions.append(
+                replace(decision, broken_word=match.group(0))
+            )
+            return decision.replacement
+
+        updated = self.LINE_HYPHENATION_PATTERN.sub(replace_match, text)
+        return MergeResult(text=updated, decisions=tuple(decisions))
 
     def scan_candidates(self, text: str) -> list[MergeCandidate]:
         """Return all positioned candidates before overlap resolution."""
@@ -641,7 +665,6 @@ class BrokenWordMerger:
                 right_match.group(1),
                 previous=previous_words[-1] if previous_words else "",
                 reason=CROSS_BLOCK_MERGE_REASON,
-                allow_contextual=False,
             )
             if (
                 decision is None
