@@ -8,6 +8,7 @@ from pathlib import Path
 
 from markdownCleaner.commands.broken_word_review import (
     ReviewResources,
+    import_review_candidates,
     promote_review,
     records_from_cache,
     run_review_pipeline,
@@ -243,6 +244,85 @@ def test_promotion_updates_decisions_and_ignores_unresolved_candidates(tmp_path)
     assert loaded.accepted_replacement(
         "be", "cause", previous="could"
     ) is None
+
+
+def test_generated_review_imports_candidates_and_suppressions(tmp_path):
+    review = tmp_path / "review.json"
+    candidates = tmp_path / "ocr_boundary_candidates.json"
+    review.write_text(
+        json.dumps(
+            {
+                "candidates": [
+                    {
+                        "broken_word": "be cause",
+                        "replacement": "because",
+                        "status": "accepted",
+                    },
+                    {
+                        "broken_word": "for ever",
+                        "replacement": "forever",
+                        "status": "review",
+                    },
+                    {
+                        "broken_word": "to one",
+                        "replacement": "toone",
+                        "status": "rejected",
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = import_review_candidates(review, candidates)
+    stored = json.loads(candidates.read_text(encoding="utf-8"))
+
+    assert result == {
+        "candidates_added": 2,
+        "candidates_updated": 0,
+        "suppressions_added": 1,
+        "ignored": 0,
+    }
+    assert stored["candidates"] == {
+        "be cause": "because",
+        "for ever": "forever",
+    }
+    assert stored["suppressed"] == ["to one"]
+
+
+def test_reimport_resolves_candidate_suppression_conflicts(tmp_path):
+    review = tmp_path / "review.json"
+    candidates = tmp_path / "candidates.json"
+    candidates.write_text(
+        json.dumps(
+            {
+                "candidates": {"to one": "toone"},
+                "suppressed": ["be cause"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    review.write_text(
+        json.dumps(
+            {
+                "candidates": [
+                    {
+                        "broken_word": "be cause",
+                        "replacement": "because",
+                        "status": "review",
+                    },
+                    {"broken_word": "to one", "status": "rejected"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    import_review_candidates(review, candidates)
+    stored = json.loads(candidates.read_text(encoding="utf-8"))
+
+    assert stored["candidates"] == {"be cause": "because"}
+    assert stored["suppressed"] == ["to one"]
 
 
 def test_sentence_initial_candidate_uses_case_neutral_replacement(tmp_path):

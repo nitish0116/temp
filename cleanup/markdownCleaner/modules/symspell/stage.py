@@ -9,10 +9,15 @@ from .broken_words import (
     BrokenWordMerger,
 )
 from .corrector import SpellCorrection, SpellCorrector
+from .context_validator import (
+    BoundaryContextValidator,
+    ContextValidatorSettings,
+)
 from .dictionary import DictionaryManager
 from .decisions import BrokenWordDecisions
 from .engine import SymSpellEngine
 from .frequency import WordfreqScorer
+from .ocr_candidates import OCRBoundaryCandidates
 from .settings import SymSpellSettings
 from ..core.stage import PipelineStage, StageResult
 from ..markdown.segmenter import MarkdownSegment, process_editable_spans
@@ -37,10 +42,15 @@ class SymSpellStage(PipelineStage):
 
         super().__init__(config)
         self.settings = SymSpellSettings.from_config(config)
+        self.context_validator_settings = (
+            ContextValidatorSettings.from_config(config)
+        )
         self.dictionary: DictionaryManager | None = None
         self.engine: SymSpellEngine | None = None
         self.frequency_scorer = WordfreqScorer(enabled=False)
         self.decisions = BrokenWordDecisions()
+        self.ocr_candidates = OCRBoundaryCandidates()
+        self.context_validator: BoundaryContextValidator | None = None
 
     def initialize(self, context) -> None:
         """Load vocabularies, protect document terms, and build the index."""
@@ -76,6 +86,16 @@ class SymSpellStage(PipelineStage):
             language=self.settings.wordfreq_language,
             wordlist=self.settings.wordfreq_wordlist,
         )
+        if self.context_validator_settings.enabled:
+            self.context_validator_settings.validate()
+            self.ocr_candidates = OCRBoundaryCandidates.load(
+                context.config.resolve_path(
+                    self.context_validator_settings.candidate_file
+                )
+            )
+            self.context_validator = BoundaryContextValidator(
+                self.context_validator_settings
+            )
         for word, frequency in self.dictionary.words.items():
             if frequency >= self.settings.minimum_dictionary_frequency:
                 self.engine.add_word(word, frequency)
@@ -140,8 +160,13 @@ class SymSpellStage(PipelineStage):
             frequency_scorer=self.frequency_scorer,
             settings=self.settings,
             decisions=self.decisions,
+            ocr_candidates=self.ocr_candidates,
         )
-        return BrokenWordMerger(evaluator, self.settings)
+        return BrokenWordMerger(
+            evaluator,
+            self.settings,
+            context_validator=self.context_validator,
+        )
 
     def _make_corrector(self) -> SpellCorrector:
         """Build a corrector from the currently injected lookup engine."""
@@ -205,10 +230,22 @@ class SymSpellStage(PipelineStage):
             (hyphen_result.decisions if hyphen_result else ())
             + result.decisions
         )
+        context = self.context
+        for rejected in result.rejected:
+            context.tracker.add(
+                stage=self.name,
+                block_index=segment.block_index,
+                segment_index=segment.segment_index,
+                line=segment.start_line,
+                before=source,
+                after=source,
+                confidence=rejected.confidence,
+                reason=rejected.reason,
+                broken_word=rejected.broken_word,
+            )
         if not decisions:
             return result.text
 
-        context = self.context
         context.tracker.add(
             stage=self.name,
             block_index=segment.block_index,
@@ -219,7 +256,9 @@ class SymSpellStage(PipelineStage):
             confidence=min(
                 decision.confidence for decision in decisions
             ),
-            reason=decisions[0].reason,
+            reason=" | ".join(
+                dict.fromkeys(decision.reason for decision in decisions)
+            ),
             broken_word=", ".join(
                 decision.broken_word for decision in decisions
             ),

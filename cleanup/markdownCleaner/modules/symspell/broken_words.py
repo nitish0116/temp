@@ -5,13 +5,18 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import Enum
 import re
+from typing import TYPE_CHECKING, Protocol, Sequence
 
 from .dictionary import DictionaryManager
 from .decisions import BrokenWordDecisions
 from .frequency import WordfreqScorer
+from .ocr_candidates import OCRBoundaryCandidates
 from .settings import SymSpellSettings
 from ..markdown.markdown import BlockType
 from ..markdown.segmenter import protected_span_ranges
+
+if TYPE_CHECKING:
+    from .context_validator import ValidationOutcome
 
 
 INLINE_MERGE_REASON = "Dictionary-validated OCR broken-word merge"
@@ -31,6 +36,8 @@ class MergeEvidenceKind(str, Enum):
     PRODUCTIVE_OUT_VERB = "productive-out-verb"
     DETACHED_OCR_SUFFIX = "detached-ocr-suffix"
     REVIEWED_DECISION = "reviewed-decision"
+    COMMON_OCR_CANDIDATE = "common-ocr-candidate"
+    TRANSFORMER_CONTEXT = "transformer-context"
     LINE_BREAK_DEHYPHENATION = "line-break-dehyphenation"
 
 
@@ -74,6 +81,7 @@ class MergeResult:
 
     text: str
     decisions: tuple[MergeDecision, ...] = ()
+    rejected: tuple[MergeDecision, ...] = ()
 
     @property
     def changes(self) -> int:
@@ -90,6 +98,16 @@ class CrossBlockMerge:
     decision: MergeDecision
 
 
+class CandidateContextValidator(Protocol):
+    """Validate a batch of positioned automatic merge candidates."""
+
+    def validate(
+        self,
+        text: str,
+        candidates: Sequence[MergeCandidate],
+    ) -> "ValidationOutcome": ...
+
+
 class BrokenWordEvaluator:
     """Evaluate one adjacent token pair using ordered lexical rules."""
 
@@ -100,11 +118,13 @@ class BrokenWordEvaluator:
         frequency_scorer: WordfreqScorer,
         settings: SymSpellSettings,
         decisions: BrokenWordDecisions | None = None,
+        ocr_candidates: OCRBoundaryCandidates | None = None,
     ) -> None:
         self.dictionary = dictionary
         self.frequency_scorer = frequency_scorer
         self.settings = settings
         self.decisions = decisions or BrokenWordDecisions()
+        self.ocr_candidates = ocr_candidates or OCRBoundaryCandidates()
 
     def evaluate(
         self,
@@ -171,6 +191,9 @@ class BrokenWordEvaluator:
                 reason,
             )
 
+        if self.ocr_candidates.is_suppressed(left, right):
+            return None
+
         both_fragments_protected = (
             self.dictionary.is_protected(left)
             and self.dictionary.is_protected(right)
@@ -179,6 +202,21 @@ class BrokenWordEvaluator:
             self.dictionary.contains(left)
             and self.dictionary.contains(right)
         )
+        candidate_replacement = self.ocr_candidates.replacement(left, right)
+        if not both_fragments_protected and candidate_replacement is not None:
+            evidence = MergeEvidence(
+                kind=MergeEvidenceKind.COMMON_OCR_CANDIDATE,
+                term=candidate_replacement.casefold(),
+                rank=self.settings.broken_word_merge_minimum_frequency,
+                detail="candidate store; requires contextual validation",
+            )
+            return self._decision(
+                left,
+                right,
+                self._match_case(combined_source, candidate_replacement),
+                evidence,
+                "Common OCR boundary candidate pending context validation",
+            )
         if not both_fragments_protected and not both_fragments_known:
             decision = self._evaluate_joined_form(
                 left,
@@ -462,17 +500,42 @@ class BrokenWordMerger:
         self,
         evaluator: BrokenWordEvaluator,
         settings: SymSpellSettings,
+        context_validator: CandidateContextValidator | None = None,
     ) -> None:
         self.evaluator = evaluator
         self.settings = settings
+        self.context_validator = context_validator
 
     def merge_inline(self, text: str) -> MergeResult:
         """Merge adjacent OCR fragments in editable prose."""
 
         current = text
         applied: list[MergeDecision] = []
+        rejected: list[MergeDecision] = []
+        rejected_keys: set[tuple[str, str]] = set()
         for _ in range(self.settings.maximum_merge_passes):
             candidates = self.scan_candidates(current)
+            if not candidates:
+                break
+            if self.context_validator is not None:
+                outcome = self.context_validator.validate(current, candidates)
+                candidates = list(outcome.accepted)
+                for decision in outcome.rejected:
+                    key = (
+                        decision.broken_word.casefold(),
+                        decision.replacement.casefold(),
+                    )
+                    if key not in rejected_keys:
+                        rejected_keys.add(key)
+                        rejected.append(decision)
+            else:
+                # Candidate-store entries widen recall but are never approvals.
+                candidates = [
+                    candidate
+                    for candidate in candidates
+                    if candidate.decision.evidence.kind
+                    is not MergeEvidenceKind.COMMON_OCR_CANDIDATE
+                ]
             selected = self.resolve_overlaps(candidates)
             if not selected:
                 break
@@ -497,7 +560,11 @@ class BrokenWordMerger:
                 candidate.decision for candidate in selected_in_text_order
             )
             current = updated
-        return MergeResult(text=current, decisions=tuple(applied))
+        return MergeResult(
+            text=current,
+            decisions=tuple(applied),
+            rejected=tuple(rejected),
+        )
 
     def merge_line_hyphenations(self, text: str) -> MergeResult:
         """Resolve only hyphens proven to occur at source line boundaries."""

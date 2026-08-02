@@ -232,23 +232,76 @@ where neither form occurs at least three times are omitted and counted as
 `insufficient_evidence_skipped`. Uncertain but sufficiently observed results
 go to the ambiguous file with
 `status: "review"`; change that status to `"accepted"` or `"rejected"` after
-inspection. Neither generated file changes cleaning behavior until it is
-explicitly promoted:
+inspection.
+
+For the optimized transformer workflow, import both generated files into the
+non-authoritative candidate store:
 
 ```powershell
 python -m markdownCleaner `
-    --promote-broken-word-review `
+    --import-broken-word-candidates `
     "markdownCleaner\data\broken_word_review.json"
 
 python -m markdownCleaner `
-    --promote-broken-word-review `
+    --import-broken-word-candidates `
     "markdownCleaner\data\broken_word_review_ambiguous.json"
 ```
 
-Promotion validates the complete decision schema, resolves accepted/rejected
-conflicts, preserves optional context blockers, and updates the
-configuration-relative `symspell.broken_word_decisions` file. Ordinary cleaning
-never writes that permanent store.
+Accepted and unresolved proposals become transformer candidates. Corpus-level
+rejections become prefilter suppressions, so obviously legitimate spaced forms
+do not consume model inference. This import updates
+`context_validator.candidate_file`; it never grants trusted-decision status.
+
+Use `--promote-broken-word-review` only on explicitly human-reviewed files.
+Promotion validates the complete decision schema, preserves optional context
+blockers, and updates the configuration-relative
+`symspell.broken_word_decisions` file. Reviewed decisions bypass the model;
+ordinary cleaning never writes either store.
+
+### Optional transformer context validation
+
+For boundaries where a dictionary alone is unsafe—such as `log in` versus
+`login`—enable the hybrid context validator. Install the optional dependencies
+first:
+
+```powershell
+python -m pip install -r markdownCleaner\requirements-transformer.txt
+```
+
+Then configure:
+
+```yaml
+context_validator:
+  enabled: true
+  model: "distilbert/distilroberta-base"
+  candidate_file: "data/ocr_boundary_candidates.json"
+  batch_size: 16
+  max_length: 128
+  context_characters: 600
+  merge_margin: 0.35
+  device: "auto"
+  local_files_only: false
+```
+
+The first online run downloads and caches the selected Hugging Face model.
+Set `local_files_only: true` after the model exists locally, or on machines
+where network access is prohibited. `device: auto` uses CUDA when available
+and otherwise uses the CPU.
+
+The validator does not run on every word. Regex first handles deterministic OCR
+patterns; SymSpell and `data\ocr_boundary_candidates.json` identify plausible
+boundaries; then the model scores only those candidates. For each candidate it
+creates spaced and joined local-context variants, masks each target subtoken,
+and compares their mean target-token log probabilities in batches. A join is
+applied only when its score beats the spaced form by `merge_margin`.
+
+Candidate-file entries are proposals, not approvals. Its `suppressed` list
+contains corpus-supported spaced boundaries that are skipped before model
+scoring. Candidate proposals are inert when the validator is disabled.
+Reviewed decisions and protected names bypass model scoring; model-rejected
+proposals remain unchanged and are logged with the
+spaced score, joined score, observed margin, required margin, and exact
+`broken_word`. This keeps the model subordinate to explicit human decisions.
 
 ## Configuration
 
@@ -276,6 +329,7 @@ Important groups are:
 | `symspell` | Dictionaries, confidence/frequency bounds, protected terms, and merge limits |
 | `vocabulary_candidates` | Repeated-term threshold, report limit, and rejected-word file |
 | `contextual_real_words` | Report-only known-word confusion rules |
+| `context_validator` | Optional batched transformer validation of suspicious word boundaries |
 | `tts_validation` | Report-only TTS chunk checks |
 | `report` | JSON/summary exports, confidence filtering, and review threshold |
 | `logging` | Log level and destination |

@@ -160,25 +160,50 @@ python -m markdownCleaner `
     --rebuild-broken-word-cache
 ```
 
-Review entries whose status remains `review`, changing only confirmed entries
-to `accepted` or `rejected`. Promote the automatically decided file, then the
-manually resolved ambiguous file:
+Import generated classifications into the non-authoritative transformer store:
 
 ```powershell
 python -m markdownCleaner `
-    --promote-broken-word-review `
+    --import-broken-word-candidates `
     "cleanup\markdownCleaner\data\broken_word_review.json"
 
 python -m markdownCleaner `
-    --promote-broken-word-review `
+    --import-broken-word-candidates `
     "cleanup\markdownCleaner\data\broken_word_review_ambiguous.json"
 ```
 
-Promotion updates
-`cleanup\markdownCleaner\data\broken_word_decisions.json`. Ordinary cleaning
-and review generation never modify that permanent decision store. All
-configured paths remain relative to the selected configuration file and are
-portable across machines.
+This places accepted/review proposals in `ocr_boundary_candidates.json` and
+corpus rejections in its `suppressed` list. Suppressions avoid unnecessary
+model calls; candidates still require contextual approval before mutation.
+
+After manual inspection, change confirmed entries to `accepted` or `rejected`
+and run `--promote-broken-word-review` on that reviewed file. Promotion alone
+updates `broken_word_decisions.json`; those human decisions bypass the model.
+All configured paths remain relative to the selected configuration file and
+are portable across machines.
+
+For context-aware handling of ambiguous boundaries such as `log in` and
+`login`, install the optional masked-language-model dependencies:
+
+```powershell
+python -m pip install `
+    -r cleanup\markdownCleaner\requirements-transformer.txt
+```
+
+Enable `context_validator.enabled` in
+`cleanup\markdownCleaner\config.yaml`. The default
+`distilbert/distilroberta-base` model is downloaded on its first online use and
+then reused from the Hugging Face cache. Set `local_files_only: true` to forbid
+downloads, `device: cpu` to force CPU inference, or `device: cuda` to require a
+CUDA device.
+
+The transformer evaluates only candidate boundaries emitted by lexical rules
+or listed in
+`cleanup\markdownCleaner\data\ocr_boundary_candidates.json`. Candidate-file
+entries do nothing when the validator is disabled and never override reviewed
+accepted/rejected decisions. Corpus suppressions skip known legitimate spaced
+forms before inference. Adjust `batch_size` for memory, and calibrate
+`merge_margin` against the real-book regression corpus before lowering it.
 
 Compatibility entry points are available, but the canonical form above is
 preferred:

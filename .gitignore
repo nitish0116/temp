@@ -33,6 +33,7 @@ md-audio/.hyphen-review-cache.json
 !**/README.md
 !**/ARCHITECTURE.md
 !**/requirements.txt
+!**/requirements-transformer.txt
 
 # Library visibility switch:
 # Uncomment the last line to ignore/hide all Library files.

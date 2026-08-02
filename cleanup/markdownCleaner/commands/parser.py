@@ -172,4 +172,22 @@ def build_parser(default_config: Path = DEFAULT_CONFIG) -> argparse.ArgumentPars
             "to symspell.broken_word_decisions"
         ),
     )
+    parser.add_argument(
+        "--import-broken-word-candidates",
+        type=Path,
+        metavar="REVIEW_JSON",
+        help=(
+            "Import accepted/review proposals and corpus rejections into the "
+            "non-authoritative transformer candidate store, then exit"
+        ),
+    )
+    parser.add_argument(
+        "--ocr-boundary-candidate-file",
+        type=Path,
+        default=None,
+        help=(
+            "Candidate store used with --import-broken-word-candidates; "
+            "defaults to context_validator.candidate_file"
+        ),
+    )
     return parser

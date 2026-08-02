@@ -27,6 +27,7 @@ from markdownCleaner.commands.batch import (
     unique_batch_output_name,
 )
 from markdownCleaner.commands.broken_word_review import (
+    import_review_candidates,
     promote_review,
     run_review_pipeline,
 )
@@ -267,6 +268,40 @@ def _promote_broken_word_review(
     return 0
 
 
+def _import_broken_word_candidates(
+    args: argparse.Namespace,
+    *,
+    config: PipelineConfig,
+    parser: argparse.ArgumentParser,
+) -> int:
+    """Import generated evidence without granting trusted-decision status."""
+
+    review_path = args.import_broken_word_candidates.resolve()
+    configured = config.get(
+        "context_validator.candidate_file",
+        "data/ocr_boundary_candidates.json",
+    )
+    if args.ocr_boundary_candidate_file:
+        candidate_path = args.ocr_boundary_candidate_file.resolve()
+    else:
+        resolved = config.resolve_path(configured)
+        if resolved is None:
+            parser.error("context_validator.candidate_file cannot be null")
+        candidate_path = Path(resolved)
+    try:
+        result = import_review_candidates(review_path, candidate_path)
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
+    print(f"OCR boundary candidates: {candidate_path}")
+    print(
+        f"Added {result['candidates_added']} candidate(s), updated "
+        f"{result['candidates_updated']}, added "
+        f"{result['suppressions_added']} suppression(s); ignored "
+        f"{result['ignored']} item(s)."
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Execute the requested CLI workflow and return a process exit code.
 
@@ -302,6 +337,7 @@ def main(argv: list[str] | None = None) -> int:
         review_action_count(args)
         + bool(args.build_broken_word_review)
         + bool(args.promote_broken_word_review)
+        + bool(args.import_broken_word_candidates)
     )
     if workflow_count > 1:
         parser.error(
@@ -323,13 +359,14 @@ def main(argv: list[str] | None = None) -> int:
             args.broken_word_review_cache,
             args.rebuild_broken_word_cache,
             args.broken_word_decisions_file,
+            args.ocr_boundary_candidate_file,
         )
     ) or args.max_broken_word_contexts != 3
     if args.build_broken_word_review:
-        if args.broken_word_decisions_file:
+        if args.broken_word_decisions_file or args.ocr_boundary_candidate_file:
             parser.error(
-                "--broken-word-decisions-file requires "
-                "--promote-broken-word-review"
+                "explicit decision/candidate destinations require their "
+                "corresponding promotion or import command"
             )
         try:
             loaded_config.validate()
@@ -341,6 +378,11 @@ def main(argv: list[str] | None = None) -> int:
             parser=parser,
         )
     if args.promote_broken_word_review:
+        if args.ocr_boundary_candidate_file:
+            parser.error(
+                "--ocr-boundary-candidate-file requires "
+                "--import-broken-word-candidates"
+            )
         scan_only_options = any(
             (
                 args.broken_word_review_output,
@@ -358,10 +400,34 @@ def main(argv: list[str] | None = None) -> int:
             config=loaded_config,
             parser=parser,
         )
+    if args.import_broken_word_candidates:
+        if args.broken_word_decisions_file:
+            parser.error(
+                "--broken-word-decisions-file requires "
+                "--promote-broken-word-review"
+            )
+        scan_only_options = any(
+            (
+                args.broken_word_review_output,
+                args.broken_word_ambiguous_output,
+                args.broken_word_review_cache,
+                args.rebuild_broken_word_cache,
+            )
+        ) or args.max_broken_word_contexts != 3
+        if scan_only_options:
+            parser.error(
+                "broken-word scan options require --build-broken-word-review"
+            )
+        return _import_broken_word_candidates(
+            args,
+            config=loaded_config,
+            parser=parser,
+        )
     if broken_word_option_used:
         parser.error(
             "broken-word options require --build-broken-word-review or "
-            "--promote-broken-word-review"
+            "--promote-broken-word-review or "
+            "--import-broken-word-candidates"
         )
 
     if args.input is None:

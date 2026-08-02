@@ -164,6 +164,33 @@ The SymSpell package separates:
 - typed merge evidence and merge traversal; and
 - report-only vocabulary discovery/classification.
 
+When `context_validator.enabled` is true, automated inline boundary decisions
+continue through a second evidence layer:
+
+```text
+Regex candidate reduction
+    -> SymSpell lexical/morphological evidence
+    -> common OCR boundary candidate store
+    -> batched transformer context validation
+    -> mutation and change logging
+```
+
+`ocr_candidates.py` loads candidate-only pairs and corpus suppressions. Unlike
+reviewed decisions, candidates cannot authorize a mutation; suppressions stop
+known legitimate spaced forms before model inference. Human-reviewed decisions
+take precedence over both. `context_validator.py` builds a
+local spaced variant and joined variant for each candidate and computes a
+localized pseudo-log-likelihood using a masked-language-model backend. Only
+target subtokens are masked, and all resulting masked examples are evaluated
+in configured batches. This bounds model work by the number of suspicious
+boundaries rather than document length.
+
+`BrokenWordMerger` asks the validator to filter candidates before overlap
+resolution. This matters when two possible joins share a token: rejection of a
+higher-ranked proposal still permits a context-supported alternative. Reviewed
+and protected evidence bypasses the transformer. Rejections are non-mutating
+audit records containing both scores and the decision margin.
+
 `BrokenWordEvaluator` makes one decision for a candidate pair.
 `BrokenWordMerger` finds candidates, resolves overlaps, preserves exact
 whitespace evidence, and applies accepted decisions. Cross-block merges are
@@ -183,11 +210,13 @@ written separately. The cache uses relative paths, SHA-256 content identities,
 and a fingerprint of the lexical policy; it contains no machine-specific source
 paths or modification times.
 
-Generated classifications are proposals. Only the explicit
-`--promote-broken-word-review` command writes accepted/rejected candidates to
-the stable decision store. It validates the resulting store before atomically
-replacing it. The normal cleaning pipeline never learns permanent mutation
-rules from its own output.
+Generated classifications are proposals. The
+`--import-broken-word-candidates` command atomically routes accepted/review
+proposals to the contextual candidate map and corpus rejections to the
+suppression set. Only `--promote-broken-word-review`, run after explicit human
+review, writes accepted/rejected candidates to the stable decision store. Both
+commands validate the resulting store before replacing it. The normal cleaning
+pipeline never learns permanent trusted rules from its own output.
 
 Custom multiword entries are tokenized as well as stored as phrases. For
 example, approving `Arthur Leywin` protects `Arthur`, `Leywin`, and the complete

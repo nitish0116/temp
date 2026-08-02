@@ -535,3 +535,52 @@ def test_broken_word_review_cli_runs_without_a_cleaning_input(
     )
     output = capsys.readouterr().out
     assert "1 accepted, 1 rejected, 3 ambiguous" in output
+
+
+def test_candidate_import_cli_uses_config_relative_store(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    config = tmp_path / "config.yaml"
+    config.write_text(
+        "context_validator:\n"
+        "  candidate_file: data/candidates.json\n",
+        encoding="utf-8",
+    )
+    review = tmp_path / "review.json"
+    review.write_text('{"candidates": []}', encoding="utf-8")
+    captured = {}
+
+    def import_candidates(review_path, candidate_path):
+        captured["review"] = review_path
+        captured["candidate"] = candidate_path
+        return {
+            "candidates_added": 2,
+            "candidates_updated": 1,
+            "suppressions_added": 3,
+            "ignored": 4,
+        }
+
+    monkeypatch.setattr(
+        "markdownCleaner.cli.import_review_candidates",
+        import_candidates,
+    )
+
+    exit_code = main(
+        [
+            "--config",
+            str(config),
+            "--import-broken-word-candidates",
+            str(review),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured == {
+        "review": review.resolve(),
+        "candidate": tmp_path / "data/candidates.json",
+    }
+    output = capsys.readouterr().out
+    assert "Added 2 candidate(s), updated 1" in output
+    assert "added 3 suppression(s); ignored 4" in output

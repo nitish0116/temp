@@ -107,6 +107,21 @@ symspell:
     - "Yggdrasil"
     - "Nazarick"
 
+context_validator:
+  # Optional second opinion for suspicious inline word boundaries. Install
+  # requirements-transformer.txt before enabling; the model downloads once
+  # unless local_files_only is true.
+  enabled: true
+  model: "distilbert/distilroberta-base"
+  candidate_file: "data/ocr_boundary_candidates.json"
+  batch_size: 16
+  max_length: 128
+  context_characters: 600
+  # Joined localized pseudo-log-likelihood must beat the spaced form by this.
+  merge_margin: 0.35
+  device: "auto"
+  local_files_only: false
+
 vocabulary_candidates:
   # Discover repeated unknown terms, but never modify custom_words.json.
   enabled: true

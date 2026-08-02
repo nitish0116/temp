@@ -39,6 +39,8 @@ _BOOLEAN_KEYS = (
     "mutation.report_only",
     "page_artifacts.enabled",
     "contextual_real_words.enabled",
+    "context_validator.enabled",
+    "context_validator.local_files_only",
 )
 _CORRECTION_KEYS = (
     "zero_to_o",
@@ -63,6 +65,7 @@ _MAPPING_SECTIONS = (
     "mutation",
     "page_artifacts",
     "contextual_real_words",
+    "context_validator",
 )
 
 
@@ -250,6 +253,24 @@ class PipelineConfig:
         if float(self.get("symspell.dehyphenation_zipf_margin", 0.5)) < 0:
             raise ValueError(
                 "symspell.dehyphenation_zipf_margin cannot be negative."
+            )
+        for key, default, minimum in (
+            ("context_validator.batch_size", 16, 1),
+            ("context_validator.max_length", 128, 16),
+            ("context_validator.context_characters", 600, 80),
+        ):
+            if int(self.get(key, default)) < minimum:
+                raise ValueError(f"{key} must be at least {minimum}.")
+        if float(self.get("context_validator.merge_margin", 0.35)) < 0:
+            raise ValueError(
+                "context_validator.merge_margin cannot be negative."
+            )
+        validator_device = str(
+            self.get("context_validator.device", "auto")
+        ).strip().casefold()
+        if validator_device not in {"auto", "cpu", "cuda"}:
+            raise ValueError(
+                "context_validator.device must be auto, cpu, or cuda."
             )
 
         return True

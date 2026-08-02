@@ -26,6 +26,9 @@ from markdownCleaner.modules.symspell.broken_words import BrokenWordEvaluator
 from markdownCleaner.modules.symspell.decisions import BrokenWordDecisions
 from markdownCleaner.modules.symspell.dictionary import DictionaryManager
 from markdownCleaner.modules.symspell.frequency import WordfreqScorer
+from markdownCleaner.modules.symspell.ocr_candidates import (
+    OCRBoundaryCandidates,
+)
 from markdownCleaner.modules.symspell.settings import SymSpellSettings
 
 
@@ -667,9 +670,108 @@ def promote_review(
     return {"promoted": promoted, "ignored": ignored}
 
 
+def import_review_candidates(
+    review_path: Path,
+    candidate_path: Path,
+) -> dict[str, int]:
+    """Import generated review evidence into the non-authoritative store.
+
+    Accepted and unresolved entries with replacements become transformer
+    candidates. Corpus-rejected entries become suppressions. Nothing is added
+    to the human-reviewed decision store.
+    """
+
+    review = _load_json_object(review_path)
+    items = review.get("candidates")
+    if not isinstance(items, list):
+        raise ValueError(f"Review JSON has no candidates list: {review_path}")
+    if candidate_path.exists():
+        # Reject malformed existing data instead of silently stringifying it.
+        OCRBoundaryCandidates.load(candidate_path)
+        store = _load_json_object(candidate_path)
+    else:
+        store = {
+            "_description": (
+                "Generated OCR boundary candidates; contextual validation "
+                "is required before mutation."
+            ),
+            "candidates": {},
+            "suppressed": [],
+        }
+    raw_candidates = store.get("candidates", {})
+    raw_suppressed = store.get("suppressed", [])
+    if not isinstance(raw_candidates, dict) or not isinstance(
+        raw_suppressed, list
+    ):
+        raise ValueError(
+            "OCR candidate store requires a candidates object and "
+            "suppressed list."
+        )
+
+    candidates = {
+        " ".join(str(key).casefold().split()): value.strip()
+        for key, value in raw_candidates.items()
+    }
+    suppressed = {
+        " ".join(str(value).casefold().split()) for value in raw_suppressed
+    }
+    candidates_added = 0
+    candidates_updated = 0
+    suppressions_added = 0
+    ignored = 0
+    for item in items:
+        if not isinstance(item, dict):
+            ignored += 1
+            continue
+        status = item.get("status")
+        broken = " ".join(str(item.get("broken_word", "")).split())
+        if not BOUNDARY_RE.fullmatch(broken):
+            raise ValueError(f"Invalid broken-word candidate: {broken!r}")
+        key = broken.casefold()
+        if status in {"accepted", "review"}:
+            replacement = str(item.get("replacement", "")).strip()
+            if not replacement:
+                ignored += 1
+                continue
+            if key not in candidates:
+                candidates_added += 1
+            elif candidates[key] != replacement:
+                candidates_updated += 1
+            candidates[key] = replacement
+            suppressed.discard(key)
+        elif status == "rejected":
+            if key not in suppressed:
+                suppressions_added += 1
+            suppressed.add(key)
+            candidates.pop(key, None)
+        else:
+            ignored += 1
+
+    store["candidates"] = {
+        key: candidates[key] for key in sorted(candidates)
+    }
+    store["suppressed"] = sorted(suppressed)
+    candidate_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = candidate_path.with_suffix(candidate_path.suffix + ".tmp")
+    write_json(temporary, store)
+    try:
+        OCRBoundaryCandidates.load(temporary)
+        temporary.replace(candidate_path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+    return {
+        "candidates_added": candidates_added,
+        "candidates_updated": candidates_updated,
+        "suppressions_added": suppressions_added,
+        "ignored": ignored,
+    }
+
+
 __all__ = [
     "ReviewResources",
     "load_cache",
+    "import_review_candidates",
     "promote_review",
     "records_from_cache",
     "resources_from_config",
