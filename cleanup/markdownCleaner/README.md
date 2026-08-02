@@ -225,7 +225,12 @@ new or modified Markdown files are rescanned. Use
 
 Pairs the live SymSpell evaluator already handles, and pairs already present in
 the permanent decision store, are omitted. Strong corpus/lexical results go to
-the main review. Uncertain results go to the ambiguous file with
+the main review. Automatic decisions require at least three occurrences of the
+supporting form. Acceptance uses joined-form evidence; rejection requires the
+spaced form to outnumber the joined form by at least three to one. Candidates
+where neither form occurs at least three times are omitted and counted as
+`insufficient_evidence_skipped`. Uncertain but sufficiently observed results
+go to the ambiguous file with
 `status: "review"`; change that status to `"accepted"` or `"rejected"` after
 inspection. Neither generated file changes cleaning behavior until it is
 explicitly promoted:

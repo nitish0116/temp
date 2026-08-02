@@ -83,7 +83,11 @@ def test_cached_records_split_confident_and_ambiguous_unresolved_pairs(tmp_path)
             "book.md",
             {
                 "sha256": "unique",
-                "words": {"because": 20, "inside": 1, "noone": 0},
+                "words": {
+                        "because": 20,
+                        "inside": 3,
+                        "noone": 0,
+                },
                 "pairs": [
                     {
                         "key": "be cause",
@@ -93,14 +97,14 @@ def test_cached_records_split_confident_and_ambiguous_unresolved_pairs(tmp_path)
                     },
                     {
                         "key": "in side",
-                        "count": 2,
-                        "variants": {"in side": 2},
+                        "count": 3,
+                        "variants": {"in side": 3},
                         "contexts": [{"line": 2, "text": "in side"}],
                     },
                     {
                         "key": "no one",
-                        "count": 2,
-                        "variants": {"no one": 2},
+                        "count": 6,
+                        "variants": {"no one": 6},
                         "contexts": [{"line": 3, "text": "no one"}],
                     },
                 ],
@@ -124,6 +128,47 @@ def test_cached_records_split_confident_and_ambiguous_unresolved_pairs(tmp_path)
         "in side"
     ]
     assert main["candidates"][0]["evidence"]["joined_occurrences"] == 20
+    assert main["insufficient_evidence_skipped"] == 0
+    assert ambiguous["insufficient_evidence_skipped"] == 0
+
+
+def test_low_counts_cannot_trigger_lexical_only_decisions(tmp_path):
+    """Strong Zipf scores cannot decide a pair without corpus support."""
+    cached = [
+        (
+            "book.md",
+            {
+                "sha256": "unique",
+                "words": {"inside": 1, "noone": 0},
+                "pairs": [
+                    {
+                        "key": "in side",
+                        "count": 1,
+                        "variants": {"in side": 1},
+                        "contexts": [],
+                    },
+                    {
+                        "key": "no one",
+                        "count": 2,
+                        "variants": {"no one": 2},
+                        "contexts": [],
+                    },
+                ],
+            },
+        )
+    ]
+
+    main, ambiguous = records_from_cache(
+        tmp_path,
+        cached,
+        resources(),
+        max_contexts=2,
+        output_base=tmp_path,
+    )
+
+    assert main["candidates"] == []
+    assert ambiguous["candidates"] == []
+    assert main["insufficient_evidence_skipped"] == 2
 
 
 def test_portable_cache_reuses_only_unchanged_file_content(tmp_path):
@@ -276,5 +321,7 @@ def test_integrated_pipeline_writes_records_and_reuses_cache(tmp_path):
     assert second["cache_hits"] == 1
     assert json.loads(main.read_text(encoding="utf-8"))["candidates"] == []
     unresolved = json.loads(ambiguous.read_text(encoding="utf-8"))
-    assert unresolved["candidates"][0]["broken_word"] == "be cause"
+    assert unresolved["candidates"] == []
+    assert unresolved["insufficient_evidence_skipped"] == 1
+    assert first["insufficient"] == 1
     assert unresolved["source_root"] == "../library"

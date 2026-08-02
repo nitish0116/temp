@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-02T11:56:50.385593+00:00",
+  "source_root": "../../../Library",
+  "files_discovered": 247,
+  "unique_files_scanned": 243,
+  "identical_duplicates_skipped": 4,
+  "existing_decisions_skipped": 1922,
+  "already_automatic_skipped": 3637,
+  "insufficient_evidence_skipped": 100,
+  "instructions": "These high-confidence proposals remain inert until explicitly promoted with --promote-broken-word-review.",
+  "decided_candidates": 0,
+  "candidates": [],
+  "ambiguous_output": "broken_word_review_ambiguous.json"
+}

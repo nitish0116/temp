@@ -35,6 +35,8 @@ CACHE_CONTEXT_LIMIT = 10
 WORD_RE = re.compile(r"[A-Za-z]{2,}")
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
 BOUNDARY_RE = re.compile(r"^[A-Za-z]{2,}\s+[A-Za-z]{2,}$")
+MINIMUM_CORPUS_OCCURRENCES = 3
+CORPUS_DOMINANCE_RATIO = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -339,16 +341,44 @@ def _classify_candidate(
         "right_known": resources.dictionary.contains(right),
     }
 
+    sufficient_evidence = (
+        max(joined_occurrences, occurrences)
+        >= MINIMUM_CORPUS_OCCURRENCES
+    )
+    if not sufficient_evidence:
+        return {
+            "status": "insufficient",
+            "replacement": None,
+            "confidence": 0.0,
+            "classification_basis": (
+                "neither joined nor spaced form has the minimum of "
+                f"{MINIMUM_CORPUS_OCCURRENCES} corpus occurrences"
+            ),
+            "evidence": evidence,
+        }
+
     corpus_dominates = (
-        joined_occurrences >= 3
-        and joined_occurrences >= occurrences * 3
+        joined_occurrences >= MINIMUM_CORPUS_OCCURRENCES
+        and joined_occurrences
+        >= occurrences * CORPUS_DOMINANCE_RATIO
         and joined_zipf >= phrase_zipf + 0.25
     )
     lexical_dominates = (
-        joined_zipf >= max(resources.settings.wordfreq_minimum_zipf, 3.0)
+        joined_occurrences >= MINIMUM_CORPUS_OCCURRENCES
+        and joined_occurrences >= occurrences
+        and joined_zipf
+        >= max(resources.settings.wordfreq_minimum_zipf, 3.0)
         and joined_zipf >= phrase_zipf + 1.25
     )
-    phrase_dominates = phrase_zipf >= joined_zipf + 1.25
+    phrase_dominates = (
+        occurrences >= MINIMUM_CORPUS_OCCURRENCES
+        and occurrences
+        >= max(
+            MINIMUM_CORPUS_OCCURRENCES,
+            joined_occurrences * CORPUS_DOMINANCE_RATIO,
+        )
+        and phrase_zipf >= joined_zipf + 1.25
+    )
     if corpus_dominates or lexical_dominates:
         basis = (
             "joined form dominates the scanned corpus and phrase score"
@@ -425,6 +455,7 @@ def records_from_cache(
     ambiguous: list[dict[str, object]] = []
     existing = 0
     already_automatic = 0
+    insufficient_evidence = 0
     for key in sorted(pair_counts):
         left, right = key.split()
         if resources.decisions.is_rejected(left, right) or (
@@ -442,6 +473,9 @@ def records_from_cache(
             joined_occurrences=word_counts[left + right],
             resources=resources,
         )
+        if classification["status"] == "insufficient":
+            insufficient_evidence += 1
+            continue
         candidate = {
             "broken_word": display,
             "occurrences": pair_counts[key],
@@ -463,6 +497,7 @@ def records_from_cache(
         "identical_duplicates_skipped": duplicates,
         "existing_decisions_skipped": existing,
         "already_automatic_skipped": already_automatic,
+        "insufficient_evidence_skipped": insufficient_evidence,
     }
     main = {
         **common,
@@ -532,6 +567,7 @@ def run_review_pipeline(
             item.get("status") == "rejected" for item in main["candidates"]
         ),
         "ambiguous": len(ambiguous["candidates"]),
+        "insufficient": main["insufficient_evidence_skipped"],
         **cache_stats,
     }
 
