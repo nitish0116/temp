@@ -10,18 +10,18 @@ cleanup:
   enabled: true
   # Content-removal policies are opt-in. A cleaner should preserve legitimate
   # front/back matter, profiles, notes, and publisher material by default.
-  remove_front_matter: false
-  excluded_sections: []
+  remove_front_matter: true
+  excluded_sections: ["Character Profiles", "Afterword"]
   # Picture OCR modes: safe | keep | remove. Safe retains picture text that
   # passes conservative language/readability checks.
-  picture_ocr_mode: "keep"
-  remove_promotional_tail: false
-  remove_publisher_tail: false
-  remove_glossary_footnotes: false
-  remove_footnotes: false
-  strip_markdown_emphasis: false
+  picture_ocr_mode: "remove"
+  remove_promotional_tail: true
+  remove_publisher_tail: true
+  remove_glossary_footnotes: true
+  remove_footnotes: true
+  strip_markdown_emphasis: true
   # Report suspicious whole-document OCR lines but never delete them.
-  report_ocr_noise: true
+  report_ocr_noise: false
   ocr_noise_report_limit: 100
 
 tts_validation:
