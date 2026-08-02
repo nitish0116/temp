@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
+from copy import deepcopy
 from typing import Any, Iterable
 
 from .config import PipelineConfig
@@ -55,10 +56,17 @@ class PipelineStage(ABC):
         try:
             checkpoint = context.checkpoint()
             self.initialize(context)
+            record_start = len(context.tracker.records)
             result = self.process(context)
 
             if result.success:
                 context.update_markdown()
+                result = self._apply_mutation_policy(
+                    context,
+                    checkpoint,
+                    record_start,
+                    result,
+                )
             else:
                 context.restore(checkpoint)
                 result.changes = 0
@@ -87,6 +95,45 @@ class PipelineStage(ABC):
             )
             context.add_stat(self.name, 0)
             return result
+
+    def _apply_mutation_policy(
+        self,
+        context: ProcessingContext,
+        checkpoint: ContextCheckpoint,
+        record_start: int,
+        result: StageResult,
+    ) -> StageResult:
+        """Enforce global confidence/report-only policy atomically per stage.
+
+        Existing processors often report a whole segment or document transform
+        as one audit record. Rolling back the stage when any proposed mutation
+        is below the threshold guarantees that no low-confidence edit leaks
+        through while preserving every proposal for review.
+        """
+
+        proposed = deepcopy(context.tracker.records[record_start:])
+        mutations = [
+            record
+            for record in proposed
+            if record.applied and record.before != record.after
+        ]
+        report_only = self.config.get_bool("mutation.report_only", False)
+        threshold = float(self.config.get("mutation.minimum_confidence", 0.0))
+        suppress = report_only or any(
+            record.confidence < threshold for record in mutations
+        )
+        if suppress:
+            context.restore(checkpoint)
+            for record in proposed:
+                record.applied = False
+            context.tracker.records.extend(proposed)
+            result.changes = 0
+            return result
+
+        for record in context.tracker.records[record_start:]:
+            if record.applied:
+                record.applied = record.before != record.after
+        return result
 
     def initialize(self, context: ProcessingContext) -> None:
         """Prepare context-dependent resources before processing."""
@@ -200,7 +247,10 @@ class SegmentProcessingStage(PipelineStage):
 
         return StageResult(
             stage=self.name,
-            changes=context.total_changes - start_changes,
+            changes=sum(
+                record.applied
+                for record in context.tracker.records[start_changes:]
+            ),
         )
 
     def _process_segment(self, segment: MarkdownSegment) -> None:
@@ -208,6 +258,31 @@ class SegmentProcessingStage(PipelineStage):
 
         def process(editable: MarkdownSegment) -> None:
             for processor in self.processors:
+                before = editable.current_text
+                record_start = len(processor.tracker.records)
+                statistics = deepcopy(processor.context.statistics)
                 processor.process(editable)
+                proposed = processor.tracker.records[record_start:]
+                mutations = [
+                    record
+                    for record in proposed
+                    if record.before != record.after
+                ]
+                report_only = self.config.get_bool(
+                    "mutation.report_only", False
+                )
+                threshold = float(
+                    self.config.get("mutation.minimum_confidence", 0.0)
+                )
+                if report_only or any(
+                    record.confidence < threshold for record in mutations
+                ):
+                    editable.current_text = before
+                    processor.context.statistics = statistics
+                    for record in proposed:
+                        record.applied = False
+                else:
+                    for record in proposed:
+                        record.applied = record.before != record.after
 
         process_editable_spans(segment, process)
