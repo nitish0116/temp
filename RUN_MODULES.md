@@ -127,6 +127,25 @@ python -m markdownCleaner `
     --simplify-candidates "Library\cleaned\reports\glossary_candidates.json"
 ```
 
+Cleaning is preservation-first by default. Front/back matter, afterwords,
+profiles, footnotes, emphasis, and picture text are retained unless their
+individual removal policies are enabled in `config.yaml`. Repeated page
+artifacts and contextual real-word confusions are initially report-only.
+
+Use the global mutation policy in `cleanup\markdownCleaner\config.yaml` for a
+safe dry run or stricter automatic threshold:
+
+```yaml
+mutation:
+  minimum_confidence: 90
+  report_only: true
+```
+
+Review OCR word-boundary exceptions in
+`cleanup\markdownCleaner\data\broken_word_decisions.json`. Put known good joins
+in `accepted` and unsafe joins in `rejected`; paths remain relative to the
+configuration file and therefore portable across machines.
+
 Compatibility entry points are available, but the canonical form above is
 preferred:
 

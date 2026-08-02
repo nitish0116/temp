@@ -41,11 +41,13 @@ source Markdown
     |
     +-- ProcessingContext + MarkdownDocument
             |
+            +-- PageArtifacts         detection/removal policy
             +-- DocumentCleanup       whole-document mutation
             +-- Unicode              segment processors
             +-- RegexOCR             segment processors
             +-- VocabularyCandidates report only
             +-- SymSpell             word merges + spelling
+            +-- ContextualRealWords  report only
             +-- TTSValidation        report only
             |
             `-- ReportExporter       Markdown + enabled reports
@@ -57,9 +59,10 @@ instance rebuilds its context and stage objects for every `run()`.
 ## Document and context model
 
 `MarkdownParser` converts source text into ordered `MarkdownBlock` objects.
-Narrative paragraphs are editable; headings, fenced or indented code, HTML,
-tables, lists, block quotes, standalone links and images, footnotes, front
-matter, and horizontal rules are protected from segment processors.
+Processing segments include narrative paragraphs and visible text in headings,
+tables, lists, block quotes, footnotes, and link/image labels. Markdown-aware
+span traversal protects their control syntax. Fenced or indented code, HTML,
+front matter, horizontal rules, destinations, and identifiers remain literal.
 
 Whole-document cleanup uses collision-free placeholders to keep literal blocks
 and inline Markdown exact while it reconstructs prose and applies structural
@@ -101,9 +104,11 @@ Enabled stages run through the transactional portion of
 2. Initialize context-dependent resources.
 3. Run the stage.
 4. On success, synchronize segment edits into current Markdown.
-5. On an unsuccessful result or exception, restore Markdown, audit records,
+5. Apply the global confidence/report-only policy. Segment processors suppress
+   proposals independently; whole-document stages roll back atomically.
+6. On an unsuccessful result or exception, restore Markdown, audit records,
    statistics, and metadata from the checkpoint.
-6. Record timestamps and the committed stage count.
+7. Record timestamps and the committed stage count.
 
 A disabled stage returns a zero-change result before checkpointing and does
 not add lifecycle timestamps or a context statistic.
@@ -123,8 +128,9 @@ Every `ChangeRecord` has:
 - block, segment, and working-document line location;
 - before and after text;
 - confidence and reason;
-- UTC timestamp; and
-- optional `broken_word`.
+- UTC timestamp;
+- optional `broken_word`; and
+- whether the proposal was `applied`.
 
 Processors should call `record_change()` only for material edits. Report-only
 stages add records directly because their `before` and `after` values are
@@ -144,8 +150,9 @@ answer to what was joined; `before` and `after` retain surrounding context.
 Word cleanup is split into two layers:
 
 1. `RegexOCR` handles a bounded set of deterministic patterns.
-2. `SymSpell` evaluates ambiguous joins with dictionary, custom glossary, and
-   `wordfreq` evidence.
+2. Reviewed accepted/rejected pairs override generic merge heuristics.
+3. `SymSpell` evaluates ambiguous joins and source line-break hyphens with the
+   dictionary, custom glossary, and `wordfreq` evidence.
 
 The SymSpell package separates:
 
@@ -161,6 +168,11 @@ The SymSpell package separates:
 `BrokenWordMerger` finds candidates, resolves overlaps, preserves exact
 whitespace evidence, and applies accepted decisions. Cross-block merges are
 allowed only between adjacent editable paragraphs with a safe boundary.
+Reviewed pairs are loaded from the configuration-relative
+`broken_word_decisions.json`; adding a new exception does not require another
+code condition. Accepted decisions can declare preceding/following blockers
+for context-sensitive boundaries. Real-word confusions are deliberately
+separate and report-only.
 
 Custom multiword entries are tokenized as well as stored as phrases. For
 example, approving `Arthur Leywin` protects `Arthur`, `Leywin`, and the complete
@@ -260,7 +272,9 @@ Document that its count represents findings.
 
 ## Validation
 
-The regression suite covers public compatibility helpers, parser round trips,
+The regression suite includes a labeled compact corpus in
+`tests/fixtures/real_book_regressions.json` in addition to public compatibility
+helpers, parser round trips,
 stage rollback, configuration-relative paths, protected Markdown spans,
 processor switches, exact broken-word evidence, glossary phrases, report
 filtering, and full-pipeline export.

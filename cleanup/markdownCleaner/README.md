@@ -69,25 +69,32 @@ means at least one file or pipeline stage failed.
 The stages run in this order:
 
 1. Create a timestamped source backup when backup is enabled.
-2. `DocumentCleanup` removes configured non-narrative material, handles
+2. `PageArtifacts` detects repeated headers, footers, and page numbers. The
+   default mode reports them without removal.
+3. `DocumentCleanup` removes configured non-narrative material, handles
    picture OCR, converts Setext headings to ATX Markdown, normalizes recognized
    narrative headings to one `#`, reconstructs wrapped prose, strips emphasis
    when configured, and reports suspicious OCR lines.
-3. `Unicode` normalizes Unicode, invisible characters, ligatures, whitespace,
-   and punctuation.
-4. `RegexOCR` applies deterministic character, broken-word, hyphenation, and
-   repeated-character rules.
-5. `VocabularyCandidates` reports repeated unknown terms for review without
+4. `Unicode` repairs reversible mojibake and normalizes Unicode, invisible
+   characters, ligatures, whitespace, and punctuation while preserving dash
+   semantics.
+5. `RegexOCR` applies deterministic character, broken-word, and
+   repeated-character rules under the global mutation policy.
+6. `VocabularyCandidates` reports repeated unknown terms for review without
    changing the document or glossary.
-6. `SymSpell` merges dictionary-validated OCR word splits and applies
-   high-confidence spelling corrections.
-7. `TTSValidation` reports possible TTS or SSML problems without changing text.
-8. The exporter writes cleaned Markdown and enabled companion reports.
+7. `SymSpell` validates line-break dehyphenation, merges reviewed or
+   dictionary-supported OCR word splits, and applies high-confidence spelling
+   corrections.
+8. `ContextualRealWords` reports likely known-word substitutions without
+   mutating text.
+9. `TTSValidation` reports possible TTS or SSML problems without changing text.
+10. The exporter writes cleaned Markdown and enabled companion reports.
 
-Structural Markdown blocks are protected from segment-level correction. This
-includes headings, fenced and indented code, HTML blocks, tables, lists, block
-quotes, standalone links and images, footnotes, front matter, and horizontal
-rules. Within editable prose, inline code, inline HTML, autolinks, reference
+Visible text in paragraphs, headings, tables, lists, block quotes, footnotes,
+and link/image labels is eligible for cleanup while Markdown control syntax is
+retained. Fenced/indented code, raw HTML, YAML front matter, horizontal rules,
+URLs, and reference identifiers stay protected. Within editable text, inline
+code, inline HTML, autolinks, reference
 identifiers, and link destinations—including destinations with balanced
 parentheses—remain literal. Visible labels in explicit inline links and full
 reference links embedded in ordinary prose remain eligible for cleanup;
@@ -101,8 +108,8 @@ intentionally removed region is removed with that region. A failed stage is
 rolled back before later stages run, so partial edits and partial audit records
 are not exported.
 
-`changes` counts audit records. For the two report-only stages, those records
-are findings rather than text mutations.
+Each audit record has an `applied` flag. A record may be an applied edit, a
+suppressed low-confidence proposal, or a report-only finding.
 
 ## Outputs
 
@@ -138,7 +145,8 @@ folder, for example
 the aggregate batch reports.
 
 Each change record contains stage and working-document location, before and
-after text, confidence, reason, timestamp, and an optional `broken_word`.
+after text, confidence, reason, timestamp, `applied`, and an optional
+`broken_word`.
 Location fields describe the document as it existed when that stage recorded
 the event; they are not immutable coordinates in the original source.
 Whole-document transformations may summarize multiple edits in one line-`0`
@@ -183,6 +191,23 @@ python -m markdownCleaner --simplify-candidates output\reports\glossary_candidat
 
 The vocabulary-candidate stage never writes any of these files automatically.
 
+Reviewed word-boundary decisions belong in
+`data\broken_word_decisions.json`:
+
+```json
+{
+  "accepted": {"Ley win": "Leywin", "placat ingly": "placatingly"},
+  "rejected": ["to one", "no one"]
+}
+```
+
+Accepted entries override lexical heuristics; rejected entries prevent a join.
+Keys are whitespace- and case-insensitive. An accepted value may also be an
+object with `replacement`, `blocked_previous`, and `blocked_following` lists;
+the default `be cause` decision uses these fields to preserve valid phrases
+such as `could be cause for concern`. Keep known-word confusion rules in
+`data\contextual_word_rules.json`; those suggestions are report-only.
+
 ## Configuration
 
 Edit `config.yaml` or pass `--config`. Relative path values stored in the
@@ -202,10 +227,13 @@ Important groups are:
 | `paths` | Cleaned Markdown output directory |
 | `backup` | Backup enablement and destination |
 | `cleanup` | Picture OCR, metadata, excluded sections, footnotes, emphasis, and OCR-noise reporting |
+| `mutation` | Global minimum confidence and whole-pipeline report-only mode |
+| `page_artifacts` | Repeated header/footer/page-number detection and optional removal |
 | `unicode.fixes` | Individual Unicode processor switches |
 | `regex.corrections` | Individual deterministic OCR correction switches |
 | `symspell` | Dictionaries, confidence/frequency bounds, protected terms, and merge limits |
 | `vocabulary_candidates` | Repeated-term threshold, report limit, and rejected-word file |
+| `contextual_real_words` | Report-only known-word confusion rules |
 | `tts_validation` | Report-only TTS chunk checks |
 | `report` | JSON/summary exports, confidence filtering, and review threshold |
 | `logging` | Log level and destination |
@@ -221,9 +249,21 @@ discard everything after an assumed book position. Set the list to `[]` to
 disable this explicit section-name policy; front-matter, footnote, promotional,
 publisher-tail, and other enabled cleanup policies still apply.
 
-Disabling `regex.enabled` or
-`regex.corrections.broken_hyphen_words.enabled` also disables dehyphenation
-during whole-document paragraph reconstruction.
+Line-break hyphens retain their boundary until `SymSpell` compares the joined
+form with the genuine compound. For example, `inter-\nnational` may become
+`international`, while `well-\nbeing` remains `well-being`. Disabling
+`regex.enabled` or `regex.corrections.broken_hyphen_words.enabled` disables
+that validation.
+
+`mutation.minimum_confidence` is the minimum confidence required for an edit.
+Suppressed proposals remain in reports with `applied: false`. Set
+`mutation.report_only: true` for a dry run in which all proposed edits are
+reported and mutation stages leave the exported Markdown unchanged.
+
+The repository defaults preserve front matter, afterwords, character profiles,
+footnotes, emphasis, picture text, and publisher tails. Enable a removal policy
+only when it matches the intended output. `page_artifacts.mode` defaults to
+`report_only`; change it to `remove` after validating findings for a corpus.
 
 When `report.enabled` is false, only cleaned Markdown is exported and folder
 mode writes no aggregate reports. When reports are enabled:

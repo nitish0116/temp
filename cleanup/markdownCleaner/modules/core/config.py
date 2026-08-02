@@ -36,6 +36,9 @@ _BOOLEAN_KEYS = (
     "report.export_json",
     "report.export_summary",
     "report.include_low_confidence",
+    "mutation.report_only",
+    "page_artifacts.enabled",
+    "contextual_real_words.enabled",
 )
 _CORRECTION_KEYS = (
     "zero_to_o",
@@ -57,6 +60,9 @@ _MAPPING_SECTIONS = (
     "vocabulary_candidates",
     "report",
     "logging",
+    "mutation",
+    "page_artifacts",
+    "contextual_real_words",
 )
 
 
@@ -212,6 +218,39 @@ class PipelineConfig:
                     "backup.directory must be a non-empty filesystem path "
                     "when backups are enabled."
                 )
+
+        minimum_confidence = float(
+            self.get("mutation.minimum_confidence", 0.0)
+        )
+        if not 0.0 <= minimum_confidence <= 100.0:
+            raise ValueError(
+                "mutation.minimum_confidence must be between 0 and 100."
+            )
+
+        picture_mode = str(self.get("cleanup.picture_ocr_mode", "safe")).casefold()
+        if picture_mode not in {"safe", "keep", "remove"}:
+            raise ValueError("cleanup.picture_ocr_mode must be safe, keep, or remove.")
+
+        artifact_mode = str(
+            self.get("page_artifacts.mode", "report_only")
+        ).casefold()
+        if artifact_mode not in {"report_only", "remove"}:
+            raise ValueError(
+                "page_artifacts.mode must be report_only or remove."
+            )
+        for key, default, minimum in (
+            ("page_artifacts.minimum_occurrences", 3, 2),
+            ("page_artifacts.minimum_line_gap", 12, 1),
+            ("page_artifacts.maximum_length", 80, 1),
+            ("page_artifacts.report_limit", 100, 0),
+            ("contextual_real_words.report_limit", 200, 0),
+        ):
+            if int(self.get(key, default)) < minimum:
+                raise ValueError(f"{key} must be at least {minimum}.")
+        if float(self.get("symspell.dehyphenation_zipf_margin", 0.5)) < 0:
+            raise ValueError(
+                "symspell.dehyphenation_zipf_margin cannot be negative."
+            )
 
         return True
 
