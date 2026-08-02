@@ -2,6 +2,7 @@
 *.mp4
 *.pyc
 cleanup/**/*.md
+cleanup/markdownCleaner/data/*
 md-audio/**/*.md
 md_python/**/*.md
 mp3ToYT/**/*.md
@@ -17,6 +18,7 @@ mp3ToYT/**/*.txt
 *.png
 *.pdf
 *.json
+!cleanup/markdownCleaner/data/*.json
 !media-manifest.json
 !md-audio/library-hyphen-review.json
 !md-audio/library-hyphen-review-ambiguous.json
