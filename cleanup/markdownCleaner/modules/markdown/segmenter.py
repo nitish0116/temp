@@ -50,6 +50,10 @@ class MarkdownSegment:
     # normalization does not mistake mid-line spaces for Markdown indentation.
     starts_at_line_boundary: bool = True
 
+    # The originating Markdown block type is carried without importing the
+    # parser enum here (which would create a circular dependency).
+    block_type: object | None = None
+
     def __post_init__(
         self,
     ):
@@ -123,6 +127,9 @@ class MarkdownSpan:
 _LINK_PREFIX = re.compile(r"!?\[[^\]\n]*\]\(")
 _REFERENCE_DESTINATION = re.compile(
     r"!?\[(?P<label>[^\]\n]+)\]\[(?P<destination>[^\]\n]*)\]"
+)
+_REFERENCE_DEFINITION = re.compile(
+    r"(?m)^\s*\[[^\]\n]+\]:\s*(?P<destination>\S.*)$"
 )
 _SHORTCUT_REFERENCE = re.compile(
     r"\[(?P<identifier>\^?[^\]\n]+)\](?![\[(])"
@@ -225,6 +232,10 @@ def protected_span_ranges(
     for match in _REFERENCE_DESTINATION.finditer(text):
         group = "destination" if match.group("destination") else "label"
         ranges.append(match.span(group))
+    ranges.extend(
+        match.span("destination")
+        for match in _REFERENCE_DEFINITION.finditer(text)
+    )
     for match in _SHORTCUT_REFERENCE.finditer(text):
         identifier = match.group("identifier")
         if not protect_footnote_identifiers and identifier.startswith("^"):
@@ -298,6 +309,7 @@ def process_editable_spans(
                 block_index=segment.block_index,
                 segment_index=segment.segment_index,
                 starts_at_line_boundary=starts_at_line_boundary,
+                block_type=segment.block_type,
             )
             process(editable)
             rebuilt.append(editable.get_text())

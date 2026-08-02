@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from ..core.stage import PipelineStage, StageResult
 from ..markdown.segmenter import MarkdownSegment, split_protected_spans
+from ..markdown.markdown import BlockType
 from .dictionary import DictionaryManager
 from .engine import SymSpellEngine
 from .tokens import TERM_PATTERN
@@ -151,7 +152,9 @@ class VocabularyCandidateStage(PipelineStage):
         )
 
         inventory = VocabularyInventory.collect_segments(
-            context.iter_segments()
+            segment
+            for segment in context.iter_segments()
+            if segment.block_type is BlockType.PARAGRAPH
         )
 
         engine = SymSpellEngine(
