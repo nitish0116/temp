@@ -256,9 +256,12 @@ def test_contextual_real_word_detection_is_report_only(tmp_path) -> None:
     assert not context.tracker.records[-1].applied
 
 
-def test_repository_defaults_preserve_legitimate_sections() -> None:
+def test_repository_defaults_enable_configured_content_removal() -> None:
     config = PipelineConfig.load(Path(__file__).parents[1] / "config.yaml")
-    assert config.get("cleanup.excluded_sections") == []
+    assert config.get("cleanup.excluded_sections") == [
+        "Character Profiles",
+        "Afterword",
+    ]
     for key in (
         "cleanup.remove_front_matter",
         "cleanup.remove_promotional_tail",
@@ -267,4 +270,4 @@ def test_repository_defaults_preserve_legitimate_sections() -> None:
         "cleanup.remove_footnotes",
         "cleanup.strip_markdown_emphasis",
     ):
-        assert config.get_bool(key) is False
+        assert config.get_bool(key) is True
