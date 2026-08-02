@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 
 # Suppress console windows for subprocess calls on Windows.
@@ -28,15 +28,24 @@ _DURATION_CACHE_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), ".duration_cache.json"
 )
 
-
-# Script-level arguments are checked first. Set any value to None to allow
-# fallback to the same argument from terminal input.
-SCRIPT_ARGS = {
-    "path": r"D:\wd stuff\WD Software Offline Installers\For Windows\WD Backup\redist\sorts",
-    "output": None,
-    #"skip_below_master_avg": "--skip-below-master-avg",
-    "skip_below_master_avg": None,
-}
+_VIDEO_EXTENSIONS = frozenset(
+    {
+        ".3gp",
+        ".avi",
+        ".flv",
+        ".m2ts",
+        ".m4v",
+        ".mkv",
+        ".mov",
+        ".mp4",
+        ".mpeg",
+        ".mpg",
+        ".mts",
+        ".ts",
+        ".webm",
+        ".wmv",
+    }
+)
 
 
 @dataclass
@@ -56,25 +65,18 @@ class FolderStats:
     total_video_duration_seconds: float = 0.0
 
 
+@dataclass(frozen=True)
+class ReportOptions:
+    """Validated paths and filters used for one report run."""
+
+    root_path: str
+    output_path: str
+    skip_below_master_avg: bool
+
+
 def _is_video_file(filename: str) -> bool:
     """Return True for common video file extensions."""
-    video_extensions = {
-        ".3gp",
-        ".avi",
-        ".flv",
-        ".m2ts",
-        ".m4v",
-        ".mkv",
-        ".mov",
-        ".mp4",
-        ".mpeg",
-        ".mpg",
-        ".mts",
-        ".ts",
-        ".webm",
-        ".wmv",
-    }
-    return Path(filename).suffix.lower() in video_extensions
+    return Path(filename).suffix.lower() in _VIDEO_EXTENSIONS
 
 
 def _get_video_duration_seconds(file_path: str) -> float:
@@ -670,15 +672,7 @@ def _to_windows_path(path: str) -> str:
     return os.path.abspath(path)
 
 
-def _to_explorer_uri(path: str) -> str:
-    """Return a Windows Explorer protocol URI for a folder path."""
-    abs_path = os.path.abspath(path).replace("\\", "/")
-    if not abs_path.startswith("/"):
-        abs_path = "/" + abs_path
-    return f"ms-explorer://{abs_path}"
-
-
-def _default_report_output_path(root_path: str) -> str:
+def _default_report_output_path() -> str:
     """Return default HTA output path in current working directory."""
     return os.path.abspath("folder_summary.hta")
 
@@ -899,7 +893,8 @@ def _write_hta_summary(
         report_html.write(html_doc)
 
 
-def main() -> int:
+def _build_argument_parser() -> argparse.ArgumentParser:
+    """Create the command-line parser for the folder report utility."""
     parser = argparse.ArgumentParser(
         description=(
             "Create an exhaustive folder summary HTA report with "
@@ -908,8 +903,6 @@ def main() -> int:
     )
     parser.add_argument(
         "path",
-        nargs="?",
-        default=None,
         help="Directory path to scan recursively",
     )
     parser.add_argument(
@@ -923,8 +916,10 @@ def main() -> int:
         "--skip-below-master-avg",
         dest="skip_below_master_avg",
         action="store_true",
-        default=None,
-        help="Skip rows where folder average file size is below 105% of root folder average (5% tolerance)",
+        help=(
+            "Skip rows where folder average file size is below 105 percent "
+            "of the root folder average (5 percent tolerance)"
+        ),
     )
     skip_group.add_argument(
         "--no-skip-below-master-avg",
@@ -932,55 +927,56 @@ def main() -> int:
         action="store_false",
         help="Do not apply average-size skip filter",
     )
-    args = parser.parse_args()
+    parser.set_defaults(skip_below_master_avg=False)
+    return parser
 
-    script_path = SCRIPT_ARGS.get("path")
-    script_output = SCRIPT_ARGS.get("output")
-    script_skip = SCRIPT_ARGS.get("skip_below_master_avg")
 
-    effective_path = script_path if script_path else args.path
-    if not effective_path:
-        parser.error(
-            "Path is required. Set SCRIPT_ARGS['path'] in script or pass path in terminal."
-        )
-
-    effective_output = script_output if script_output else args.output
-    effective_skip = script_skip if script_skip is not None else args.skip_below_master_avg
-    if effective_skip is None:
-        effective_skip = False
-
-    target_path = os.path.abspath(effective_path)
-    output_report_file = (
-        os.path.abspath(effective_output)
-        if effective_output
-        else _default_report_output_path(target_path)
+def _resolve_report_options(args: argparse.Namespace) -> ReportOptions:
+    """Normalize parsed CLI values into validated report options."""
+    root_path = os.path.abspath(args.path)
+    output_path = (
+        os.path.abspath(args.output)
+        if args.output
+        else _default_report_output_path()
+    )
+    if not output_path.lower().endswith(".hta"):
+        output_path += ".hta"
+    return ReportOptions(
+        root_path=root_path,
+        output_path=output_path,
+        skip_below_master_avg=args.skip_below_master_avg,
     )
 
-    if not output_report_file.lower().endswith(".hta"):
-        output_report_file += ".hta"
 
-    if not os.path.isdir(target_path):
-        print(f"Error: '{target_path}' is not a valid directory.")
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    """Generate a folder statistics report from command-line arguments."""
+    parser = _build_argument_parser()
+    options = _resolve_report_options(parser.parse_args(argv))
+
+    if not os.path.isdir(options.root_path):
+        print(f"Error: '{options.root_path}' is not a valid directory.")
         return 1
+
+    Path(options.output_path).parent.mkdir(parents=True, exist_ok=True)
 
     overall_start = time.perf_counter()
 
     _log_progress("collecting folder statistics", "start")
-    summary = _collect_folder_summary(target_path)
+    summary = _collect_folder_summary(options.root_path)
     _log_progress("collecting folder statistics", "end")
 
     _log_progress("writing HTA summary report", "start")
     _write_hta_summary(
-        target_path,
+        options.root_path,
         summary,
-        output_report_file,
-        skip_below_master_avg=effective_skip,
+        options.output_path,
+        skip_below_master_avg=options.skip_below_master_avg,
     )
     _log_progress("writing HTA summary report", "end")
 
     print(f"Total time: {_format_duration(time.perf_counter() - overall_start)}")
-    print(f"Explorer-clickable HTA report: {output_report_file}")
-    print(f"Report link: {_to_file_uri(output_report_file)}")
+    print(f"Explorer-clickable HTA report: {options.output_path}")
+    print(f"Report link: {_to_file_uri(options.output_path)}")
 
     return 0
 

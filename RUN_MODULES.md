@@ -322,9 +322,22 @@ python stats\folder_file_stats.py `
     --skip-below-master-avg
 ```
 
-Known issue: `python stats\folder_file_stats.py --help` currently raises a
-formatting error because a help string contains an unescaped percent sign.
-Normal report generation is unaffected.
+Disable the filter explicitly when overriding a wrapper or saved command:
+
+```powershell
+python stats\folder_file_stats.py `
+    "Library" `
+    -o "reports\folder_summary.hta" `
+    --no-skip-below-master-avg
+```
+
+The input directory is required. Output directories are created automatically,
+and `.hta` is appended when the output name has no HTA suffix. Display the full
+CLI reference with:
+
+```powershell
+python stats\folder_file_stats.py --help
+```
 
 ## 7. Generate or verify the media manifest
 
@@ -402,6 +415,7 @@ python -m pytest cleanup\markdownCleaner\tests -q
 python -m pytest md-audio\tests -q
 python -m pytest md_python\tests -q
 python -m pytest mp3ToYT\tests -q
+python -m pytest stats\tests -q
 ```
 
 Run coverage using the repository configuration:
