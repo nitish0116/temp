@@ -128,11 +128,11 @@ QUOTES = {
 DASHES = {
     "‐": "-",  # Hyphen
     "‑": "-",  # Non-breaking hyphen
-    "‒": "-",  # Figure dash
-    "–": "-",  # En dash
-    "—": "-",  # Em dash
-    "―": "-",  # Horizontal bar
-    "−": "-",  # Minus sign
+    "‒": "–",  # Figure dash -> canonical range dash
+    "–": "–",  # En dash remains a range dash
+    "—": "—",  # Em dash remains a sentence dash
+    "―": "—",  # Horizontal bar -> canonical sentence dash
+    "−": "−",  # Mathematical minus remains mathematical
 }
 
 
@@ -197,6 +197,7 @@ PUNCTUATION_TRANSLATION = str.maketrans(
 # ============================================================
 
 UNICODE_STAT_KEYS = {
+    "mojibake_repaired",
     "normalized",
     "zero_width_removed",
     "soft_hyphen_removed",

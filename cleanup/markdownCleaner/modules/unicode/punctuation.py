@@ -29,9 +29,15 @@ class PunctuationProcessor(UnicodeProcessor):
 
         don’t    -> don't
 
-        word—word -> word-word
+        word―word -> word—word
+
+        1‒2 -> 1–2
 
         wait…    -> wait...
+
+    Word hyphens, range dashes, sentence dashes, and mathematical minus signs
+    remain distinct so later dehyphenation and narration can interpret them
+    correctly.
     """
 
     name = "Punctuation"
