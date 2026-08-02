@@ -418,6 +418,15 @@ python -m pytest mp3ToYT\tests -q
 python -m pytest stats\tests -q
 ```
 
+Measure line and branch coverage for the stats module:
+
+```powershell
+python -m pytest stats\tests `
+    --cov=folder_file_stats `
+    --cov-branch `
+    --cov-report=term-missing
+```
+
 Run coverage using the repository configuration:
 
 ```powershell
