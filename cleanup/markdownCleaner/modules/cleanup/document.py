@@ -448,12 +448,11 @@ class DocumentCleanupStage(PipelineStage):
         )
 
         hyphen_setting = self.config.get(
-            "regex.corrections.broken_hyphen_words",
-            True,
+            "regex.corrections.broken_hyphen_words", True
         )
         if isinstance(hyphen_setting, dict):
             hyphen_setting = hyphen_setting.get("enabled", True)
-        dehyphenate = (
+        preserve_hyphen_line_breaks = (
             self.config.get_bool("regex.enabled", True)
             and require_bool(
                 hyphen_setting,
@@ -465,7 +464,9 @@ class DocumentCleanupStage(PipelineStage):
             changes,
             lambda value: self._reconstruct_paragraphs(
                 value,
-                dehyphenate=dehyphenate,
+                # Dictionary/context validation happens later in SymSpell.
+                dehyphenate=False,
+                preserve_hyphen_line_breaks=preserve_hyphen_line_breaks,
             ),
             reason="Reconstructed PDF/OCR wrapped paragraphs",
             before="split paragraph lines",
@@ -808,6 +809,7 @@ class DocumentCleanupStage(PipelineStage):
         text: str,
         *,
         dehyphenate: bool = True,
+        preserve_hyphen_line_breaks: bool = False,
     ) -> str:
         """Join wrapped OCR fragments while preserving structured blocks.
 
@@ -819,6 +821,7 @@ class DocumentCleanupStage(PipelineStage):
         return reconstruct_paragraphs(
             text,
             dehyphenate=dehyphenate,
+            preserve_hyphen_line_breaks=preserve_hyphen_line_breaks,
             heading_predicate=cls._is_heading,
             special_predicate=cls._is_list_or_special,
             structured_predicate=cls._looks_structured_lines,

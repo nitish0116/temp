@@ -1,0 +1,29 @@
+{
+  "accepted": {
+    "Ley win": "Leywin",
+    "upperclass men": "upperclassmen",
+    "expres sinless": "expressionless",
+    "be cause": {
+      "replacement": "because",
+      "blocked_previous": [
+        "can", "could", "may", "might", "must", "shall", "should", "to", "will", "would"
+      ],
+      "blocked_following": ["enough", "for", "of", "to"]
+    },
+    "some thing": "something",
+    "some one": "someone",
+    "some body": "somebody",
+    "every thing": "everything",
+    "every one": "everyone",
+    "every body": "everybody",
+    "any thing": "anything",
+    "any one": "anyone",
+    "any body": "anybody",
+    "no thing": "nothing",
+    "no body": "nobody"
+  },
+  "rejected": [
+    "to one",
+    "no one"
+  ]
+}
