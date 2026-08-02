@@ -208,6 +208,43 @@ the default `be cause` decision uses these fields to preserve valid phrases
 such as `could be cause for concern`. Keep known-word confusion rules in
 `data\contextual_word_rules.json`; those suggestions are report-only.
 
+You do not need to edit the boundary-decision JSON by hand. Build a cached,
+library-wide review from the folder containing Markdown sources:
+
+```powershell
+python -m markdownCleaner `
+    --build-broken-word-review "..\Library\cleaned"
+```
+
+The defaults write `data\broken_word_review.json`,
+`data\broken_word_review_ambiguous.json`, and the ignored portable cache
+`data\.broken_word_review_cache.json.gz`. Cache keys are relative POSIX paths
+plus content hashes, so a clone on another machine can reuse the cache; only
+new or modified Markdown files are rescanned. Use
+`--rebuild-broken-word-cache` to force a complete scan.
+
+Pairs the live SymSpell evaluator already handles, and pairs already present in
+the permanent decision store, are omitted. Strong corpus/lexical results go to
+the main review. Uncertain results go to the ambiguous file with
+`status: "review"`; change that status to `"accepted"` or `"rejected"` after
+inspection. Neither generated file changes cleaning behavior until it is
+explicitly promoted:
+
+```powershell
+python -m markdownCleaner `
+    --promote-broken-word-review `
+    "markdownCleaner\data\broken_word_review.json"
+
+python -m markdownCleaner `
+    --promote-broken-word-review `
+    "markdownCleaner\data\broken_word_review_ambiguous.json"
+```
+
+Promotion validates the complete decision schema, resolves accepted/rejected
+conflicts, preserves optional context blockers, and updates the
+configuration-relative `symspell.broken_word_decisions` file. Ordinary cleaning
+never writes that permanent store.
+
 ## Configuration
 
 Edit `config.yaml` or pass `--config`. Relative path values stored in the

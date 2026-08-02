@@ -18,7 +18,7 @@ conservative:
 | Area | Responsibility |
 |---|---|
 | `__main__.py`, `cli.py` | Canonical command entry point and compatibility facade |
-| `commands/` | Argument parsing, review actions, batch execution, and aggregate reports |
+| `commands/` | Argument parsing, cached review workflows, batch execution, and aggregate reports |
 | `pipeline.py` | End-to-end stage orchestration, backup, logging, and export |
 | `modules/core/` | Configuration, context, logging, stage lifecycle, and processor contracts |
 | `modules/markdown/` | Typed block model, parser, reconstruction, and segment metadata |
@@ -173,6 +173,21 @@ Reviewed pairs are loaded from the configuration-relative
 code condition. Accepted decisions can declare preceding/following blockers
 for context-sensitive boundaries. Real-word confusions are deliberately
 separate and report-only.
+
+`commands/broken_word_review.py` provides the offline decision-discovery
+workflow. It scans only plausible joined forms, excludes boundaries already
+handled by `BrokenWordEvaluator`, aggregates contexts from content-unique
+Markdown files, and compares joined-word, spaced-phrase, and cross-library
+occurrence evidence. High-confidence decisions and ambiguous candidates are
+written separately. The cache uses relative paths, SHA-256 content identities,
+and a fingerprint of the lexical policy; it contains no machine-specific source
+paths or modification times.
+
+Generated classifications are proposals. Only the explicit
+`--promote-broken-word-review` command writes accepted/rejected candidates to
+the stable decision store. It validates the resulting store before atomically
+replacing it. The normal cleaning pipeline never learns permanent mutation
+rules from its own output.
 
 Custom multiword entries are tokenized as well as stored as phrases. For
 example, approving `Arthur Leywin` protects `Arthur`, `Leywin`, and the complete

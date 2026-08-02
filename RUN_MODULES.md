@@ -141,10 +141,44 @@ mutation:
   report_only: true
 ```
 
-Review OCR word-boundary exceptions in
-`cleanup\markdownCleaner\data\broken_word_decisions.json`. Put known good joins
-in `accepted` and unsafe joins in `rejected`; paths remain relative to the
-configuration file and therefore portable across machines.
+Build OCR word-boundary decisions without manually editing the permanent JSON:
+
+```powershell
+$env:PYTHONPATH = "$PWD\cleanup"
+python -m markdownCleaner `
+    --build-broken-word-review "Library\cleaned"
+```
+
+This writes the high-confidence and ambiguous reviews beneath
+`cleanup\markdownCleaner\data` by default. The portable gzip cache is stored
+there as `.broken_word_review_cache.json.gz`; unchanged files are reused by
+relative path and SHA-256 content hash. Force a full rescan when required:
+
+```powershell
+python -m markdownCleaner `
+    --build-broken-word-review "Library\cleaned" `
+    --rebuild-broken-word-cache
+```
+
+Review entries whose status remains `review`, changing only confirmed entries
+to `accepted` or `rejected`. Promote the automatically decided file, then the
+manually resolved ambiguous file:
+
+```powershell
+python -m markdownCleaner `
+    --promote-broken-word-review `
+    "cleanup\markdownCleaner\data\broken_word_review.json"
+
+python -m markdownCleaner `
+    --promote-broken-word-review `
+    "cleanup\markdownCleaner\data\broken_word_review_ambiguous.json"
+```
+
+Promotion updates
+`cleanup\markdownCleaner\data\broken_word_decisions.json`. Ordinary cleaning
+and review generation never modify that permanent decision store. All
+configured paths remain relative to the selected configuration file and are
+portable across machines.
 
 Compatibility entry points are available, but the canonical form above is
 preferred:
