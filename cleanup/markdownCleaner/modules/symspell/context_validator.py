@@ -12,6 +12,7 @@ from .broken_words import (
     MergeEvidence,
     MergeEvidenceKind,
 )
+from .training_data import BoundaryTrainingDataWriter, example_id
 from ..core.config import require_bool
 
 
@@ -252,10 +253,12 @@ class BoundaryContextValidator:
         self,
         settings: ContextValidatorSettings,
         scorer: VariantScorer | None = None,
+        training_writer: BoundaryTrainingDataWriter | None = None,
     ) -> None:
         settings.validate()
         self.settings = settings
         self.scorer = scorer or TransformerVariantScorer(settings)
+        self.training_writer = training_writer
 
     def validate(
         self,
@@ -325,7 +328,62 @@ class BoundaryContextValidator:
                         evidence=evidence,
                     )
                 )
+        if self.training_writer is not None:
+            self.training_writer.add(
+                self._training_examples(pending, variants, scores)
+            )
         return ValidationOutcome(tuple(accepted), tuple(rejected))
+
+    def _training_examples(
+        self,
+        candidates: Sequence[MergeCandidate],
+        variants: Sequence[ScoringVariant],
+        scores: Sequence[float],
+    ) -> list[dict[str, object]]:
+        """Build advisory examples; only users supply trusted labels."""
+
+        examples: list[dict[str, object]] = []
+        for index, candidate in enumerate(candidates):
+            spaced, joined = variants[index * 2 : index * 2 + 2]
+            spaced_score, joined_score = scores[index * 2 : index * 2 + 2]
+            margin = joined_score - spaced_score
+            pieces = candidate.decision.broken_word.split(maxsplit=1)
+            examples.append(
+                {
+                    "id": example_id(
+                        spaced.text,
+                        joined.text,
+                        candidate.decision.broken_word,
+                    ),
+                    "context": spaced.text,
+                    "spaced_text": spaced.text,
+                    "joined_text": joined.text,
+                    "left": pieces[0] if pieces else "",
+                    "right": pieces[1] if len(pieces) == 2 else "",
+                    "replacement": candidate.decision.replacement,
+                    "transformer_label": (
+                        "join"
+                        if math.isfinite(margin)
+                        and margin >= self.settings.merge_margin
+                        else "keep_spaced"
+                    ),
+                    "transformer_spaced_score": (
+                        spaced_score if math.isfinite(spaced_score) else None
+                    ),
+                    "transformer_joined_score": (
+                        joined_score if math.isfinite(joined_score) else None
+                    ),
+                    "transformer_margin": (
+                        margin if math.isfinite(margin) else None
+                    ),
+                    "user_label": None,
+                    "review_status": "pending",
+                    "reviewed_at": None,
+                    "user_notes": "",
+                    "evidence": candidate.decision.evidence.kind.value,
+                }
+            )
+        return examples
 
     def _variants(
         self,

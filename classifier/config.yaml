@@ -1,0 +1,23 @@
+data:
+  dataset: "data/broken_word_training.json"
+  split_manifest: "data/split_manifest.json"
+  train_ratio: 0.8
+  validation_ratio: 0.1
+
+model:
+  base_model: "distilbert/distilroberta-base"
+  maximum_length: 256
+  local_files_only: true
+
+training:
+  output_directory: "D:/MarkdownCleanerModels/broken-word-classifier"
+  batch_size: 8
+  learning_rate: 0.00002
+  epochs: 3
+  weight_decay: 0.01
+  random_seed: 42
+  device: "auto"
+
+evaluation:
+  minimum_join_precision: 0.97
+  minimum_keep_precision: 0.97
