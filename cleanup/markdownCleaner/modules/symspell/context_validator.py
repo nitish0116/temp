@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+import logging
 import math
 from typing import Protocol, Sequence
 
@@ -14,6 +15,9 @@ from .broken_words import (
 )
 from .training_data import BoundaryTrainingDataWriter, example_id
 from ..core.config import require_bool
+
+
+LOGGER = logging.getLogger("ocr_cleanup")
 
 
 @dataclass(frozen=True, slots=True)
@@ -329,9 +333,16 @@ class BoundaryContextValidator:
                     )
                 )
         if self.training_writer is not None:
-            self.training_writer.add(
-                self._training_examples(pending, variants, scores)
-            )
+            try:
+                self.training_writer.add(
+                    self._training_examples(pending, variants, scores)
+                )
+            except (OSError, ValueError) as exc:
+                LOGGER.warning(
+                    "Classifier training-data collection failed; cleaning "
+                    "will continue: %s",
+                    exc,
+                )
         return ValidationOutcome(tuple(accepted), tuple(rejected))
 
     def _training_examples(

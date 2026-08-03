@@ -5,6 +5,7 @@ from __future__ import annotations
 from hashlib import sha256
 import json
 from pathlib import Path
+import time
 from typing import Iterable, Mapping
 
 SCHEMA_VERSION = 1
@@ -60,11 +61,20 @@ class BoundaryTrainingDataWriter:
     def _write(self, document: Mapping[str, object]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_suffix(self.path.suffix + ".tmp")
-        temporary.write_text(
-            json.dumps(document, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        temporary.replace(self.path)
+        payload = json.dumps(document, ensure_ascii=False, indent=2) + "\n"
+        temporary.write_text(payload, encoding="utf-8")
+        for delay in (0.05, 0.1, 0.2, 0.4):
+            try:
+                temporary.replace(self.path)
+                return
+            except PermissionError:
+                time.sleep(delay)
+
+        # Some Windows editors and indexers permit writing an open file but
+        # briefly deny replacing its directory entry. Preserve collection by
+        # falling back to an in-place write after bounded atomic-replace retries.
+        self.path.write_text(payload, encoding="utf-8")
+        temporary.unlink(missing_ok=True)
 
 
 __all__ = ["BoundaryTrainingDataWriter", "example_id"]

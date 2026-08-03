@@ -192,8 +192,12 @@ These reviewer-controlled fields are always preserved:
 - `reviewed_at`
 - `user_notes`
 
-The complete JSON is replaced atomically through a temporary file, reducing
-the risk of leaving a partially written dataset.
+The writer first attempts to replace the complete JSON atomically through a
+temporary file. On Windows it retries transient `PermissionError` failures and
+then falls back to an in-place write when an editor or indexer permits writing
+the file but blocks replacement. If collection still fails, MarkdownCleaner
+logs a warning and continues cleaning; optional dataset collection never makes
+the SymSpell stage fail.
 
 ## Why the dataset may remain empty
 

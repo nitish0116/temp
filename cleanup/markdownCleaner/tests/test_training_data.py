@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from markdownCleaner.modules.symspell.training_data import (
     BoundaryTrainingDataWriter,
@@ -61,3 +62,21 @@ def test_writer_deduplicates_and_preserves_user_review(tmp_path):
     assert saved["user_label"] == "keep_spaced"
     assert saved["review_status"] == "reviewed"
     assert saved["user_notes"] == "Checked against the source PDF."
+
+
+def test_writer_falls_back_when_windows_blocks_atomic_replace(
+    tmp_path, monkeypatch
+):
+    path = tmp_path / "training.json"
+    path.write_text('{"schema_version": 1, "examples": []}\n', encoding="utf-8")
+    writer = BoundaryTrainingDataWriter(path, "Volume 01.md")
+
+    def deny_replace(self, target):
+        raise PermissionError(5, "Access is denied", str(target))
+
+    monkeypatch.setattr(Path, "replace", deny_replace)
+
+    assert writer.add([_example()]) == 1
+    document = json.loads(path.read_text(encoding="utf-8"))
+    assert len(document["examples"]) == 1
+    assert not path.with_suffix(".json.tmp").exists()
