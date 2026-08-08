@@ -143,6 +143,7 @@ def test_main_batch_skips_unknown_duration_and_counts_failure(monkeypatch, tmp_p
     args = Namespace(
         input=str(source), output=str(tmp_path / "out"), title="Title", artist="Artist",
         album="Album", resolution="480p", thumbnail="missing.png", image="missing.jpg",
+        file_workers=1,
     )
     monkeypatch.setattr(app, "parse_args", lambda: args)
     monkeypatch.setattr(app, "check_tools", lambda: ("ffmpeg", "ffprobe"))
@@ -152,3 +153,50 @@ def test_main_batch_skips_unknown_duration_and_counts_failure(monkeypatch, tmp_p
     })
     monkeypatch.setattr(app, "convert", lambda **kwargs: None)
     assert app.main() == 1
+
+
+def test_main_batch_parallel_processing_is_capped_at_four(monkeypatch, tmp_path):
+    source = tmp_path / "audio"
+    source.mkdir()
+    for index in range(5):
+        (source / f"book-{index}.mp3").touch()
+    converted = []
+    pool_sizes = []
+    args = Namespace(
+        input=str(source), output=str(tmp_path / "out"), title="", artist="",
+        album="", resolution="480p", thumbnail=None, image=None, file_workers=4,
+    )
+
+    class ImmediateFuture:
+        def __init__(self, value):
+            self.value = value
+
+        def result(self):
+            return self.value
+
+    class FakeProcessPool:
+        def __init__(self, max_workers):
+            pool_sizes.append(max_workers)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def submit(self, function, *args, **kwargs):
+            return ImmediateFuture(function(*args, **kwargs))
+
+    monkeypatch.setattr(app, "parse_args", lambda: args)
+    monkeypatch.setattr(app, "check_tools", lambda: ("ffmpeg", "ffprobe"))
+    monkeypatch.setattr(app, "ProcessPoolExecutor", FakeProcessPool)
+    monkeypatch.setattr(app, "as_completed", lambda futures: list(futures))
+    monkeypatch.setattr(app, "probe", lambda *_args: {
+        "duration_s": 10, "size_bytes": 1, "sample_rate": 24000,
+        "channels": 1, "bit_rate_kbps": 48,
+    })
+    monkeypatch.setattr(app, "convert", lambda **kwargs: converted.append(kwargs))
+
+    assert app.main() == 0
+    assert pool_sizes == [4]
+    assert len(converted) == 5

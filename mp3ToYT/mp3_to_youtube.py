@@ -25,6 +25,7 @@ Requirements:
 """
 
 import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import json
 import re
 import shutil
@@ -400,6 +401,15 @@ Examples:
         "Tip: pass the same path to both --image and --thumbnail so the "
         "cover art appears both in the video and in the player library.",
     )
+    parser.add_argument(
+        "--file-workers",
+        type=int,
+        default=4,
+        help=(
+            "Maximum audio files converted concurrently in separate processes "
+            "for folder input (default: 4; use 1 for sequential conversion)"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -425,8 +435,135 @@ def _resolve_outputs(
     return False, None, output_path
 
 
+def _convert_audio_file(
+    src: Path,
+    dst: Path,
+    *,
+    ffmpeg: str,
+    ffprobe: str,
+    title_arg: str,
+    artist_arg: str,
+    album_arg: str,
+    resolution: str,
+    thumbnail: Path | None,
+    image: Path | None,
+) -> tuple[bool, str | None]:
+    """Probe and convert one file in either the main or a worker process."""
+    print(f"Analysing: {src.name} ...")
+    info = probe(src, ffprobe)
+    if not info or info.get("duration_s", 0) == 0:
+        message = "Could not determine duration; skipping file."
+        print(f"[WARN] {message}")
+        return False, message
+
+    duration_s = info["duration_s"]
+    print(f"  Duration   : {fmt_duration(duration_s)}")
+    print(f"  Size       : {fmt_bytes(info['size_bytes'])}")
+    print(f"  Sample rate: {info['sample_rate']} Hz")
+    print(f"  Channels   : {info['channels']}")
+    print(f"  Bit rate   : {info['bit_rate_kbps']} kbps")
+    print(f"  Est. output: {estimate_size(duration_s, resolution)}")
+
+    if duration_s > 6 * 3600:
+        print()
+        print(f"  Warning: Duration > 6 hours ({fmt_duration(duration_s)}).")
+        print("     YouTube allows up to 12 hours for VERIFIED accounts.")
+
+    title = title_arg or info.get("title") or clean_stem(src)
+    artist = artist_arg or info.get("artist", "")
+    album = album_arg or info.get("album", "")
+    try:
+        convert(
+            mp3_path=src,
+            output_path=dst,
+            duration_s=duration_s,
+            title=title,
+            artist=artist,
+            album=album,
+            resolution=resolution,
+            thumbnail=thumbnail,
+            ffmpeg=ffmpeg,
+            image=image,
+        )
+    except SystemExit as exc:
+        return False, f"conversion exited with code {exc.code}"
+    except Exception as exc:
+        return False, str(exc)
+    return True, None
+
+
+def _run_parallel_batch(
+    inputs: list[Path],
+    output_dir: Path,
+    *,
+    file_workers: int,
+    ffmpeg: str,
+    ffprobe: str,
+    title: str,
+    artist: str,
+    album: str,
+    resolution: str,
+    thumbnail: Path | None,
+    image: Path | None,
+) -> int:
+    """Convert a folder batch in up to four isolated worker processes."""
+    worker_count = min(file_workers, len(inputs), 4)
+    print(
+        f"Converting {len(inputs)} audio files with "
+        f"{worker_count} file processes."
+    )
+    worker_arguments = {
+        "ffmpeg": ffmpeg,
+        "ffprobe": ffprobe,
+        "title_arg": title,
+        "artist_arg": artist,
+        "album_arg": album,
+        "resolution": resolution,
+        "thumbnail": thumbnail,
+        "image": image,
+    }
+    failed = 0
+    used_names: set[str] = set()
+    planned: list[tuple[Path, Path]] = []
+    for src in inputs:
+        candidate = f"{src.stem}.mp4"
+        number = 2
+        while candidate.casefold() in used_names:
+            candidate = f"{src.stem} ({number}).mp4"
+            number += 1
+        used_names.add(candidate.casefold())
+        planned.append((src, (output_dir / candidate).resolve()))
+    with ProcessPoolExecutor(max_workers=worker_count) as executor:
+        future_to_source = {
+            executor.submit(
+                _convert_audio_file,
+                src,
+                dst,
+                **worker_arguments,
+            ): src
+            for src, dst in planned
+        }
+        for future in as_completed(future_to_source):
+            src = future_to_source[future]
+            try:
+                succeeded, error = future.result()
+            except Exception as exc:
+                succeeded, error = False, str(exc)
+            if not succeeded:
+                failed += 1
+                print(f"[ERROR] {src.name}: {error}", file=sys.stderr)
+
+    if failed:
+        print(f"\nCompleted with {failed} failed file(s).")
+        return 1
+    return 0
+
+
 def main() -> int:
     args = parse_args()
+    file_workers = getattr(args, "file_workers", 4)
+    if file_workers < 1 or file_workers > 4:
+        die("--file-workers must be between 1 and 4.")
     ffmpeg, ffprobe = check_tools()
 
     input_path = Path(args.input).resolve()
@@ -456,6 +593,22 @@ def main() -> int:
         thumbnail = image
         print(
             f"[INFO] Using --image as thumbnail too (pass --thumbnail separately to override)."
+        )
+
+    if is_batch and len(inputs) > 1 and file_workers > 1:
+        assert output_dir is not None
+        return _run_parallel_batch(
+            inputs,
+            output_dir,
+            file_workers=file_workers,
+            ffmpeg=ffmpeg,
+            ffprobe=ffprobe,
+            title=args.title,
+            artist=args.artist,
+            album=args.album,
+            resolution=args.resolution,
+            thumbnail=thumbnail,
+            image=image,
         )
 
     failed = 0
