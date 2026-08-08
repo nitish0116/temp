@@ -398,7 +398,9 @@ def create_silence_mp3(output_path: Path, duration: float) -> None:
                 "-f",
                 "lavfi",
                 "-i",
-                f"anullsrc=r=44100:cl=mono",
+                # Edge TTS MP3 output uses 24 kHz mono audio.  Matching it here
+                # avoids changing stream parameters at chapter boundaries.
+                "anullsrc=r=24000:cl=mono",
                 "-t",
                 str(duration),
                 "-q:a",
@@ -824,8 +826,20 @@ def _edge_concat_mp3_with_chapters(
                 "0",
                 "-i",
                 str(concat_file),
-                "-c",
-                "copy",
+                # Independently encoded MP3 chunks can carry overlapping DTS
+                # values.  Decode once, rebuild continuous timestamps, and emit
+                # a uniform Edge-compatible stream instead of stream-copying
+                # those timestamps into the final file.
+                "-af",
+                "aresample=24000:async=1:first_pts=0,asetpts=N/SR/TB",
+                "-c:a",
+                "libmp3lame",
+                "-ar",
+                "24000",
+                "-ac",
+                "1",
+                "-b:a",
+                "48k",
                 str(output_path),
             ],
             check=True,
@@ -836,8 +850,8 @@ def _edge_concat_mp3(chunk_paths: list[Path], output_path: Path) -> None:
     """
     Concatenate multiple Edge TTS MP3 chunks into a single output file.
 
-    Uses ffmpeg to efficiently concatenate MP3 files without re-encoding,
-    creating a seamless audio stream from individually synthesized chunks.
+    Uses ffmpeg to concatenate and normalize independently synthesized MP3
+    chunks into a seamless stream with continuous timestamps.
 
     Args:
         chunk_paths (list[Path]): Paths to MP3 chunk files, in playback order.
@@ -872,8 +886,16 @@ def _edge_concat_mp3(chunk_paths: list[Path], output_path: Path) -> None:
                 "0",
                 "-i",
                 str(concat_file),
-                "-c",
-                "copy",
+                "-af",
+                "aresample=24000:async=1:first_pts=0,asetpts=N/SR/TB",
+                "-c:a",
+                "libmp3lame",
+                "-ar",
+                "24000",
+                "-ac",
+                "1",
+                "-b:a",
+                "48k",
                 str(output_path),
             ],
             check=True,

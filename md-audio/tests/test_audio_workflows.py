@@ -174,6 +174,13 @@ def test_edge_concat_variants(monkeypatch, tmp_path):
     monkeypatch.setattr(app, "create_silence_mp3", lambda path, duration: path.write_bytes(b"silence"))
     app._edge_concat_mp3_with_chapters([chunks[0]], {1: 2.0}, tmp_path / "chapters.mp3", tmp_path)
     assert len(commands) == 2
+    for command in commands:
+        assert "copy" not in command
+        assert command[command.index("-af") + 1] == (
+            "aresample=24000:async=1:first_pts=0,asetpts=N/SR/TB"
+        )
+        assert command[command.index("-ar") + 1] == "24000"
+        assert command[command.index("-ac") + 1] == "1"
     with pytest.raises(RuntimeError):
         app._edge_concat_mp3([chunks[1]], tmp_path / "bad.mp3")
 
