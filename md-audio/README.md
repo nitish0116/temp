@@ -201,6 +201,7 @@ work, but `build_hyphen_reviews.py` is the normal pipeline entry point.
 | `--backend {sapi,edge}` | Select the speech backend; default is SAPI. |
 | `--voice NAME` | Use an alias or exact installed/catalog voice name. |
 | `--edge-workers N` | Maximum concurrent Edge requests; default is 6. |
+| `--file-workers N` | Edge folder conversions to run in separate processes; default and maximum is 4. Use 1 for sequential files. |
 | `--chunk-size N` | Override automatic chunk sizing; minimum effective value is 400. |
 | `--quiet` | Hide step-level progress messages. |
 | `--keep-intermediate-wav` | Preserve SAPI's WAV when producing MP3. |

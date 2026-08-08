@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 import html
 import json
@@ -223,6 +224,15 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=6,
         help="Maximum concurrent Edge TTS chunk requests (Edge backend only).",
+    )
+    parser.add_argument(
+        "--file-workers",
+        type=int,
+        default=4,
+        help=(
+            "Maximum files converted concurrently in separate processes for "
+            "Edge folder input (default: 4; use 1 for sequential conversion)."
+        ),
     )
     parser.add_argument(
         "--hyphen-review-json",
@@ -1543,6 +1553,114 @@ def _finish_batch(
     return 1 if failures else 0
 
 
+def _convert_edge_target_worker(
+    target: tuple[Path, Path],
+    chunk_size: int | None,
+    voice_name: str | None,
+    edge_workers: int,
+    quiet: bool,
+    chapter_markers: bool,
+    chapter_marker_duration: float,
+    cue_file: bool,
+    hyphen_review_json: Path,
+) -> tuple[dict[str, str], dict[str, str] | None]:
+    """Convert one Edge target inside a spawned file-worker process."""
+    global QUIET
+    QUIET = quiet
+    configure_edge_tts_hyphen_replacements(hyphen_review_json)
+    input_path, output_path = target
+    started = time.perf_counter()
+    try:
+        used_chunk_size, chunk_count, final_size = convert_one_edge(
+            input_path,
+            output_path,
+            chunk_size,
+            voice_name,
+            edge_workers,
+            quiet,
+            chapter_markers,
+            chapter_marker_duration,
+            cue_file=cue_file,
+        )
+        return (
+            _passed_result(
+                input_path,
+                output_path,
+                used_chunk_size,
+                chunk_count,
+                final_size,
+                time.perf_counter() - started,
+            ),
+            None,
+        )
+    except BaseException as exc:
+        if isinstance(exc, KeyboardInterrupt):
+            raise
+        return _failed_result(input_path, output_path, exc)
+
+
+def _run_edge_conversion_batch_parallel(
+    targets: list[tuple[Path, ...]],
+    args: argparse.Namespace,
+    voice_name: str | None,
+    file_workers: int,
+) -> int:
+    """Convert Edge folder targets concurrently while retaining report order."""
+    worker_count = min(file_workers, len(targets), 4)
+    log_step(
+        f"Converting {len(targets)} files with {worker_count} file processes "
+        f"and up to {args.edge_workers} Edge requests per process"
+    )
+    ordered_results: list[dict[str, str] | None] = [None] * len(targets)
+    failures: list[dict[str, str]] = []
+    review_path = Path(
+        getattr(args, "hyphen_review_json", DEFAULT_HYPHEN_REVIEW_PATH)
+        or DEFAULT_HYPHEN_REVIEW_PATH
+    )
+
+    with ProcessPoolExecutor(max_workers=worker_count) as executor:
+        future_to_index = {}
+        for index, target in enumerate(targets):
+            input_path, output_path = target[:2]
+            log_step(f"Queued file {index + 1}/{len(targets)} -> {output_path.name}")
+            future = executor.submit(
+                _convert_edge_target_worker,
+                (input_path, output_path),
+                args.chunk_size,
+                voice_name,
+                args.edge_workers,
+                args.quiet,
+                args.chapter_markers,
+                args.chapter_marker_duration,
+                args.cue_file,
+                review_path,
+            )
+            future_to_index[future] = index
+
+        completed = 0
+        for future in as_completed(future_to_index):
+            index = future_to_index[future]
+            input_path, output_path = targets[index][:2]
+            try:
+                result, failure = future.result()
+            except BaseException as exc:
+                if isinstance(exc, KeyboardInterrupt):
+                    raise
+                result, failure = _failed_result(input_path, output_path, exc)
+            ordered_results[index] = result
+            completed += 1
+            if failure is not None:
+                failures.append(failure)
+                print(f"[ERROR] Failed: {input_path.name} -> {result['error']}")
+            else:
+                log_step(
+                    f"Completed file {completed}/{len(targets)} -> {output_path.name}"
+                )
+
+    results = [result for result in ordered_results if result is not None]
+    return _finish_batch(results, failures, "edge", targets[0][1].parent)
+
+
 def _run_conversion_batch(
     targets: list[tuple[Path, ...]],
     backend: str,
@@ -1550,6 +1668,12 @@ def _run_conversion_batch(
     voice_name: str | None,
 ) -> int:
     """Convert resolved targets and produce one normalized batch report."""
+    file_workers = getattr(args, "file_workers", 4)
+    if backend == "edge" and len(targets) > 1 and file_workers > 1:
+        return _run_edge_conversion_batch_parallel(
+            targets, args, voice_name, file_workers
+        )
+
     results: list[dict[str, str]] = []
     failures: list[dict[str, str]] = []
 
@@ -1620,6 +1744,9 @@ def main() -> int:
             return list_edge_voices(show_all=args.all_voices)
         if args.edge_workers < 1:
             raise SystemExit("--edge-workers must be at least 1.")
+        file_workers = getattr(args, "file_workers", 4)
+        if file_workers < 1 or file_workers > 4:
+            raise SystemExit("--file-workers must be between 1 and 4.")
         review_path = getattr(args, "hyphen_review_json", DEFAULT_HYPHEN_REVIEW_PATH)
         review_path = review_path or DEFAULT_HYPHEN_REVIEW_PATH
         replacement_count = configure_edge_tts_hyphen_replacements(review_path)

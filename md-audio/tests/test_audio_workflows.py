@@ -15,7 +15,7 @@ import md_to_audio as app
 def make_args(**overrides):
     values = dict(
         input_path=None, output_path=None, backend="sapi", voice=None,
-        chunk_size=None, edge_workers=2, keep_intermediate_wav=False,
+        chunk_size=None, edge_workers=2, file_workers=4, keep_intermediate_wav=False,
         list_voices=False, all_voices=False, quiet=True, chapter_markers=False,
         chapter_marker_duration=2.0, cue_file=False,
         estimate_duration=False, words_per_minute=150.0,
