@@ -120,7 +120,7 @@ context_validator:
   # Joined localized pseudo-log-likelihood must beat the spaced form by this.
   merge_margin: 0.35
   device: "auto"
-  local_files_only: false
+  local_files_only: True
 
 vocabulary_candidates:
   # Discover repeated unknown terms, but never modify custom_words.json.
