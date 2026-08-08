@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -125,6 +126,35 @@ def test_human_acceptance_overrides_corpus_suppression():
 
     assert decision is not None
     assert decision.replacement == "because"
+    assert decision.evidence.kind is MergeEvidenceKind.REVIEWED_DECISION
+
+
+@pytest.mark.parametrize(
+    ("left", "right", "replacement"),
+    [
+        ("signa", "ture", "signature"),
+        ("signa", "tures", "signatures"),
+    ],
+)
+def test_repository_decisions_fix_signature_splits(
+    left: str,
+    right: str,
+    replacement: str,
+):
+    decisions = BrokenWordDecisions.load(
+        Path(__file__).parents[1] / "data" / "broken_word_decisions.json"
+    )
+    evaluator = BrokenWordEvaluator(
+        DictionaryManager(),
+        WordfreqScorer(enabled=False),
+        _settings(),
+        decisions,
+    )
+
+    decision = evaluator.evaluate(left, right)
+
+    assert decision is not None
+    assert decision.replacement == replacement
     assert decision.evidence.kind is MergeEvidenceKind.REVIEWED_DECISION
 
 
