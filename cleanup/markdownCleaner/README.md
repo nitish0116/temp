@@ -48,6 +48,11 @@ Process every Markdown file directly in a folder:
 python -m markdownCleaner books -o cleaned
 ```
 
+Folder mode cleans up to four files concurrently in separate processes by
+default. Control the process count with `--file-workers 1|2|3|4`; use
+`--file-workers 1` for the original sequential behavior or reduce the count
+when memory is constrained.
+
 Include subfolders and continue after individual failures:
 
 ```powershell

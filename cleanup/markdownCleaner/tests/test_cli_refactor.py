@@ -473,6 +473,79 @@ def test_batch_stops_once_and_writes_each_aggregate_report_once(tmp_path):
     assert "ERROR:" in stderr.getvalue()
 
 
+def test_batch_parallel_processing_is_capped_at_four(monkeypatch, tmp_path):
+    """Dispatch folder work through no more than four file processes."""
+    source = tmp_path / "source"
+    files = [source / f"book-{index}.md" for index in range(5)]
+    pool_sizes: list[int] = []
+    calls: list[str] = []
+
+    def run_one(file, **kwargs):
+        calls.append(file.name)
+        output = kwargs["output_directory"] / kwargs["output_name"]
+        return (
+            {
+                "stages": [SimpleNamespace(stage="Regex", changes=1)],
+                "output": {"markdown": output},
+                "elapsed_seconds": 0.1,
+                "pipeline_error": None,
+            },
+            1,
+            [],
+            [],
+        )
+
+    class ImmediateFuture:
+        def __init__(self, value):
+            self.value = value
+
+        def result(self):
+            return self.value
+
+        def cancel(self):
+            return False
+
+    class FakeProcessPool:
+        def __init__(self, max_workers):
+            pool_sizes.append(max_workers)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def submit(self, function, *args):
+            return ImmediateFuture(function(*args))
+
+    monkeypatch.setattr(
+        "markdownCleaner.commands.batch.ProcessPoolExecutor", FakeProcessPool
+    )
+    monkeypatch.setattr(
+        "markdownCleaner.commands.batch.as_completed", lambda futures: list(futures)
+    )
+
+    exit_code = run_batch(
+        source,
+        files=files,
+        config=tmp_path / "config.yaml",
+        output_root=tmp_path / "output",
+        continue_on_error=True,
+        report_name="batch.md",
+        run_one=run_one,
+        write_summary=lambda *_args, **_kwargs: None,
+        write_candidates=lambda *_args, **_kwargs: None,
+        report_options=ReportOptions(enabled=False),
+        file_workers=4,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert pool_sizes == [4]
+    assert len(calls) == 5
+
+
 def test_legacy_runner_delegates_to_the_canonical_cli(monkeypatch):
     """Remove the runner's hard-coded sample while retaining its callable API."""
     monkeypatch.setattr(runner, "cli_main", lambda argv: 7)

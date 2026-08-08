@@ -310,6 +310,8 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.file_workers < 1 or args.file_workers > 4:
+        parser.error("--file-workers must be between 1 and 4")
 
     if args.simplify_candidates:
         try:
@@ -491,6 +493,7 @@ def main(argv: list[str] | None = None) -> int:
             write_summary=_write_batch_summary,
             write_candidates=_write_batch_glossary_candidates,
             report_options=report_options,
+            file_workers=args.file_workers,
         )
     except Exception as exc:
         # Aggregate report creation happens after per-file processing, so keep

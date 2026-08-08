@@ -63,6 +63,15 @@ def build_parser(default_config: Path = DEFAULT_CONFIG) -> argparse.ArgumentPars
         help="Continue processing remaining files if one file fails",
     )
     parser.add_argument(
+        "--file-workers",
+        type=int,
+        default=4,
+        help=(
+            "Maximum Markdown files cleaned concurrently in separate processes "
+            "for folder input (default: 4; use 1 for sequential processing)"
+        ),
+    )
+    parser.add_argument(
         "--approve-words",
         nargs="+",
         metavar="WORD",

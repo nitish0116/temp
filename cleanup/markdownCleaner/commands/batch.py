@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import sys
 from collections import Counter
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, TextIO
@@ -84,6 +85,18 @@ class BatchFileResult:
         return self.entry["status"] == "success"
 
 
+@dataclass(frozen=True, slots=True)
+class BatchFileTask:
+    """Pickle-safe, preplanned paths for one batch worker."""
+
+    index: int
+    file: Path
+    relative: Path
+    target_dir: Path
+    output_name: str
+    report_dir: Path
+
+
 def process_batch_file(
     file: Path,
     *,
@@ -161,6 +174,51 @@ def process_batch_file(
     )
 
 
+def _process_batch_task(
+    task: BatchFileTask,
+    config: Path,
+    run_one: RunOne,
+    minimum_record_confidence: float | None,
+) -> BatchFileResult:
+    """Run one preplanned task inside a file-worker process."""
+    return process_batch_file(
+        task.file,
+        relative=task.relative,
+        config=config,
+        target_dir=task.target_dir,
+        output_name=task.output_name,
+        report_dir=task.report_dir,
+        run_one=run_one,
+        minimum_record_confidence=minimum_record_confidence,
+    )
+
+
+def _plan_batch_tasks(
+    source: Path, files: list[Path], output_root: Path
+) -> list[BatchFileTask]:
+    """Reserve deterministic output and report paths before dispatch."""
+    used_output_names: dict[Path, set[str]] = {}
+    tasks: list[BatchFileTask] = []
+    for index, file in enumerate(files, 1):
+        relative = file.relative_to(source)
+        target_dir = output_root / relative.parent
+        directory_names = used_output_names.setdefault(target_dir, set())
+        output_name = unique_batch_output_name(
+            meaningful_output_name(file), directory_names
+        )
+        tasks.append(
+            BatchFileTask(
+                index=index,
+                file=file,
+                relative=relative,
+                target_dir=target_dir,
+                output_name=output_name,
+                report_dir=safe_report_name(relative, output_name),
+            )
+        )
+    return tasks
+
+
 def write_batch_reports(
     output_root: Path,
     *,
@@ -204,6 +262,7 @@ def run_batch(
     report_options: ReportOptions | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
+    file_workers: int = 1,
 ) -> int:
     """Process a discovered folder batch and return its CLI exit code."""
     active_report_options = report_options or ReportOptions()
@@ -213,47 +272,87 @@ def run_batch(
     failed = 0
     total_changes = 0
     entries: list[dict] = []
-    used_output_names: dict[Path, set[str]] = {}
     stopped_early = False
+    tasks = _plan_batch_tasks(source, files, output_root)
+    minimum_record_confidence = (
+        None
+        if active_report_options.include_low_confidence
+        else active_report_options.review_threshold
+    )
 
     print(f"Found {len(files)} Markdown file(s).", file=stdout)
-    for index, file in enumerate(files, 1):
-        relative = file.relative_to(source)
-        target_dir = output_root / relative.parent
-        directory_names = used_output_names.setdefault(target_dir, set())
-        output_name = unique_batch_output_name(
-            meaningful_output_name(file),
-            directory_names,
-        )
-        report_dir = safe_report_name(relative, output_name)
+    if file_workers > 1 and len(tasks) > 1:
+        worker_count = min(file_workers, len(tasks), 4)
+        print(f"Using {worker_count} file processes.", file=stdout)
+        ordered_items: list[BatchFileResult | None] = [None] * len(tasks)
+        with ProcessPoolExecutor(max_workers=worker_count) as executor:
+            future_to_task = {
+                executor.submit(
+                    _process_batch_task,
+                    task,
+                    config,
+                    run_one,
+                    minimum_record_confidence,
+                ): task
+                for task in tasks
+            }
+            for future in as_completed(future_to_task):
+                task = future_to_task[future]
+                try:
+                    item = future.result()
+                except Exception as exc:
+                    item = BatchFileResult(
+                        entry={
+                            "relative_path": str(task.relative),
+                            "status": "failed",
+                            "changes": 0,
+                            "elapsed_seconds": 0,
+                            "stage_counts": {},
+                            "records": [],
+                            "glossary_candidates": [],
+                            "output": None,
+                            "error": str(exc),
+                        },
+                        changes=0,
+                        output=None,
+                        error=str(exc),
+                    )
+                ordered_items[task.index - 1] = item
+                print(f"\n[{task.index}/{len(files)}] {task.relative}", file=stdout)
+                if item.succeeded:
+                    print(f"Output: {item.output}", file=stdout)
+                else:
+                    print(f"ERROR: {task.file}: {item.error}", file=stderr)
+                    if not continue_on_error:
+                        stopped_early = True
+                        for pending in future_to_task:
+                            pending.cancel()
+                        break
+        items = [item for item in ordered_items if item is not None]
+    else:
+        items = []
+        for task in tasks:
+            print(f"\n[{task.index}/{len(files)}] {task.relative}", file=stdout)
+            item = _process_batch_task(
+                task, config, run_one, minimum_record_confidence
+            )
+            items.append(item)
+            if item.succeeded:
+                print(f"Output: {item.output}", file=stdout)
+            else:
+                print(f"ERROR: {task.file}: {item.error}", file=stderr)
+                if not continue_on_error:
+                    stopped_early = True
+                    break
 
-        print(f"\n[{index}/{len(files)}] {relative}", file=stdout)
-        item = process_batch_file(
-            file,
-            relative=relative,
-            config=config,
-            target_dir=target_dir,
-            output_name=output_name,
-            report_dir=report_dir,
-            run_one=run_one,
-            minimum_record_confidence=(
-                None
-                if active_report_options.include_low_confidence
-                else active_report_options.review_threshold
-            ),
-        )
+    for item in items:
         entries.append(item.entry)
         total_changes += item.changes
         if item.succeeded:
             succeeded += 1
-            print(f"Output: {item.output}", file=stdout)
             continue
 
         failed += 1
-        print(f"ERROR: {file}: {item.error}", file=stderr)
-        if not continue_on_error:
-            stopped_early = True
-            break
 
     summary_path, candidates_path = write_batch_reports(
         output_root,
