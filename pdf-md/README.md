@@ -41,7 +41,12 @@ Useful options:
 --keep-footer
 --images ignore|write|embed
 --continue-on-error
+--file-workers 1|2|3|4
 ```
+
+Folder conversion uses up to four separate processes by default. Each process
+converts one PDF or EPUB at a time. Use `--file-workers 1` for sequential
+conversion or a smaller value when memory is constrained.
 
 `--layout fast` is the default and is recommended for books. Use
 `--layout smart` only for difficult multi-column pages or complex tables; the

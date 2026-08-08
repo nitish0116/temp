@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 import sys
 
@@ -67,6 +68,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--image-format", choices=("png", "jpg"), default="png")
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--continue-on-error", action="store_true")
+    parser.add_argument(
+        "--file-workers",
+        type=int,
+        default=4,
+        help=(
+            "Maximum documents converted concurrently in separate processes "
+            "for folder input (default: 4; use 1 for sequential conversion)"
+        ),
+    )
     return parser
 
 
@@ -134,21 +144,48 @@ def _sources(source: Path, recursive: bool) -> tuple[list[Path], Path]:
     return _document_files(source, recursive), source
 
 
+def _planned_targets(
+    files: list[Path], source_root: Path, output_root: Path
+) -> list[tuple[Path, Path, Path]]:
+    """Precompute deterministic, collision-safe targets before dispatch."""
+    used_by_directory: dict[Path, set[str]] = {}
+    planned: list[tuple[Path, Path, Path]] = []
+    for document in files:
+        relative = document.relative_to(source_root)
+        target_dir = output_root / relative.parent
+        used = used_by_directory.setdefault(target_dir, set())
+        target = target_dir / _unique_name(readable_output_name(document), used)
+        planned.append((document, relative, target))
+    return planned
+
+
+def _convert_document_worker(
+    document: Path, target: Path, options: ConversionOptions
+):
+    """Convert one document in an isolated file-worker process."""
+    return PDFToMarkdownConverter(options).convert(document, target)
+
+
 def _convert_documents(
     files: list[Path],
     source_root: Path,
     output_root: Path,
     converter: PDFToMarkdownConverter,
     continue_on_error: bool,
+    file_workers: int = 1,
+    options: ConversionOptions | None = None,
 ) -> int:
     """Convert a document batch, preserving subdirectories and unique names."""
+    planned = _planned_targets(files, source_root, output_root)
+    if file_workers > 1 and len(planned) > 1:
+        if options is None:
+            raise ValueError("options are required for parallel conversion")
+        return _convert_documents_parallel(
+            planned, options, continue_on_error, file_workers
+        )
+
     failures = 0
-    used_by_directory: dict[Path, set[str]] = {}
-    for index, document in enumerate(files, 1):
-        relative = document.relative_to(source_root)
-        target_dir = output_root / relative.parent
-        used = used_by_directory.setdefault(target_dir, set())
-        target = target_dir / _unique_name(readable_output_name(document), used)
+    for index, (document, relative, target) in enumerate(planned, 1):
         print(f"[{index}/{len(files)}] {relative}")
         try:
             result = converter.convert(document, target)
@@ -163,6 +200,56 @@ def _convert_documents(
                 return 2
 
     print(f"Completed: {len(files) - failures} succeeded, {failures} failed")
+    return 0 if failures == 0 else 2
+
+
+def _convert_documents_parallel(
+    planned: list[tuple[Path, Path, Path]],
+    options: ConversionOptions,
+    continue_on_error: bool,
+    file_workers: int,
+) -> int:
+    """Convert a planned document batch in up to four worker processes."""
+    worker_count = min(file_workers, len(planned), 4)
+    print(
+        f"Converting {len(planned)} documents with "
+        f"{worker_count} file processes"
+    )
+    failures = 0
+    completed = 0
+    stop_after_failure = False
+
+    with ProcessPoolExecutor(max_workers=worker_count) as executor:
+        future_to_item = {
+            executor.submit(_convert_document_worker, document, target, options): (
+                index,
+                relative,
+                target,
+            )
+            for index, (document, relative, target) in enumerate(planned, 1)
+        }
+        for future in as_completed(future_to_item):
+            index, relative, _target = future_to_item[future]
+            print(f"[{index}/{len(planned)}] {relative}")
+            try:
+                result = future.result()
+                completed += 1
+                print(
+                    f"  Output: {result.markdown} "
+                    f"({result.pages} pages, {result.characters:,} characters)"
+                )
+            except Exception as exc:
+                failures += 1
+                print(f"  ERROR: {exc}", file=sys.stderr)
+                if not continue_on_error:
+                    stop_after_failure = True
+                    for pending in future_to_item:
+                        pending.cancel()
+                    break
+
+    if stop_after_failure:
+        return 2
+    print(f"Completed: {completed} succeeded, {failures} failed")
     return 0 if failures == 0 else 2
 
 
@@ -188,6 +275,8 @@ def main(argv: list[str] | None = None) -> int:
         options = _conversion_options(args)
     except argparse.ArgumentTypeError as exc:
         parser.error(str(exc))
+    if args.file_workers < 1 or args.file_workers > 4:
+        parser.error("--file-workers must be between 1 and 4")
     converter = PDFToMarkdownConverter(options)
 
     files, source_root = _sources(source, args.recursive)
@@ -196,7 +285,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     return _convert_documents(
-        files, source_root, output_root, converter, args.continue_on_error
+        files,
+        source_root,
+        output_root,
+        converter,
+        args.continue_on_error,
+        args.file_workers,
+        options,
     )
 
 

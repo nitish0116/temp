@@ -162,7 +162,10 @@ def test_cli_converts_recursive_batch_and_forwards_options(monkeypatch, tmp_path
 
     monkeypatch.setattr(cli, "PDFToMarkdownConverter", FakeConverter)
     result = cli.main(
-        [str(source), "-o", str(output), "-r", "--pages", "1,3", "--images", "embed", "--quiet"]
+        [
+            str(source), "-o", str(output), "-r", "--pages", "1,3",
+            "--images", "embed", "--quiet", "--file-workers", "1",
+        ]
     )
     assert result == 0
     assert len(calls) == 3
@@ -187,7 +190,9 @@ def test_cli_empty_directory_and_continue_on_error(monkeypatch, tmp_path):
             raise RuntimeError("conversion failed")
 
     monkeypatch.setattr(cli, "PDFToMarkdownConverter", FailingConverter)
-    assert cli.main([str(tmp_path), "--continue-on-error"]) == 2
+    assert cli.main(
+        [str(tmp_path), "--continue-on-error", "--file-workers", "1"]
+    ) == 2
     assert cli.main([str(first)]) == 2
 
 
@@ -201,3 +206,54 @@ def test_cli_parser_errors_for_missing_input_and_bad_pages(tmp_path):
     with pytest.raises(SystemExit) as invalid:
         cli.main([str(source), "--pages", "0"])
     assert invalid.value.code == 2
+
+
+def test_cli_parallel_folder_conversion_uses_bounded_process_pool(
+    monkeypatch, tmp_path
+):
+    source = tmp_path / "inputs"
+    source.mkdir()
+    for name in ("one.pdf", "two.pdf", "three.pdf", "four.pdf", "five.pdf"):
+        (source / name).touch()
+    output = tmp_path / "output"
+    pool_sizes = []
+    calls = []
+
+    class FakeConverter:
+        def __init__(self, options):
+            self.options = options
+
+        def convert(self, document, target):
+            calls.append((document, target))
+            return SimpleNamespace(markdown=target, pages=1, characters=10)
+
+    class ImmediateFuture:
+        def __init__(self, value):
+            self.value = value
+
+        def result(self):
+            return self.value
+
+        def cancel(self):
+            return False
+
+    class FakeProcessPool:
+        def __init__(self, max_workers):
+            pool_sizes.append(max_workers)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def submit(self, function, *args):
+            return ImmediateFuture(function(*args))
+
+    monkeypatch.setattr(cli, "PDFToMarkdownConverter", FakeConverter)
+    monkeypatch.setattr(cli, "ProcessPoolExecutor", FakeProcessPool)
+    monkeypatch.setattr(cli, "as_completed", lambda futures: list(futures))
+
+    assert cli.main([str(source), "-o", str(output)]) == 0
+    assert pool_sizes == [4]
+    assert len(calls) == 5
