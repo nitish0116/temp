@@ -1,0 +1,16 @@
+FILE "The Beginning After the End - V 03 ch 58-60.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "First Day on the Job"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Confrontation"
+    INDEX 01 15:32:67
+  TRACK 03 AUDIO
+    TITLE "KATHYLN GLAYDER"
+    INDEX 01 19:48:63
+  TRACK 04 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 23:40:64
+  TRACK 05 AUDIO
+    TITLE "Romantic Idiot"
+    INDEX 01 36:09:37

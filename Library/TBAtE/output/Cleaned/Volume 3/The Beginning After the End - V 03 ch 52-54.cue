@@ -1,0 +1,16 @@
+FILE "The Beginning After the End - V 03 ch 52-54.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "Classes and Professors III"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "It’s a Pleasure"
+    INDEX 01 15:52:28
+  TRACK 03 AUDIO
+    TITLE "CYNTHIA GOODSKY"
+    INDEX 01 18:35:33
+  TRACK 04 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 24:43:13
+  TRACK 05 AUDIO
+    TITLE "Match Start"
+    INDEX 01 31:46:31

@@ -1,0 +1,16 @@
+FILE "The Beginning After the End - V 03 ch 43-45.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "Xyrus Academy"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "You Dare?"
+    INDEX 01 18:06:68
+  TRACK 03 AUDIO
+    TITLE "Not Quite as Planned"
+    INDEX 01 34:21:63
+  TRACK 04 AUDIO
+    TITLE "TESSIA ERALITH"
+    INDEX 01 44:20:08
+  TRACK 05 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 48:56:19

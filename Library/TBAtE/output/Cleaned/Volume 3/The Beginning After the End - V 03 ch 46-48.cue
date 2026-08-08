@@ -1,0 +1,16 @@
+FILE "The Beginning After the End - V 03 ch 46-48.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "Wiser than the Wise"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Attention"
+    INDEX 01 13:24:19
+  TRACK 03 AUDIO
+    TITLE "Reminisce"
+    INDEX 01 26:43:34
+  TRACK 04 AUDIO
+    TITLE "TESSIA ERALITH"
+    INDEX 01 33:11:07
+  TRACK 05 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 38:19:58
