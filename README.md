@@ -60,6 +60,7 @@ python -m pip install `
     -r pdf-md\requirements.txt `
     -r cleanup\markdownCleaner\requirements.txt `
     -r md-audio\requirements.txt `
+    -r mp3ToYT\requirements.txt `
     -r md_python\requirements.txt
 ```
 
@@ -82,17 +83,21 @@ python -m pdf_to_markdown "Library\book.epub" -o "Library\markdown"
 ```
 
 PDF input uses the same command. Add `-r` when the input is a directory that
-should be searched recursively.
+should be searched recursively. Folder conversion uses up to four processes by
+default; set `--file-workers 1|2|3|4` to control concurrency.
 
 ### 2. Clean the extracted Markdown
 
 ```powershell
 $env:PYTHONPATH = "cleanup"
-python -m markdownCleaner.cli "Library\markdown" `
+python -m markdownCleaner "Library\markdown" `
     -o "Library\cleaned" `
     --recursive `
     --continue-on-error
 ```
+
+MarkdownCleaner processes up to four folder inputs concurrently by default.
+Use `--file-workers 1` for sequential cleanup.
 
 The cleaner preserves relative subdirectories and writes detailed per-file and
 batch reports.
@@ -116,8 +121,13 @@ python md-audio\md_to_audio.py `
     "Library\audio" `
     --backend edge `
     --voice Aria `
-    --edge-workers 8
+    --edge-workers 8 `
+    --file-workers 4
 ```
+
+For Edge folder input, `--file-workers` controls concurrent files and
+`--edge-workers` controls concurrent synthesis requests within each file. The
+example permits up to 32 Edge requests at once. File workers are capped at 4.
 
 List the voices available for either backend:
 
@@ -129,7 +139,7 @@ python md-audio\md_to_audio.py --backend edge --list-voices --all-voices
 ### 4. Create an MP4
 
 ```powershell
-python mp3ToYT\mp3_to_youtube.py `
+python -m mp3ToYT `
     "Library\audio\book.mp3" `
     "Library\video\book.mp4" `
     --image "Library\cover.jpg" `
@@ -137,7 +147,21 @@ python mp3ToYT\mp3_to_youtube.py `
     --resolution 480p
 ```
 
-The tool can also accept an input directory for batch conversion.
+The tool can also accept an input directory for batch conversion. Folder mode
+uses up to four processes by default; control this with `--file-workers 1|2|3|4`.
+The legacy `python mp3ToYT\mp3_to_youtube.py ...` entry point remains supported.
+
+### Folder concurrency
+
+| Module | Default | Control |
+|---|---:|---|
+| `pdf_to_markdown` | 4 files | `--file-workers 1..4` |
+| `markdownCleaner` | 4 files | `--file-workers 1..4` |
+| Edge `md_to_audio.py` | 4 files | `--file-workers 1..4`, plus `--edge-workers` per file |
+| `mp3ToYT` | 4 files | `--file-workers 1..4` |
+
+Single-file commands do not create a file-process pool. Lower concurrency when
+memory, CPU, network rate limits, or disk throughput become bottlenecks.
 
 ### 5. Move generated media to staging
 

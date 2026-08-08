@@ -26,6 +26,7 @@ python -m pip install `
     -r pdf-md\requirements.txt `
     -r cleanup\markdownCleaner\requirements.txt `
     -r md-audio\requirements.txt `
+    -r mp3ToYT\requirements.txt `
     -r md_python\requirements.txt
 ```
 
@@ -61,8 +62,13 @@ python -m pdf_to_markdown `
     "Library" `
     -o "Library\markdown" `
     --recursive `
-    --continue-on-error
+    --continue-on-error `
+    --file-workers 4
 ```
+
+Folder input uses up to four separate conversion processes by default. Set
+`--file-workers 1|2|3|4`; use `1` for sequential processing or reduce it when
+smart layout/OCR consumes too much memory.
 
 Use smart layout and OCR for difficult or scanned PDFs:
 
@@ -103,8 +109,12 @@ python -m markdownCleaner `
     "Library\markdown" `
     -o "Library\cleaned" `
     --recursive `
-    --continue-on-error
+    --continue-on-error `
+    --file-workers 4
 ```
+
+Folder cleanup uses up to four separate processes by default. Set
+`--file-workers 1|2|3|4`; aggregate reports retain deterministic source order.
 
 Use a custom configuration:
 
@@ -272,8 +282,15 @@ python md-audio\md_to_audio.py `
     "Library\audio" `
     --backend edge `
     --voice Aria `
-    --edge-workers 8
+    --edge-workers 8 `
+    --file-workers 4
 ```
+
+Edge folder conversion defaults to four file processes. `--edge-workers`
+controls concurrent Edge requests inside each process, so the example permits
+up to 32 simultaneous requests. Reduce either setting if Edge throttles,
+disconnects, or the machine runs short of memory. `--file-workers 1` restores
+sequential file processing.
 
 Estimate duration without generating audio:
 
@@ -353,12 +370,19 @@ python md_python\md_to_pdf.py --all
 
 ## 5. MP3 to YouTube-ready MP4
 
-Script: `mp3ToYT\mp3_to_youtube.py`
+Package: `mp3ToYT` (legacy script: `mp3ToYT\mp3_to_youtube.py`)
+
+The package has no third-party Python runtime dependencies, but its documented
+requirements entry can be included in combined installs:
+
+```powershell
+python -m pip install -r mp3ToYT\requirements.txt
+```
 
 Create a static-image video:
 
 ```powershell
-python mp3ToYT\mp3_to_youtube.py `
+python -m mp3ToYT `
     "Library\audio\book.mp3" `
     "Library\video\book.mp4" `
     --image "Library\cover.jpg" `
@@ -371,11 +395,15 @@ python mp3ToYT\mp3_to_youtube.py `
 Batch-process an audio directory:
 
 ```powershell
-python mp3ToYT\mp3_to_youtube.py `
+python -m mp3ToYT `
     "Library\audio" `
     "Library\video" `
     --resolution 480p
 ```
+
+Folder conversion uses up to four separate FFmpeg worker processes by default.
+Set `--file-workers 1|2|3|4` to control concurrency; use `1` for sequential
+conversion or a smaller value when CPU, memory, or disk throughput is limited.
 
 If `--image` is omitted, the generated video uses a black background.
 
@@ -579,7 +607,7 @@ python md-audio\md_to_audio.py `
     --cue-file
 
 # 4. Make video
-python mp3ToYT\mp3_to_youtube.py `
+python -m mp3ToYT `
     "Library\audio\book.mp3" `
     "Library\video\book.mp4" `
     --image "Library\cover.jpg" `

@@ -4,10 +4,26 @@ from pathlib import Path
 from unittest.mock import Mock
 from argparse import Namespace
 import subprocess
+import sys
 
 import pytest
 
 import mp3_to_youtube as app
+
+
+def test_package_module_entrypoint_displays_help():
+    """The package is executable from the repository root with ``-m``."""
+    repository_root = Path(__file__).resolve().parents[2]
+    completed = subprocess.run(
+        [sys.executable, "-m", "mp3ToYT", "--help"],
+        cwd=repository_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0
+    assert "YouTube-ready MP4" in completed.stdout
+    assert "--file-workers" in completed.stdout
 
 
 def test_formatting_naming_and_estimates():

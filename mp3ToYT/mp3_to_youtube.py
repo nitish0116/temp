@@ -52,11 +52,27 @@ AUDIO_CHANNELS = 2
 
 
 def die(msg: str) -> None:
+    """Print a CLI error and terminate with exit code 1.
+
+    Args:
+        msg: Human-readable error message to write to standard error.
+
+    Raises:
+        SystemExit: Always, after printing the message.
+    """
     print(f"\nERROR: {msg}", file=sys.stderr)
     sys.exit(1)
 
 
 def check_tools() -> tuple[str, str]:
+    """Locate the required FFmpeg and FFprobe executables.
+
+    Returns:
+        A tuple containing the resolved FFmpeg and FFprobe command paths.
+
+    Raises:
+        SystemExit: If either executable is unavailable on ``PATH``.
+    """
     ffmpeg = shutil.which("ffmpeg")
     ffprobe = shutil.which("ffprobe")
     if not ffmpeg:
@@ -73,7 +89,16 @@ def check_tools() -> tuple[str, str]:
 
 
 def probe(mp3_path: Path, ffprobe: str) -> dict:
-    """Return audio metadata via ffprobe."""
+    """Read normalized audio and container metadata with FFprobe.
+
+    Args:
+        mp3_path: Audio file to inspect. All supported input formats are valid.
+        ffprobe: FFprobe executable path or command name.
+
+    Returns:
+        Metadata containing duration, size, audio properties, and common tags.
+        Returns an empty dictionary when probing fails.
+    """
     try:
         result = subprocess.run(
             [
@@ -111,11 +136,27 @@ def probe(mp3_path: Path, ffprobe: str) -> dict:
 
 
 def fmt_duration(seconds: float) -> str:
+    """Format a duration as ``Hh MMm SSs``.
+
+    Args:
+        seconds: Duration in seconds.
+
+    Returns:
+        A compact whole-second duration string.
+    """
     s = int(seconds)
     return f"{s//3600}h {(s%3600)//60:02d}m {s%60:02d}s"
 
 
 def fmt_bytes(n: int) -> str:
+    """Format a byte count using binary KB, MB, or GB units.
+
+    Args:
+        n: Non-negative byte count.
+
+    Returns:
+        Human-readable file size text.
+    """
     if n >= 1024 * 1024 * 1024:
         return f"{n / (1024**3):.2f} GB"
     elif n >= 1024 * 1024:
@@ -126,12 +167,31 @@ def fmt_bytes(n: int) -> str:
 
 
 def clean_stem(path: Path) -> str:
+    """Derive readable fallback title text from an audio filename.
+
+    Args:
+        path: Source path whose stem should be cleaned.
+
+    Returns:
+        A title with bracketed release tags, underscores, and excess spacing
+        removed.
+    """
     stem = re.sub(r"[\[\(].*?[\]\)]", "", path.stem)
     stem = stem.replace("_", " ")
     return re.sub(r"\s+", " ", stem).strip(" -_.") or "output"
 
 
 def estimate_size(duration_s: float, resolution: str) -> str:
+    """Estimate the MP4 size from duration and static-video bitrates.
+
+    Args:
+        duration_s: Audio duration in seconds.
+        resolution: Requested resolution preset. Reserved for future per-preset
+            bitrate estimates.
+
+    Returns:
+        Approximate output size in MB or GB.
+    """
     # Static image/black frame: ~0.2-0.5 Mbps video + 0.128 Mbps audio
     video_mbps = 0.30
     audio_mbps = 0.128
@@ -140,7 +200,18 @@ def estimate_size(duration_s: float, resolution: str) -> str:
 
 
 def collect_audio_inputs(path: Path) -> list[Path]:
-    """Collect input audio files from a file path or folder path."""
+    """Collect a single input or supported audio files from a directory.
+
+    Args:
+        path: Audio file or non-recursive input directory.
+
+    Returns:
+        A sorted list of audio paths.
+
+    Raises:
+        SystemExit: If the path is missing or a folder contains no supported
+            audio files.
+    """
     exts = {".mp3", ".wav", ".aac", ".flac", ".m4a", ".ogg"}
     if path.is_file():
         return [path]
@@ -170,6 +241,24 @@ def convert(
     ffmpeg: str,
     image: Path | None = None,
 ) -> None:
+    """Encode one audio file as a YouTube-ready static-video MP4.
+
+    Args:
+        mp3_path: Source audio path; the name is retained for compatibility and
+            other supported audio formats are accepted.
+        output_path: Destination MP4 path.
+        duration_s: Exact output duration in seconds.
+        title: MP4 title metadata.
+        artist: MP4 artist metadata.
+        album: MP4 album metadata.
+        resolution: Key from :data:`RESOLUTIONS`.
+        thumbnail: Optional image attached as MP4 cover artwork.
+        ffmpeg: FFmpeg executable path or command name.
+        image: Optional still image used as the full-frame video background.
+
+    Raises:
+        SystemExit: If FFmpeg fails or produces an empty output.
+    """
 
     size_str, crf = RESOLUTIONS.get(resolution, RESOLUTIONS[DEFAULT_RESOLUTION])
     w, h = size_str.split("x")
@@ -352,6 +441,11 @@ def convert(
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line options for single-file or folder conversion.
+
+    Returns:
+        Parsed command-line namespace.
+    """
     parser = argparse.ArgumentParser(
         description="Convert a TTS/audiobook MP3 to a YouTube-ready MP4.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -416,7 +510,17 @@ Examples:
 def _resolve_outputs(
     input_path: Path, inputs: list[Path], raw_output: Path | None
 ) -> tuple[bool, Path | None, Path | None]:
-    """Resolve either a batch directory or a single MP4 output path."""
+    """Resolve either a batch directory or a single MP4 output path.
+
+    Args:
+        input_path: Resolved source file or directory.
+        inputs: Discovered audio inputs.
+        raw_output: Optional user-supplied destination.
+
+    Returns:
+        ``(is_batch, output_directory, output_file)`` with the inapplicable
+        destination represented by ``None``.
+    """
     is_batch = len(inputs) > 1 or input_path.is_dir()
     if is_batch:
         output_dir = input_path if raw_output is None else raw_output
@@ -448,7 +552,11 @@ def _convert_audio_file(
     thumbnail: Path | None,
     image: Path | None,
 ) -> tuple[bool, str | None]:
-    """Probe and convert one file in either the main or a worker process."""
+    """Probe and convert one file in either the main or a worker process.
+
+    Returns:
+        A success flag and an optional error description.
+    """
     print(f"Analysing: {src.name} ...")
     info = probe(src, ffprobe)
     if not info or info.get("duration_s", 0) == 0:
@@ -506,7 +614,11 @@ def _run_parallel_batch(
     thumbnail: Path | None,
     image: Path | None,
 ) -> int:
-    """Convert a folder batch in up to four isolated worker processes."""
+    """Convert a folder batch in up to four isolated worker processes.
+
+    Returns:
+        Zero when every conversion succeeds, otherwise one.
+    """
     worker_count = min(file_workers, len(inputs), 4)
     print(
         f"Converting {len(inputs)} audio files with "
@@ -560,6 +672,11 @@ def _run_parallel_batch(
 
 
 def main() -> int:
+    """Validate CLI inputs and execute single-file or folder conversion.
+
+    Returns:
+        Zero on success and one when validation or any conversion fails.
+    """
     args = parse_args()
     file_workers = getattr(args, "file_workers", 4)
     if file_workers < 1 or file_workers > 4:

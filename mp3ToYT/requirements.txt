@@ -1,0 +1,5 @@
+# mp3ToYT has no third-party Python runtime dependencies.
+#
+# FFmpeg and FFprobe are system executables and must be available on PATH.
+# Windows: winget install ffmpeg
+
