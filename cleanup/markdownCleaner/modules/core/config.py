@@ -41,6 +41,7 @@ _BOOLEAN_KEYS = (
     "contextual_real_words.enabled",
     "context_validator.enabled",
     "context_validator.local_files_only",
+    "classifier_dataset.enabled",
 )
 _CORRECTION_KEYS = (
     "zero_to_o",
@@ -66,6 +67,7 @@ _MAPPING_SECTIONS = (
     "page_artifacts",
     "contextual_real_words",
     "context_validator",
+    "classifier_dataset",
 )
 
 

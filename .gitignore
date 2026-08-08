@@ -21,6 +21,7 @@ mp3ToYT/**/*.txt
 !cleanup/markdownCleaner/data/*.json
 !cleanup/markdownCleaner/tests/fixtures/*.json
 !media-manifest.json
+!classifier/data/broken_word_training.json
 !md-audio/library-hyphen-review.json
 !md-audio/library-hyphen-review-ambiguous.json
 !md-audio/library-hyphen-review-cross-evidence.json

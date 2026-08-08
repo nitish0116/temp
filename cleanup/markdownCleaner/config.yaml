@@ -120,7 +120,12 @@ context_validator:
   # Joined localized pseudo-log-likelihood must beat the spaced form by this.
   merge_margin: 0.35
   device: "auto"
-  local_files_only: True
+  local_files_only: true
+
+classifier_dataset:
+  # Capture transformer suggestions for human review and classifier training.
+  enabled: true
+  output: "../../classifier/data/broken_word_training.json"
 
 vocabulary_candidates:
   # Discover repeated unknown terms, but never modify custom_words.json.

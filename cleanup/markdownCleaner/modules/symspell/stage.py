@@ -19,6 +19,7 @@ from .engine import SymSpellEngine
 from .frequency import WordfreqScorer
 from .ocr_candidates import OCRBoundaryCandidates
 from .settings import SymSpellSettings
+from .training_data import BoundaryTrainingDataWriter
 from ..core.stage import PipelineStage, StageResult
 from ..markdown.segmenter import MarkdownSegment, process_editable_spans
 
@@ -93,8 +94,19 @@ class SymSpellStage(PipelineStage):
                     self.context_validator_settings.candidate_file
                 )
             )
+            training_writer = None
+            if context.config.get("classifier_dataset.enabled", False) is True:
+                output = context.config.get(
+                    "classifier_dataset.output",
+                    "../../classifier/data/broken_word_training.json",
+                )
+                training_writer = BoundaryTrainingDataWriter(
+                    context.config.resolve_path(str(output)),
+                    source_file=context.source_file,
+                )
             self.context_validator = BoundaryContextValidator(
-                self.context_validator_settings
+                self.context_validator_settings,
+                training_writer=training_writer,
             )
         for word, frequency in self.dictionary.words.items():
             if frequency >= self.settings.minimum_dictionary_frequency:

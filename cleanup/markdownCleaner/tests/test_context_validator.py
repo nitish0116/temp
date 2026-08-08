@@ -146,6 +146,21 @@ def test_context_validator_accepts_and_rejects_same_pair_by_sentence():
     assert "margin=-2.800" in rejected.rejected[0].reason
 
 
+def test_training_data_failure_does_not_fail_boundary_validation(caplog):
+    class FailingWriter:
+        def add(self, _examples):
+            raise PermissionError(5, "Access is denied")
+
+    merger = _merger()
+    merger.context_validator.training_writer = FailingWriter()
+
+    with caplog.at_level("WARNING", logger="ocr_cleanup"):
+        result = merger.merge_inline("It happened be cause they left.")
+
+    assert result.text == "It happened because they left."
+    assert "collection failed; cleaning will continue" in caplog.text
+
+
 def test_reviewed_and_protected_decisions_bypass_model_scoring():
     class UnexpectedScorer:
         def score(self, _variants):
