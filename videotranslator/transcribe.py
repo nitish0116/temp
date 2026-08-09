@@ -6,6 +6,15 @@ import argparse
 import json
 from pathlib import Path
 
+try:
+    import truststore
+
+    truststore.inject_into_ssl()
+except ImportError:
+    # Public Python installs generally work with certifi; truststore is needed on
+    # machines whose proxy or corporate CA is registered only with the OS.
+    pass
+
 from faster_whisper import WhisperModel
 
 
