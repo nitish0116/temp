@@ -19,6 +19,7 @@ source video
   -> approved script
   -> local target-language TTS clips and dub manifest
   -> aligned dialogue, ducked source mix, subtitles, and final MP4
+  -> automatic final quality gate and report
 ```
 
 `manifest.json` records commands, timestamps, status, and output paths. This makes
@@ -188,6 +189,19 @@ python assemble_dub.py episode.mp4 outputs/dub/dub-manifest.json `
   -o outputs/final/episode.en-dubbed.mp4 --subtitles episode.en.srt
 ```
 
+## `qa_final.py`
+
+- `probe_media(...)` verifies program duration and required media streams.
+- `audio_levels(...)` detects unsafe peaks and out-of-range program loudness.
+- `stem_leakage(...)` calculates a bounded correlation estimate between isolated
+  vocals and accompaniment without loading the whole episode into memory.
+- `normalize_mix(...)` applies a safe bounded gain correction when required.
+- `evaluate(...)` combines clip availability, tempo, speaker/voice consistency,
+  streams, duration, loudness, and leakage into an automatic pass/fail decision.
+
+Warnings remain auditable without blocking delivery; structural, timing, missing
+media, or audio-safety failures stop the pipeline without requesting user review.
+
 ## `diarize_speakers.py`
 
 Performs local acoustic speaker clustering before TTS.
@@ -214,6 +228,7 @@ files under `schemas/` define boundaries between stages:
 - `approved-script.schema.json`: automatically approved text and decision state.
 - `dub-manifest.schema.json`: generated voice clips and alignment metadata.
 - `manifest.schema.json`: stage lifecycle, commands, errors, and artifact paths.
+- `final-qa.schema.json`: automatic final checks, findings, and pass/fail state.
 
 Schemas use JSON Schema draft 2020-12. Generated output JSON is deliberately kept
 outside Git; schemas and the example configuration are versioned.

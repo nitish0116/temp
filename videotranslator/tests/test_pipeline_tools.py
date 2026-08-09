@@ -9,6 +9,7 @@ from auto_prepare_script import make_approval, nllb_code, passes_gate, quality_m
 from generate_dub import generate_dub, rate_to_length_scale
 from diarize_speakers import assign_voices, voice_style
 from assemble_dub import build_alignment_graph, tempo_filters
+from qa_final import stem_leakage
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
 
@@ -190,3 +191,11 @@ def test_alignment_speeds_only_clips_that_overrun_their_window():
     assert "adelay=1000:all=1" in graph
     assert "adelay=4000:all=1" in graph
     assert tempo_filters(1.0) == []
+
+
+def test_final_qa_stage_is_runnable(tmp_path: Path):
+    """The orchestrator exposes automatic QA after final assembly."""
+    config = {"project_id": "x", "input_video": str(tmp_path / "x.mp4"), "output_root": str(tmp_path), "translation": {}}
+    command, outputs = stage_command("final_qa", config, paths(config))
+    assert command[1].endswith("qa_final.py")
+    assert outputs == [paths(config)["final_qa"]]

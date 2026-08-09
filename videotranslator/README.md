@@ -23,6 +23,7 @@ See [CODE_REFERENCE.md](CODE_REFERENCE.md) for file-level APIs, examples, and er
 | Alignment | Voice clips | Timed dialogue track | Implemented |
 | Audio mix | Dialogue + source audio | English program audio | Implemented |
 | Export | Video + English audio | English MP4 | Implemented |
+| Final QA | Dubbed MP4 + manifests + stems | Automatic pass/fail report | Implemented |
 
 No user review is required. The primary model independently creates a
 source-language transcript and an English translation. If either fails confidence,
@@ -126,6 +127,8 @@ segment IDs connect generated speech to timing and decision provenance.
 - `qa_transcript.py`: deterministic timing checks.
 - `burn_subtitles.py`: optional top-subtitle diagnostic render.
 - `mux_subtitles.py`: selectable English subtitle track without media re-encoding.
+- `qa_final.py`: automatic clip, timing, speaker, stream, duration, loudness, and
+  stem-leakage checks with safe gain normalization when required.
 
 Example automatic preparation:
 
@@ -150,7 +153,7 @@ vocal stem is retained as an artifact but excluded from the translated export.
 Run the complete pipeline with:
 
 ```powershell
-python pipeline.py pipeline.example.json run --through assemble
+python pipeline.py pipeline.example.json run --through final_qa
 ```
 
 For a non-English target, set `translation.target_language`. Common ISO language

@@ -22,6 +22,7 @@ RUNNABLE_STAGES = (
     "review",
     "subtitle_mux",
     "assemble",
+    "final_qa",
 )
 STAGES = RUNNABLE_STAGES
 
@@ -82,6 +83,7 @@ def paths(config: dict[str, Any]) -> dict[str, Path]:
         "dub_manifest": root / "dub" / "dub-manifest.json",
         "dubbed": root / "final" / f"{stem}.{target_language}-dubbed.mp4",
         "assembly_report": root / "final" / f"{stem}.{target_language}-dubbed.assembly.json",
+        "final_qa": root / "qa" / f"{stem}.{target_language}-dubbed.qa.json",
     }
 
 
@@ -168,6 +170,10 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
         dubbing = config.get("dubbing", {})
         command = [python, str(HERE / "assemble_dub.py"), str(artifact_paths["video"]), str(artifact_paths["dub_manifest"]), "-o", str(artifact_paths["dubbed"]), "--subtitles", str(artifact_paths["srt"]), "--background", str(artifact_paths["accompaniment"]), "--source-volume", str(dubbing.get("source_volume", 0.8)), "--dub-volume", str(dubbing.get("dub_volume", 1.0))]
         return command, [artifact_paths["dubbed"], artifact_paths["assembly_report"]]
+    if stage == "final_qa":
+        quality = config.get("quality", {})
+        command = [python, str(HERE / "qa_final.py"), str(artifact_paths["dubbed"]), str(artifact_paths["dub_manifest"]), str(artifact_paths["diarized_script"]), str(artifact_paths["assembly_report"]), str(artifact_paths["vocals"]), str(artifact_paths["accompaniment"]), "-o", str(artifact_paths["final_qa"]), "--maximum-tempo", str(quality.get("maximum_tempo_factor", 3.0)), "--maximum-leakage", str(quality.get("maximum_vocal_leakage", 0.35))]
+        return command, [artifact_paths["final_qa"]]
     raise ValueError(f"Unknown stage: {stage}")
 
 

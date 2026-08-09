@@ -29,7 +29,9 @@
         "maximum_segment_duration": {"type": "number", "exclusiveMinimum": 0},
         "maximum_subtitle_characters": {"type": "integer", "minimum": 1},
         "maximum_low_confidence_ratio": {"type": "number", "minimum": 0, "maximum": 1},
-        "maximum_rejection_ratio": {"type": "number", "minimum": 0, "maximum": 1}
+        "maximum_rejection_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "maximum_tempo_factor": {"type": "number", "minimum": 1},
+        "maximum_vocal_leakage": {"type": "number", "minimum": 0, "maximum": 1}
       },
       "additionalProperties": false
     },

@@ -14,7 +14,9 @@
     "maximum_segment_duration": 12.0,
     "maximum_subtitle_characters": 84,
     "maximum_low_confidence_ratio": 0.2,
-    "maximum_rejection_ratio": 0.05
+    "maximum_rejection_ratio": 0.05,
+    "maximum_tempo_factor": 3.0,
+    "maximum_vocal_leakage": 0.35
   },
   "diarization": {
     "maximum_speakers": 10,

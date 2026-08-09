@@ -108,7 +108,9 @@ def assemble_dub(
     if subtitles:
         subtitle_index = 3 if background else 2
         export_command += ["-map", f"{subtitle_index}:0", "-c:s", "mov_text", "-metadata:s:s:0", f"language={manifest['target_language']}"]
-    export_command += ["-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", str(output)]
+    # Do not use -shortest: subtitle streams commonly end before the program and
+    # would silently truncate the final video at the last subtitle cue.
+    export_command += ["-c:v", "copy", "-c:a", "aac", "-b:a", "192k", str(output)]
     subprocess.run(export_command, check=True)
 
     report = {
