@@ -1,3 +1,5 @@
+"""Focused unit tests for deterministic video-translator pipeline helpers."""
+
 import json
 from pathlib import Path
 
@@ -8,6 +10,7 @@ from qa_transcript import analyze
 
 
 def test_split_words_uses_pause_and_duration_boundaries():
+    """A one-second speech pause starts a new subtitle cue."""
     words = [
         {"start": 0.0, "end": 0.5, "word": "Hello"},
         {"start": 0.6, "end": 1.0, "word": " world"},
@@ -23,6 +26,7 @@ def test_split_words_uses_pause_and_duration_boundaries():
 
 
 def test_qa_reports_invalid_long_and_overlapping_segments():
+    """QA reports every independent timing fault in a transcript."""
     transcript = {
         "segments": [
             {"start": 0.0, "end": 3.0, "text": "One"},
@@ -42,6 +46,7 @@ def test_qa_reports_invalid_long_and_overlapping_segments():
 
 
 def test_approval_draft_carries_qa_notes():
+    """Approval drafts preserve QA findings beside the affected segment."""
     transcript = {"segments": [{"start": 1.0, "end": 20.0, "text": "Review me"}]}
     qa_report = {
         "issues": [{"type": "long_duration", "segment": 0, "duration": 19.0}]
@@ -55,6 +60,7 @@ def test_approval_draft_carries_qa_notes():
 
 
 def test_pipeline_config_paths_are_relative_to_config(tmp_path: Path):
+    """Relative configuration paths resolve from the configuration directory."""
     config_path = tmp_path / "pipeline.json"
     config_path.write_text(
         json.dumps(

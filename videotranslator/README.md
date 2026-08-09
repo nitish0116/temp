@@ -4,6 +4,9 @@ This module converts a source-language video into a reviewed English transcript,
 English subtitles, and eventually an English-dubbed video. Every automated run is
 controlled by one JSON configuration and recorded in an output manifest.
 
+For file-by-file implementation details, public helper behavior, failure modes, and
+small usage examples, see [CODE_REFERENCE.md](CODE_REFERENCE.md).
+
 ## Pipeline
 
 | Stage | Input | Output | State |

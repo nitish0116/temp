@@ -15,6 +15,15 @@ def escape_filter_path(path: Path) -> str:
 
 
 def burn_subtitles(video: Path, subtitles: Path, output: Path) -> None:
+    """Burn an SRT at the top of a video while copying the original audio.
+
+    This review render places generated text above hardcoded source subtitles,
+    making timing and translation comparisons possible in any video player.
+
+    Example::
+
+        burn_subtitles(Path("episode.mp4"), Path("episode.en.srt"), Path("review.mp4"))
+    """
     if not video.is_file():
         raise FileNotFoundError(f"Input video not found: {video}")
     if not subtitles.is_file():
@@ -57,6 +66,7 @@ def burn_subtitles(video: Path, subtitles: Path, output: Path) -> None:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse source video, subtitle, and output paths."""
     parser = argparse.ArgumentParser(
         description="Burn an SRT at the top of a video for timing review."
     )
@@ -67,6 +77,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Create a top-subtitle review video from command-line arguments."""
     args = parse_args()
     output = args.output or Path("outputs/review") / f"{args.video.stem}.top-subs.mp4"
     burn_subtitles(args.video, args.subtitles, output)

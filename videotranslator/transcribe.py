@@ -19,6 +19,13 @@ from faster_whisper import WhisperModel
 
 
 def srt_timestamp(seconds: float) -> str:
+    """Convert seconds to the ``HH:MM:SS,mmm`` format required by SRT.
+
+    Example::
+
+        >>> srt_timestamp(65.25)
+        '00:01:05,250'
+    """
     milliseconds = round(seconds * 1000)
     hours, remainder = divmod(milliseconds, 3_600_000)
     minutes, remainder = divmod(remainder, 60_000)
@@ -27,6 +34,7 @@ def srt_timestamp(seconds: float) -> str:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse transcription model, language, task, and output options."""
     parser = argparse.ArgumentParser(
         description="Transcribe audio and create TXT, JSON, and SRT files."
     )
@@ -46,6 +54,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Transcribe or translate one media file and write TXT, JSON, and SRT."""
     args = parse_args()
     if not args.input.is_file():
         raise FileNotFoundError(f"Input file not found: {args.input}")

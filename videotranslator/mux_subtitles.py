@@ -9,6 +9,15 @@ from pathlib import Path
 
 
 def mux_subtitles(video: Path, subtitles: Path, output: Path) -> None:
+    """Mux SRT text into an MP4 as a selectable English subtitle track.
+
+    Video and audio streams are copied without quality loss; only the subtitle
+    stream is converted to MP4-compatible ``mov_text``.
+
+    Example::
+
+        mux_subtitles(Path("episode.mp4"), Path("episode.en.srt"), Path("final.mp4"))
+    """
     if not video.is_file():
         raise FileNotFoundError(f"Input video not found: {video}")
     if not subtitles.is_file():
@@ -49,6 +58,7 @@ def mux_subtitles(video: Path, subtitles: Path, output: Path) -> None:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse source video, SRT, and optional output paths."""
     parser = argparse.ArgumentParser(
         description="Add SRT subtitles to an MP4 without re-encoding video or audio."
     )
@@ -59,6 +69,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Create a selectable-subtitle MP4 from command-line arguments."""
     args = parse_args()
     output = args.output or Path("outputs/subtitled") / (
         f"{args.video.stem}.english-subs.mp4"

@@ -8,6 +8,19 @@ from pathlib import Path
 
 
 def create_draft(project_id: str, transcript: dict, qa_report: dict | None) -> dict:
+    """Convert a transcript and optional QA report into an editable draft.
+
+    Stable IDs such as ``seg-0001`` allow downstream TTS artifacts to refer to
+    dialogue even after a reviewer corrects its English text.
+
+    Example::
+
+        draft = create_draft(
+            "episode-1",
+            {"segments": [{"start": 1, "end": 2, "text": "Hello"}]},
+            None,
+        )
+    """
     segments = transcript.get("segments")
     if not isinstance(segments, list):
         raise ValueError("Transcript must contain a segments array")
@@ -59,6 +72,7 @@ def create_draft(project_id: str, transcript: dict, qa_report: dict | None) -> d
 
 
 def main() -> None:
+    """Create an approval-draft JSON file from command-line paths."""
     parser = argparse.ArgumentParser(description="Create an English script review draft.")
     parser.add_argument("transcript", type=Path, help="Translated transcript JSON")
     parser.add_argument("--project-id", required=True)

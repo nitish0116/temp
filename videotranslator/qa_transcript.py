@@ -8,6 +8,19 @@ from pathlib import Path
 
 
 def analyze(transcript: dict, maximum_duration: float) -> dict:
+    """Return timing and content issues found in a transcript dictionary.
+
+    The function checks overlaps, non-positive durations, overly long cues, and
+    empty text without modifying its input.
+
+    Example::
+
+        report = analyze(
+            {"segments": [{"start": 0, "end": 2, "text": "Hello"}]},
+            maximum_duration=8,
+        )
+        assert report["passed"]
+    """
     segments = transcript.get("segments")
     if not isinstance(segments, list):
         raise ValueError("Transcript must contain a segments array")
@@ -44,6 +57,7 @@ def analyze(transcript: dict, maximum_duration: float) -> dict:
 
 
 def main() -> None:
+    """Analyze a transcript JSON file and write its QA report."""
     parser = argparse.ArgumentParser(description="Check transcript segment timing.")
     parser.add_argument("transcript", type=Path)
     parser.add_argument("-o", "--output", type=Path, required=True)

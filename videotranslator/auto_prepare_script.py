@@ -19,7 +19,16 @@ from transcribe import srt_timestamp
 
 
 def split_words(words: list[dict], maximum_duration: float, maximum_chars: int) -> list[list[dict]]:
-    """Split words at pauses, duration limits, or readable subtitle lengths."""
+    """Split words at pauses, duration limits, or readable subtitle lengths.
+
+    Example::
+
+        words = [
+            {"start": 0.0, "end": 0.4, "word": "Hello"},
+            {"start": 1.6, "end": 2.0, "word": " again"},
+        ]
+        assert len(split_words(words, 8.0, 84)) == 2
+    """
     chunks: list[list[dict]] = []
     current: list[dict] = []
     for word in words:
@@ -43,6 +52,12 @@ def transcribe_and_decide(
     maximum_duration: float,
     maximum_chars: int,
 ) -> tuple[dict, dict, list[str]]:
+    """Translate media and make timing, silence, and confidence decisions.
+
+    Returns a transcript, an audit trail of automated decisions, and one review
+    note per accepted cue. The model uses word timestamps and VAD so subtitle
+    boundaries follow actual speech instead of spanning silence.
+    """
     model = WhisperModel(model_name, device="cpu", compute_type="int8")
     iterator, info = model.transcribe(
         str(input_path),
@@ -123,6 +138,17 @@ def transcribe_and_decide(
 
 
 def make_approval(project_id: str, transcript: dict, notes: list[str]) -> dict:
+    """Build a draft approval document from cleaned transcript segments.
+
+    Example::
+
+        draft = make_approval(
+            "episode-1",
+            {"segments": [{"start": 0, "end": 1, "text": "Hello"}]},
+            [""],
+        )
+        assert draft["approval"]["status"] == "draft"
+    """
     return {
         "schema_version": 1,
         "project_id": project_id,
@@ -148,6 +174,7 @@ def make_approval(project_id: str, transcript: dict, notes: list[str]) -> dict:
 
 
 def write_srt(path: Path, segments: list[dict]) -> None:
+    """Serialize timed segment dictionaries as a UTF-8 SRT file."""
     content = "\n\n".join(
         f"{index}\n{srt_timestamp(item['start'])} --> {srt_timestamp(item['end'])}\n{item['text']}"
         for index, item in enumerate(segments, start=1)
@@ -156,6 +183,7 @@ def write_srt(path: Path, segments: list[dict]) -> None:
 
 
 def main() -> None:
+    """Run automatic translation, repair, and draft generation from the CLI."""
     parser = argparse.ArgumentParser(
         description="Automatically repair timing and create an English approval draft."
     )

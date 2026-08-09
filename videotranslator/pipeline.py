@@ -23,10 +23,16 @@ STAGES = RUNNABLE_STAGES + ("approve", "tts", "align", "mix", "export")
 
 
 def now() -> str:
+    """Return the current UTC time as an ISO-8601 manifest timestamp."""
     return datetime.now(timezone.utc).isoformat()
 
 
 def load_config(path: Path) -> dict[str, Any]:
+    """Load pipeline JSON and resolve its media paths relative to the file.
+
+    Example:: if ``config/pipeline.json`` contains ``../episode.mp4``, the
+    returned ``input_video`` is an absolute path beside the ``config`` folder.
+    """
     config = json.loads(path.read_text(encoding="utf-8"))
     required = ("project_id", "input_video", "output_root")
     missing = [key for key in required if not config.get(key)]
@@ -39,6 +45,11 @@ def load_config(path: Path) -> dict[str, Any]:
 
 
 def paths(config: dict[str, Any]) -> dict[str, Path]:
+    """Derive every deterministic artifact path for a pipeline project.
+
+    Example:: ``paths(config)["srt"]`` points to the canonical repaired English
+    subtitle file consumed by both review rendering and final subtitle muxing.
+    """
     video = Path(config["input_video"])
     root = Path(config["output_root"])
     stem = video.stem
@@ -59,6 +70,7 @@ def paths(config: dict[str, Any]) -> dict[str, Path]:
 
 
 def load_manifest(config: dict[str, Any], artifact_paths: dict[str, Path]) -> dict:
+    """Load an existing run manifest or initialize all known pipeline stages."""
     manifest_path = artifact_paths["manifest"]
     if manifest_path.exists():
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -76,12 +88,18 @@ def load_manifest(config: dict[str, Any], artifact_paths: dict[str, Path]) -> di
 
 
 def save_manifest(path: Path, manifest: dict) -> None:
+    """Update the manifest timestamp and persist it as formatted JSON."""
     path.parent.mkdir(parents=True, exist_ok=True)
     manifest["updated_at"] = now()
     path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
 def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> tuple[list[str], list[Path]]:
+    """Build a subprocess command and expected outputs for one runnable stage.
+
+    Keeping command construction separate makes stage behavior inspectable and
+    testable without launching FFmpeg or Whisper.
+    """
     python = sys.executable
     if stage == "extract":
         return [python, str(HERE / "extract_audio.py"), str(artifact_paths["video"]), "-o", str(artifact_paths["audio"])], [artifact_paths["audio"]]
@@ -103,6 +121,11 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
 
 
 def run(config_path: Path, through: str, force: bool) -> None:
+    """Run ordered stages through ``through`` and record their manifest state.
+
+    Completed stages with all expected artifacts are skipped unless ``force`` is
+    true. A failed subprocess is recorded before the exception is re-raised.
+    """
     config = load_config(config_path)
     artifact_paths = paths(config)
     if not artifact_paths["video"].is_file():
@@ -139,6 +162,7 @@ def run(config_path: Path, through: str, force: bool) -> None:
 
 
 def show_status(config_path: Path) -> None:
+    """Print the recorded state of runnable and planned stages."""
     config = load_config(config_path)
     artifact_paths = paths(config)
     manifest = load_manifest(config, artifact_paths)
@@ -148,6 +172,7 @@ def show_status(config_path: Path) -> None:
 
 
 def main() -> None:
+    """Dispatch the pipeline ``run`` or ``status`` command."""
     parser = argparse.ArgumentParser(description="Structured video translation pipeline")
     parser.add_argument("config", type=Path, help="Pipeline configuration JSON")
     subparsers = parser.add_subparsers(dest="command", required=True)
