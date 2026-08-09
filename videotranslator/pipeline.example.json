@@ -4,10 +4,11 @@
   "input_video": "sample Data/EP.1.v0.1639315485.720p.mp4",
   "output_root": "outputs/noble-my-love-episode-1",
   "translation": {
-    "source_language": "ko",
+    "source_language": null,
     "target_language": "en",
     "model": "small",
-    "fallback_model": "medium"
+    "fallback_model": "medium",
+    "translation_model": "facebook/nllb-200-distilled-600M"
   },
   "quality": {
     "maximum_segment_duration": 12.0,
@@ -16,9 +17,11 @@
     "maximum_rejection_ratio": 0.05
   },
   "dubbing": {
-    "enabled": false,
-    "provider": null,
+    "enabled": true,
+    "provider": "piper",
     "voice": null,
+    "rate": "+0%",
+    "retries": 3,
     "preserve_background_audio": true
   }
 }

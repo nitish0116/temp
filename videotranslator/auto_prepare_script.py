@@ -198,6 +198,7 @@ def run_candidate(
         "score": source_metrics["score"] + english_metrics["score"],
         "source": source,
         "english": english,
+        "source_notes": source_notes,
         "english_notes": english_notes,
         "report": {
             "model": model_name,
@@ -207,6 +208,68 @@ def run_candidate(
             "source_decisions": source_decisions,
             "english_decisions": english_decisions,
         },
+    }
+
+
+NLLB_LANGUAGE_CODES = {
+    "ar": "arb_Arab", "de": "deu_Latn", "en": "eng_Latn", "es": "spa_Latn",
+    "fr": "fra_Latn", "hi": "hin_Deva", "id": "ind_Latn", "it": "ita_Latn",
+    "ja": "jpn_Jpan", "ko": "kor_Hang", "pt": "por_Latn", "ru": "rus_Cyrl",
+    "th": "tha_Thai", "tr": "tur_Latn", "vi": "vie_Latn", "zh": "zho_Hans",
+}
+
+
+def nllb_code(language: str, explicit_code: str | None) -> str:
+    """Resolve a common language/locale to an NLLB code or use an explicit code."""
+    if explicit_code:
+        return explicit_code
+    base = language.lower().replace("_", "-").split("-", 1)[0]
+    if base not in NLLB_LANGUAGE_CODES:
+        raise ValueError(
+            f"No built-in NLLB mapping for {language!r}; provide its model-language code"
+        )
+    return NLLB_LANGUAGE_CODES[base]
+
+
+def translate_target(
+    source_transcript: dict,
+    target_language: str,
+    model_name: str,
+    source_model_language: str | None,
+    target_model_language: str | None,
+) -> dict:
+    """Translate finalized source segments when the target is not English.
+
+    English uses Whisper's native translation elsewhere. Other languages use a
+    local NLLB model while preserving source cue boundaries.
+    """
+    from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+    source_language = source_transcript["language"]
+    source_code = nllb_code(source_language, source_model_language)
+    target_code = nllb_code(target_language, target_model_language)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, src_lang=source_code)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    texts = [segment["text"] for segment in source_transcript["segments"]]
+    translated: list[str] = []
+    target_token = tokenizer.convert_tokens_to_ids(target_code)
+    for start in range(0, len(texts), 16):
+        inputs = tokenizer(
+            texts[start : start + 16], return_tensors="pt", padding=True, truncation=True
+        )
+        generated = model.generate(**inputs, forced_bos_token_id=target_token, max_new_tokens=256)
+        translated.extend(tokenizer.batch_decode(generated, skip_special_tokens=True))
+    if len(translated) != len(texts) or any(not text.strip() for text in translated):
+        raise RuntimeError("Target-language translation returned incomplete segments")
+    return {
+        "language": source_language,
+        "language_probability": source_transcript["language_probability"],
+        "task": "translate",
+        "output_language": target_language,
+        "segments": [
+            {"start": source["start"], "end": source["end"], "text": text.strip()}
+            for source, text in zip(source_transcript["segments"], translated)
+        ],
     }
 
 
@@ -266,6 +329,10 @@ def main() -> None:
     parser.add_argument("--model", default="small")
     parser.add_argument("--fallback-model")
     parser.add_argument("--language", help="Source language code")
+    parser.add_argument("--target-language", default="en")
+    parser.add_argument("--translation-model", default="facebook/nllb-200-distilled-600M")
+    parser.add_argument("--source-model-language")
+    parser.add_argument("--target-model-language")
     parser.add_argument("--maximum-duration", type=float, default=8.0)
     parser.add_argument("--maximum-characters", type=int, default=84)
     parser.add_argument("--maximum-low-confidence-ratio", type=float, default=0.2)
@@ -305,12 +372,19 @@ def main() -> None:
         )
         raise RuntimeError(f"No model candidate passed the automatic quality gate: {summary}")
     selected = min(passing, key=lambda candidate: candidate["score"])
-    transcript = selected["english"]
-    quality_notes = selected["english_notes"]
+    if args.target_language.lower() == "en":
+        transcript = selected["english"]
+        quality_notes = selected["english_notes"]
+    else:
+        transcript = translate_target(
+            selected["source"], args.target_language, args.translation_model,
+            args.source_model_language, args.target_model_language,
+        )
+        quality_notes = selected["source_notes"]
     args.output_dir.mkdir(parents=True, exist_ok=True)
     stem = args.input.stem
-    transcript_path = args.output_dir / f"{stem}.auto.en.json"
-    srt_path = args.output_dir / f"{stem}.auto.en.srt"
+    transcript_path = args.output_dir / f"{stem}.auto.{args.target_language}.json"
+    srt_path = args.output_dir / f"{stem}.auto.{args.target_language}.srt"
     decisions_path = args.output_dir / f"{stem}.decisions.json"
     source_path = args.output_dir / f"{stem}.source.json"
     approval_path = args.output_dir / f"{stem}.approved.json"
@@ -319,6 +393,8 @@ def main() -> None:
     decisions = {
         "automatic": True,
         "selected_model": selected["model"],
+        "detected_source_language": selected["source"]["language"],
+        "target_language": args.target_language,
         "thresholds": {
             "maximum_low_confidence_ratio": args.maximum_low_confidence_ratio,
             "maximum_rejection_ratio": args.maximum_rejection_ratio,

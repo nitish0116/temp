@@ -17,7 +17,7 @@ See [CODE_REFERENCE.md](CODE_REFERENCE.md) for file-level APIs, examples, and er
 | QA | English transcript | Timing report | Implemented |
 | Diagnostic render | Video + SRT | Optional top-subtitle video | Implemented |
 | Subtitle mux | Video + SRT | Selectable English subtitles | Implemented |
-| Voice generation | Approved script | English clips | Planned |
+| Voice generation | Approved script | Local target-language clips | Implemented |
 | Alignment | Voice clips | Timed dialogue track | Planned |
 | Audio mix | Dialogue + source audio | English program audio | Planned |
 | Export | Video + English audio | English MP4 | Planned |
@@ -102,14 +102,17 @@ Schemas under `schemas/` define:
 - pipeline manifests;
 - future generated dub clips.
 
-The approved script is the only input accepted by the future TTS stage. Stable
+The approved script is the only input accepted by the TTS stage. Stable
 segment IDs connect generated speech to timing and decision provenance.
 
 ## Standalone tools
 
 - `extract_audio.py`: normalize audio for speech recognition.
 - `transcribe.py`: simple ad hoc transcription or direct translation.
-- `auto_prepare_script.py`: adaptive dual-pass translation and automatic approval.
+- `auto_prepare_script.py`: adaptive dual-pass translation and automatic approval;
+  source language is detected when omitted, and target language defaults to `en`.
+- `generate_dub.py`: local Piper voice selection, model caching, clip generation,
+  retries, duration measurement, and dub-manifest creation.
 - `qa_transcript.py`: deterministic timing checks.
 - `burn_subtitles.py`: optional top-subtitle diagnostic render.
 - `mux_subtitles.py`: selectable English subtitle track without media re-encoding.
@@ -126,7 +129,13 @@ Example automatic preparation:
 
 ## Dubbing design
 
-The next milestone consumes the approved script and generates one English clip per
-segment. Alignment will pad or safely time-stretch clips. Mixing should preserve
+Voice generation now produces one cached target-language WAV per segment. The next
+milestone is alignment, which will pad or safely time-stretch clips. Mixing should preserve
 ambience and music using source separation; layering English over intact source
 dialogue would leave both languages audible.
+
+For a non-English target, set `translation.target_language`. Common ISO language
+codes are mapped to local NLLB codes; uncommon languages can supply
+`source_model_language` and `target_model_language`. Piper chooses a matching voice
+automatically, or `dubbing.voice` can name one explicitly. Translation and synthesis
+remain local after public model files are downloaded.

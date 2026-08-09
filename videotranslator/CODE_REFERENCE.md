@@ -16,7 +16,8 @@ source video
   -> QA report
   -> review video / selectable-subtitle video
   -> approved script
-  -> future TTS, alignment, mixing, and export stages
+  -> local target-language TTS clips and dub manifest
+  -> future alignment, mixing, and export stages
 ```
 
 `manifest.json` records commands, timestamps, status, and output paths. This makes
@@ -104,6 +105,10 @@ A simpler standalone Whisper interface retained for ad hoc transcription.
 Use `auto_prepare_script.py` for production pipeline runs because it adds word-level
 repair, hallucination handling, and an auditable decision report.
 
+For non-English targets, `translate_target(...)` loads NLLB locally and preserves
+the finalized source cue boundaries. `nllb_code(...)` maps common ISO language codes
+and accepts explicit NLLB codes for less common languages.
+
 ## `qa_transcript.py`
 
 Performs deterministic checks without invoking a model.
@@ -143,6 +148,24 @@ Creates a delivery copy with selectable subtitles.
 Unlike `burn_subtitles.py`, this operation does not re-encode video or audio and
 therefore preserves quality. Player support determines display position and style.
 
+## `generate_dub.py`
+
+Generates voice clips locally; approved text is never sent to a TTS service.
+
+- `select_voice(...)` downloads only Piper's public voice index and chooses a stable
+  medium-quality voice matching the target language.
+- `ensure_voice(...)` caches the selected public ONNX model.
+- `rate_to_length_scale(...)` translates percentage speed into Piper timing.
+- `generate_clip(...)` synthesizes and measures one WAV with retries.
+- `generate_dub(...)` enforces automatic approval, reuses cached clips, and returns
+  a schema-compliant dub manifest.
+- `media_duration(...)` uses FFprobe to measure generated audio.
+
+```powershell
+python generate_dub.py outputs/transcripts/episode.approved.json `
+  -o outputs/dub --target-language en
+```
+
 ## Configuration and schemas
 
 `pipeline.example.json` documents a complete project configuration. JSON Schema
@@ -178,10 +201,9 @@ Run from `videotranslator`:
 
 Planned stages are already represented in configuration and manifest contracts:
 
-1. `tts`: generate one English clip per stable segment ID.
-2. `align`: pad or safely time-stretch clips to their allotted windows.
-3. `mix`: combine English dialogue with separated source ambience and music.
-4. `export`: mux English audio, optional original audio, and subtitles into the
+1. `align`: pad or safely time-stretch clips to their allotted windows.
+2. `mix`: combine target dialogue with separated source ambience and music.
+3. `export`: mux target audio, optional original audio, and subtitles into the
    final video.
 
 New stages should follow the existing pattern: deterministic artifact paths, a

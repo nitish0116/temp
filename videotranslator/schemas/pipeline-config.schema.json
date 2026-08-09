@@ -11,12 +11,15 @@
     "output_root": {"type": "string", "minLength": 1},
     "translation": {
       "type": "object",
-      "required": ["target_language", "model"],
+      "required": ["model"],
       "properties": {
         "source_language": {"type": ["string", "null"]},
-        "target_language": {"const": "en"},
+        "target_language": {"type": "string", "minLength": 2, "default": "en"},
         "model": {"type": "string", "minLength": 1},
-        "fallback_model": {"type": ["string", "null"]}
+        "fallback_model": {"type": ["string", "null"]},
+        "translation_model": {"type": "string", "minLength": 1},
+        "source_model_language": {"type": ["string", "null"]},
+        "target_model_language": {"type": ["string", "null"]}
       },
       "additionalProperties": false
     },
@@ -36,6 +39,8 @@
         "enabled": {"type": "boolean"},
         "provider": {"type": ["string", "null"]},
         "voice": {"type": ["string", "null"]},
+        "rate": {"type": "string", "pattern": "^[+-][0-9]+%$"},
+        "retries": {"type": "integer", "minimum": 1},
         "preserve_background_audio": {"type": "boolean"}
       },
       "additionalProperties": false

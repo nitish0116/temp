@@ -1,13 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "dub-manifest.schema.json",
-  "title": "Generated English dub clips",
+  "title": "Generated target-language dub clips",
   "type": "object",
-  "required": ["schema_version", "project_id", "provider", "clips"],
+  "required": ["schema_version", "project_id", "provider", "target_language", "voice", "clips"],
   "properties": {
     "schema_version": {"const": 1},
     "project_id": {"type": "string", "minLength": 1},
     "provider": {"type": "string", "minLength": 1},
+    "target_language": {"type": "string", "minLength": 2},
+    "voice": {"type": "string", "minLength": 1},
     "clips": {
       "type": "array",
       "items": {

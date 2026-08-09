@@ -3,8 +3,11 @@
 import json
 from pathlib import Path
 
-from auto_prepare_script import make_approval, passes_gate, quality_metrics, split_words
-from pipeline import RUNNABLE_STAGES, load_config, paths
+import pytest
+
+from auto_prepare_script import make_approval, nllb_code, passes_gate, quality_metrics, split_words
+from generate_dub import generate_dub, rate_to_length_scale
+from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
 
 
@@ -65,6 +68,7 @@ def test_pipeline_config_paths_are_relative_to_config(tmp_path: Path):
     assert artifact_paths["root"] == tmp_path / "outputs" / "example"
     assert artifact_paths["transcript_json"].name == "input.auto.en.json"
     assert "translate" in RUNNABLE_STAGES
+    assert "tts" in RUNNABLE_STAGES
 
 
 def test_automatic_gate_approves_metrics_within_thresholds():
@@ -101,3 +105,39 @@ def test_quality_metrics_are_json_serializable():
     metrics = quality_metrics(transcript, decisions, [""])
 
     assert json.loads(json.dumps(metrics))["score"] == 0
+
+
+def test_pipeline_defaults_to_detected_source_and_english_target(tmp_path: Path):
+    """Absent source-language input is omitted while English remains the target."""
+    config = {
+        "project_id": "example",
+        "input_video": str(tmp_path / "episode.mp4"),
+        "output_root": str(tmp_path / "outputs"),
+        "translation": {"target_language": "en", "model": "small"},
+    }
+    artifact_paths = paths(config)
+
+    command, _ = stage_command("translate", config, artifact_paths)
+
+    assert "--language" not in command
+    assert command[command.index("--target-language") + 1] == "en"
+    assert artifact_paths["transcript_json"].name.endswith(".auto.en.json")
+
+
+def test_tts_rejects_scripts_without_automatic_approval(tmp_path: Path):
+    """Voice generation cannot bypass the automatic transcript quality gate."""
+    unapproved = {
+        "project_id": "example",
+        "approval": {"status": "draft"},
+        "segments": [],
+    }
+
+    with pytest.raises(ValueError, match="automatically approved"):
+        generate_dub(unapproved, tmp_path, "en", None, "+0%", 1)
+
+
+def test_language_and_speech_rate_defaults_are_deterministic():
+    """Common target languages and percentage rates map to local model settings."""
+    assert nllb_code("fr-FR", None) == "fra_Latn"
+    assert rate_to_length_scale("+0%") == 1.0
+    assert rate_to_length_scale("+25%") == 0.8

@@ -1,4 +1,4 @@
-"""Run and track the video-to-English pipeline."""
+"""Run and track the source-video to target-language pipeline."""
 
 from __future__ import annotations
 
@@ -16,10 +16,11 @@ RUNNABLE_STAGES = (
     "extract",
     "translate",
     "qa",
+    "tts",
     "review",
     "subtitle_mux",
 )
-STAGES = RUNNABLE_STAGES + ("tts", "align", "mix", "export")
+STAGES = RUNNABLE_STAGES + ("align", "mix", "export")
 
 
 def now() -> str:
@@ -53,20 +54,23 @@ def paths(config: dict[str, Any]) -> dict[str, Path]:
     video = Path(config["input_video"])
     root = Path(config["output_root"])
     stem = video.stem
+    target_language = config.get("translation", {}).get("target_language", "en")
     return {
         "video": video,
         "root": root,
         "manifest": root / "manifest.json",
         "audio": root / "audio" / f"{stem}.wav",
         "transcript_dir": root / "transcripts",
-        "transcript_json": root / "transcripts" / f"{stem}.auto.en.json",
-        "srt": root / "transcripts" / f"{stem}.auto.en.srt",
+        "transcript_json": root / "transcripts" / f"{stem}.auto.{target_language}.json",
+        "srt": root / "transcripts" / f"{stem}.auto.{target_language}.srt",
         "source_transcript": root / "transcripts" / f"{stem}.source.json",
         "decisions": root / "transcripts" / f"{stem}.decisions.json",
         "approved_script": root / "transcripts" / f"{stem}.approved.json",
         "qa": root / "qa" / f"{stem}.qa.json",
         "review": root / "review" / f"{stem}.top-subs.mp4",
-        "subtitled": root / "final" / f"{stem}.english-subs.mp4",
+        "subtitled": root / "final" / f"{stem}.{target_language}-subs.mp4",
+        "dub_dir": root / "dub",
+        "dub_manifest": root / "dub" / "dub-manifest.json",
     }
 
 
@@ -112,6 +116,13 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
             command += ["--fallback-model", settings["fallback_model"]]
         if settings.get("source_language"):
             command += ["--language", settings["source_language"]]
+        command += ["--target-language", settings.get("target_language", "en")]
+        if settings.get("translation_model"):
+            command += ["--translation-model", settings["translation_model"]]
+        if settings.get("source_model_language"):
+            command += ["--source-model-language", settings["source_model_language"]]
+        if settings.get("target_model_language"):
+            command += ["--target-model-language", settings["target_model_language"]]
         command += [
             "--maximum-low-confidence-ratio",
             str(quality.get("maximum_low_confidence_ratio", 0.2)),
@@ -122,6 +133,13 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
     if stage == "qa":
         maximum = str(config.get("quality", {}).get("maximum_segment_duration", 12.0))
         return [python, str(HERE / "qa_transcript.py"), str(artifact_paths["transcript_json"]), "-o", str(artifact_paths["qa"]), "--maximum-duration", maximum], [artifact_paths["qa"]]
+    if stage == "tts":
+        settings = config.get("translation", {})
+        dubbing = config.get("dubbing", {})
+        command = [python, str(HERE / "generate_dub.py"), str(artifact_paths["approved_script"]), "-o", str(artifact_paths["dub_dir"]), "--target-language", settings.get("target_language", "en"), "--rate", dubbing.get("rate", "+0%"), "--retries", str(dubbing.get("retries", 3))]
+        if dubbing.get("voice"):
+            command += ["--voice", dubbing["voice"]]
+        return command, [artifact_paths["dub_manifest"]]
     if stage == "review":
         return [python, str(HERE / "burn_subtitles.py"), str(artifact_paths["video"]), str(artifact_paths["srt"]), "-o", str(artifact_paths["review"])], [artifact_paths["review"]]
     if stage == "subtitle_mux":
