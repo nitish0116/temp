@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "transcript.schema.json",
+  "title": "Timed translated transcript",
+  "type": "object",
+  "required": ["language", "task", "output_language", "segments"],
+  "properties": {
+    "language": {"type": "string"},
+    "language_probability": {"type": "number", "minimum": 0, "maximum": 1},
+    "task": {"enum": ["transcribe", "translate"]},
+    "output_language": {"type": "string"},
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["start", "end", "text"],
+        "properties": {
+          "start": {"type": "number", "minimum": 0},
+          "end": {"type": "number", "exclusiveMinimum": 0},
+          "text": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

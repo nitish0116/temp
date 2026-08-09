@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dub-manifest.schema.json",
+  "title": "Generated English dub clips",
+  "type": "object",
+  "required": ["schema_version", "project_id", "provider", "clips"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "project_id": {"type": "string", "minLength": 1},
+    "provider": {"type": "string", "minLength": 1},
+    "clips": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["segment_id", "start", "end", "text", "voice", "audio_path", "generated_duration", "status"],
+        "properties": {
+          "segment_id": {"type": "string"},
+          "start": {"type": "number", "minimum": 0},
+          "end": {"type": "number", "exclusiveMinimum": 0},
+          "text": {"type": "string", "minLength": 1},
+          "voice": {"type": "string", "minLength": 1},
+          "audio_path": {"type": "string", "minLength": 1},
+          "generated_duration": {"type": "number", "minimum": 0},
+          "speed_ratio": {"type": "number", "exclusiveMinimum": 0},
+          "status": {"enum": ["generated", "aligned", "failed"]},
+          "error": {"type": ["string", "null"]}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

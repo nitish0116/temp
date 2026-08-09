@@ -1,0 +1,22 @@
+{
+  "$schema": "./schemas/pipeline-config.schema.json",
+  "project_id": "noble-my-love-episode-1",
+  "input_video": "sample Data/EP.1.v0.1639315485.720p.mp4",
+  "output_root": "outputs/noble-my-love-episode-1",
+  "translation": {
+    "source_language": "ko",
+    "target_language": "en",
+    "model": "small"
+  },
+  "quality": {
+    "maximum_segment_duration": 12.0,
+    "maximum_subtitle_characters": 84,
+    "require_human_script_approval": true
+  },
+  "dubbing": {
+    "enabled": false,
+    "provider": null,
+    "voice": null,
+    "preserve_background_audio": true
+  }
+}

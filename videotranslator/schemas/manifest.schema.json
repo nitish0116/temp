@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "manifest.schema.json",
+  "title": "Video translation run manifest",
+  "type": "object",
+  "required": ["schema_version", "project_id", "created_at", "updated_at", "input_video", "stages"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "project_id": {"type": "string"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "input_video": {"type": "string"},
+    "stages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {"enum": ["pending", "running", "completed", "failed"]},
+          "started_at": {"type": "string"},
+          "finished_at": {"type": "string"},
+          "command": {"type": "array", "items": {"type": "string"}},
+          "artifacts": {"type": "array", "items": {"type": "string"}},
+          "error": {"type": "string"}
+        }
+      }
+    }
+  }
+}

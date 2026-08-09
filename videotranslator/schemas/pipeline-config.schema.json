@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pipeline-config.schema.json",
+  "title": "Video translation pipeline configuration",
+  "type": "object",
+  "required": ["project_id", "input_video", "output_root", "translation"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "project_id": {"type": "string", "minLength": 1},
+    "input_video": {"type": "string", "minLength": 1},
+    "output_root": {"type": "string", "minLength": 1},
+    "translation": {
+      "type": "object",
+      "required": ["target_language", "model"],
+      "properties": {
+        "source_language": {"type": ["string", "null"]},
+        "target_language": {"const": "en"},
+        "model": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "maximum_segment_duration": {"type": "number", "exclusiveMinimum": 0},
+        "maximum_subtitle_characters": {"type": "integer", "minimum": 1},
+        "require_human_script_approval": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "dubbing": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "provider": {"type": ["string", "null"]},
+        "voice": {"type": ["string", "null"]},
+        "preserve_background_audio": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

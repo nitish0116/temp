@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "approved-script.schema.json",
+  "title": "Human-approved English dubbing script",
+  "type": "object",
+  "required": ["schema_version", "project_id", "approval", "segments"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "project_id": {"type": "string", "minLength": 1},
+    "approval": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"enum": ["draft", "approved"]},
+        "approved_by": {"type": ["string", "null"]},
+        "approved_at": {"type": ["string", "null"], "format": "date-time"},
+        "notes": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "start", "end", "text"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "start": {"type": "number", "minimum": 0},
+          "end": {"type": "number", "exclusiveMinimum": 0},
+          "text": {"type": "string", "minLength": 1},
+          "speaker": {"type": ["string", "null"]},
+          "voice": {"type": ["string", "null"]},
+          "notes": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
