@@ -19,7 +19,7 @@ RUNNABLE_STAGES = (
     "review",
     "subtitle_mux",
 )
-STAGES = RUNNABLE_STAGES + ("approve", "tts", "align", "mix", "export")
+STAGES = RUNNABLE_STAGES + ("tts", "align", "mix", "export")
 
 
 def now() -> str:
@@ -61,8 +61,9 @@ def paths(config: dict[str, Any]) -> dict[str, Path]:
         "transcript_dir": root / "transcripts",
         "transcript_json": root / "transcripts" / f"{stem}.auto.en.json",
         "srt": root / "transcripts" / f"{stem}.auto.en.srt",
+        "source_transcript": root / "transcripts" / f"{stem}.source.json",
         "decisions": root / "transcripts" / f"{stem}.decisions.json",
-        "approval_draft": root / "transcripts" / f"{stem}.approval-draft.json",
+        "approved_script": root / "transcripts" / f"{stem}.approved.json",
         "qa": root / "qa" / f"{stem}.qa.json",
         "review": root / "review" / f"{stem}.top-subs.mp4",
         "subtitled": root / "final" / f"{stem}.english-subs.mp4",
@@ -107,9 +108,17 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
         settings = config.get("translation", {})
         quality = config.get("quality", {})
         command = [python, str(HERE / "auto_prepare_script.py"), str(artifact_paths["audio"]), "--project-id", config["project_id"], "--model", settings.get("model", "small"), "--maximum-duration", str(quality.get("maximum_segment_duration", 12.0)), "--maximum-characters", str(quality.get("maximum_subtitle_characters", 84)), "-o", str(artifact_paths["transcript_dir"])]
+        if settings.get("fallback_model"):
+            command += ["--fallback-model", settings["fallback_model"]]
         if settings.get("source_language"):
             command += ["--language", settings["source_language"]]
-        return command, [artifact_paths["transcript_json"], artifact_paths["srt"], artifact_paths["decisions"], artifact_paths["approval_draft"]]
+        command += [
+            "--maximum-low-confidence-ratio",
+            str(quality.get("maximum_low_confidence_ratio", 0.2)),
+            "--maximum-rejection-ratio",
+            str(quality.get("maximum_rejection_ratio", 0.05)),
+        ]
+        return command, [artifact_paths["transcript_json"], artifact_paths["srt"], artifact_paths["source_transcript"], artifact_paths["decisions"], artifact_paths["approved_script"]]
     if stage == "qa":
         maximum = str(config.get("quality", {}).get("maximum_segment_duration", 12.0))
         return [python, str(HERE / "qa_transcript.py"), str(artifact_paths["transcript_json"]), "-o", str(artifact_paths["qa"]), "--maximum-duration", maximum], [artifact_paths["qa"]]

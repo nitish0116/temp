@@ -15,7 +15,8 @@
       "properties": {
         "source_language": {"type": ["string", "null"]},
         "target_language": {"const": "en"},
-        "model": {"type": "string", "minLength": 1}
+        "model": {"type": "string", "minLength": 1},
+        "fallback_model": {"type": ["string", "null"]}
       },
       "additionalProperties": false
     },
@@ -24,7 +25,8 @@
       "properties": {
         "maximum_segment_duration": {"type": "number", "exclusiveMinimum": 0},
         "maximum_subtitle_characters": {"type": "integer", "minimum": 1},
-        "require_human_script_approval": {"type": "boolean"}
+        "maximum_low_confidence_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "maximum_rejection_ratio": {"type": "number", "minimum": 0, "maximum": 1}
       },
       "additionalProperties": false
     },

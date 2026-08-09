@@ -6,12 +6,14 @@
   "translation": {
     "source_language": "ko",
     "target_language": "en",
-    "model": "small"
+    "model": "small",
+    "fallback_model": "medium"
   },
   "quality": {
     "maximum_segment_duration": 12.0,
     "maximum_subtitle_characters": 84,
-    "require_human_script_approval": true
+    "maximum_low_confidence_ratio": 0.2,
+    "maximum_rejection_ratio": 0.05
   },
   "dubbing": {
     "enabled": false,

@@ -1,30 +1,32 @@
 # Video Translator
 
-This module converts a source-language video into a reviewed English transcript,
-English subtitles, and eventually an English-dubbed video. Every automated run is
-controlled by one JSON configuration and recorded in an output manifest.
+This module converts source-language video into an automatically approved English
+script and subtitles, with English dubbing as the next pipeline milestone. Runs are
+controlled by JSON configuration and recorded in a manifest.
 
-For file-by-file implementation details, public helper behavior, failure modes, and
-small usage examples, see [CODE_REFERENCE.md](CODE_REFERENCE.md).
+See [CODE_REFERENCE.md](CODE_REFERENCE.md) for file-level APIs, examples, and errors.
 
 ## Pipeline
 
 | Stage | Input | Output | State |
 |---|---|---|---|
-| 1. Ingest | Source video | Validated project configuration | Implemented |
-| 2. Extract | Source video | Mono 16 kHz WAV | Implemented |
-| 3. Translate and repair | WAV | Word-timed English JSON, SRT, decisions, and approval draft | Implemented |
-| 4. QA | Transcript JSON | Timing issue report | Implemented |
-| 5. Visual review | Video + SRT | Video with English text at the top | Implemented |
-| 6. Approval draft | Transcript + QA report | Flagged editable English script | Implemented |
-| 7. Script approval | Approval draft | Approved English script | Human step |
-| 8. Voice generation | Approved timed script | One English voice clip per segment | Planned |
-| 9. Voice alignment | Voice clips + timings | Duration-fitted dialogue track | Planned |
-| 10. Audio mix | Dialogue + source audio/stems | English program audio | Planned |
-| 11. Final export | Video + English audio + subtitles | English MP4 | Planned |
+| Ingest | Source video | Validated configuration | Implemented |
+| Extract | Video | Mono 16 kHz WAV | Implemented |
+| Adaptive translation | WAV | Source and English transcripts | Implemented |
+| Automatic approval | Model candidates | Approved timed English script | Implemented |
+| QA | English transcript | Timing report | Implemented |
+| Diagnostic render | Video + SRT | Optional top-subtitle video | Implemented |
+| Subtitle mux | Video + SRT | Selectable English subtitles | Implemented |
+| Voice generation | Approved script | English clips | Planned |
+| Alignment | Voice clips | Timed dialogue track | Planned |
+| Audio mix | Dialogue + source audio | English program audio | Planned |
+| Export | Video + English audio | English MP4 | Planned |
 
-The human approval gate is intentional: translation mistakes become spoken errors
-if text-to-speech starts before the English script has been corrected.
+No user review is required. The primary model independently creates a
+source-language transcript and an English translation. If either fails confidence,
+rejection, or timing thresholds, a stronger fallback model retries the media. The
+best passing candidate is approved automatically; if none passes, the pipeline
+stops before TTS.
 
 ## Setup
 
@@ -34,97 +36,97 @@ FFmpeg must be on `PATH`. From the repository root:
 .\.venv\Scripts\python.exe -m pip install -r videotranslator\requirements.txt
 ```
 
-Copy `pipeline.example.json` for each video and edit its input, output, language,
-model, and quality settings. Paths are resolved relative to the configuration file.
+Copy `pipeline.example.json` for each video and adjust its paths, models, language,
+and quality thresholds. Relative paths resolve from the configuration file.
 
-## Run the structured pipeline
-
-From the repository root:
+## Run
 
 ```powershell
-.\.venv\Scripts\python.exe videotranslator\pipeline.py videotranslator\pipeline.example.json run --through review
+.\.venv\Scripts\python.exe videotranslator\pipeline.py `
+  videotranslator\pipeline.example.json run --through review
 ```
 
-Run through the selectable-subtitle export:
+Run through selectable-subtitle export:
 
 ```powershell
-.\.venv\Scripts\python.exe videotranslator\pipeline.py videotranslator\pipeline.example.json run --through subtitle_mux
+.\.venv\Scripts\python.exe videotranslator\pipeline.py `
+  videotranslator\pipeline.example.json run --through subtitle_mux
 ```
 
-Completed stages with existing artifacts are skipped. Use `--force` to rebuild them.
-Inspect progress with:
+Inspect status:
 
 ```powershell
-.\.venv\Scripts\python.exe videotranslator\pipeline.py videotranslator\pipeline.example.json status
+.\.venv\Scripts\python.exe videotranslator\pipeline.py `
+  videotranslator\pipeline.example.json status
 ```
+
+Completed stages with existing artifacts are skipped. Add `--force` to rebuild.
 
 ## Output layout
 
 ```text
 outputs/<project-id>/
-├── manifest.json              # stage status, commands, and artifact paths
-├── audio/<video>.wav          # normalized transcription audio
-├── transcripts/<video>.auto.en.json
-├── transcripts/<video>.auto.en.srt
-├── transcripts/<video>.decisions.json
-├── transcripts/<video>.approval-draft.json
-├── qa/<video>.qa.json         # timing problems requiring attention
-├── review/<video>.top-subs.mp4
-└── final/<video>.english-subs.mp4
+|-- manifest.json
+|-- audio/<video>.wav
+|-- transcripts/<video>.source.json
+|-- transcripts/<video>.auto.en.json
+|-- transcripts/<video>.auto.en.srt
+|-- transcripts/<video>.decisions.json
+|-- transcripts/<video>.approved.json
+|-- qa/<video>.qa.json
+|-- review/<video>.top-subs.mp4
+`-- final/<video>.english-subs.mp4
 ```
+
+## Automatic quality gate
+
+The gate evaluates source and English passes independently:
+
+- accepted and rejected cue counts;
+- low-confidence cue ratio;
+- silence hallucinations;
+- invalid, overlapping, or oversized timing;
+- primary versus fallback candidate score.
+
+Thresholds live under `quality` in the pipeline configuration. Approval metadata
+records `automatic-quality-gate`, the timestamp, and selected model. The decision
+report preserves metrics for every attempted candidate.
 
 ## Data contracts
 
-JSON schemas live in `schemas/`:
+Schemas under `schemas/` define:
 
-- `pipeline-config.schema.json` defines project inputs and processing settings.
-- `transcript.schema.json` defines the timed translation consumed by QA and dubbing.
-- `approved-script.schema.json` defines the human-reviewed text allowed into TTS.
-- `dub-manifest.schema.json` tracks every generated and aligned English voice clip.
-- `manifest.schema.json` defines pipeline state and artifact provenance.
+- pipeline configuration;
+- source and English transcripts;
+- automatically approved scripts;
+- pipeline manifests;
+- future generated dub clips.
 
-The transcript JSON is the handoff between speech translation and dubbing. Each
-segment contains `start`, `end`, and `text`. The approved version must retain these
-fields so later stages can generate and align English speech predictably.
+The approved script is the only input accepted by the future TTS stage. Stable
+segment IDs connect generated speech to timing and decision provenance.
 
-## Quality gate
+## Standalone tools
 
-`qa_transcript.py` currently checks empty text, invalid duration, overlaps, and
-segments longer than the configured threshold. A QA failure does not destroy the
-translation; it identifies lines that must be split or corrected. Before dubbing:
+- `extract_audio.py`: normalize audio for speech recognition.
+- `transcribe.py`: simple ad hoc transcription or direct translation.
+- `auto_prepare_script.py`: adaptive dual-pass translation and automatic approval.
+- `qa_transcript.py`: deterministic timing checks.
+- `burn_subtitles.py`: optional top-subtitle diagnostic render.
+- `mux_subtitles.py`: selectable English subtitle track without media re-encoding.
 
-1. Read the QA report.
-2. Compare top English subtitles with the original bottom subtitles and speech.
-3. Fix mistranslations, names, repetitions, and abnormal segment boundaries.
-4. Mark the script approved in the future approval artifact.
-
-## Existing standalone commands
-
-The scripts remain independently usable:
-
-- `extract_audio.py`: extract transcription-ready WAV audio.
-- `transcribe.py`: create translated TXT, JSON, and SRT files.
-- `qa_transcript.py`: inspect transcript timing.
-- `create_approval_script.py`: create the editable, QA-annotated script draft.
-- `auto_prepare_script.py`: re-transcribe with word timestamps, remove likely
-  silence hallucinations, split oversized cues, and create a cleaner approval draft.
-
-To automate timing decisions before approval:
+Example automatic preparation:
 
 ```powershell
 .\.venv\Scripts\python.exe videotranslator\auto_prepare_script.py `
   "videotranslator\sample Data\EP.1.v0.1639315485.720p.mp4" `
-  --project-id noble-my-love-episode-1 --language ko --model small `
+  --project-id noble-my-love-episode-1 --language ko `
+  --model small --fallback-model medium `
   -o videotranslator\outputs\auto-review
 ```
-- `burn_subtitles.py`: create a top-subtitle review video.
-- `mux_subtitles.py`: add a selectable English subtitle track without re-encoding.
 
 ## Dubbing design
 
-The next implementation milestone is stage 7. It should consume only an approved
-transcript, assign a stable segment ID, generate an audio file per segment, and
-record provider, voice, duration, and retry metadata. Stage 8 will time-stretch or
-pad clips within safe limits. Stage 9 should preserve background sound by using
-source separation when possible; simply layering voices over intact dialogue will
-leave Korean speech audible beneath the English dub.
+The next milestone consumes the approved script and generates one English clip per
+segment. Alignment will pad or safely time-stretch clips. Mixing should preserve
+ambience and music using source separation; layering English over intact source
+dialogue would leave both languages audible.

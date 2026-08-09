@@ -11,7 +11,8 @@ The module is a collection of small command-line programs coordinated by
 ```text
 source video
   -> extracted WAV
-  -> repaired English transcript + SRT + decision report + approval draft
+  -> separate source transcript and English translation
+  -> candidate scoring, fallback retry, and automatic approval
   -> QA report
   -> review video / selectable-subtitle video
   -> approved script
@@ -73,23 +74,23 @@ This is the canonical translation and automatic timing-repair implementation.
 
 - `split_words(words, maximum_duration, maximum_chars)` divides word timestamps at
   long pauses, duration limits, or subtitle-length limits.
-- `transcribe_and_decide(...)` runs Faster Whisper in English translation mode with
-  VAD and word timestamps. It rejects likely silence hallucinations and annotates
-  low-confidence cues.
-- `make_approval(project_id, transcript, notes)` creates stable segment IDs and a
-  draft approval envelope.
+- `transcribe_and_decide(...)` runs source transcription or English translation
+  with VAD and word timestamps.
+- `quality_metrics(...)` and `passes_gate(...)` enforce automatic thresholds.
+- `run_candidate(...)` evaluates independent source and English passes for a model.
+- `make_approval(...)` records stable segment IDs and automatic approval metadata.
 - `write_srt(path, segments)` serializes the repaired timing as SRT.
-- `main()` writes the transcript, SRT, decisions, and approval draft together.
+- `main()` selects the best passing candidate and writes approved artifacts.
 
 ```powershell
 python auto_prepare_script.py outputs/audio/episode.wav `
-  --project-id episode-1 --language ko --model small `
+  --project-id episode-1 --language ko --model small --fallback-model medium `
   -o outputs/episode-1/transcripts
 ```
 
-The decision report is important: rejected cues are recorded there rather than
-silently disappearing. The approval document remains a draft even when timing QA
-passes because acoustic confidence cannot prove semantic translation accuracy.
+The decision report records every candidate and threshold. If the primary model
+fails, the fallback runs automatically. If none passes, the command fails rather
+than requesting user review or sending uncertain text to TTS.
 
 ## `transcribe.py`
 
@@ -118,18 +119,6 @@ python qa_transcript.py episode.auto.en.json -o episode.qa.json `
 
 The CLI exits normally when issues are found because QA findings are review data,
 not a program crash. Consumers must inspect the report's `passed` value.
-
-## `create_approval_script.py`
-
-Converts an existing transcript into the approved-script schema when automatic
-preparation was not used.
-
-- `create_draft(project_id, transcript, qa_report)` assigns stable IDs and copies QA
-  findings into segment notes.
-- `main()` loads the inputs and writes formatted JSON.
-
-This is useful for imported or legacy transcripts. New pipeline translations
-already receive an approval draft from `auto_prepare_script.py`.
 
 ## `burn_subtitles.py`
 
@@ -162,7 +151,7 @@ files under `schemas/` define boundaries between stages:
 - `pipeline-config.schema.json`: source, output, translation, quality, and dubbing
   settings.
 - `transcript.schema.json`: detected language and timed English cues.
-- `approved-script.schema.json`: reviewed text, speakers, voices, and approval state.
+- `approved-script.schema.json`: automatically approved text and decision state.
 - `dub-manifest.schema.json`: future generated voice clips and alignment metadata.
 - `manifest.schema.json`: stage lifecycle, commands, errors, and artifact paths.
 
@@ -176,7 +165,7 @@ model download or full media encode:
 
 - pause-based word splitting;
 - QA issue classification;
-- propagation of QA notes into approval drafts;
+- automatic gate and approval behavior;
 - configuration-relative artifact paths.
 
 Run from `videotranslator`:
@@ -189,12 +178,10 @@ Run from `videotranslator`:
 
 Planned stages are already represented in configuration and manifest contracts:
 
-1. `approve`: validate that every review note is resolved and approval metadata is
-   complete.
-2. `tts`: generate one English clip per stable segment ID.
-3. `align`: pad or safely time-stretch clips to their allotted windows.
-4. `mix`: combine English dialogue with separated source ambience and music.
-5. `export`: mux English audio, optional original audio, and subtitles into the
+1. `tts`: generate one English clip per stable segment ID.
+2. `align`: pad or safely time-stretch clips to their allotted windows.
+3. `mix`: combine English dialogue with separated source ambience and music.
+4. `export`: mux English audio, optional original audio, and subtitles into the
    final video.
 
 New stages should follow the existing pattern: deterministic artifact paths, a
