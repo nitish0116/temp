@@ -17,7 +17,7 @@ source video
   -> review video / selectable-subtitle video
   -> approved script
   -> local target-language TTS clips and dub manifest
-  -> future alignment, mixing, and export stages
+  -> aligned dialogue, ducked source mix, subtitles, and final MP4
 ```
 
 `manifest.json` records commands, timestamps, status, and output paths. This makes
@@ -166,6 +166,19 @@ python generate_dub.py outputs/transcripts/episode.approved.json `
   -o outputs/dub --target-language en
 ```
 
+## `assemble_dub.py`
+
+- `tempo_filters(factor)` decomposes large tempo changes into safe FFmpeg filters.
+- `build_alignment_graph(clips, duration)` places clips at cue timestamps and
+  speeds up only speech that would overrun its allotted window.
+- `assemble_dub(...)` renders the dialogue timeline, ducks and mixes the source
+  soundtrack, copies the video stream, and optionally adds selectable subtitles.
+
+```powershell
+python assemble_dub.py episode.mp4 outputs/dub/dub-manifest.json `
+  -o outputs/final/episode.en-dubbed.mp4 --subtitles episode.en.srt
+```
+
 ## `diarize_speakers.py`
 
 Performs local acoustic speaker clustering before TTS.
@@ -190,7 +203,7 @@ files under `schemas/` define boundaries between stages:
   settings.
 - `transcript.schema.json`: detected language and timed English cues.
 - `approved-script.schema.json`: automatically approved text and decision state.
-- `dub-manifest.schema.json`: future generated voice clips and alignment metadata.
+- `dub-manifest.schema.json`: generated voice clips and alignment metadata.
 - `manifest.schema.json`: stage lifecycle, commands, errors, and artifact paths.
 
 Schemas use JSON Schema draft 2020-12. Generated output JSON is deliberately kept
@@ -214,12 +227,9 @@ Run from `videotranslator`:
 
 ## Extension points
 
-Planned stages are already represented in configuration and manifest contracts:
-
-1. `align`: pad or safely time-stretch clips to their allotted windows.
-2. `mix`: combine target dialogue with separated source ambience and music.
-3. `export`: mux target audio, optional original audio, and subtitles into the
-   final video.
+Alignment, mixing, and export are implemented by `assemble_dub.py`. A future source
+separation stage can replace soundtrack ducking with isolated ambience and music,
+removing the original dialogue more completely.
 
 New stages should follow the existing pattern: deterministic artifact paths, a
 standalone script, schema-defined JSON handoffs, manifest status updates, and unit

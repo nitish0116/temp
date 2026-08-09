@@ -8,6 +8,7 @@ import pytest
 from auto_prepare_script import make_approval, nllb_code, passes_gate, quality_metrics, split_words
 from generate_dub import generate_dub, rate_to_length_scale
 from diarize_speakers import assign_voices, voice_style
+from assemble_dub import build_alignment_graph, tempo_filters
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
 
@@ -153,3 +154,21 @@ def test_distinct_speakers_receive_distinct_style_matched_voices():
     assert len(set(assigned)) == 3
     assert voice_style(assigned[0]) == "high"
     assert voice_style(assigned[1]) == "low"
+
+
+def test_alignment_speeds_only_clips_that_overrun_their_window():
+    """Long speech is fitted into its cue while short speech keeps natural pace."""
+    clips = [
+        {"start": 1.0, "end": 2.0, "generated_duration": 3.0},
+        {"start": 4.0, "end": 6.0, "generated_duration": 1.0},
+    ]
+
+    graph = build_alignment_graph(clips, 10.0)
+
+    assert "atempo=2,atempo=1.500000" in graph
+    assert "[0:a]" in graph
+    assert "[1:a]" in graph
+    assert "[2:a]" not in graph
+    assert "adelay=1000:all=1" in graph
+    assert "adelay=4000:all=1" in graph
+    assert tempo_filters(1.0) == []

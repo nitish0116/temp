@@ -20,8 +20,9 @@ RUNNABLE_STAGES = (
     "tts",
     "review",
     "subtitle_mux",
+    "assemble",
 )
-STAGES = RUNNABLE_STAGES + ("align", "mix", "export")
+STAGES = RUNNABLE_STAGES
 
 
 def now() -> str:
@@ -74,6 +75,8 @@ def paths(config: dict[str, Any]) -> dict[str, Path]:
         "subtitled": root / "final" / f"{stem}.{target_language}-subs.mp4",
         "dub_dir": root / "dub",
         "dub_manifest": root / "dub" / "dub-manifest.json",
+        "dubbed": root / "final" / f"{stem}.{target_language}-dubbed.mp4",
+        "assembly_report": root / "final" / f"{stem}.{target_language}-dubbed.assembly.json",
     }
 
 
@@ -152,6 +155,10 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
         return [python, str(HERE / "burn_subtitles.py"), str(artifact_paths["video"]), str(artifact_paths["srt"]), "-o", str(artifact_paths["review"])], [artifact_paths["review"]]
     if stage == "subtitle_mux":
         return [python, str(HERE / "mux_subtitles.py"), str(artifact_paths["video"]), str(artifact_paths["srt"]), "-o", str(artifact_paths["subtitled"])], [artifact_paths["subtitled"]]
+    if stage == "assemble":
+        dubbing = config.get("dubbing", {})
+        command = [python, str(HERE / "assemble_dub.py"), str(artifact_paths["video"]), str(artifact_paths["dub_manifest"]), "-o", str(artifact_paths["dubbed"]), "--subtitles", str(artifact_paths["srt"]), "--source-volume", str(dubbing.get("source_volume", 0.55)), "--dub-volume", str(dubbing.get("dub_volume", 1.0))]
+        return command, [artifact_paths["dubbed"], artifact_paths["assembly_report"]]
     raise ValueError(f"Unknown stage: {stage}")
 
 

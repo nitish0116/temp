@@ -26,6 +26,8 @@
     "voice": null,
     "rate": "+0%",
     "retries": 3,
-    "preserve_background_audio": true
+    "preserve_background_audio": true,
+    "source_volume": 0.55,
+    "dub_volume": 1.0
   }
 }

@@ -1,7 +1,7 @@
 # Video Translator
 
 This module converts source-language video into an automatically approved English
-script and subtitles, with English dubbing as the next pipeline milestone. Runs are
+script, subtitles, speaker-aware English dubbing, and a final mixed video. Runs are
 controlled by JSON configuration and recorded in a manifest.
 
 See [CODE_REFERENCE.md](CODE_REFERENCE.md) for file-level APIs, examples, and errors.
@@ -19,9 +19,9 @@ See [CODE_REFERENCE.md](CODE_REFERENCE.md) for file-level APIs, examples, and er
 | Diagnostic render | Video + SRT | Optional top-subtitle video | Implemented |
 | Subtitle mux | Video + SRT | Selectable English subtitles | Implemented |
 | Voice generation | Approved script | Local target-language clips | Implemented |
-| Alignment | Voice clips | Timed dialogue track | Planned |
-| Audio mix | Dialogue + source audio | English program audio | Planned |
-| Export | Video + English audio | English MP4 | Planned |
+| Alignment | Voice clips | Timed dialogue track | Implemented |
+| Audio mix | Dialogue + source audio | English program audio | Implemented |
+| Export | Video + English audio | English MP4 | Implemented |
 
 No user review is required. The primary model independently creates a
 source-language transcript and an English translation. If either fails confidence,
@@ -116,6 +116,8 @@ segment IDs connect generated speech to timing and decision provenance.
   source language is detected when omitted, and target language defaults to `en`.
 - `generate_dub.py`: local Piper voice selection, model caching, clip generation,
   retries, duration measurement, and dub-manifest creation.
+- `assemble_dub.py`: cue alignment, overrun tempo fitting, automatic soundtrack
+  ducking, final audio mixing, optional subtitle muxing, and MP4 export.
 - `diarize_speakers.py`: local WavLM speaker embeddings, automatic speaker-count
   selection, stable speaker IDs, pitch-style estimation, and distinct voice assignment.
 - `qa_transcript.py`: deterministic timing checks.
@@ -137,10 +139,17 @@ Example automatic preparation:
 Speaker diarization runs before voice generation, so recurring acoustic speakers
 keep stable IDs and distinct Piper voices. Pitch is used only as a broad voice-style
 signal; the code does not claim a person's gender from audio. Voice generation then
-produces one cached target-language WAV per segment. The next
-milestone is alignment, which will pad or safely time-stretch clips. Mixing should preserve
-ambience and music using source separation; layering English over intact source
-dialogue would leave both languages audible.
+produces one cached target-language WAV per segment. Assembly fits clips that
+overrun their cue windows, places every clip on the source timeline, and ducks the
+source soundtrack beneath English speech. Source separation remains a future
+quality improvement for completely removing original dialogue while preserving
+ambience and music.
+
+Run the complete pipeline with:
+
+```powershell
+python pipeline.py pipeline.example.json run --through assemble
+```
 
 For a non-English target, set `translation.target_language`. Common ISO language
 codes are mapped to local NLLB codes; uncommon languages can supply

@@ -49,7 +49,9 @@
         "voice": {"type": ["string", "null"]},
         "rate": {"type": "string", "pattern": "^[+-][0-9]+%$"},
         "retries": {"type": "integer", "minimum": 1},
-        "preserve_background_audio": {"type": "boolean"}
+        "preserve_background_audio": {"type": "boolean"},
+        "source_volume": {"type": "number", "minimum": 0, "maximum": 2},
+        "dub_volume": {"type": "number", "minimum": 0, "maximum": 2}
       },
       "additionalProperties": false
     }
