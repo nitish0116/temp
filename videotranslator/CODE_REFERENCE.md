@@ -11,6 +11,7 @@ The module is a collection of small command-line programs coordinated by
 ```text
 source video
   -> extracted WAV
+  -> separated vocals and accompaniment
   -> separate source transcript and English translation
   -> candidate scoring, fallback retry, and automatic approval
   -> QA report
@@ -166,6 +167,14 @@ python generate_dub.py outputs/transcripts/episode.approved.json `
   -o outputs/dub --target-language en
 ```
 
+## `separate_audio.py`
+
+- `separate_audio(...)` extracts a stereo 44.1 kHz source mix, runs local Demucs
+  two-stem inference, and writes reusable `vocals.wav` and `accompaniment.wav`.
+- Audio tensors are written with SoundFile, avoiding platform codec dependencies.
+- Only the accompaniment enters the final translated mix; the vocal stem is kept
+  for diagnostics and alternate exports.
+
 ## `assemble_dub.py`
 
 - `tempo_filters(factor)` decomposes large tempo changes into safe FFmpeg filters.
@@ -227,9 +236,9 @@ Run from `videotranslator`:
 
 ## Extension points
 
-Alignment, mixing, and export are implemented by `assemble_dub.py`. A future source
-separation stage can replace soundtrack ducking with isolated ambience and music,
-removing the original dialogue more completely.
+Alignment, source separation, mixing, and export are implemented. If no separated
+background is supplied directly to `assemble_dub.py`, it retains soundtrack ducking
+as a backward-compatible fallback.
 
 New stages should follow the existing pattern: deterministic artifact paths, a
 standalone script, schema-defined JSON handoffs, manifest status updates, and unit

@@ -20,6 +20,11 @@
     "maximum_speakers": 10,
     "embedding_model": "microsoft/wavlm-base-plus-sv"
   },
+  "separation": {
+    "model": "htdemucs",
+    "device": "cpu",
+    "shifts": 1
+  },
   "dubbing": {
     "enabled": true,
     "provider": "piper",
@@ -27,7 +32,7 @@
     "rate": "+0%",
     "retries": 3,
     "preserve_background_audio": true,
-    "source_volume": 0.55,
+    "source_volume": 0.8,
     "dub_volume": 1.0
   }
 }

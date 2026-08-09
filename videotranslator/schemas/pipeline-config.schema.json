@@ -41,6 +41,15 @@
       },
       "additionalProperties": false
     },
+    "separation": {
+      "type": "object",
+      "properties": {
+        "model": {"type": "string", "minLength": 1},
+        "device": {"enum": ["cpu", "cuda"]},
+        "shifts": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
     "dubbing": {
       "type": "object",
       "properties": {

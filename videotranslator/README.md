@@ -12,6 +12,7 @@ See [CODE_REFERENCE.md](CODE_REFERENCE.md) for file-level APIs, examples, and er
 |---|---|---|---|
 | Ingest | Source video | Validated configuration | Implemented |
 | Extract | Video | Mono 16 kHz WAV | Implemented |
+| Source separation | Source soundtrack | Vocals + accompaniment | Implemented |
 | Adaptive translation | WAV | Source and English transcripts | Implemented |
 | Automatic approval | Model candidates | Approved timed English script | Implemented |
 | QA | English transcript | Timing report | Implemented |
@@ -111,6 +112,8 @@ segment IDs connect generated speech to timing and decision provenance.
 ## Standalone tools
 
 - `extract_audio.py`: normalize audio for speech recognition.
+- `separate_audio.py`: local Demucs two-stem separation into reusable vocals and
+  accompaniment tracks.
 - `transcribe.py`: simple ad hoc transcription or direct translation.
 - `auto_prepare_script.py`: adaptive dual-pass translation and automatic approval;
   source language is detected when omitted, and target language defaults to `en`.
@@ -141,9 +144,8 @@ keep stable IDs and distinct Piper voices. Pitch is used only as a broad voice-s
 signal; the code does not claim a person's gender from audio. Voice generation then
 produces one cached target-language WAV per segment. Assembly fits clips that
 overrun their cue windows, places every clip on the source timeline, and ducks the
-source soundtrack beneath English speech. Source separation remains a future
-quality improvement for completely removing original dialogue while preserving
-ambience and music.
+mixes the English speech with the Demucs accompaniment stem. The isolated original
+vocal stem is retained as an artifact but excluded from the translated export.
 
 Run the complete pipeline with:
 

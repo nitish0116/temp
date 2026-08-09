@@ -70,6 +70,7 @@ def test_pipeline_config_paths_are_relative_to_config(tmp_path: Path):
     assert artifact_paths["root"] == tmp_path / "outputs" / "example"
     assert artifact_paths["transcript_json"].name == "input.auto.en.json"
     assert "translate" in RUNNABLE_STAGES
+    assert "separate" in RUNNABLE_STAGES
     assert "tts" in RUNNABLE_STAGES
 
 
@@ -124,6 +125,23 @@ def test_pipeline_defaults_to_detected_source_and_english_target(tmp_path: Path)
     assert "--language" not in command
     assert command[command.index("--target-language") + 1] == "en"
     assert artifact_paths["transcript_json"].name.endswith(".auto.en.json")
+
+
+def test_final_assembly_uses_separated_accompaniment(tmp_path: Path):
+    """Pipeline assembly replaces source vocals when an accompaniment exists."""
+    config = {
+        "project_id": "example",
+        "input_video": str(tmp_path / "episode.mp4"),
+        "output_root": str(tmp_path / "outputs"),
+        "translation": {"target_language": "en", "model": "small"},
+        "dubbing": {},
+    }
+    artifact_paths = paths(config)
+
+    command, outputs = stage_command("assemble", config, artifact_paths)
+
+    assert command[command.index("--background") + 1] == str(artifact_paths["accompaniment"])
+    assert artifact_paths["dubbed"] in outputs
 
 
 def test_tts_rejects_scripts_without_automatic_approval(tmp_path: Path):

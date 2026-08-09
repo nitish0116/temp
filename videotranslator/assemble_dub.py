@@ -65,6 +65,7 @@ def assemble_dub(
     manifest_path: Path,
     output: Path,
     subtitles: Path | None = None,
+    background: Path | None = None,
     source_volume: float = 0.55,
     dub_volume: float = 1.0,
 ) -> dict:
@@ -92,17 +93,21 @@ def assemble_dub(
     finally:
         graph_path.unlink(missing_ok=True)
 
-    mix = (
-        f"[0:a]volume={source_volume}[source];"
-        "[source][1:a]sidechaincompress=threshold=0.015:ratio=12:attack=15:release=300[ducked];"
-        f"[ducked][1:a]amix=inputs=2:duration=first:weights='1 {dub_volume}':normalize=0,alimiter=limit=0.95[mix]"
-    )
+    background_index = 2 if background else 0
+    mix_method = "demucs-accompaniment-plus-aligned-dub" if background else "sidechain-duck-source-under-aligned-dub"
+    if background:
+        mix = f"[{background_index}:a]volume={source_volume}[background];[background][1:a]amix=inputs=2:duration=longest:weights='1 {dub_volume}':normalize=0,alimiter=limit=0.95[mix]"
+    else:
+        mix = f"[0:a]volume={source_volume}[source];[source][1:a]sidechaincompress=threshold=0.015:ratio=12:attack=15:release=300[ducked];[ducked][1:a]amix=inputs=2:duration=first:weights='1 {dub_volume}':normalize=0,alimiter=limit=0.95[mix]"
     export_command = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(video), "-i", str(dialogue_path)]
+    if background:
+        export_command += ["-i", str(background)]
     if subtitles:
         export_command += ["-i", str(subtitles)]
     export_command += ["-filter_complex", mix, "-map", "0:v:0", "-map", "[mix]"]
     if subtitles:
-        export_command += ["-map", "2:0", "-c:s", "mov_text", "-metadata:s:s:0", f"language={manifest['target_language']}"]
+        subtitle_index = 3 if background else 2
+        export_command += ["-map", f"{subtitle_index}:0", "-c:s", "mov_text", "-metadata:s:s:0", f"language={manifest['target_language']}"]
     export_command += ["-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", str(output)]
     subprocess.run(export_command, check=True)
 
@@ -116,7 +121,8 @@ def assemble_dub(
         "clip_count": len(clips),
         "source_volume": source_volume,
         "dub_volume": dub_volume,
-        "mix_method": "sidechain-duck-source-under-aligned-dub",
+        "mix_method": mix_method,
+        "background_track": str(background.resolve()) if background else None,
         "subtitles": str(subtitles.resolve()) if subtitles else None,
     }
     output.with_suffix(".assembly.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
@@ -130,10 +136,11 @@ def main() -> None:
     parser.add_argument("manifest", type=Path)
     parser.add_argument("-o", "--output", type=Path, required=True)
     parser.add_argument("--subtitles", type=Path)
+    parser.add_argument("--background", type=Path, help="Separated accompaniment/no-vocals track")
     parser.add_argument("--source-volume", type=float, default=0.55)
     parser.add_argument("--dub-volume", type=float, default=1.0)
     args = parser.parse_args()
-    report = assemble_dub(args.video, args.manifest, args.output, args.subtitles, args.source_volume, args.dub_volume)
+    report = assemble_dub(args.video, args.manifest, args.output, args.subtitles, args.background, args.source_volume, args.dub_volume)
     print(f"Aligned {report['clip_count']} clips")
     print(f"Final dubbed video: {report['output_video']}")
 

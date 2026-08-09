@@ -14,6 +14,7 @@ from typing import Any
 HERE = Path(__file__).resolve().parent
 RUNNABLE_STAGES = (
     "extract",
+    "separate",
     "translate",
     "qa",
     "diarize",
@@ -62,6 +63,10 @@ def paths(config: dict[str, Any]) -> dict[str, Path]:
         "root": root,
         "manifest": root / "manifest.json",
         "audio": root / "audio" / f"{stem}.wav",
+        "separation_dir": root / "separation",
+        "accompaniment": root / "separation" / "accompaniment.wav",
+        "vocals": root / "separation" / "vocals.wav",
+        "separation_report": root / "separation" / "separation.json",
         "transcript_dir": root / "transcripts",
         "transcript_json": root / "transcripts" / f"{stem}.auto.{target_language}.json",
         "srt": root / "transcripts" / f"{stem}.auto.{target_language}.srt",
@@ -114,6 +119,10 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
     python = sys.executable
     if stage == "extract":
         return [python, str(HERE / "extract_audio.py"), str(artifact_paths["video"]), "-o", str(artifact_paths["audio"])], [artifact_paths["audio"]]
+    if stage == "separate":
+        separation = config.get("separation", {})
+        command = [python, str(HERE / "separate_audio.py"), str(artifact_paths["video"]), "-o", str(artifact_paths["separation_dir"]), "--model", separation.get("model", "htdemucs"), "--device", separation.get("device", "cpu"), "--shifts", str(separation.get("shifts", 1))]
+        return command, [artifact_paths["accompaniment"], artifact_paths["vocals"], artifact_paths["separation_report"]]
     if stage == "translate":
         settings = config.get("translation", {})
         quality = config.get("quality", {})
@@ -157,7 +166,7 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
         return [python, str(HERE / "mux_subtitles.py"), str(artifact_paths["video"]), str(artifact_paths["srt"]), "-o", str(artifact_paths["subtitled"])], [artifact_paths["subtitled"]]
     if stage == "assemble":
         dubbing = config.get("dubbing", {})
-        command = [python, str(HERE / "assemble_dub.py"), str(artifact_paths["video"]), str(artifact_paths["dub_manifest"]), "-o", str(artifact_paths["dubbed"]), "--subtitles", str(artifact_paths["srt"]), "--source-volume", str(dubbing.get("source_volume", 0.55)), "--dub-volume", str(dubbing.get("dub_volume", 1.0))]
+        command = [python, str(HERE / "assemble_dub.py"), str(artifact_paths["video"]), str(artifact_paths["dub_manifest"]), "-o", str(artifact_paths["dubbed"]), "--subtitles", str(artifact_paths["srt"]), "--background", str(artifact_paths["accompaniment"]), "--source-volume", str(dubbing.get("source_volume", 0.8)), "--dub-volume", str(dubbing.get("dub_volume", 1.0))]
         return command, [artifact_paths["dubbed"], artifact_paths["assembly_report"]]
     raise ValueError(f"Unknown stage: {stage}")
 
