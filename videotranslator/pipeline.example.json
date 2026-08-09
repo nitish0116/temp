@@ -35,6 +35,8 @@
     "retries": 3,
     "preserve_background_audio": true,
     "source_volume": 0.8,
-    "dub_volume": 1.0
+    "dub_volume": 1.0,
+    "minimum_dialogue_occupancy": 0.65,
+    "minimum_tempo": 0.75
   }
 }

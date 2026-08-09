@@ -209,6 +209,8 @@ Performs local acoustic speaker clustering before TTS.
 - `segment_audio(...)` extracts each approved timing window.
 - `speaker_embeddings(...)` produces normalized local WavLM speaker x-vectors.
 - `choose_clusters(...)` selects speaker count with penalized cosine silhouette.
+- `split_clusters_by_pitch(...)` splits mixed high/low acoustic clusters before
+  voice assignment, preventing a dominant cluster from absorbing unlike voices.
 - `estimate_voice_style(...)` derives a broad high/low/neutral pitch style.
 - `assign_voices(...)` consistently assigns distinct Piper voices to clusters.
 - `diarize(...)` writes stable `speaker-NN` and `voice` values into every segment.
@@ -216,6 +218,12 @@ Performs local acoustic speaker clustering before TTS.
 The pitch style is an acoustic matching hint, not a gender assertion. Recurring
 clusters keep the same voice throughout the video, and the report records cluster
 size, pitch estimate, selected voice, method, and silhouette score.
+
+`auto_prepare_script.py` uses a single detected-language transcript as canonical
+timing. `translate_target(...)` applies local NLLB for every different target,
+including English, while `translation_coverage(...)` requires one-to-one cue and
+timestamp preservation. `clean_translation_repetition(...)` removes runaway
+decoder loops without source-language-specific rules.
 
 ## Configuration and schemas
 

@@ -168,7 +168,7 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
         return [python, str(HERE / "mux_subtitles.py"), str(artifact_paths["video"]), str(artifact_paths["srt"]), "-o", str(artifact_paths["subtitled"])], [artifact_paths["subtitled"]]
     if stage == "assemble":
         dubbing = config.get("dubbing", {})
-        command = [python, str(HERE / "assemble_dub.py"), str(artifact_paths["video"]), str(artifact_paths["dub_manifest"]), "-o", str(artifact_paths["dubbed"]), "--subtitles", str(artifact_paths["srt"]), "--background", str(artifact_paths["accompaniment"]), "--source-volume", str(dubbing.get("source_volume", 0.8)), "--dub-volume", str(dubbing.get("dub_volume", 1.0))]
+        command = [python, str(HERE / "assemble_dub.py"), str(artifact_paths["video"]), str(artifact_paths["dub_manifest"]), "-o", str(artifact_paths["dubbed"]), "--subtitles", str(artifact_paths["srt"]), "--background", str(artifact_paths["accompaniment"]), "--source-volume", str(dubbing.get("source_volume", 0.8)), "--dub-volume", str(dubbing.get("dub_volume", 1.0)), "--minimum-occupancy", str(dubbing.get("minimum_dialogue_occupancy", 0.65)), "--minimum-tempo", str(dubbing.get("minimum_tempo", 0.75))]
         return command, [artifact_paths["dubbed"], artifact_paths["assembly_report"]]
     if stage == "final_qa":
         quality = config.get("quality", {})

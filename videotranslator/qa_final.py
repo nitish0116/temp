@@ -8,6 +8,7 @@ import math
 import os
 import re
 import subprocess
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -93,8 +94,9 @@ def evaluate(
         issues.append({"code": "missing_clips", "detail": f"{len(missing)} clips failed or are missing"})
     overruns = []
     extreme = []
-    for clip in clips:
-        window = float(clip["end"]) - float(clip["start"])
+    for index, clip in enumerate(clips):
+        next_start = float(clips[index + 1]["start"]) if index + 1 < len(clips) else float(clip["end"])
+        window = max(float(clip["end"]), next_start) - float(clip["start"])
         required_tempo = float(clip["generated_duration"]) / window if window > 0 else math.inf
         if required_tempo > 1:
             overruns.append(clip["segment_id"])
@@ -109,6 +111,7 @@ def evaluate(
     for segment in assigned.get("segments", []):
         speaker_voices.setdefault(segment.get("speaker", "unknown"), set()).add(segment.get("voice", ""))
     inconsistent = [speaker for speaker, voices in speaker_voices.items() if len(voices) != 1]
+    style_counts = Counter(segment.get("voice_style", "unknown") for segment in assigned.get("segments", []))
     if inconsistent:
         issues.append({"code": "voice_inconsistency", "detail": f"{len(inconsistent)} speakers use multiple voices"})
 
@@ -152,6 +155,7 @@ def evaluate(
             "accelerated_clip_count": len(overruns),
             "extreme_tempo_clip_count": len(extreme),
             "speaker_count": len(speaker_voices),
+            "voice_style_counts": dict(style_counts),
             "voice_consistent": not inconsistent,
             "stream_types": stream_types,
             "duration_seconds": video_duration,

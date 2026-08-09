@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from auto_prepare_script import make_approval, nllb_code, passes_gate, quality_metrics, split_words
+from auto_prepare_script import clean_translation_repetition, make_approval, nllb_code, passes_gate, passes_translation_gate, quality_metrics, split_words, translation_coverage
 from generate_dub import generate_dub, rate_to_length_scale
 from diarize_speakers import assign_voices, voice_style
 from assemble_dub import build_alignment_graph, tempo_filters
@@ -164,6 +164,21 @@ def test_language_and_speech_rate_defaults_are_deterministic():
     assert rate_to_length_scale("+25%") == 0.8
 
 
+def test_translation_gate_requires_every_source_cue_and_timestamp():
+    """Target language does not affect preservation of canonical source timing."""
+    source = {"segments": [{"start": 1.0, "end": 2.0, "text": "源"}, {"start": 3.0, "end": 4.0, "text": "語"}]}
+    complete = {"segments": [{"start": 1.0, "end": 2.0, "text": "one"}, {"start": 3.0, "end": 4.0, "text": "two"}]}
+    incomplete = {"segments": complete["segments"][:1]}
+
+    assert passes_translation_gate(translation_coverage(source, complete))
+    assert not passes_translation_gate(translation_coverage(source, incomplete))
+
+
+def test_runaway_translation_repetition_is_collapsed_language_independently():
+    """Repeated decoder clauses are retained twice at most."""
+    assert clean_translation_repetition("Yes, Yes, Yes, Yes, continue.") == "Yes, Yes, continue."
+
+
 def test_distinct_speakers_receive_distinct_style_matched_voices():
     """Voice assignment stays unique and prefers pitch-compatible name markers."""
     voices = ["en_US-amy-medium", "en_GB-alan-medium", "en_US-ryan-medium"]
@@ -179,7 +194,7 @@ def test_alignment_speeds_only_clips_that_overrun_their_window():
     """Long speech is fitted into its cue while short speech keeps natural pace."""
     clips = [
         {"start": 1.0, "end": 2.0, "generated_duration": 3.0},
-        {"start": 4.0, "end": 6.0, "generated_duration": 1.0},
+        {"start": 2.0, "end": 6.0, "generated_duration": 1.0},
     ]
 
     graph = build_alignment_graph(clips, 10.0)
@@ -189,7 +204,7 @@ def test_alignment_speeds_only_clips_that_overrun_their_window():
     assert "[1:a]" in graph
     assert "[2:a]" not in graph
     assert "adelay=1000:all=1" in graph
-    assert "adelay=4000:all=1" in graph
+    assert "adelay=2000:all=1" in graph
     assert tempo_filters(1.0) == []
 
 

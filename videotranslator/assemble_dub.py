@@ -37,16 +37,21 @@ def tempo_filters(factor: float) -> list[str]:
     return filters
 
 
-def build_alignment_graph(clips: list[dict], duration: float) -> str:
+def build_alignment_graph(clips: list[dict], duration: float, minimum_occupancy: float = 0.65, minimum_tempo: float = 0.75) -> str:
     """Build a filter graph that fits clips into cue windows and delays them."""
     chains = [f"anullsrc=r=48000:cl=stereo,atrim=duration={duration:.3f}[base]"]
     labels = ["[base]"]
     for input_index, clip in enumerate(clips):
-        window = float(clip["end"]) - float(clip["start"])
+        next_start = float(clips[input_index + 1]["start"]) if input_index + 1 < len(clips) else duration
+        # Speech may use trailing silence before the next cue, avoiding extreme
+        # acceleration while never colliding with subsequent dialogue.
+        window = max(float(clip["end"]), next_start) - float(clip["start"])
         generated = float(clip["generated_duration"])
         filters = ["aresample=48000", "aformat=sample_fmts=fltp:channel_layouts=stereo"]
         if generated > window and window > 0:
             filters.extend(tempo_filters(generated / window))
+        elif window > 0 and generated < window * minimum_occupancy:
+            filters.extend(tempo_filters(max(minimum_tempo, generated / (window * minimum_occupancy))))
         filters.extend(
             [
                 f"atrim=duration={window:.6f}",
@@ -68,6 +73,8 @@ def assemble_dub(
     background: Path | None = None,
     source_volume: float = 0.55,
     dub_volume: float = 1.0,
+    minimum_occupancy: float = 0.65,
+    minimum_tempo: float = 0.75,
 ) -> dict:
     """Create an aligned dialogue track and mux a ducked source-audio mix."""
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -83,7 +90,7 @@ def assemble_dub(
     dialogue_path = output.with_suffix(".dialogue.wav")
     with tempfile.NamedTemporaryFile("w", suffix=".ffgraph", encoding="utf-8", delete=False) as graph_file:
         graph_path = Path(graph_file.name)
-        graph_file.write(build_alignment_graph(clips, duration))
+        graph_file.write(build_alignment_graph(clips, duration, minimum_occupancy, minimum_tempo))
     try:
         align_command = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"]
         for clip in clips:
@@ -123,6 +130,8 @@ def assemble_dub(
         "clip_count": len(clips),
         "source_volume": source_volume,
         "dub_volume": dub_volume,
+        "minimum_dialogue_occupancy": minimum_occupancy,
+        "minimum_tempo": minimum_tempo,
         "mix_method": mix_method,
         "background_track": str(background.resolve()) if background else None,
         "subtitles": str(subtitles.resolve()) if subtitles else None,
@@ -141,8 +150,10 @@ def main() -> None:
     parser.add_argument("--background", type=Path, help="Separated accompaniment/no-vocals track")
     parser.add_argument("--source-volume", type=float, default=0.55)
     parser.add_argument("--dub-volume", type=float, default=1.0)
+    parser.add_argument("--minimum-occupancy", type=float, default=0.65)
+    parser.add_argument("--minimum-tempo", type=float, default=0.75)
     args = parser.parse_args()
-    report = assemble_dub(args.video, args.manifest, args.output, args.subtitles, args.background, args.source_volume, args.dub_volume)
+    report = assemble_dub(args.video, args.manifest, args.output, args.subtitles, args.background, args.source_volume, args.dub_volume, args.minimum_occupancy, args.minimum_tempo)
     print(f"Aligned {report['clip_count']} clips")
     print(f"Final dubbed video: {report['output_video']}")
 

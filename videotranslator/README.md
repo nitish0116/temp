@@ -26,7 +26,7 @@ See [CODE_REFERENCE.md](CODE_REFERENCE.md) for file-level APIs, examples, and er
 | Final QA | Dubbed MP4 + manifests + stems | Automatic pass/fail report | Implemented |
 
 No user review is required. The primary model independently creates a
-source-language transcript and an English translation. If either fails confidence,
+source-language transcript and a target-language translation. If either fails confidence,
 rejection, or timing thresholds, a stronger fallback model retries the media. The
 best passing candidate is approved automatically; if none passes, the pipeline
 stops before TTS.
@@ -116,8 +116,9 @@ segment IDs connect generated speech to timing and decision provenance.
 - `separate_audio.py`: local Demucs two-stem separation into reusable vocals and
   accompaniment tracks.
 - `transcribe.py`: simple ad hoc transcription or direct translation.
-- `auto_prepare_script.py`: adaptive dual-pass translation and automatic approval;
-  source language is detected when omitted, and target language defaults to `en`.
+- `auto_prepare_script.py`: adaptive canonical transcription, translation, and automatic approval;
+  source language is detected when omitted, target language defaults to `en`, and
+  NLLB preserves every canonical source cue for all translated targets.
 - `generate_dub.py`: local Piper voice selection, model caching, clip generation,
   retries, duration measurement, and dub-manifest creation.
 - `assemble_dub.py`: cue alignment, overrun tempo fitting, automatic soundtrack
@@ -144,11 +145,17 @@ Example automatic preparation:
 
 Speaker diarization runs before voice generation, so recurring acoustic speakers
 keep stable IDs and distinct Piper voices. Pitch is used only as a broad voice-style
-signal; the code does not claim a person's gender from audio. Voice generation then
+signal; high and low pitch groups cannot be collapsed into the same acoustic cluster.
+The code does not claim a person's gender from audio. Voice generation then
 produces one cached target-language WAV per segment. Assembly fits clips that
 overrun their cue windows, places every clip on the source timeline, and ducks the
 mixes the English speech with the Demucs accompaniment stem. The isolated original
 vocal stem is retained as an artifact but excluded from the translated export.
+
+Translation uses one detected-language transcript as the canonical timing source.
+The multilingual coverage gate requires all target cues and timestamps to match it,
+and repeated decoder clauses are removed automatically. Assembly may borrow silence
+before the next cue and applies bounded slowdown to avoid unnaturally short lines.
 
 Run the complete pipeline with:
 

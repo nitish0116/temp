@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -178,35 +179,23 @@ def run_candidate(
     maximum_low_confidence_ratio: float,
     maximum_rejection_ratio: float,
 ) -> dict:
-    """Run separate source and English passes and score them as one candidate."""
+    """Transcribe one canonical source-language pass and score its quality."""
     source, source_decisions, source_notes = transcribe_and_decide(
         input_path, model_name, language, maximum_duration, maximum_chars, "transcribe"
     )
-    english, english_decisions, english_notes = transcribe_and_decide(
-        input_path, model_name, language, maximum_duration, maximum_chars, "translate"
-    )
     source_metrics = quality_metrics(source, source_decisions, source_notes)
-    english_metrics = quality_metrics(english, english_decisions, english_notes)
-    passed = passes_gate(
-        source_metrics, maximum_low_confidence_ratio, maximum_rejection_ratio
-    ) and passes_gate(
-        english_metrics, maximum_low_confidence_ratio, maximum_rejection_ratio
-    )
+    passed = passes_gate(source_metrics, maximum_low_confidence_ratio, maximum_rejection_ratio)
     return {
         "model": model_name,
         "passed": passed,
-        "score": source_metrics["score"] + english_metrics["score"],
+        "score": source_metrics["score"],
         "source": source,
-        "english": english,
         "source_notes": source_notes,
-        "english_notes": english_notes,
         "report": {
             "model": model_name,
             "passed": passed,
             "source_metrics": source_metrics,
-            "english_metrics": english_metrics,
             "source_decisions": source_decisions,
-            "english_decisions": english_decisions,
         },
     }
 
@@ -238,11 +227,7 @@ def translate_target(
     source_model_language: str | None,
     target_model_language: str | None,
 ) -> dict:
-    """Translate finalized source segments when the target is not English.
-
-    English uses Whisper's native translation elsewhere. Other languages use a
-    local NLLB model while preserving source cue boundaries.
-    """
+    """Translate canonical source cues to any target while preserving boundaries."""
     from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
     source_language = source_transcript["language"]
@@ -257,8 +242,15 @@ def translate_target(
         inputs = tokenizer(
             texts[start : start + 16], return_tensors="pt", padding=True, truncation=True
         )
-        generated = model.generate(**inputs, forced_bos_token_id=target_token, max_new_tokens=256)
+        generated = model.generate(
+            **inputs,
+            forced_bos_token_id=target_token,
+            max_new_tokens=128,
+            no_repeat_ngram_size=3,
+            repetition_penalty=1.15,
+        )
         translated.extend(tokenizer.batch_decode(generated, skip_special_tokens=True))
+    translated = [clean_translation_repetition(text) for text in translated]
     if len(translated) != len(texts) or any(not text.strip() for text in translated):
         raise RuntimeError("Target-language translation returned incomplete segments")
     return {
@@ -271,6 +263,56 @@ def translate_target(
             for source, text in zip(source_transcript["segments"], translated)
         ],
     }
+
+
+def clean_translation_repetition(text: str, maximum_repeats: int = 2) -> str:
+    """Collapse runaway repeated translated clauses without language assumptions."""
+    clauses = [part for part in re.split(r"(?<=[,!?;.])\s*", text.strip()) if part]
+    cleaned: list[str] = []
+    previous = ""
+    repeats = 0
+    for clause in clauses:
+        normalized = re.sub(r"\W+", "", clause, flags=re.UNICODE).casefold()
+        if normalized and normalized == previous:
+            repeats += 1
+            if repeats > maximum_repeats:
+                continue
+        else:
+            previous = normalized
+            repeats = 1
+        cleaned.append(clause)
+    return " ".join(cleaned).strip()
+
+
+def translation_coverage(source: dict, target: dict) -> dict:
+    """Measure language-independent cue and timing preservation after translation."""
+    source_segments = source.get("segments", [])
+    target_segments = target.get("segments", [])
+    source_duration = sum(segment["end"] - segment["start"] for segment in source_segments)
+    target_duration = sum(segment["end"] - segment["start"] for segment in target_segments)
+    aligned = sum(
+        abs(source_item["start"] - target_item["start"]) < 0.001
+        and abs(source_item["end"] - target_item["end"]) < 0.001
+        for source_item, target_item in zip(source_segments, target_segments)
+    )
+    return {
+        "source_cues": len(source_segments),
+        "target_cues": len(target_segments),
+        "cue_ratio": len(target_segments) / len(source_segments) if source_segments else 0.0,
+        "timing_ratio": target_duration / source_duration if source_duration else 0.0,
+        "aligned_cues": int(aligned),
+        "empty_target_cues": sum(not segment.get("text", "").strip() for segment in target_segments),
+    }
+
+
+def passes_translation_gate(metrics: dict, minimum_coverage: float = 0.98) -> bool:
+    """Reject translations that lose cues, speech timing, or translated text."""
+    return (
+        metrics["cue_ratio"] >= minimum_coverage
+        and metrics["timing_ratio"] >= minimum_coverage
+        and metrics["aligned_cues"] == metrics["source_cues"]
+        and metrics["empty_target_cues"] == 0
+    )
 
 
 def make_approval(project_id: str, transcript: dict, notes: list[str], model_name: str) -> dict:
@@ -372,15 +414,19 @@ def main() -> None:
         )
         raise RuntimeError(f"No model candidate passed the automatic quality gate: {summary}")
     selected = min(passing, key=lambda candidate: candidate["score"])
-    if args.target_language.lower() == "en":
-        transcript = selected["english"]
-        quality_notes = selected["english_notes"]
+    source_language = selected["source"]["language"].lower().split("-", 1)[0]
+    target_language = args.target_language.lower().split("-", 1)[0]
+    if target_language == source_language:
+        transcript = selected["source"]
     else:
         transcript = translate_target(
             selected["source"], args.target_language, args.translation_model,
             args.source_model_language, args.target_model_language,
         )
-        quality_notes = selected["source_notes"]
+    quality_notes = selected["source_notes"]
+    coverage = translation_coverage(selected["source"], transcript)
+    if not passes_translation_gate(coverage):
+        raise RuntimeError(f"Translation coverage gate failed: {coverage}")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     stem = args.input.stem
     transcript_path = args.output_dir / f"{stem}.auto.{args.target_language}.json"
@@ -398,7 +444,9 @@ def main() -> None:
         "thresholds": {
             "maximum_low_confidence_ratio": args.maximum_low_confidence_ratio,
             "maximum_rejection_ratio": args.maximum_rejection_ratio,
+            "minimum_translation_coverage": 0.98,
         },
+        "translation_coverage": coverage,
         "candidates": [candidate["report"] for candidate in candidates],
     }
     transcript_path.write_text(

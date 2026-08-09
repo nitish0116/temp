@@ -62,7 +62,9 @@
         "retries": {"type": "integer", "minimum": 1},
         "preserve_background_audio": {"type": "boolean"},
         "source_volume": {"type": "number", "minimum": 0, "maximum": 2},
-        "dub_volume": {"type": "number", "minimum": 0, "maximum": 2}
+        "dub_volume": {"type": "number", "minimum": 0, "maximum": 2},
+        "minimum_dialogue_occupancy": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "minimum_tempo": {"type": "number", "minimum": 0.5, "maximum": 1}
       },
       "additionalProperties": false
     }

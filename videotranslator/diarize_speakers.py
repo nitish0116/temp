@@ -119,6 +119,30 @@ def estimate_voice_style(utterances: list[np.ndarray]) -> tuple[str, float | Non
     return "neutral", round(median, 2)
 
 
+def split_clusters_by_pitch(labels: np.ndarray, utterances: list[np.ndarray]) -> tuple[np.ndarray, list[str]]:
+    """Prevent acoustically distinct high/low voices from sharing one cluster.
+
+    Neutral short cues retain their embedding cluster. High and low pitch groups
+    are separated only when both occur inside the same acoustic cluster, making
+    the rule independent of source language and character names.
+    """
+    styles = [estimate_voice_style([utterance])[0] for utterance in utterances]
+    keys: list[tuple[int, str]] = []
+    for cluster in sorted(set(int(label) for label in labels)):
+        cluster_styles = {styles[index] for index, label in enumerate(labels) if label == cluster}
+        split = "high" in cluster_styles and "low" in cluster_styles
+        for index, label in enumerate(labels):
+            if label == cluster:
+                keys.append((index, styles[index] if split and styles[index] != "neutral" else f"cluster-{cluster}"))
+    relabeled = np.empty(len(labels), dtype=int)
+    identities: dict[tuple[int, str], int] = {}
+    for index, style_key in sorted(keys):
+        identity = (int(labels[index]), style_key)
+        identities.setdefault(identity, len(identities))
+        relabeled[index] = identities[identity]
+    return relabeled, styles
+
+
 def voice_style(voice_name: str) -> str:
     """Classify known Piper voice-name markers as high, low, or neutral style."""
     lowered = voice_name.lower()
@@ -161,7 +185,9 @@ def diarize(
     ]
     embeddings = speaker_embeddings(utterances, embedding_model)
     labels, selection = choose_clusters(embeddings, maximum_speakers)
+    labels, segment_styles = split_clusters_by_pitch(labels, utterances)
     unique_labels = sorted(set(int(label) for label in labels))
+    selection["pitch_aware_speakers"] = len(unique_labels)
     styles_and_pitch = [
         estimate_voice_style([utterances[i] for i, label in enumerate(labels) if label == cluster])
         for cluster in unique_labels
@@ -179,10 +205,11 @@ def diarize(
             "segment_count": int(sum(labels == cluster)),
         }
     updated = json.loads(json.dumps(approved_script))
-    for segment, label in zip(updated["segments"], labels):
+    for index, (segment, label) in enumerate(zip(updated["segments"], labels)):
         detail = cluster_details[int(label)]
         segment["speaker"] = detail["speaker"]
         segment["voice"] = detail["voice"]
+        segment["voice_style"] = segment_styles[index]
     report = {
         "schema_version": 1,
         "method": "wavlm-xvector-agglomerative-cosine",
