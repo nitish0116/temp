@@ -16,6 +16,7 @@ RUNNABLE_STAGES = (
     "extract",
     "translate",
     "qa",
+    "diarize",
     "tts",
     "review",
     "subtitle_mux",
@@ -66,6 +67,8 @@ def paths(config: dict[str, Any]) -> dict[str, Path]:
         "source_transcript": root / "transcripts" / f"{stem}.source.json",
         "decisions": root / "transcripts" / f"{stem}.decisions.json",
         "approved_script": root / "transcripts" / f"{stem}.approved.json",
+        "diarized_script": root / "diarization" / f"{stem}.assigned.json",
+        "diarization_report": root / "diarization" / f"{stem}.speakers.json",
         "qa": root / "qa" / f"{stem}.qa.json",
         "review": root / "review" / f"{stem}.top-subs.mp4",
         "subtitled": root / "final" / f"{stem}.{target_language}-subs.mp4",
@@ -136,10 +139,15 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
     if stage == "tts":
         settings = config.get("translation", {})
         dubbing = config.get("dubbing", {})
-        command = [python, str(HERE / "generate_dub.py"), str(artifact_paths["approved_script"]), "-o", str(artifact_paths["dub_dir"]), "--target-language", settings.get("target_language", "en"), "--rate", dubbing.get("rate", "+0%"), "--retries", str(dubbing.get("retries", 3))]
+        command = [python, str(HERE / "generate_dub.py"), str(artifact_paths["diarized_script"]), "-o", str(artifact_paths["dub_dir"]), "--target-language", settings.get("target_language", "en"), "--rate", dubbing.get("rate", "+0%"), "--retries", str(dubbing.get("retries", 3))]
         if dubbing.get("voice"):
             command += ["--voice", dubbing["voice"]]
         return command, [artifact_paths["dub_manifest"]]
+    if stage == "diarize":
+        settings = config.get("translation", {})
+        diarization = config.get("diarization", {})
+        command = [python, str(HERE / "diarize_speakers.py"), str(artifact_paths["approved_script"]), str(artifact_paths["audio"]), "--target-language", settings.get("target_language", "en"), "--maximum-speakers", str(diarization.get("maximum_speakers", 10)), "--embedding-model", diarization.get("embedding_model", "microsoft/wavlm-base-plus-sv"), "--output-script", str(artifact_paths["diarized_script"]), "--output-report", str(artifact_paths["diarization_report"])]
+        return command, [artifact_paths["diarized_script"], artifact_paths["diarization_report"]]
     if stage == "review":
         return [python, str(HERE / "burn_subtitles.py"), str(artifact_paths["video"]), str(artifact_paths["srt"]), "-o", str(artifact_paths["review"])], [artifact_paths["review"]]
     if stage == "subtitle_mux":

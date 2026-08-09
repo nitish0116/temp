@@ -42,6 +42,14 @@ def select_voice(target_language: str, requested_voice: str | None) -> str:
     """
     if requested_voice:
         return requested_voice
+    candidates = available_voices(target_language)
+    if not candidates:
+        raise ValueError(f"No Piper voice found for target language: {target_language}")
+    return candidates[0]
+
+
+def available_voices(target_language: str) -> list[str]:
+    """Return deterministic medium-first Piper voice names for a language."""
     normalized = target_language.replace("-", "_").lower()
     language = normalized.split("_", 1)[0]
     with urlopen(VOICES_JSON) as response:
@@ -52,10 +60,8 @@ def select_voice(target_language: str, requested_voice: str | None) -> str:
         if name.lower().startswith(f"{normalized}-")
         or ("_" not in normalized and name.lower().startswith(f"{language}_"))
     ]
-    if not candidates:
-        raise ValueError(f"No Piper voice found for target language: {target_language}")
     candidates.sort(key=lambda name: ("-medium" not in name, name))
-    return candidates[0]
+    return candidates
 
 
 def ensure_voice(voice_name: str, models_dir: Path) -> Path:
@@ -139,16 +145,34 @@ def generate_dub(
     """Generate or reuse local clips and return their complete dub manifest."""
     if approved_script.get("approval", {}).get("status") != "approved":
         raise ValueError("TTS input must be an automatically approved script")
-    voice_name = select_voice(target_language, requested_voice)
-    model_path = ensure_voice(voice_name, output_dir / "models")
-    piper_voice = PiperVoice.load(model_path)
+    default_voice = select_voice(target_language, requested_voice)
+    voice_names = sorted(
+        {segment.get("voice") or default_voice for segment in approved_script["segments"]}
+    )
+    piper_voices = {
+        voice_name: PiperVoice.load(ensure_voice(voice_name, output_dir / "models"))
+        for voice_name in voice_names
+    }
     synthesis_config = SynthesisConfig(length_scale=rate_to_length_scale(rate))
     clips_dir = output_dir / "clips"
     clips_dir.mkdir(parents=True, exist_ok=True)
+    previous_path = output_dir / "dub-manifest.json"
+    previous = {}
+    if previous_path.is_file():
+        old_manifest = json.loads(previous_path.read_text(encoding="utf-8"))
+        previous = {clip["segment_id"]: clip for clip in old_manifest.get("clips", [])}
     clips = []
     for segment in approved_script["segments"]:
+        voice_name = segment.get("voice") or default_voice
         path = clips_dir / f"{segment['id']}.wav"
-        if path.is_file() and path.stat().st_size > 0:
+        old = previous.get(segment["id"])
+        cache_matches = (
+            old
+            and old.get("text") == segment["text"]
+            and old.get("voice") == voice_name
+            and old.get("status") == "generated"
+        )
+        if cache_matches and path.is_file() and path.stat().st_size > 0:
             duration = media_duration(path)
             window = float(segment["end"]) - float(segment["start"])
             clips.append(
@@ -164,7 +188,7 @@ def generate_dub(
             continue
         clips.append(
             generate_clip(
-                piper_voice, segment, path, voice_name, synthesis_config, retries
+                piper_voices[voice_name], segment, path, voice_name, synthesis_config, retries
             )
         )
     return {
@@ -172,7 +196,7 @@ def generate_dub(
         "project_id": approved_script["project_id"],
         "provider": "piper",
         "target_language": target_language,
-        "voice": voice_name,
+        "voices": voice_names,
         "clips": clips,
     }
 
@@ -202,7 +226,7 @@ def main() -> None:
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     failed = [clip for clip in manifest["clips"] if clip["status"] == "failed"]
-    print(f"Generated {len(manifest['clips']) - len(failed)}/{len(manifest['clips'])} clips using {manifest['voice']}")
+    print(f"Generated {len(manifest['clips']) - len(failed)}/{len(manifest['clips'])} clips using {len(manifest['voices'])} voices")
     print(f"Dub manifest: {manifest_path.resolve()}")
     if failed:
         raise RuntimeError(f"TTS failed for {len(failed)} segments; see dub manifest")

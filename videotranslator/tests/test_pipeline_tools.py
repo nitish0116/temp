@@ -7,6 +7,7 @@ import pytest
 
 from auto_prepare_script import make_approval, nllb_code, passes_gate, quality_metrics, split_words
 from generate_dub import generate_dub, rate_to_length_scale
+from diarize_speakers import assign_voices, voice_style
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
 
@@ -141,3 +142,14 @@ def test_language_and_speech_rate_defaults_are_deterministic():
     assert nllb_code("fr-FR", None) == "fra_Latn"
     assert rate_to_length_scale("+0%") == 1.0
     assert rate_to_length_scale("+25%") == 0.8
+
+
+def test_distinct_speakers_receive_distinct_style_matched_voices():
+    """Voice assignment stays unique and prefers pitch-compatible name markers."""
+    voices = ["en_US-amy-medium", "en_GB-alan-medium", "en_US-ryan-medium"]
+
+    assigned = assign_voices(["high", "low", "low"], voices)
+
+    assert len(set(assigned)) == 3
+    assert voice_style(assigned[0]) == "high"
+    assert voice_style(assigned[1]) == "low"

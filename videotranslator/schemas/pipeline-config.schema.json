@@ -33,6 +33,14 @@
       },
       "additionalProperties": false
     },
+    "diarization": {
+      "type": "object",
+      "properties": {
+        "maximum_speakers": {"type": "integer", "minimum": 2},
+        "embedding_model": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
     "dubbing": {
       "type": "object",
       "properties": {

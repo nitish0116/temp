@@ -15,6 +15,7 @@ See [CODE_REFERENCE.md](CODE_REFERENCE.md) for file-level APIs, examples, and er
 | Adaptive translation | WAV | Source and English transcripts | Implemented |
 | Automatic approval | Model candidates | Approved timed English script | Implemented |
 | QA | English transcript | Timing report | Implemented |
+| Speaker diarization | Source audio + script | Stable speakers and distinct voices | Implemented |
 | Diagnostic render | Video + SRT | Optional top-subtitle video | Implemented |
 | Subtitle mux | Video + SRT | Selectable English subtitles | Implemented |
 | Voice generation | Approved script | Local target-language clips | Implemented |
@@ -73,6 +74,8 @@ outputs/<project-id>/
 |-- transcripts/<video>.auto.en.srt
 |-- transcripts/<video>.decisions.json
 |-- transcripts/<video>.approved.json
+|-- diarization/<video>.assigned.json
+|-- diarization/<video>.speakers.json
 |-- qa/<video>.qa.json
 |-- review/<video>.top-subs.mp4
 `-- final/<video>.english-subs.mp4
@@ -113,6 +116,8 @@ segment IDs connect generated speech to timing and decision provenance.
   source language is detected when omitted, and target language defaults to `en`.
 - `generate_dub.py`: local Piper voice selection, model caching, clip generation,
   retries, duration measurement, and dub-manifest creation.
+- `diarize_speakers.py`: local WavLM speaker embeddings, automatic speaker-count
+  selection, stable speaker IDs, pitch-style estimation, and distinct voice assignment.
 - `qa_transcript.py`: deterministic timing checks.
 - `burn_subtitles.py`: optional top-subtitle diagnostic render.
 - `mux_subtitles.py`: selectable English subtitle track without media re-encoding.
@@ -129,7 +134,10 @@ Example automatic preparation:
 
 ## Dubbing design
 
-Voice generation now produces one cached target-language WAV per segment. The next
+Speaker diarization runs before voice generation, so recurring acoustic speakers
+keep stable IDs and distinct Piper voices. Pitch is used only as a broad voice-style
+signal; the code does not claim a person's gender from audio. Voice generation then
+produces one cached target-language WAV per segment. The next
 milestone is alignment, which will pad or safely time-stretch clips. Mixing should preserve
 ambience and music using source separation; layering English over intact source
 dialogue would leave both languages audible.

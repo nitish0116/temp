@@ -158,13 +158,28 @@ Generates voice clips locally; approved text is never sent to a TTS service.
 - `rate_to_length_scale(...)` translates percentage speed into Piper timing.
 - `generate_clip(...)` synthesizes and measures one WAV with retries.
 - `generate_dub(...)` enforces automatic approval, reuses cached clips, and returns
-  a schema-compliant dub manifest.
+  a schema-compliant multi-voice dub manifest. Cache reuse also checks text and voice.
 - `media_duration(...)` uses FFprobe to measure generated audio.
 
 ```powershell
 python generate_dub.py outputs/transcripts/episode.approved.json `
   -o outputs/dub --target-language en
 ```
+
+## `diarize_speakers.py`
+
+Performs local acoustic speaker clustering before TTS.
+
+- `segment_audio(...)` extracts each approved timing window.
+- `speaker_embeddings(...)` produces normalized local WavLM speaker x-vectors.
+- `choose_clusters(...)` selects speaker count with penalized cosine silhouette.
+- `estimate_voice_style(...)` derives a broad high/low/neutral pitch style.
+- `assign_voices(...)` consistently assigns distinct Piper voices to clusters.
+- `diarize(...)` writes stable `speaker-NN` and `voice` values into every segment.
+
+The pitch style is an acoustic matching hint, not a gender assertion. Recurring
+clusters keep the same voice throughout the video, and the report records cluster
+size, pitch estimate, selected voice, method, and silhouette score.
 
 ## Configuration and schemas
 

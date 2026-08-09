@@ -16,6 +16,10 @@
     "maximum_low_confidence_ratio": 0.2,
     "maximum_rejection_ratio": 0.05
   },
+  "diarization": {
+    "maximum_speakers": 10,
+    "embedding_model": "microsoft/wavlm-base-plus-sv"
+  },
   "dubbing": {
     "enabled": true,
     "provider": "piper",
