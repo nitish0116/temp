@@ -1,3 +1,4 @@
 -r requirements.txt
 torch>=2.2
-transformers>=4.48,<6
+# Keep compatibility with the shared XTTS-v2 environment; XTTS breaks on 5.x.
+transformers>=4.57,<5
