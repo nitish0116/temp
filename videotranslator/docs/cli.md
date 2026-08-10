@@ -55,6 +55,8 @@ New-Item -ItemType Directory -Force $run | Out-Null
 `--device auto` prefers CUDA and falls back to CPU. Use `--device cpu` only to
 force CPU execution. An NVIDIA driver alone is insufficient: the environment
 must contain a CUDA-enabled PyTorch build for CUDA to be reported as available.
+The unified requirements pin the matched `2.11.0+cu128` Torch and TorchAudio
+wheels from PyTorch's CUDA 12.8 index.
 
 Outputs include `vocals.wav` and `accompaniment.wav`. Downstream speech stages
 use the vocal stem; final assembly uses the accompaniment.

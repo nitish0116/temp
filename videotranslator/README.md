@@ -43,6 +43,8 @@ FFmpeg must be on `PATH`. From the repository root:
 The unified requirements file includes diarization, vision, and expressive TTS.
 XTTS-v2 model weights use the Coqui Public Model License and are enabled for this
 non-commercial project. Transformers is pinned below 5 for XTTS compatibility.
+The Windows environment uses matched PyTorch/TorchAudio CUDA 12.8 wheels; verify
+installation with `torch.cuda.is_available()` before a long media run.
 
 Detailed operations and project state:
 
