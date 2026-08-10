@@ -129,6 +129,8 @@ segment IDs connect generated speech to timing and decision provenance.
   bounded silence borrowing, duplicate-fragment cleanup, and automatic retries.
 - `synthesize_constrained.py`: assigned-voice Piper synthesis with edge-silence
   trimming, measured duration retries, and no post-processing tempo changes.
+- `align_active_speaker.py`: optional face tracking, lower-face motion scoring, and
+  bounded visual-onset correction for multi-character scenes.
 - `qa_transcript.py`: deterministic timing checks.
 - `burn_subtitles.py`: optional top-subtitle diagnostic render.
 - `mux_subtitles.py`: selectable English subtitle track without media re-encoding.
@@ -276,3 +278,23 @@ python synthesize_constrained.py outputs/project/english.constrained.json `
 `synthesis-report.json` records every attempt and explicitly reports whether any
 post-processing tempo was used. `dub-manifest.json` remains compatible with the
 existing assembly stage.
+
+## Active-speaker and lip-motion alignment
+
+Step 7 samples video around each dialogue cue, tracks visible faces, and measures
+motion only in each face's lower region. In scenes with multiple detected faces,
+the stage selects an active face only when its motion clearly dominates the other
+tracks. The visual onset correction is capped at 250 ms and clamped against the
+neighboring synthesized clips so it cannot create dialogue overlap.
+
+```powershell
+python -m pip install -r requirements-vision.txt
+python align_active_speaker.py input.mp4 english.constrained.json `
+  synthesis/dub-manifest.json `
+  --output-manifest active-speaker/dub-manifest.aligned.json `
+  --output-report active-speaker/active-speaker-report.json
+```
+
+Ambiguous multi-face scenes are automatically left unchanged and recorded in the
+report; the tool never guesses a visible speaker or requests manual review. This
+optional local implementation uses OpenCV and does not upload video frames.

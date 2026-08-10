@@ -1,0 +1,2 @@
+# Optional active-speaker and lip-motion backend. Install only for step 7.
+opencv-python-headless==4.13.0.92

@@ -113,6 +113,23 @@ The `minimum_length_scale` floor prevents abrupt, excessively fast delivery. A
 small measurement tolerance may absorb WAV rounding, but no FFmpeg `atempo` filter
 is applied by this stage.
 
+## `align_active_speaker.py`
+
+- `intersection_over_union(...)` supports cue-local face-track association.
+- `mouth_patch(...)` extracts normalized lower-face pixels for motion measurement.
+- `assign_detections(...)` maintains face tracks across sampled cue frames.
+- `dominant_track(...)` rejects uncertain multi-face motion instead of guessing.
+- `bounded_onset_offset(...)` caps visual timing correction at the configured limit.
+- `timeline_safe_offset(...)` prevents a correction from overlapping neighboring
+  synthesized speech.
+- `analyze_cue(...)` returns face count, motion scores, active track, and visual onset.
+- `align_active_speakers(...)` updates an assembly-compatible manifest and emits a
+  complete automatic decision report.
+
+The optional dependency is isolated in `requirements-vision.txt`. Ambiguous and
+non-multi-face cues remain unchanged; later QA can enforce project-level coverage
+thresholds using the report without involving a reviewer.
+
 - `now()` returns UTC timestamps used in manifests.
 - `load_config(path)` loads JSON, checks required settings, and resolves paths from
   the configuration file's directory.

@@ -15,6 +15,7 @@ from diarize_pyannote import assign_turns
 from match_speaker_voices import match_profiles
 from translate_constrained import available_windows, character_budget, deduplicate_adjacent_cues, estimated_duration
 from synthesize_constrained import active_sample_bounds, next_length_scale, permitted_duration, stable_segment_id
+from align_active_speaker import bounded_onset_offset, dominant_track, intersection_over_union, timeline_safe_offset
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
 
@@ -322,3 +323,22 @@ def test_silence_trim_preserves_padding_and_internal_pauses():
     """Only waveform edges are removed; quiet samples between speech remain."""
     samples = [0, 0, 500, 0, 0, 600, 0, 0]
     assert active_sample_bounds(samples, threshold=100, padding_samples=1) == (1, 7)
+
+
+def test_active_speaker_selection_requires_dominant_motion():
+    """Close multi-face motion scores remain ambiguous instead of being guessed."""
+    assert dominant_track({0: 0.04, 1: 0.02}, 1.35)[0] == 0
+    assert dominant_track({0: 0.04, 1: 0.035}, 1.35)[0] is None
+
+
+def test_visual_onset_correction_is_bounded():
+    """Lip-motion timing cannot move dialogue by more than the configured cap."""
+    assert bounded_onset_offset(2.0, 2.1, 0.25) == 0.1
+    assert bounded_onset_offset(2.0, 2.8, 0.25) == 0.25
+    assert intersection_over_union((0, 0, 10, 10), (5, 0, 10, 10)) == 1 / 3
+
+
+def test_visual_offset_cannot_overlap_neighboring_audio():
+    """Visual alignment yields to the synthesized dialogue timeline."""
+    assert timeline_safe_offset(0.2, 2.0, 1.0, None, 3.1) == (0.1, True)
+    assert timeline_safe_offset(-0.2, 2.0, 1.0, 1.9, None) == (-0.1, True)
