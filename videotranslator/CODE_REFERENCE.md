@@ -130,6 +130,21 @@ The optional dependency is isolated in `requirements-vision.txt`. Ambiguous and
 non-multi-face cues remain unchanged; later QA can enforce project-level coverage
 thresholds using the report without involving a reviewer.
 
+## `qa_dubbing_pipeline.py`
+
+- `speech_coverage(...)` verifies every canonical cue has a nonempty generated WAV.
+- `speaker_reassignments(...)` compares persistent speaker-to-voice mappings with
+  every manifest clip.
+- `maximum_native_tempo(...)` derives actual Piper rate from the accepted attempt's
+  duration scale.
+- `dialogue_overlaps(...)` detects rendered audio crossing the next cue onset.
+- `evaluate_pipeline(...)` combines translation, synthesis, and active-speaker
+  evidence into one strict automatic decision.
+
+The CLI exits nonzero on any blocking finding. Its report conforms to
+`schemas/dubbing-pipeline-qa.schema.json` and is intended to gate assembly before
+the existing final encoded-media QA runs.
+
 - `now()` returns UTC timestamps used in manifests.
 - `load_config(path)` loads JSON, checks required settings, and resolves paths from
   the configuration file's directory.
@@ -337,6 +352,8 @@ files under `schemas/` define boundaries between stages:
 - `dub-manifest.schema.json`: generated voice clips and alignment metadata.
 - `manifest.schema.json`: stage lifecycle, commands, errors, and artifact paths.
 - `final-qa.schema.json`: automatic final checks, findings, and pass/fail state.
+- `dubbing-pipeline-qa.schema.json`: pre-assembly coverage, identity, tempo, overlap,
+  and active-speaker quality decision.
 
 Schemas use JSON Schema draft 2020-12. Generated output JSON is deliberately kept
 outside Git; schemas and the example configuration are versioned.

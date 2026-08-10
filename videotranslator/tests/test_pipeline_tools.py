@@ -16,6 +16,7 @@ from match_speaker_voices import match_profiles
 from translate_constrained import available_windows, character_budget, deduplicate_adjacent_cues, estimated_duration
 from synthesize_constrained import active_sample_bounds, next_length_scale, permitted_duration, stable_segment_id
 from align_active_speaker import bounded_onset_offset, dominant_track, intersection_over_union, timeline_safe_offset
+from qa_dubbing_pipeline import dialogue_overlaps, maximum_native_tempo, speaker_reassignments
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
 
@@ -342,3 +343,26 @@ def test_visual_offset_cannot_overlap_neighboring_audio():
     """Visual alignment yields to the synthesized dialogue timeline."""
     assert timeline_safe_offset(0.2, 2.0, 1.0, None, 3.1) == (0.1, True)
     assert timeline_safe_offset(-0.2, 2.0, 1.0, 1.9, None) == (-0.1, True)
+
+
+def test_pipeline_qa_detects_speaker_reassignment_and_audio_overlap(tmp_path: Path):
+    """Persistent voices and non-overlapping generated speech are blocking checks."""
+    audio = tmp_path / "clip.wav"
+    audio.write_bytes(b"audio")
+    script = {"segments": [{"speaker": "one", "voice": "voice-a"}]}
+    manifest = {
+        "clips": [{
+            "segment_id": "seg-0001", "voice": "voice-b", "audio_path": str(audio),
+            "status": "generated", "generated_duration": 1.2, "start": 0.0,
+        }, {"segment_id": "seg-0002", "start": 1.0, "generated_duration": 0.5}],
+    }
+    assert speaker_reassignments(script, manifest)[1] == ["one"]
+    assert dialogue_overlaps(manifest) == ["seg-0001"]
+
+
+def test_pipeline_qa_measures_native_tts_tempo():
+    """The QA rate uses Piper's synthesis scale rather than a later audio filter."""
+    report = {"segments": [{"segment_id": "one", "status": "fits", "attempts": [{"length_scale": 0.85}]}]}
+    tempo, segments = maximum_native_tempo(report)
+    assert round(tempo, 4) == 1.1765
+    assert segments == ["one"]

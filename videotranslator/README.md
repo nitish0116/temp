@@ -131,6 +131,8 @@ segment IDs connect generated speech to timing and decision provenance.
   trimming, measured duration retries, and no post-processing tempo changes.
 - `align_active_speaker.py`: optional face tracking, lower-face motion scoring, and
   bounded visual-onset correction for multi-character scenes.
+- `qa_dubbing_pipeline.py`: strict automatic cross-stage QA for speech coverage,
+  speaker identity, tempo, onset alignment, overlap, and visual confidence.
 - `qa_transcript.py`: deterministic timing checks.
 - `burn_subtitles.py`: optional top-subtitle diagnostic render.
 - `mux_subtitles.py`: selectable English subtitle track without media re-encoding.
@@ -298,3 +300,23 @@ python align_active_speaker.py input.mp4 english.constrained.json `
 Ambiguous multi-face scenes are automatically left unchanged and recorded in the
 report; the tool never guesses a visible speaker or requests manual review. This
 optional local implementation uses OpenCV and does not upload video frames.
+
+## Cross-stage dubbing QA
+
+Step 8 blocks assembly when any canonical speech clip is missing, a persistent
+speaker changes voice, native TTS rate exceeds its limit, post-processing tempo is
+reported, visual onset correction is excessive, generated dialogue overlaps, or
+multi-face alignment confidence is below the configured threshold.
+
+```powershell
+python qa_dubbing_pipeline.py english.constrained.json translation-report.json `
+  active-speaker/dub-manifest.aligned.json synthesis/synthesis-report.json `
+  active-speaker/active-speaker-report.json `
+  -o qa/dubbing-pipeline-qa.json
+```
+
+The defaults require complete speech coverage, limit native rate to 1.20x and
+visual correction to 250 ms, and require confident decisions for at least half of
+detected multi-face cues. The report is an automatic pass/fail artifact defined by
+`schemas/dubbing-pipeline-qa.schema.json`; failures stop the command with no manual
+review path.

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dubbing-pipeline-qa.schema.json",
+  "title": "Automatic dubbing pipeline quality decision",
+  "type": "object",
+  "required": ["schema_version", "automatic", "status", "thresholds", "checks", "findings"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "automatic": {"const": true},
+    "status": {"enum": ["passed", "failed"]},
+    "thresholds": {
+      "type": "object",
+      "required": ["minimum_speech_coverage", "maximum_native_tempo", "maximum_onset_offset", "minimum_active_speaker_confidence"],
+      "additionalProperties": {"type": "number"}
+    },
+    "checks": {
+      "type": "object",
+      "required": ["canonical_segment_count", "speech_coverage", "missing_segment_count", "speaker_count", "reassigned_speaker_count", "maximum_native_tempo", "post_processing_tempo_used", "maximum_absolute_onset_offset", "dialogue_overlap_count", "multi_face_segment_count", "aligned_multi_face_segment_count", "active_speaker_confidence"]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "detail"],
+        "properties": {
+          "code": {"type": "string", "minLength": 1},
+          "detail": {"type": "string", "minLength": 1},
+          "items": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
