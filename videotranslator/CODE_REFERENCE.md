@@ -76,6 +76,28 @@ the base installation.
 - `match_voices(...)` writes persistent voice assignments and a complete feature,
   weight, distance, and provenance report.
 
+## `translate_constrained.py`
+
+- `available_windows(...)` adds only bounded trailing silence to each cue window.
+- `deduplicate_adjacent_cues(...)` merges adjacent same-speaker alignment fragments
+  using language-independent Unicode text containment.
+- `voice_rates(...)` derives target speech rates from cached assigned-voice probes.
+- `character_budget(...)` converts a speaking window and voice rate into a target
+  text budget.
+- `generate_translation(...)` runs repetition-controlled NLLB generation.
+- `translate_constrained(...)` retries lines over budget and produces a blocking
+  automatic fit report while preserving speaker and voice metadata.
+
+```powershell
+python translate_constrained.py outputs/voices.assigned.json `
+  --target-language en --probe-dir outputs/probes `
+  --output-script outputs/english.constrained.json `
+  --output-report outputs/translation-report.json
+```
+
+The process exits with an error if any generated line remains over its permitted
+ratio, so unsuitable translations cannot silently proceed to TTS.
+
 - `now()` returns UTC timestamps used in manifests.
 - `load_config(path)` loads JSON, checks required settings, and resolves paths from
   the configuration file's directory.

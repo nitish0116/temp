@@ -125,6 +125,8 @@ segment IDs connect generated speech to timing and decision provenance.
   ducking, final audio mixing, optional subtitle muxing, and MP4 export.
 - `diarize_speakers.py`: local WavLM speaker embeddings, automatic speaker-count
   selection, stable speaker IDs, pitch-style estimation, and distinct voice assignment.
+- `translate_constrained.py`: NLLB translation with per-voice duration budgets,
+  bounded silence borrowing, duplicate-fragment cleanup, and automatic retries.
 - `qa_transcript.py`: deterministic timing checks.
 - `burn_subtitles.py`: optional top-subtitle diagnostic render.
 - `mux_subtitles.py`: selectable English subtitle track without media re-encoding.
@@ -233,3 +235,23 @@ explicitly records `gender_inference: false`.
 
 Candidate voice probe clips are cached. For target languages without a built-in
 neutral probe sentence, provide `--probe-text` in that language.
+
+## Duration-constrained translation
+
+Step 5 translates the speaker-assigned source script before TTS. It calibrates the
+estimated speaking rate from each assigned voice's cached probe, permits at most a
+bounded amount of trailing silence, and retries translations that exceed their
+speaking-window budget. Adjacent same-speaker alignment fragments are merged only
+when their normalized text contains one another. The command fails when any line
+is still estimated to require excessive tempo adjustment.
+
+```powershell
+python translate_constrained.py outputs/project/voices.assigned.json `
+  --target-language en --probe-dir outputs/project/probes `
+  --output-script outputs/project/english.constrained.json `
+  --output-report outputs/project/translation-report.json
+```
+
+The translated script preserves stable speaker and voice assignments. Every cue
+includes its available time, estimated speech duration, ratio, character budget,
+and retry decision for later synthesis and QA.

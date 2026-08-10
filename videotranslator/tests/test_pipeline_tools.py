@@ -13,6 +13,7 @@ from qa_final import stem_leakage
 from force_align import build_reconciled_transcript, interval_overlap, reconciliation_candidates
 from diarize_pyannote import assign_turns
 from match_speaker_voices import match_profiles
+from translate_constrained import available_windows, character_budget, deduplicate_adjacent_cues, estimated_duration
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
 
@@ -272,3 +273,28 @@ def test_multi_feature_voice_matching_is_unique_and_not_name_based():
     )
     assert assignments == {"speaker-01": "voice-arbitrary-b", "speaker-02": "voice-arbitrary-a"}
     assert set(distances) == {"speaker-01", "speaker-02"}
+
+
+def test_duration_budget_borrows_only_bounded_trailing_silence():
+    """Translation capacity cannot consume an arbitrarily long scene pause."""
+    segments = [
+        {"start": 1.0, "end": 2.0},
+        {"start": 10.0, "end": 11.0},
+    ]
+    windows = available_windows(segments, maximum_extension=0.75)
+    assert windows == [1.75, 1.0]
+    assert character_budget(2.0, 10.0, 1.15) == 23
+    assert estimated_duration("1234567890", 10.0) == 1.0
+
+
+def test_adjacent_same_speaker_text_fragments_merge_before_translation():
+    """Alignment fragments merge by Unicode text containment without language rules."""
+    segments = [
+        {"start": 1.0, "end": 1.1, "text": "달", "speaker": "speaker-01"},
+        {"start": 1.11, "end": 1.8, "text": "달쌌니?", "speaker": "speaker-01"},
+        {"start": 1.9, "end": 2.1, "text": "other", "speaker": "speaker-02"},
+    ]
+    merged = deduplicate_adjacent_cues(segments)
+    assert len(merged) == 2
+    assert merged[0]["text"] == "달쌌니?"
+    assert (merged[0]["start"], merged[0]["end"]) == (1.0, 1.8)
