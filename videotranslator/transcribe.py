@@ -50,6 +50,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-o", "--output-dir", type=Path, default=Path("outputs/transcripts")
     )
+    parser.add_argument("--vad-threshold", type=float, default=0.5)
+    parser.add_argument("--minimum-speech-ms", type=int, default=250)
+    parser.add_argument("--minimum-silence-ms", type=int, default=500)
+    parser.add_argument("--speech-padding-ms", type=int, default=200)
+    parser.add_argument("--no-speech-threshold", type=float, default=0.6)
     return parser.parse_args()
 
 
@@ -67,10 +72,28 @@ def main() -> None:
         task=args.task,
         beam_size=5,
         vad_filter=True,
+        vad_parameters={
+            "threshold": args.vad_threshold,
+            "min_speech_duration_ms": args.minimum_speech_ms,
+            "min_silence_duration_ms": args.minimum_silence_ms,
+            "speech_pad_ms": args.speech_padding_ms,
+        },
+        no_speech_threshold=args.no_speech_threshold,
+        word_timestamps=True,
+        condition_on_previous_text=False,
     )
 
     segments = [
-        {"start": segment.start, "end": segment.end, "text": segment.text.strip()}
+        {
+            "start": segment.start,
+            "end": segment.end,
+            "text": segment.text.strip(),
+            "words": [
+                {"start": word.start, "end": word.end, "word": word.word}
+                for word in (segment.words or [])
+                if word.start is not None and word.end is not None
+            ],
+        }
         for segment in segments_iterator
         if segment.text.strip()
     ]

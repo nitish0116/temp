@@ -30,6 +30,14 @@ an interrupted run resumable and provides provenance for every generated artifac
 The main orchestrator. It does not contain media-processing logic; it builds and
 runs commands for the specialized scripts.
 
+## `transcribe.py`
+
+The standalone transcription tool accepts configurable VAD threshold, minimum
+speech/silence duration, speech padding, and Whisper no-speech threshold. JSON
+output includes word timestamps so a later forced-alignment stage can reconcile
+newly recovered speech with the canonical transcript. Source language remains
+auto-detected unless explicitly configured.
+
 - `now()` returns UTC timestamps used in manifests.
 - `load_config(path)` loads JSON, checks required settings, and resolves paths from
   the configuration file's directory.

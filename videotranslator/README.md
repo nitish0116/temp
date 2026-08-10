@@ -168,3 +168,19 @@ codes are mapped to local NLLB codes; uncommon languages can supply
 `source_model_language` and `target_model_language`. Piper chooses a matching voice
 automatically, or `dubbing.voice` can name one explicitly. Translation and synthesis
 remain local after public model files are downloaded.
+
+## Strong isolated-vocal transcription
+
+For difficult soundtracks, `transcribe.py` supports relaxed Silero VAD and emits
+word timestamps for later forced-alignment reconciliation. Run it against the
+Demucs vocal stem without replacing the approved transcript:
+
+```powershell
+python transcribe.py outputs/project/separation/vocals.wav --model large-v3 `
+  --vad-threshold 0.25 --minimum-speech-ms 100 --minimum-silence-ms 300 `
+  --speech-padding-ms 250 --no-speech-threshold 0.8 `
+  -o outputs/project/step1-large-v3
+```
+
+This candidate must be reconciled with the existing transcript before promotion;
+relaxed VAD can recover quiet lines but may also introduce false-positive speech.
