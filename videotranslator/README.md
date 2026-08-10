@@ -284,6 +284,24 @@ The translated script preserves stable speaker and voice assignments. Every cue
 includes its available time, estimated speech duration, ratio, character budget,
 and retry decision for later synthesis and QA.
 
+## Expressive cloned voices (optional, non-commercial)
+
+Install `requirements/expressive-tts.txt` to use XTTS-v2. Its model weights use
+the Coqui Public Model License, so this backend is kept optional. References are
+selected automatically from clean pyannote turns in the isolated vocal stem;
+pitch is not used to infer gender or select a voice.
+
+```powershell
+python prepare_speaker_references.py separation/vocals.wav `
+  diarization/diarization-report.json english.constrained.json -o references
+python synthesize_xtts.py english.constrained.json references/reference-report.json `
+  -o synthesis-xtts --language en
+```
+
+XTTS preserves a persistent cloned voice per speaker. Clips that exceed their
+speaking window fail QA instead of being accelerated. Use `--pilot-count 7` to
+sample distinct speakers before a full render.
+
 ## Duration-constrained synthesis
 
 Step 6 synthesizes the step-5 script with its persistent voice assignments and

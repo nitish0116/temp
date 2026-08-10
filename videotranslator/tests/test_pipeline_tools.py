@@ -13,6 +13,8 @@ from qa_final import stem_leakage
 from force_align import build_reconciled_transcript, interval_overlap, reconciliation_candidates
 from diarize_pyannote import assign_turns
 from match_speaker_voices import match_profiles
+from prepare_speaker_references import source_to_persistent_speakers
+from synthesize_xtts import select_pilot
 from translate_constrained import available_windows, character_budget, deduplicate_adjacent_cues, estimated_duration
 from synthesize_constrained import active_sample_bounds, next_length_scale, permitted_duration, stable_segment_id
 from align_active_speaker import bounded_onset_offset, dominant_track, intersection_over_union, timeline_safe_offset
@@ -432,3 +434,19 @@ def test_source_evidence_coverage_is_independent_of_generated_clips():
     word_coverage, turn_coverage = evidence_coverage(script, strong, diarization)
     assert word_coverage == 0.5
     assert turn_coverage == 0.5
+
+
+def test_reference_mapping_uses_diarization_provenance():
+    """Reference extraction follows stable speakers rather than pitch labels."""
+    script = {"segments": [{"speaker": "speaker-02", "speaker_assignment": {"source_label": "SPEAKER_A"}}]}
+    assert source_to_persistent_speakers(script) == {"SPEAKER_A": "speaker-02"}
+
+
+def test_xtts_pilot_contains_distinct_speakers():
+    """A pilot samples characters before adding extra lines from one speaker."""
+    segments = [
+        {"start": 0, "end": 5, "speaker": "one"},
+        {"start": 5, "end": 7, "speaker": "one"},
+        {"start": 7, "end": 10, "speaker": "two"},
+    ]
+    assert {item[1]["speaker"] for item in select_pilot(segments, 2)} == {"one", "two"}

@@ -15,6 +15,8 @@ videotranslator/
 |-- match_speaker_voices.py     # persistent acoustic voice matching
 |-- translate_constrained.py    # duration-aware translation
 |-- synthesize_constrained.py   # measured, bounded TTS
+|-- prepare_speaker_references.py # automatic clean voice-cloning references
+|-- synthesize_xtts.py          # optional expressive cloned-voice TTS
 |-- align_active_speaker.py     # visual speaker/onset alignment
 |-- qa_*.py                     # transcript, dubbing, and media gates
 |-- assemble_dub.py             # native-tempo mix and export

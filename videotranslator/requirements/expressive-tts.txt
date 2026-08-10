@@ -1,0 +1,5 @@
+# Optional non-commercial expressive cross-lingual voice cloning backend.
+# XTTS-v2 model weights use the Coqui Public Model License.
+coqui-tts==0.27.5
+# XTTS currently imports APIs removed by Transformers 5.x.
+transformers>=4.57,<5
