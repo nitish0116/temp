@@ -15,8 +15,78 @@ from transformers import AutoModelForCTC, AutoProcessor
 
 
 ALIGNMENT_MODELS = {
+    "en": "facebook/wav2vec2-base-960h",
+    "fr": "facebook/wav2vec2-large-xlsr-53-french",
+    "de": "facebook/wav2vec2-large-xlsr-53-german",
+    "es": "facebook/wav2vec2-large-xlsr-53-spanish",
+    "hi": "jonatasgrosman/wav2vec2-large-xlsr-53-hindi",
+    "ja": "jonatasgrosman/wav2vec2-large-xlsr-53-japanese",
+    "zh": "jonatasgrosman/wav2vec2-large-xlsr-53-chinese-zh-cn",
+    "ar": "jonatasgrosman/wav2vec2-large-xlsr-53-arabic",
     "ko": "kresnik/wav2vec2-large-xlsr-korean",
 }
+
+LANGUAGE_ALIASES = {
+    "ara": "ar", "arabic": "ar", "chi": "zh", "chinese": "zh", "cmn": "zh",
+    "deu": "de", "english": "en", "fra": "fr", "french": "fr", "german": "de",
+    "hin": "hi", "hindi": "hi", "japanese": "ja", "jpn": "ja", "kor": "ko",
+    "korean": "ko", "spa": "es", "spanish": "es", "zho": "zh",
+}
+
+
+def normalize_language(language: str) -> str:
+    """Return a two-letter routing code from a name, locale, or ISO-639 code."""
+    value = language.strip().lower().replace("_", "-")
+    base = value.split("-", 1)[0]
+    return LANGUAGE_ALIASES.get(value, LANGUAGE_ALIASES.get(base, base))
+
+
+def select_alignment_route(
+    transcript: dict,
+    model_name: str | None = None,
+    minimum_language_probability: float = 0.5,
+) -> dict:
+    """Choose a CTC model or the safe Whisper-word fallback for a transcript."""
+    language = normalize_language(str(transcript.get("language", "")))
+    probability = transcript.get("language_probability")
+    if model_name:
+        return {"language": language, "mode": "ctc", "model": model_name, "reason": "explicit-model"}
+    if probability is not None and float(probability) < minimum_language_probability:
+        return {
+            "language": language, "mode": "whisper", "model": None,
+            "reason": "low-language-confidence",
+        }
+    selected = ALIGNMENT_MODELS.get(language)
+    if selected:
+        return {"language": language, "mode": "ctc", "model": selected, "reason": "language-route"}
+    return {"language": language, "mode": "whisper", "model": None, "reason": "unsupported-language"}
+
+
+def whisper_timestamp_alignment(segment: dict, reason: str) -> dict:
+    """Preserve valid Whisper word times when CTC alignment cannot be trusted."""
+    words = [
+        {
+            "word": str(word.get("word", "")).strip(),
+            "start": round(float(word["start"]), 3),
+            "end": round(float(word["end"]), 3),
+            "score": round(float(word.get("probability", word.get("score", 0.0))), 4),
+        }
+        for word in segment.get("words", [])
+        if str(word.get("word", "")).strip()
+        and word.get("start") is not None
+        and word.get("end") is not None
+        and float(word["end"]) > float(word["start"])
+    ]
+    if not words:
+        return {**segment, "alignment_status": "failed", "alignment_error": f"{reason}; no Whisper word timestamps"}
+    return {
+        **segment,
+        "start": words[0]["start"],
+        "end": words[-1]["end"],
+        "words": words,
+        "alignment_status": "whisper-timestamps",
+        "alignment_error": reason,
+    }
 
 
 def interval_overlap(start: float, end: float, intervals: list[tuple[float, float]]) -> float:
@@ -176,29 +246,50 @@ def align_transcript(
     audio_path: Path,
     model_name: str | None,
     padding: float,
+    minimum_language_probability: float = 0.5,
 ) -> tuple[dict, dict, dict]:
     """Align all candidate cues and identify reference-only speech for reconciliation."""
-    language = transcript["language"].lower().split("-", 1)[0]
-    selected_model = model_name or ALIGNMENT_MODELS.get(language)
-    if not selected_model:
-        raise ValueError(f"No default forced-alignment model for language {language!r}; provide --model")
-    waveform, sample_rate = librosa.load(audio_path, sr=16_000, mono=True)
-    processor = AutoProcessor.from_pretrained(selected_model)
-    model = AutoModelForCTC.from_pretrained(selected_model)
-    model.eval()
-    aligned = [align_one(waveform, sample_rate, segment, processor, model, padding) for segment in transcript["segments"]]
-    passed = [segment for segment in aligned if segment.get("alignment_status") == "aligned"]
+    route = select_alignment_route(transcript, model_name, minimum_language_probability)
+    language = route["language"]
+    selected_model = route["model"]
+    if route["mode"] == "ctc":
+        try:
+            waveform, sample_rate = librosa.load(audio_path, sr=16_000, mono=True)
+            processor = AutoProcessor.from_pretrained(selected_model)
+            model = AutoModelForCTC.from_pretrained(selected_model)
+            model.eval()
+            ctc_results = [
+                align_one(waveform, sample_rate, segment, processor, model, padding)
+                for segment in transcript["segments"]
+            ]
+            aligned = [
+                result if result.get("alignment_status") == "aligned"
+                else whisper_timestamp_alignment(source, result.get("alignment_error", "CTC alignment failed"))
+                for source, result in zip(transcript["segments"], ctc_results)
+            ]
+        except (OSError, ValueError) as error:
+            route = {**route, "mode": "whisper", "reason": "ctc-model-unavailable", "error": str(error)}
+            aligned = [whisper_timestamp_alignment(segment, route["reason"]) for segment in transcript["segments"]]
+    else:
+        aligned = [whisper_timestamp_alignment(segment, route["reason"]) for segment in transcript["segments"]]
+    passed = [segment for segment in aligned if segment.get("alignment_status") in {"aligned", "whisper-timestamps"}]
     retained = reconciliation_candidates(reference.get("segments", []), passed)
-    result = {**transcript, "alignment_model": selected_model, "segments": aligned}
+    alignment_name = selected_model if route["mode"] == "ctc" else "whisper-word-timestamps"
+    result = {**transcript, "alignment_model": alignment_name, "alignment_route": route, "segments": aligned}
     reconciled = build_reconciled_transcript(result, passed, retained)
     scores = [word["score"] for segment in passed for word in segment.get("words", [])]
     report = {
         "schema_version": 1,
         "language": language,
-        "alignment_model": selected_model,
+        "alignment_mode": route["mode"],
+        "alignment_model": alignment_name,
+        "attempted_alignment_model": selected_model,
+        "alignment_route_reason": route["reason"],
         "candidate_segments": len(aligned),
         "aligned_segments": len(passed),
         "failed_segments": len(aligned) - len(passed),
+        "ctc_aligned_segments": sum(segment.get("alignment_status") == "aligned" for segment in aligned),
+        "whisper_fallback_segments": sum(segment.get("alignment_status") == "whisper-timestamps" for segment in aligned),
         "aligned_words": sum(len(segment.get("words", [])) for segment in passed),
         "mean_word_score": round(sum(scores) / len(scores), 4) if scores else 0.0,
         "reference_segments_requiring_reconciliation": retained,
@@ -215,6 +306,7 @@ def main() -> None:
     parser.add_argument("reference", type=Path)
     parser.add_argument("audio", type=Path)
     parser.add_argument("--model")
+    parser.add_argument("--minimum-language-probability", type=float, default=0.5)
     parser.add_argument("--padding", type=float, default=0.75)
     parser.add_argument("--output-transcript", type=Path, required=True)
     parser.add_argument("--output-reconciled", type=Path, required=True)
@@ -222,7 +314,9 @@ def main() -> None:
     args = parser.parse_args()
     transcript = json.loads(args.transcript.read_text(encoding="utf-8"))
     reference = json.loads(args.reference.read_text(encoding="utf-8"))
-    aligned, reconciled, report = align_transcript(transcript, reference, args.audio, args.model, args.padding)
+    aligned, reconciled, report = align_transcript(
+        transcript, reference, args.audio, args.model, args.padding, args.minimum_language_probability
+    )
     args.output_transcript.parent.mkdir(parents=True, exist_ok=True)
     args.output_report.parent.mkdir(parents=True, exist_ok=True)
     args.output_reconciled.parent.mkdir(parents=True, exist_ok=True)

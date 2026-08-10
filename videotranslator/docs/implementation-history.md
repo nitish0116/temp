@@ -13,7 +13,8 @@ video translator into an automatic multilingual dubbing pipeline.
    speech and final dubbing retains music/effects without the original dialogue.
 4. Strengthened transcription with Whisper large-v3 and relaxed VAD.
 5. Added word-level forced alignment and reconciliation against a reference
-   transcript.
+   transcript, followed by multilingual model routing and Whisper-word fallback
+   for unsupported or low-confidence languages.
 6. Added pyannote diarization, persistent speaker identities, and acoustic voice
    matching. Pitch is only an acoustic feature and is not treated as gender.
 7. Added duration-constrained NLLB translation and native TTS retries rather than
@@ -58,7 +59,8 @@ The current full XTTS video is a diagnostic artifact, not an approved final dub.
 
 ## Known limitations
 
-- Forced-alignment model selection is still Korean-specific by default.
+- Routed alignment models still require corpus-level accuracy validation for each
+  supported language and content domain.
 - NLLB output is not yet semantically validated against source utterance count,
   punctuation, or information density.
 - Very short cues can be unsuitable for expressive TTS without merging or

@@ -231,9 +231,10 @@ clip coverage alone is not sufficient.
 
 `force_align.py` applies a language-specific CTC acoustic model to the recovered
 transcript, rebuilds cues from aligned word boundaries, and retains only reference
-cues with no aligned-word evidence. The source language selects a known alignment
-model when available; `--model` accepts another Hugging Face CTC model for other
-languages.
+cues with no aligned-word evidence. The detected language automatically routes
+English, French, German, Spanish, Hindi, Japanese, Chinese, Arabic, and Korean to
+language-specific models. Unknown or low-confidence languages retain Whisper word
+timestamps instead of using an incompatible model. `--model` overrides routing.
 
 ```powershell
 python force_align.py outputs/project/step1-large-v3/vocals.json `
@@ -242,6 +243,10 @@ python force_align.py outputs/project/step1-large-v3/vocals.json `
   --output-reconciled outputs/project/alignment/vocals.reconciled.json `
   --output-report outputs/project/alignment/alignment-report.json
 ```
+
+Use `--minimum-language-probability 0.5` to change the confidence threshold. The
+report records the normalized language, selected mode/model, routing reason, CTC
+success count, and number of cues that used Whisper timestamps.
 
 The reconciled output records `provenance` on every cue, distinguishing CTC-aligned
 speech from short reference cues retained because no aligned word covered them.

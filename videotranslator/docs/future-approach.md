@@ -4,13 +4,14 @@ The next iteration must improve correctness without adding user review. A full
 dub may be assembled only when every source speech region has a semantically
 valid, non-overlapping target cue and an accepted synthesized clip.
 
-## 1. Multilingual forced-alignment routing
+## 1. Multilingual forced-alignment routing (implemented baseline)
 
 Detect the source language once, map it to a tested alignment model, and record
 the selected model and fallback in the report. Cover English, French, German,
 Spanish, Hindi, Japanese, Chinese, Arabic, Korean, and an explicit multilingual
-fallback. Unsupported or low-confidence alignment must trigger Whisper word
-timestamps rather than silently using the Korean model.
+fallback. Unsupported or low-confidence alignment triggers Whisper word
+timestamps rather than silently using the Korean model. Model routing and fallback
+reporting are implemented; corpus-level accuracy validation remains future work.
 
 ## 2. Utterance-aware source segmentation
 

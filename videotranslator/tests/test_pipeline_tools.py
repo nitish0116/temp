@@ -10,7 +10,15 @@ from generate_dub import generate_dub, rate_to_length_scale
 from diarize_speakers import assign_voices, voice_style
 from assemble_dub import build_alignment_graph, tempo_filters
 from qa_final import stem_leakage
-from force_align import build_reconciled_transcript, interval_overlap, reconciliation_candidates
+from force_align import (
+    align_transcript,
+    build_reconciled_transcript,
+    interval_overlap,
+    normalize_language,
+    reconciliation_candidates,
+    select_alignment_route,
+    whisper_timestamp_alignment,
+)
 from diarize_pyannote import assign_turns
 from match_speaker_voices import match_profiles
 from prepare_speaker_references import source_to_persistent_speakers
@@ -259,6 +267,38 @@ def test_reconciled_transcript_records_alignment_and_reference_provenance():
         "large-v3-forced-alignment",
         "retained-reference-no-word-overlap",
     ]
+
+
+def test_multilingual_alignment_routes_names_locales_and_supported_languages():
+    """Detected language variants select their language-specific CTC model."""
+    assert normalize_language("Hindi") == "hi"
+    assert normalize_language("zh-CN") == "zh"
+    for language in ("en", "fr", "de", "es", "hi", "ja", "zh", "ar", "ko"):
+        route = select_alignment_route({"language": language, "language_probability": 0.99})
+        assert route["mode"] == "ctc"
+        assert route["model"]
+
+
+def test_alignment_uses_whisper_words_for_unknown_or_uncertain_language(tmp_path):
+    """Unsupported and low-confidence languages retain timings without loading CTC."""
+    segment = {
+        "start": 1.0, "end": 2.0, "text": "saluton",
+        "words": [{"start": 1.1, "end": 1.8, "word": "saluton", "probability": 0.91}],
+    }
+    transcript = {"language": "eo", "language_probability": 0.99, "segments": [segment]}
+    aligned, reconciled, report = align_transcript(transcript, transcript, tmp_path / "absent.wav", None, 0.75)
+
+    assert aligned["segments"][0]["alignment_status"] == "whisper-timestamps"
+    assert report["alignment_route_reason"] == "unsupported-language"
+    assert report["whisper_fallback_segments"] == 1
+    assert reconciled["segments"][0]["start"] == 1.1
+    assert select_alignment_route({"language": "fr", "language_probability": 0.2})["mode"] == "whisper"
+
+
+def test_whisper_fallback_rejects_segments_without_word_timestamps():
+    """A rough cue boundary is never mislabeled as word-level alignment evidence."""
+    result = whisper_timestamp_alignment({"start": 0, "end": 1, "text": "missing"}, "fallback")
+    assert result["alignment_status"] == "failed"
 
 
 def test_dedicated_diarization_assigns_maximum_overlap_and_records_fallback():

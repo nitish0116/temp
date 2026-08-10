@@ -68,7 +68,9 @@ Omit `--language` to detect the input language automatically.
 
 ## 6. Forced alignment
 
-`force_align.py` currently defaults to a Korean alignment model. Pass `--model`
+`force_align.py` automatically selects a model for English, French, German,
+Spanish, Hindi, Japanese, Chinese, Arabic, or Korean. Unsupported and
+low-confidence languages safely retain Whisper word timestamps. Pass `--model`
 for another supported source language until automatic multilingual model
 routing is implemented.
 
