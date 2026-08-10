@@ -215,6 +215,14 @@ def test_alignment_speeds_only_clips_that_overrun_their_window():
     assert tempo_filters(1.0) == []
 
 
+def test_native_tempo_assembly_never_adds_atempo_filters():
+    """Duration-constrained clips retain their generated delivery during assembly."""
+    clips = [{"start": 1.0, "end": 1.2, "generated_duration": 1.0}]
+    graph = build_alignment_graph(clips, 10.0, preserve_native_tempo=True)
+    assert "atempo=" not in graph
+    assert "atrim=duration=1.000000" in graph
+
+
 def test_final_qa_stage_is_runnable(tmp_path: Path):
     """The orchestrator exposes automatic QA after final assembly."""
     config = {"project_id": "x", "input_video": str(tmp_path / "x.mp4"), "output_root": str(tmp_path), "translation": {}}

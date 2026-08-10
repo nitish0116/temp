@@ -294,14 +294,16 @@ python generate_dub.py outputs/transcripts/episode.approved.json `
 ## `assemble_dub.py`
 
 - `tempo_filters(factor)` decomposes large tempo changes into safe FFmpeg filters.
-- `build_alignment_graph(clips, duration)` places clips at cue timestamps and
-  speeds up only speech that would overrun its allotted window.
+- `build_alignment_graph(clips, duration, ..., preserve_native_tempo)` places clips
+  at cue timestamps. Its native-tempo mode bypasses all `atempo` filters for clips
+  already accepted by constrained-synthesis QA.
 - `assemble_dub(...)` renders the dialogue timeline, ducks and mixes the source
   soundtrack, copies the video stream, and optionally adds selectable subtitles.
 
 ```powershell
 python assemble_dub.py episode.mp4 outputs/dub/dub-manifest.json `
-  -o outputs/final/episode.en-dubbed.mp4 --subtitles episode.en.srt
+  -o outputs/final/episode.en-dubbed.mp4 --subtitles episode.en.srt `
+  --preserve-native-tempo
 ```
 
 ## `qa_final.py`

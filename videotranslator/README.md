@@ -122,7 +122,8 @@ segment IDs connect generated speech to timing and decision provenance.
 - `generate_dub.py`: local Piper voice selection, model caching, clip generation,
   retries, duration measurement, and dub-manifest creation.
 - `assemble_dub.py`: cue alignment, overrun tempo fitting, automatic soundtrack
-  ducking, final audio mixing, optional subtitle muxing, and MP4 export.
+  ducking, native-tempo placement for constrained clips, final audio mixing,
+  optional subtitle muxing, and MP4 export.
 - `diarize_speakers.py`: local WavLM speaker embeddings, automatic speaker-count
   selection, stable speaker IDs, pitch-style estimation, and distinct voice assignment.
 - `translate_constrained.py`: NLLB translation with per-voice duration budgets,
@@ -280,6 +281,10 @@ python synthesize_constrained.py outputs/project/english.constrained.json `
 `synthesis-report.json` records every attempt and explicitly reports whether any
 post-processing tempo was used. `dub-manifest.json` remains compatible with the
 existing assembly stage.
+
+Use `assemble_dub.py --preserve-native-tempo` after constrained synthesis and
+step-8 QA. This places the measured WAV clips without adding FFmpeg `atempo`
+filters; the QA gate must already have verified that the clips do not overlap.
 
 ## Active-speaker and lip-motion alignment
 
