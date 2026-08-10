@@ -79,6 +79,40 @@ def dialogue_overlaps(manifest: dict, tolerance: float = 0.03) -> list[str]:
     return overlaps
 
 
+def evidence_coverage(script: dict, strong_transcript: dict, diarization_report: dict) -> tuple[float, float]:
+    """Measure canonical timing against independent ASR words and speech turns."""
+    cues = [
+        (float(segment["start"]), float(segment["end"]))
+        for segment in script.get("segments", [])
+    ]
+    words = [
+        word
+        for segment in strong_transcript.get("segments", [])
+        for word in segment.get("words", [])
+    ]
+    covered_words = 0
+    for word in words:
+        start, end = float(word["start"]), float(word["end"])
+        overlap = sum(max(0.0, min(end, right) - max(start, left)) for left, right in cues)
+        center = (start + end) / 2
+        if overlap >= 0.03 or any(left - 0.1 <= center <= right + 0.1 for left, right in cues):
+            covered_words += 1
+    word_coverage = covered_words / len(words) if words else 1.0
+    turns = [
+        (float(turn["start"]), float(turn["end"]))
+        for turn in diarization_report.get("turns", [])
+        if float(turn["end"]) > float(turn["start"])
+    ]
+    turn_seconds = sum(end - start for start, end in turns)
+    intersection = sum(
+        max(0.0, min(end, right) - max(start, left))
+        for start, end in turns
+        for left, right in cues
+    )
+    diarized_coverage = min(1.0, intersection / turn_seconds) if turn_seconds else 1.0
+    return word_coverage, diarized_coverage
+
+
 def evaluate_pipeline(
     script: dict,
     translation_report: dict,
@@ -89,6 +123,10 @@ def evaluate_pipeline(
     maximum_tempo: float = 1.2,
     maximum_onset_offset: float = 0.25,
     minimum_active_confidence: float = 0.5,
+    strong_transcript: dict | None = None,
+    diarization_report: dict | None = None,
+    minimum_asr_word_coverage: float = 0.98,
+    minimum_diarized_time_coverage: float = 0.7,
 ) -> dict:
     """Combine stage artifacts into one strict automatic pass/fail decision."""
     findings: list[dict] = []
@@ -156,6 +194,23 @@ def evaluate_pipeline(
             "active_speaker_confidence",
             f"Multi-face alignment coverage {active_confidence:.2%} is below {minimum_active_confidence:.2%}",
         )
+    asr_word_coverage = diarized_time_coverage = None
+    if strong_transcript is not None and diarization_report is not None:
+        asr_word_coverage, diarized_time_coverage = evidence_coverage(
+            script, strong_transcript, diarization_report
+        )
+        if asr_word_coverage < minimum_asr_word_coverage:
+            add_finding(
+                findings,
+                "source_asr_coverage",
+                f"Strong-ASR word coverage {asr_word_coverage:.2%} is below {minimum_asr_word_coverage:.2%}",
+            )
+        if diarized_time_coverage < minimum_diarized_time_coverage:
+            add_finding(
+                findings,
+                "source_diarization_coverage",
+                f"Diarized speech-time coverage {diarized_time_coverage:.2%} is below {minimum_diarized_time_coverage:.2%}",
+            )
     checks = {
         "canonical_segment_count": len(script["segments"]),
         "speech_coverage": round(coverage, 6),
@@ -169,6 +224,8 @@ def evaluate_pipeline(
         "multi_face_segment_count": multi_face,
         "aligned_multi_face_segment_count": aligned,
         "active_speaker_confidence": round(active_confidence, 6),
+        "source_asr_word_coverage": round(asr_word_coverage, 6) if asr_word_coverage is not None else None,
+        "source_diarized_time_coverage": round(diarized_time_coverage, 6) if diarized_time_coverage is not None else None,
     }
     return {
         "schema_version": 1,
@@ -179,6 +236,8 @@ def evaluate_pipeline(
             "maximum_native_tempo": maximum_tempo,
             "maximum_onset_offset": maximum_onset_offset,
             "minimum_active_speaker_confidence": minimum_active_confidence,
+            "minimum_source_asr_word_coverage": minimum_asr_word_coverage,
+            "minimum_source_diarized_time_coverage": minimum_diarized_time_coverage,
         },
         "checks": checks,
         "findings": findings,
@@ -198,6 +257,10 @@ def main() -> None:
     parser.add_argument("--maximum-tempo", type=float, default=1.2)
     parser.add_argument("--maximum-onset-offset", type=float, default=0.25)
     parser.add_argument("--minimum-active-confidence", type=float, default=0.5)
+    parser.add_argument("--strong-transcript", type=Path)
+    parser.add_argument("--diarization-report", type=Path)
+    parser.add_argument("--minimum-asr-word-coverage", type=float, default=0.98)
+    parser.add_argument("--minimum-diarized-time-coverage", type=float, default=0.7)
     args = parser.parse_args()
     load = lambda path: json.loads(path.read_text(encoding="utf-8"))
     report = evaluate_pipeline(
@@ -210,6 +273,10 @@ def main() -> None:
         args.maximum_tempo,
         args.maximum_onset_offset,
         args.minimum_active_confidence,
+        load(args.strong_transcript) if args.strong_transcript else None,
+        load(args.diarization_report) if args.diarization_report else None,
+        args.minimum_asr_word_coverage,
+        args.minimum_diarized_time_coverage,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

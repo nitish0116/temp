@@ -16,7 +16,8 @@ from match_speaker_voices import match_profiles
 from translate_constrained import available_windows, character_budget, deduplicate_adjacent_cues, estimated_duration
 from synthesize_constrained import active_sample_bounds, next_length_scale, permitted_duration, stable_segment_id
 from align_active_speaker import bounded_onset_offset, dominant_track, intersection_over_union, timeline_safe_offset
-from qa_dubbing_pipeline import dialogue_overlaps, maximum_native_tempo, speaker_reassignments
+from qa_dubbing_pipeline import dialogue_overlaps, evidence_coverage, maximum_native_tempo, speaker_reassignments
+from recover_missing_speech import merge_intervals, merge_recovered, recover_uncovered_words, recovery_regions, subtract_intervals
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
 
@@ -311,6 +312,17 @@ def test_adjacent_same_speaker_text_fragments_merge_before_translation():
     assert (merged[0]["start"], merged[0]["end"]) == (1.0, 1.8)
 
 
+def test_ultrashort_same_speaker_fragment_merges_into_following_utterance():
+    """Tiny CTC fragments do not become separate robotic TTS clips."""
+    segments = [
+        {"start": 1.0, "end": 1.02, "text": "hey", "speaker": "one"},
+        {"start": 1.02, "end": 1.8, "text": "you", "speaker": "one"},
+    ]
+    merged = deduplicate_adjacent_cues(segments)
+    assert len(merged) == 1
+    assert merged[0]["text"] == "hey you"
+
+
 def test_constrained_synthesis_uses_recorded_window_and_stable_fallback_id():
     """TTS consumes step-5 timing metadata without requiring legacy approval IDs."""
     segment = {
@@ -374,3 +386,49 @@ def test_pipeline_qa_measures_native_tts_tempo():
     tempo, segments = maximum_native_tempo(report)
     assert round(tempo, 4) == 1.1765
     assert segments == ["one"]
+
+
+def test_missing_speech_regions_subtract_canonical_cues():
+    """Independent diarization exposes speech outside the accepted timeline."""
+    turns = [{"start": 1.0, "end": 4.0}]
+    cues = [{"start": 1.5, "end": 2.5}]
+    assert subtract_intervals([(1.0, 4.0)], [(1.5, 2.5)]) == [(1.0, 1.5), (2.5, 4.0)]
+    assert recovery_regions(turns, cues, minimum_duration=0.25, merge_gap=0.1) == [(1.0, 1.5), (2.5, 4.0)]
+    assert merge_intervals([(1.0, 1.2), (1.3, 2.0)], maximum_gap=0.1) == [(1.0, 2.0)]
+
+
+def test_recovered_dialogue_is_promoted_without_nearby_duplicates():
+    """Targeted recovery adds new speech but suppresses repeated canonical text."""
+    canonical = {"segments": [{"start": 1.0, "end": 2.0, "text": "hello"}]}
+    candidates = [
+        {"start": 1.2, "end": 1.8, "text": "hello"},
+        {"start": 3.0, "end": 4.0, "text": "new line"},
+    ]
+    merged, promoted = merge_recovered(canonical, candidates)
+    assert [segment["text"] for segment in promoted] == ["new line"]
+    assert len(merged["segments"]) == 2
+
+
+def test_strong_asr_words_missing_from_timeline_become_fallback_cues():
+    """A CTC timing failure cannot silently discard a recognized spoken word."""
+    strong = {"segments": [{"words": [
+        {"start": 1.0, "end": 1.3, "word": "kept"},
+        {"start": 3.0, "end": 3.3, "word": "missing"},
+    ]}]}
+    canonical = {"segments": [{"start": 0.9, "end": 1.4, "text": "kept"}]}
+    recovered = recover_uncovered_words(strong, canonical)
+    assert len(recovered) == 1
+    assert recovered[0]["text"] == "missing"
+    assert recovered[0]["provenance"] == "retained-large-v3-word-coverage"
+
+
+def test_source_evidence_coverage_is_independent_of_generated_clips():
+    """QA detects source speech that never entered the canonical script."""
+    script = {"segments": [{"start": 1.0, "end": 2.0}]}
+    strong = {"segments": [{"words": [
+        {"start": 1.2, "end": 1.4}, {"start": 3.0, "end": 3.2},
+    ]}]}
+    diarization = {"turns": [{"start": 1.0, "end": 2.0}, {"start": 3.0, "end": 4.0}]}
+    word_coverage, turn_coverage = evidence_coverage(script, strong, diarization)
+    assert word_coverage == 0.5
+    assert turn_coverage == 0.5

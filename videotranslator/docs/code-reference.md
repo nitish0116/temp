@@ -52,6 +52,19 @@ The bundled automatic mapping currently covers Korean. Other input languages use
 the same implementation by supplying a compatible Hugging Face Wav2Vec2 CTC model;
 the stage fails clearly when no language model is configured.
 
+## `recover_missing_speech.py`
+
+- `subtract_intervals(...)` identifies independent speech outside canonical cues.
+- `recovery_regions(...)` preserves canonical cues as hard region boundaries.
+- `transcribe_regions(...)` batches uncovered vocal audio, disables VAD, and maps
+  confident `large-v3` words back to their original timeline.
+- `recover_uncovered_words(...)` retains recognized words lost by CTC alignment.
+- `merge_recovered(...)` merges containment duplicates while preserving the wider
+  timing evidence and longer phrase.
+
+The recovery report distinguishes decoder attempts, promoted targeted cues, and
+strong-word fallback cues. No recovered text is accepted without decoder evidence.
+
 ## `diarize_pyannote.py`
 
 - `assign_turns(...)` maps exclusive diarization turns to transcript cues by
@@ -138,6 +151,8 @@ thresholds using the report without involving a reviewer.
 - `maximum_native_tempo(...)` derives actual Piper rate from the accepted attempt's
   duration scale.
 - `dialogue_overlaps(...)` detects rendered audio crossing the next cue onset.
+- `evidence_coverage(...)` compares canonical timing with independent strong-ASR
+  words and pyannote speech turns, preventing incomplete cue sets from passing.
 - `evaluate_pipeline(...)` combines translation, synthesis, and active-speaker
   evidence into one strict automatic decision.
 

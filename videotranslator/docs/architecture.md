@@ -34,6 +34,7 @@ video
   -> isolated vocals and accompaniment
   -> strong multilingual transcription
   -> word-level forced alignment and cue reconciliation
+  -> targeted recovery of uncovered speech evidence
   -> persistent speaker diarization
   -> acoustic voice matching
   -> duration-constrained translation

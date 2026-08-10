@@ -195,6 +195,26 @@ python transcribe.py outputs/project/separation/vocals.wav --model large-v3 `
 This candidate must be reconciled with the existing transcript before promotion;
 relaxed VAD can recover quiet lines but may also introduce false-positive speech.
 
+## Missing-speech recovery
+
+`recover_missing_speech.py` treats pyannote turns and the strong Whisper transcript
+as independent evidence rather than assuming the canonical cue list is complete.
+It decodes uncovered vocal regions without VAD in one batched `large-v3` pass,
+maps recovered words back to source time, retains strong-ASR words lost by CTC,
+and merges contained duplicates without discarding their timing envelope.
+
+```powershell
+python recover_missing_speech.py alignment/vocals.reconciled.json `
+  diarization/diarization-report.json separation/vocals.wav `
+  --strong-transcript step1-large-v3/vocals.json --model large-v3 `
+  --output-transcript recovery/source.coverage-complete.json `
+  --output-report recovery/recovery-report.json
+```
+
+The promoted transcript must pass source-evidence QA before translation. Coverage
+is measured against both strong-ASR word events and diarized speech time; generated
+clip coverage alone is not sufficient.
+
 ## Word-level forced alignment
 
 `force_align.py` applies a language-specific CTC acoustic model to the recovered

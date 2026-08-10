@@ -60,7 +60,31 @@ def deduplicate_adjacent_cues(segments: list[dict], maximum_gap: float = 0.5) ->
                 merged[-1] = longer
                 continue
         merged.append(segment)
-    return merged
+    repaired: list[dict] = []
+    index = 0
+    while index < len(merged):
+        segment = merged[index]
+        duration = float(segment["end"]) - float(segment["start"])
+        following = merged[index + 1] if index + 1 < len(merged) else None
+        if (
+            duration < 0.1
+            and following is not None
+            and segment.get("speaker") == following.get("speaker")
+            and float(following["start"]) - float(segment["end"]) <= 0.1
+        ):
+            combined = json.loads(json.dumps(following))
+            combined["start"] = segment["start"]
+            combined["text"] = f"{segment['text'].strip()} {following['text'].strip()}".strip()
+            combined["merged_short_cues"] = [
+                {"start": segment["start"], "end": segment["end"], "text": segment["text"]},
+                {"start": following["start"], "end": following["end"], "text": following["text"]},
+            ]
+            repaired.append(combined)
+            index += 2
+            continue
+        repaired.append(segment)
+        index += 1
+    return repaired
 
 
 def voice_rates(
@@ -100,7 +124,7 @@ def generate_translation(
     generated = model.generate(
         **inputs,
         forced_bos_token_id=target_token,
-        max_new_tokens=max(1, maximum_tokens),
+        max_new_tokens=max(2, maximum_tokens),
         no_repeat_ngram_size=3,
         repetition_penalty=1.15,
         num_beams=4,
@@ -148,7 +172,7 @@ def translate_constrained(
         retried = False
         if len(text) > budget:
             output_tokens = len(tokenizer(text, add_special_tokens=False).input_ids)
-            constrained_tokens = max(1, math.floor(output_tokens * budget / len(text) * 0.9))
+            constrained_tokens = max(2, math.floor(output_tokens * budget / len(text) * 0.9))
             text = generate_translation(
                 model, tokenizer, segment["text"], target_token, constrained_tokens
             )
@@ -205,6 +229,7 @@ def translate_constrained(
         "retried_segment_count": sum(
             segment["duration_constraint"]["retried"] for segment in translated_segments
         ),
+        "maximum_allowed_ratio": maximum_ratio,
         "maximum_estimated_ratio": max(
             segment["duration_constraint"]["estimated_ratio"] for segment in translated_segments
         ),
