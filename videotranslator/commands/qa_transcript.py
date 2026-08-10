@@ -44,10 +44,18 @@ def source_speech_coverage(subtitles: dict, source: dict) -> tuple[float, float]
     """Measure source cue-event and source-time coverage by subtitle intervals."""
     cues = [(float(item["start"]), float(item["end"])) for item in subtitles.get("segments", [])]
     source_cues = [
-        (float(item["start"]), float(item["end"]))
+        (float(word["start"]), float(word["end"]))
         for item in source.get("segments", [])
-        if float(item["end"]) > float(item["start"])
+        for word in item.get("words", [])
+        if word.get("start") is not None and word.get("end") is not None
+        and float(word["end"]) > float(word["start"])
     ]
+    if not source_cues:
+        source_cues = [
+            (float(item["start"]), float(item["end"]))
+            for item in source.get("segments", [])
+            if float(item["end"]) > float(item["start"])
+        ]
     if not source_cues:
         return 1.0, 1.0
     covered_events = 0

@@ -33,6 +33,8 @@ from videotranslator.pipeline import RUNNABLE_STAGES, load_config, paths, stage_
 from videotranslator.commands.qa_transcript import analyze, malformed_text_reasons, required_line_count, source_speech_coverage
 from videotranslator.commands.segment_utterances import join_words, merge_fragments, segment_words
 from videotranslator.commands import runtime_device
+from videotranslator.commands.finalize_subtitles import finalize
+from videotranslator.commands.repair_subtitles import repair, text_chunks
 
 
 def test_split_words_uses_pause_and_duration_boundaries():
@@ -61,6 +63,47 @@ def test_compute_device_prefers_cuda_and_falls_back_to_cpu(monkeypatch):
     assert runtime_device.resolve_device("cpu") == "cpu"
     with pytest.raises(RuntimeError):
         runtime_device.resolve_device("cuda")
+
+
+def test_finalized_subtitles_cover_rough_speech_window_without_overlap():
+    """Translated word groups share their full source speech window safely."""
+    transcript = {"segments": [{
+        "start": 1.0, "end": 5.0, "text": "First. Second.",
+        "words": [
+            {"start": 1.5, "end": 2.0, "word": "First."},
+            {"start": 3.0, "end": 3.5, "word": "Second."},
+        ],
+    }]}
+    result = finalize(transcript, 8.0, 84)
+    assert [(cue["start"], cue["end"]) for cue in result["segments"]] == [
+        (1.5, 2.5), (2.5, 3.5),
+    ]
+
+
+def test_finalized_translation_uses_matching_source_word_envelope():
+    """Equal source/target segment counts provide language-independent sync."""
+    target = {"segments": [{
+        "start": 2.0, "end": 3.0, "text": "Hello.",
+        "words": [{"start": 2.2, "end": 2.7, "word": "Hello."}],
+    }]}
+    source = {"segments": [{
+        "start": 1.0, "end": 4.0, "text": "source",
+        "words": [{"start": 1.4, "end": 3.6, "word": "source"}],
+    }]}
+    result = finalize(target, 8.0, 84, source)
+    assert (result["segments"][0]["start"], result["segments"][0]["end"]) == (1.4, 3.6)
+
+
+def test_subtitle_repair_splits_text_and_borrows_only_available_silence():
+    """Readability repair respects neighboring dialogue boundaries."""
+    assert text_chunks("But,", 84) == ["But."]
+    transcript = {"segments": [
+        {"start": 1.0, "end": 1.2, "text": "A short phrase."},
+        {"start": 2.0, "end": 3.0, "text": "Next."},
+    ]}
+    result = repair(transcript, minimum_duration=0.5, maximum_characters_per_second=10)
+    assert result["segments"][0]["end"] <= result["segments"][1]["start"]
+    assert result["segments"][0]["end"] == 2.0
 
 
 def test_utterance_segmentation_uses_punctuation_pause_and_speaker_changes():

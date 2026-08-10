@@ -60,6 +60,22 @@ alignment, and speaker diarization.
   in Chinese, Japanese, and Korean text.
 - `merge_fragments(...)` repairs only dangling or ultra-short same-speaker cues
   while preserving terminal replies, speaker boundaries, timing, and hard limits.
+
+## `commands/finalize_subtitles.py`
+
+Rebuilds translated cues from word timestamps and can use matching source-word
+envelopes when source and translated segment correspondence is known.
+
+## `commands/translate_subtitles.py`
+
+Translates already aligned source cues with NLLB while preserving their exact
+timing boundaries, then emits JSON and SRT artifacts.
+
+## `commands/repair_subtitles.py`
+
+Splits overlong translated text, assigns proportional subcue timing, repairs
+dangling punctuation, and borrows only available neighboring silence to satisfy
+minimum display time and reading-speed limits without creating overlap.
 - `split_aligned_words(...)` rebuilds readable cues from acoustic word boundaries.
 - `reconciliation_candidates(...)` identifies old cues with no aligned-word evidence.
 - `build_reconciled_transcript(...)` combines aligned speech and uncovered reference
