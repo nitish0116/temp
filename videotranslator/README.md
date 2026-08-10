@@ -127,6 +127,8 @@ segment IDs connect generated speech to timing and decision provenance.
   selection, stable speaker IDs, pitch-style estimation, and distinct voice assignment.
 - `translate_constrained.py`: NLLB translation with per-voice duration budgets,
   bounded silence borrowing, duplicate-fragment cleanup, and automatic retries.
+- `synthesize_constrained.py`: assigned-voice Piper synthesis with edge-silence
+  trimming, measured duration retries, and no post-processing tempo changes.
 - `qa_transcript.py`: deterministic timing checks.
 - `burn_subtitles.py`: optional top-subtitle diagnostic render.
 - `mux_subtitles.py`: selectable English subtitle track without media re-encoding.
@@ -255,3 +257,22 @@ python translate_constrained.py outputs/project/voices.assigned.json `
 The translated script preserves stable speaker and voice assignments. Every cue
 includes its available time, estimated speech duration, ratio, character budget,
 and retry decision for later synthesis and QA.
+
+## Duration-constrained synthesis
+
+Step 6 synthesizes the step-5 script with its persistent voice assignments and
+measures the resulting WAV files. Quiet leading and trailing padding is trimmed
+while internal pauses are preserved. Clips outside their recorded speaking window
+are regenerated with Piper's native duration control, bounded by
+`--minimum-length-scale`; unresolved clips fail the stage instead of being passed
+to FFmpeg for tempo correction.
+
+```powershell
+python synthesize_constrained.py outputs/project/english.constrained.json `
+  -o outputs/project/synthesis --models-dir outputs/project/models `
+  --minimum-length-scale 0.85 --tolerance 1.02
+```
+
+`synthesis-report.json` records every attempt and explicitly reports whether any
+post-processing tempo was used. `dub-manifest.json` remains compatible with the
+existing assembly stage.

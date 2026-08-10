@@ -98,6 +98,21 @@ python translate_constrained.py outputs/voices.assigned.json `
 The process exits with an error if any generated line remains over its permitted
 ratio, so unsuitable translations cannot silently proceed to TTS.
 
+## `synthesize_constrained.py`
+
+- `stable_segment_id(...)` preserves an upstream ID or creates a deterministic one.
+- `permitted_duration(...)` consumes the speaking window recorded by step 5.
+- `active_sample_bounds(...)` and `trim_edge_silence(...)` remove only quiet WAV
+  edges while retaining internal dialogue pauses.
+- `next_length_scale(...)` calculates a bounded native Piper duration retry.
+- `synthesize_segment(...)` measures every attempt and rejects unresolved overruns.
+- `synthesize_constrained(...)` produces an assembly-compatible dub manifest and a
+  detailed automatic pass/fail report.
+
+The `minimum_length_scale` floor prevents abrupt, excessively fast delivery. A
+small measurement tolerance may absorb WAV rounding, but no FFmpeg `atempo` filter
+is applied by this stage.
+
 - `now()` returns UTC timestamps used in manifests.
 - `load_config(path)` loads JSON, checks required settings, and resolves paths from
   the configuration file's directory.

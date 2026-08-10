@@ -14,6 +14,7 @@ from force_align import build_reconciled_transcript, interval_overlap, reconcili
 from diarize_pyannote import assign_turns
 from match_speaker_voices import match_profiles
 from translate_constrained import available_windows, character_budget, deduplicate_adjacent_cues, estimated_duration
+from synthesize_constrained import active_sample_bounds, next_length_scale, permitted_duration, stable_segment_id
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
 
@@ -298,3 +299,26 @@ def test_adjacent_same_speaker_text_fragments_merge_before_translation():
     assert len(merged) == 2
     assert merged[0]["text"] == "달쌌니?"
     assert (merged[0]["start"], merged[0]["end"]) == (1.0, 1.8)
+
+
+def test_constrained_synthesis_uses_recorded_window_and_stable_fallback_id():
+    """TTS consumes step-5 timing metadata without requiring legacy approval IDs."""
+    segment = {
+        "start": 1.0,
+        "end": 2.0,
+        "duration_constraint": {"available_seconds": 1.6},
+    }
+    assert permitted_duration(segment) == 1.6
+    assert stable_segment_id(segment, 4) == "seg-0005"
+
+
+def test_native_tts_retry_scale_is_bounded_and_targets_the_window():
+    """A long clip is regenerated with bounded Piper prosody, not audio tempo."""
+    assert next_length_scale(1.0, 2.0, 1.0, 0.85) == 0.85
+    assert next_length_scale(1.0, 1.1, 1.0, 0.85) == 0.8818
+
+
+def test_silence_trim_preserves_padding_and_internal_pauses():
+    """Only waveform edges are removed; quiet samples between speech remain."""
+    samples = [0, 0, 500, 0, 0, 600, 0, 0]
+    assert active_sample_bounds(samples, threshold=100, padding_samples=1) == (1, 7)

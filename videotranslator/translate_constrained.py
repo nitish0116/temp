@@ -100,7 +100,7 @@ def generate_translation(
     generated = model.generate(
         **inputs,
         forced_bos_token_id=target_token,
-        max_new_tokens=max(4, maximum_tokens),
+        max_new_tokens=max(1, maximum_tokens),
         no_repeat_ngram_size=3,
         repetition_penalty=1.15,
         num_beams=4,
@@ -148,7 +148,7 @@ def translate_constrained(
         retried = False
         if len(text) > budget:
             output_tokens = len(tokenizer(text, add_special_tokens=False).input_ids)
-            constrained_tokens = max(4, math.floor(output_tokens * budget / len(text) * 0.9))
+            constrained_tokens = max(1, math.floor(output_tokens * budget / len(text) * 0.9))
             text = generate_translation(
                 model, tokenizer, segment["text"], target_token, constrained_tokens
             )
