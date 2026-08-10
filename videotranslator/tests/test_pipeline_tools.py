@@ -33,6 +33,7 @@ from videotranslator.pipeline import RUNNABLE_STAGES, load_config, paths, stage_
 from videotranslator.commands.qa_transcript import analyze, malformed_text_reasons, required_line_count, source_speech_coverage
 from videotranslator.commands.segment_utterances import join_words, merge_fragments, segment_words
 from videotranslator.commands import runtime_device
+from videotranslator.commands.create_subtitles import artifact_paths as subtitle_artifact_paths, quality_score
 from videotranslator.commands.finalize_subtitles import finalize
 from videotranslator.commands.repair_subtitles import repair, text_chunks
 
@@ -250,6 +251,22 @@ def test_reconciliation_drops_long_unaligned_reference_spans():
     ]
     result = build_reconciled_transcript(transcript, [], retained)
     assert [segment["text"] for segment in result["segments"]] == ["short"]
+
+
+def test_unattended_subtitle_paths_are_isolated_and_deterministic(tmp_path):
+    """One video run keeps intermediate attempts away from promoted output."""
+    result = subtitle_artifact_paths(Path("episode.mp4"), tmp_path, "en")
+    assert result["final"] == tmp_path / "final.srt"
+    assert result["rejected"] == tmp_path / "rejected.srt"
+    assert result["source"] == tmp_path / "transcription" / "episode.json"
+    assert result["attempts"] == tmp_path / "attempts"
+
+
+def test_unattended_subtitle_attempt_ranking_prefers_speech_coverage():
+    """More independent speech coverage wins despite a few extra diagnostics."""
+    lower = {"diarized_coverage": {"time_coverage": 0.7, "turn_coverage": 0.8}, "source_coverage": {"source_event_coverage": 1.0}, "issues": []}
+    higher = {"diarized_coverage": {"time_coverage": 0.9, "turn_coverage": 0.9}, "source_coverage": {"source_event_coverage": 0.99}, "issues": [{}, {}]}
+    assert quality_score(higher) > quality_score(lower)
 
 
 def test_subtitle_qa_cli_writes_report_and_exits_nonzero_on_failure(tmp_path, monkeypatch):

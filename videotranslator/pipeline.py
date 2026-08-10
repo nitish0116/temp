@@ -244,6 +244,11 @@ def show_status(config_path: Path) -> None:
 
 def main() -> None:
     """Dispatch the pipeline ``run`` or ``status`` command."""
+    if len(sys.argv) > 1 and sys.argv[1] == "subtitles":
+        from .commands.create_subtitles import main as subtitle_main
+
+        subtitle_main(sys.argv[2:])
+        return
     parser = argparse.ArgumentParser(description="Structured video translation pipeline")
     parser.add_argument("config", type=Path, help="Pipeline configuration JSON")
     subparsers = parser.add_subparsers(dest="command", required=True)

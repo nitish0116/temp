@@ -61,6 +61,21 @@ can access an NVIDIA GPU, otherwise every supported stage falls back to CPU.
 
 ## Run
 
+For fully automatic subtitle creation, use the single-command workflow. It detects
+the source language, uses CUDA when available, retries missing-speech recovery, and
+promotes an SRT only when every QA gate passes:
+
+```powershell
+.\.venv\Scripts\python.exe -m videotranslator subtitles `
+  "videotranslator\sample Data\episode.mp4" `
+  --target-language en
+```
+
+Successful runs create `final.srt`. A run that exhausts all recovery profiles creates
+`rejected.srt` and `subtitle-pipeline-report.json`, then exits with status 2. Resume is
+automatic; pass `--force` to rebuild existing stages. Use `--offline` when all model
+weights are already cached and internet access is unavailable.
+
 ```powershell
 .\.venv\Scripts\python.exe -m videotranslator `
   videotranslator\config\pipeline.example.json run --through review

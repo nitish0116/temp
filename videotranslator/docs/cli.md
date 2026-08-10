@@ -218,3 +218,27 @@ Every stage exposes `--help`, for example:
 ..\.venv\Scripts\python.exe commands/synthesize_xtts.py --help
 ..\.venv\Scripts\python.exe commands/qa_dubbing_pipeline.py --help
 ```
+## 14. Automatic subtitle creation
+
+Use this command when the required output is a translated SRT rather than a full dub:
+
+```powershell
+..\.venv\Scripts\python.exe -m videotranslator subtitles "input.mp4" `
+  --target-language en `
+  --device auto
+```
+
+The command automatically extracts audio, detects the spoken language, transcribes
+with word timestamps, force-aligns supported languages, runs speaker diarization,
+retries uncovered speech with three increasingly permissive profiles, translates,
+repairs readability, and applies independent coverage QA. `final.srt` exists only on
+a passing run. Failed runs retain the best candidate as `rejected.srt` with a complete
+`subtitle-pipeline-report.json`; no user review decision is required.
+
+Useful options:
+
+- `-o outputs/my-video` selects the artifact directory.
+- `--source-language ja` overrides automatic source-language detection.
+- `--maximum-attempts 1|2|3` limits recovery cost.
+- `--offline` prevents model metadata network checks when weights are cached.
+- `--force` rebuilds all stages instead of resuming existing artifacts.
