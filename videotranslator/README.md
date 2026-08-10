@@ -248,6 +248,12 @@ Use `--minimum-language-probability 0.5` to change the confidence threshold. The
 report records the normalized language, selected mode/model, routing reason, CTC
 success count, and number of cues that used Whisper timestamps.
 
+Canonical cues are segmented at acoustic pauses, sentence-ending punctuation,
+maximum duration/character limits, and any speaker identity already attached to
+the words. The diarization stage performs a second word-level split at pyannote
+speaker turns, preventing two characters from sharing one subtitle cue. CJK text
+is reconstructed without inserting Latin-style spaces.
+
 The reconciled output records `provenance` on every cue, distinguishing CTC-aligned
 speech from short reference cues retained because no aligned word covered them.
 

@@ -11,6 +11,8 @@ from typing import Any
 import librosa
 import torch
 
+from segment_utterances import join_words, segment_words
+
 
 DEFAULT_MODEL = "pyannote/speaker-diarization-community-1"
 
@@ -34,7 +36,38 @@ def assign_turns(segments: list[dict], turns: list[dict]) -> tuple[list[dict], d
         if turn["speaker"] not in ordered_labels:
             ordered_labels.append(turn["speaker"])
     stable = {label: f"speaker-{index:02d}" for index, label in enumerate(ordered_labels, start=1)}
-    updated = json.loads(json.dumps(segments))
+    expanded = []
+    for segment in json.loads(json.dumps(segments)):
+        timed_words = segment.get("words", [])
+        if not timed_words:
+            expanded.append(segment)
+            continue
+        annotated = []
+        for word in timed_words:
+            word_start, word_end = float(word["start"]), float(word["end"])
+            overlap, selected = max(
+                ((overlap_seconds(word_start, word_end, turn), turn) for turn in turns),
+                key=lambda item: item[0],
+            )
+            if overlap <= 0:
+                midpoint = (word_start + word_end) / 2
+                selected = min(
+                    turns,
+                    key=lambda turn: min(
+                        abs(midpoint - float(turn["start"])), abs(midpoint - float(turn["end"]))
+                    ),
+                )
+            annotated.append({**word, "speaker": stable[selected["speaker"]]})
+        for group in segment_words(annotated):
+            expanded.append({
+                **segment,
+                "start": round(float(group[0]["start"]), 3),
+                "end": round(float(group[-1]["end"]), 3),
+                "text": join_words(group),
+                "words": group,
+                "speaker": group[0]["speaker"],
+            })
+    updated = expanded
     fallback_count = 0
     speaker_counts: dict[str, int] = {}
     for segment in updated:
@@ -62,6 +95,8 @@ def assign_turns(segments: list[dict], turns: list[dict]) -> tuple[list[dict], d
         "speaker_count": len(stable),
         "speaker_segment_counts": speaker_counts,
         "fallback_assignment_count": fallback_count,
+        "input_segment_count": len(segments),
+        "utterance_segment_count": len(updated),
     }
 
 

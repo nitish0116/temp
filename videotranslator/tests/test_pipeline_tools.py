@@ -30,6 +30,7 @@ from qa_dubbing_pipeline import dialogue_overlaps, evidence_coverage, maximum_na
 from recover_missing_speech import merge_intervals, merge_recovered, recover_uncovered_words, recovery_regions, subtract_intervals
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
+from segment_utterances import join_words, segment_words
 
 
 def test_split_words_uses_pause_and_duration_boundaries():
@@ -46,6 +47,31 @@ def test_split_words_uses_pause_and_duration_boundaries():
         ["Hello", " world"],
         ["Again"],
     ]
+
+
+def test_utterance_segmentation_uses_punctuation_pause_and_speaker_changes():
+    """Natural sentence and speaker boundaries split otherwise short dialogue."""
+    words = [
+        {"start": 0.0, "end": 0.3, "word": "Are", "speaker": "one"},
+        {"start": 0.3, "end": 0.6, "word": "you?", "speaker": "one"},
+        {"start": 0.8, "end": 1.0, "word": "Yes.", "speaker": "one"},
+        {"start": 1.01, "end": 1.3, "word": "Really?", "speaker": "two"},
+    ]
+
+    chunks = segment_words(words)
+
+    assert [join_words(chunk) for chunk in chunks] == ["Are you?", "Yes.", "Really?"]
+    assert [word["word"] for chunk in chunks for word in chunk] == [word["word"] for word in words]
+
+
+def test_utterance_text_does_not_add_spaces_to_cjk_tokens():
+    """Chinese, Japanese, and Korean token sequences retain native spacing."""
+    words = [
+        {"start": 0.0, "end": 0.2, "word": "你"},
+        {"start": 0.2, "end": 0.4, "word": "好"},
+        {"start": 0.4, "end": 0.6, "word": "。"},
+    ]
+    assert join_words(words) == "你好。"
 
 
 def test_qa_reports_invalid_long_and_overlapping_segments():
@@ -315,6 +341,28 @@ def test_dedicated_diarization_assigns_maximum_overlap_and_records_fallback():
     assert assigned[0]["speaker_assignment"]["method"] == "maximum-overlap"
     assert assigned[1]["speaker_assignment"]["method"] == "nearest-turn-fallback"
     assert report["fallback_assignment_count"] == 1
+
+
+def test_diarization_splits_one_cue_at_a_speaker_boundary():
+    """Words spoken by different characters never remain in one subtitle cue."""
+    segments = [{
+        "start": 1.0, "end": 3.0, "text": "Hello. Hi.",
+        "words": [
+            {"start": 1.0, "end": 1.6, "word": "Hello."},
+            {"start": 2.0, "end": 2.5, "word": "Hi."},
+        ],
+    }]
+    turns = [
+        {"start": 0.8, "end": 1.8, "speaker": "A"},
+        {"start": 1.9, "end": 2.8, "speaker": "B"},
+    ]
+
+    assigned, report = assign_turns(segments, turns)
+
+    assert [item["text"] for item in assigned] == ["Hello.", "Hi."]
+    assert [item["speaker"] for item in assigned] == ["speaker-01", "speaker-02"]
+    assert report["input_segment_count"] == 1
+    assert report["utterance_segment_count"] == 2
 
 
 def test_multi_feature_voice_matching_is_unique_and_not_name_based():

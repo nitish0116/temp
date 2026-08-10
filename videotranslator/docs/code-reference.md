@@ -41,6 +41,17 @@ auto-detected unless explicitly configured.
 ## `force_align.py`
 
 - `align_one(...)` runs CTC forced alignment inside a padded rough Whisper window.
+- `split_aligned_words(...)` creates readable utterances through the shared
+  pause-, punctuation-, speaker-, duration-, and character-aware segmenter.
+
+## `segment_utterances.py`
+
+Shared, deterministic subtitle-boundary logic used by transcription, forced
+alignment, and speaker diarization.
+
+- `segment_words(...)` assigns every timed word to exactly one cue.
+- `join_words(...)` respects Whisper leading spaces and avoids artificial spaces
+  in Chinese, Japanese, and Korean text.
 - `split_aligned_words(...)` rebuilds readable cues from acoustic word boundaries.
 - `reconciliation_candidates(...)` identifies old cues with no aligned-word evidence.
 - `build_reconciled_transcript(...)` combines aligned speech and uncovered reference

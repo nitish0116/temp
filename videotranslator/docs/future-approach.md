@@ -13,11 +13,15 @@ fallback. Unsupported or low-confidence alignment triggers Whisper word
 timestamps rather than silently using the Korean model. Model routing and fallback
 reporting are implemented; corpus-level accuracy validation remains future work.
 
-## 2. Utterance-aware source segmentation
+## 2. Utterance-aware source segmentation (implemented baseline)
 
 Split long ASR spans using word pauses, punctuation, diarization changes, and
 speaker turns. Merge only fragments that are too short to stand alone and share
 the same persistent speaker. Never merge across a speaker boundary.
+
+Pause, punctuation, readability, and speaker-turn splitting are implemented.
+Semantic fragment scoring and safe merging of exceptionally short fragments
+remain future improvements.
 
 ## 3. Translation integrity gate
 

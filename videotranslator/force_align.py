@@ -13,6 +13,8 @@ import torch
 from torchaudio.functional import forced_align, merge_tokens
 from transformers import AutoModelForCTC, AutoProcessor
 
+from segment_utterances import join_words, segment_words
+
 
 ALIGNMENT_MODELS = {
     "en": "facebook/wav2vec2-base-960h",
@@ -124,28 +126,20 @@ def reconciliation_candidates(reference: list[dict], aligned: list[dict], minimu
 
 
 def split_aligned_words(segments: list[dict], maximum_duration: float = 8.0, maximum_characters: int = 84) -> list[dict]:
-    """Build readable canonical cues exclusively from forced-aligned word spans."""
-    words = [word for segment in segments for word in segment.get("words", [])]
-    words.sort(key=lambda word: word["start"])
-    groups: list[list[dict]] = []
-    current: list[dict] = []
-    for word in words:
-        if current:
-            pause = float(word["start"]) - float(current[-1]["end"])
-            duration = float(word["end"]) - float(current[0]["start"])
-            characters = len(" ".join(item["word"] for item in current + [word]))
-            if pause >= 1.0 or duration > maximum_duration or characters > maximum_characters:
-                groups.append(current)
-                current = []
-        current.append(word)
-    if current:
-        groups.append(current)
+    """Build punctuation-, pause-, and speaker-aware cues from aligned words."""
+    words = [
+        {**word, **({"speaker": segment["speaker"]} if segment.get("speaker") else {})}
+        for segment in segments
+        for word in segment.get("words", [])
+    ]
+    groups = segment_words(words, maximum_duration, maximum_characters)
     return [
         {
             "start": round(float(group[0]["start"]), 3),
             "end": round(float(group[-1]["end"]), 3),
-            "text": " ".join(word["word"] for word in group).strip(),
+            "text": join_words(group),
             "words": group,
+            **({"speaker": group[0]["speaker"]} if group[0].get("speaker") else {}),
             "provenance": "large-v3-forced-alignment",
         }
         for group in groups

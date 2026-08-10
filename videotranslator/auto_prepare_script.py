@@ -18,6 +18,7 @@ except ImportError:
 from faster_whisper import WhisperModel
 
 from transcribe import srt_timestamp
+from segment_utterances import join_words, segment_words
 
 
 def split_words(words: list[dict], maximum_duration: float, maximum_chars: int) -> list[list[dict]]:
@@ -31,20 +32,7 @@ def split_words(words: list[dict], maximum_duration: float, maximum_chars: int) 
         ]
         assert len(split_words(words, 8.0, 84)) == 2
     """
-    chunks: list[list[dict]] = []
-    current: list[dict] = []
-    for word in words:
-        if current:
-            duration = word["end"] - current[0]["start"]
-            characters = len("".join(item["word"] for item in current + [word]).strip())
-            pause = word["start"] - current[-1]["end"]
-            if pause >= 1.0 or duration > maximum_duration or characters > maximum_chars:
-                chunks.append(current)
-                current = []
-        current.append(word)
-    if current:
-        chunks.append(current)
-    return chunks
+    return segment_words(words, maximum_duration, maximum_chars)
 
 
 def transcribe_and_decide(
@@ -102,7 +90,7 @@ def transcribe_and_decide(
             continue
 
         for chunk in split_words(words, maximum_duration, maximum_chars):
-            chunk_text = "".join(item["word"] for item in chunk).strip()
+            chunk_text = join_words(chunk)
             notes = []
             if segment.avg_logprob < -0.8:
                 notes.append(f"Low recognition confidence ({segment.avg_logprob:.2f})")
