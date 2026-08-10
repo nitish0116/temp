@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+import qa_transcript
 
 from auto_prepare_script import clean_translation_repetition, make_approval, nllb_code, passes_gate, passes_translation_gate, quality_metrics, split_words, translation_coverage
 from generate_dub import generate_dub, rate_to_length_scale
@@ -29,7 +30,7 @@ from align_active_speaker import bounded_onset_offset, dominant_track, intersect
 from qa_dubbing_pipeline import dialogue_overlaps, evidence_coverage, maximum_native_tempo, speaker_reassignments
 from recover_missing_speech import merge_intervals, merge_recovered, recover_uncovered_words, recovery_regions, subtract_intervals
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
-from qa_transcript import analyze
+from qa_transcript import analyze, malformed_text_reasons, required_line_count, source_speech_coverage
 from segment_utterances import join_words, merge_fragments, segment_words
 
 
@@ -127,6 +128,64 @@ def test_qa_reports_invalid_long_and_overlapping_segments():
         "long_duration": 1,
         "invalid_duration": 1,
     }
+
+
+def test_subtitle_qa_rejects_fast_short_long_and_malformed_cues():
+    """Readability and malformed-text failures are blocking QA findings."""
+    transcript = {"segments": [
+        {"start": 0.0, "end": 0.3, "text": "This is much too fast,"},
+        {"start": 1.0, "end": 3.0, "text": "one two three four five six seven eight nine"},
+    ]}
+    report = analyze(
+        transcript,
+        8.0,
+        maximum_characters=30,
+        maximum_line_characters=12,
+        maximum_lines=2,
+        maximum_characters_per_second=20,
+    )
+    assert report["passed"] is False
+    assert report["issue_counts"]["short_duration"] == 1
+    assert report["issue_counts"]["fast_reading_speed"] == 1
+    assert report["issue_counts"]["malformed_text"] == 1
+    assert report["issue_counts"]["long_text"] == 1
+    assert report["issue_counts"]["excessive_lines"] >= 1
+
+
+def test_subtitle_line_calculation_handles_words_and_cjk():
+    """Line QA wraps at words for Latin text and characters for CJK text."""
+    assert required_line_count("one two three four", 10) == 2
+    assert required_line_count("你好世界你好世界", 4) == 2
+    assert required_line_count("unbreakable", 5) > 2
+
+
+def test_subtitle_qa_rejects_missing_source_speech_coverage():
+    """Target cues must cover independent source dialogue events and time."""
+    target = {"segments": [{"start": 0.0, "end": 1.0, "text": "First."}]}
+    source = {"segments": [
+        {"start": 0.0, "end": 1.0, "text": "one"},
+        {"start": 2.0, "end": 3.0, "text": "two"},
+    ]}
+    event_coverage, time_coverage = source_speech_coverage(target, source)
+    report = analyze(target, 8.0, source_transcript=source)
+    assert (event_coverage, time_coverage) == (0.5, 0.5)
+    assert report["issue_counts"] == {"missing_source_events": 1, "missing_source_time": 1}
+    assert malformed_text_reasons("unfinished,") == ["incomplete_ending"]
+
+
+def test_subtitle_qa_cli_writes_report_and_exits_nonzero_on_failure(tmp_path, monkeypatch):
+    """A failed gate leaves diagnostics but prevents downstream promotion."""
+    transcript = tmp_path / "bad.json"
+    report = tmp_path / "qa.json"
+    transcript.write_text(
+        json.dumps({"segments": [{"start": 0.0, "end": 0.1, "text": "unfinished,"}]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("sys.argv", ["qa_transcript.py", str(transcript), "-o", str(report)])
+    with pytest.raises(SystemExit) as error:
+        qa_transcript.main()
+    assert error.value.code == 1
+    assert json.loads(report.read_text(encoding="utf-8"))["passed"] is False
 
 
 def test_pipeline_config_paths_are_relative_to_config(tmp_path: Path):

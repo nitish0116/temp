@@ -18,12 +18,14 @@ video translator into an automatic multilingual dubbing pipeline.
 6. Added shared utterance-aware segmentation using acoustic pauses, multilingual
    punctuation, readability limits, word-level diarized speaker changes, and
    conservative same-speaker fragment repair.
-7. Added pyannote diarization, persistent speaker identities, and acoustic voice
+7. Added blocking subtitle QA for display duration, reading speed, line layout,
+   malformed text, overlaps, and source dialogue event/time coverage.
+8. Added pyannote diarization, persistent speaker identities, and acoustic voice
    matching. Pitch is only an acoustic feature and is not treated as gender.
-8. Added duration-constrained NLLB translation and native TTS retries rather than
+9. Added duration-constrained NLLB translation and native TTS retries rather than
    applying abrupt post-generation tempo filters.
-9. Added active-speaker/lip-motion onset alignment for multi-face scenes.
-10. Added cross-stage QA for source-speech coverage, speaker reassignment, tempo,
+10. Added active-speaker/lip-motion onset alignment for multi-face scenes.
+11. Added cross-stage QA for source-speech coverage, speaker reassignment, tempo,
    missing clips, and active-speaker onset offsets.
 10. Added recovery of diarized speech absent from canonical cues, including a
     no-VAD large-v3 pass and fallback retention of strong-ASR words.

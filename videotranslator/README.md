@@ -147,7 +147,8 @@ segment IDs connect generated speech to timing and decision provenance.
   bounded visual-onset correction for multi-character scenes.
 - `qa_dubbing_pipeline.py`: strict automatic cross-stage QA for speech coverage,
   speaker identity, tempo, onset alignment, overlap, and visual confidence.
-- `qa_transcript.py`: deterministic timing checks.
+- `qa_transcript.py`: blocking timing, readability, text-integrity, and source
+  dialogue-coverage checks.
 - `burn_subtitles.py`: optional top-subtitle diagnostic render.
 - `mux_subtitles.py`: selectable English subtitle track without media re-encoding.
 - `qa_final.py`: automatic clip, timing, speaker, stream, duration, loudness, and

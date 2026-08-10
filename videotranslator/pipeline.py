@@ -148,8 +148,21 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
         ]
         return command, [artifact_paths["transcript_json"], artifact_paths["srt"], artifact_paths["source_transcript"], artifact_paths["decisions"], artifact_paths["approved_script"]]
     if stage == "qa":
-        maximum = str(config.get("quality", {}).get("maximum_segment_duration", 12.0))
-        return [python, str(HERE / "qa_transcript.py"), str(artifact_paths["transcript_json"]), "-o", str(artifact_paths["qa"]), "--maximum-duration", maximum], [artifact_paths["qa"]]
+        quality = config.get("quality", {})
+        command = [
+            python, str(HERE / "qa_transcript.py"), str(artifact_paths["transcript_json"]),
+            "-o", str(artifact_paths["qa"]),
+            "--source-transcript", str(artifact_paths["source_transcript"]),
+            "--minimum-duration", str(quality.get("minimum_subtitle_duration", 0.5)),
+            "--maximum-duration", str(quality.get("maximum_segment_duration", 12.0)),
+            "--maximum-characters", str(quality.get("maximum_subtitle_characters", 84)),
+            "--maximum-line-characters", str(quality.get("maximum_subtitle_line_characters", 42)),
+            "--maximum-lines", str(quality.get("maximum_subtitle_lines", 2)),
+            "--maximum-characters-per-second", str(quality.get("maximum_subtitle_characters_per_second", 20.0)),
+            "--minimum-source-event-coverage", str(quality.get("minimum_source_event_coverage", 0.98)),
+            "--minimum-source-time-coverage", str(quality.get("minimum_source_time_coverage", 0.95)),
+        ]
+        return command, [artifact_paths["qa"]]
     if stage == "tts":
         settings = config.get("translation", {})
         dubbing = config.get("dubbing", {})

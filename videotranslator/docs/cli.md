@@ -63,7 +63,11 @@ Omit `--language` to detect the input language automatically.
 ..\.venv\Scripts\python.exe transcribe.py "$run\separation\vocals.wav" `
   --model large-v3 -o "$run\transcription"
 ..\.venv\Scripts\python.exe qa_transcript.py `
-  "$run\transcription\vocals.json" -o "$run\transcription\qa.json"
+  "$run\transcription\vocals.json" -o "$run\transcription\qa.json" `
+  --source-transcript "$run\transcription\source.json" `
+  --minimum-duration 0.5 --maximum-duration 12 `
+  --maximum-characters 84 --maximum-line-characters 42 `
+  --maximum-lines 2 --maximum-characters-per-second 20
 ```
 
 ## 6. Forced alignment
@@ -71,8 +75,7 @@ Omit `--language` to detect the input language automatically.
 `force_align.py` automatically selects a model for English, French, German,
 Spanish, Hindi, Japanese, Chinese, Arabic, or Korean. Unsupported and
 low-confidence languages safely retain Whisper word timestamps. Pass `--model`
-for another supported source language until automatic multilingual model
-routing is implemented.
+to override the automatic route.
 
 ```powershell
 ..\.venv\Scripts\python.exe force_align.py `

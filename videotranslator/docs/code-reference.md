@@ -283,19 +283,23 @@ and accepts explicit NLLB codes for less common languages.
 
 ## `qa_transcript.py`
 
-Performs deterministic checks without invoking a model.
+Performs deterministic blocking checks without invoking a model.
 
-- `analyze(transcript, maximum_duration)` detects overlapping cues, non-positive
-  durations, long cues, and empty text.
-- `main()` reads transcript JSON and writes a QA report.
+- `analyze(...)` detects overlaps, invalid/short/long durations, excessive reading
+  speed, cue/line overflow, malformed text, and missing source-speech coverage.
+- `required_line_count(...)` verifies that text can fit the configured line layout.
+- `source_speech_coverage(...)` measures target timing against source events and
+  source dialogue duration.
+- `main()` writes the report and exits nonzero when any blocking issue exists.
 
 ```powershell
 python qa_transcript.py episode.auto.en.json -o episode.qa.json `
-  --maximum-duration 8
+  --source-transcript episode.source.json --maximum-duration 8 `
+  --minimum-duration 0.5 --maximum-characters-per-second 20
 ```
 
-The CLI exits normally when issues are found because QA findings are review data,
-not a program crash. Consumers must inspect the report's `passed` value.
+The report is always written. A failed report exits with status 1, so pipeline
+orchestration cannot promote or mux subtitles that did not pass.
 
 ## `burn_subtitles.py`
 
