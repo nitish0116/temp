@@ -22,7 +22,7 @@ videotranslator/
 |-- assemble_dub.py             # native-tempo mix and export
 |-- config/                     # example runtime configuration
 |-- docs/                       # architecture and API reference
-|-- requirements/               # optional feature dependencies
+|-- requirements.txt            # unified pinned runtime dependencies
 |-- schemas/                    # JSON handoff contracts
 |-- tests/                      # deterministic unit tests
 |-- models/                     # ignored local model cache
@@ -53,9 +53,11 @@ automatically by retaining the safe prior artifact; there is no manual-review st
 
 ## Dependency boundaries
 
-- `requirements.txt` contains the base runtime.
-- `requirements/diarization.txt` adds the gated pyannote backend for step 3.
-- `requirements/vision.txt` adds local OpenCV analysis for step 7.
+`requirements.txt` is the single pinned environment definition. Comments group
+the core runtime, pyannote diarization, OpenCV vision, and XTTS-v2 expressive TTS.
+XTTS-v2 model weights use the Coqui Public Model License and are appropriate here
+because this project is non-commercial. Transformers remains on the tested 4.x
+release because XTTS imports APIs removed in Transformers 5.x.
 
 Large public model files live under the ignored `models/` cache. Run products live
 under `outputs/<project-id>/`; source code must never depend on a particular run.
@@ -65,3 +67,11 @@ under `outputs/<project-id>/`; source code must never depend on a particular run
 Root command filenames are stable public entry points. Internal refactoring must
 preserve their CLI arguments and JSON handoffs unless the corresponding schema,
 documentation, tests, and orchestrator command are migrated together.
+
+## Operational documentation
+
+- [cli.md](cli.md) is the stage-by-stage command runbook.
+- [implementation-history.md](implementation-history.md) records completed work,
+  current artifacts, and known limitations.
+- [future-approach.md](future-approach.md) defines the automatic correction and
+  promotion design required before the next final render.

@@ -40,6 +40,18 @@ FFmpeg must be on `PATH`. From the repository root:
 .\.venv\Scripts\python.exe -m pip install -r videotranslator\requirements.txt
 ```
 
+The unified requirements file includes diarization, vision, and expressive TTS.
+XTTS-v2 model weights use the Coqui Public Model License and are enabled for this
+non-commercial project. Transformers is pinned below 5 for XTTS compatibility.
+
+Detailed operations and project state:
+
+- [Stage-by-stage CLI runbook](docs/cli.md)
+- [Implementation history and known limitations](docs/implementation-history.md)
+- [Future automatic quality approach](docs/future-approach.md)
+- [Architecture](docs/architecture.md)
+- [Code reference](docs/code-reference.md)
+
 Copy `config/pipeline.example.json` for each video and adjust its paths, models, language,
 and quality thresholds. Relative paths resolve from the configuration file.
 
@@ -241,7 +253,7 @@ WavLM clustering. Install the optional backend, accept the model conditions on i
 Hugging Face page, and expose a read-only token through `HF_TOKEN`:
 
 ```powershell
-python -m pip install -r requirements/diarization.txt
+python -m pip install -r requirements.txt
 $env:HF_TOKEN = "your-read-token"
 python diarize_pyannote.py outputs/project/alignment/vocals.reconciled.json `
   outputs/project/separation/vocals.wav `
@@ -286,8 +298,9 @@ and retry decision for later synthesis and QA.
 
 ## Expressive cloned voices (optional, non-commercial)
 
-Install `requirements/expressive-tts.txt` to use XTTS-v2. Its model weights use
-the Coqui Public Model License, so this backend is kept optional. References are
+XTTS-v2 is installed by the unified `requirements.txt`. Its model weights use
+the Coqui Public Model License, so this backend is used only for this confirmed
+non-commercial project. References are
 selected automatically from clean pyannote turns in the isolated vocal stem;
 pitch is not used to infer gender or select a voice.
 
@@ -334,7 +347,7 @@ tracks. The visual onset correction is capped at 250 ms and clamped against the
 neighboring synthesized clips so it cannot create dialogue overlap.
 
 ```powershell
-python -m pip install -r requirements/vision.txt
+python -m pip install -r requirements.txt
 python align_active_speaker.py input.mp4 english.constrained.json `
   synthesis/dub-manifest.json `
   --output-manifest active-speaker/dub-manifest.aligned.json `

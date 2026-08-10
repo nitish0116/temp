@@ -1,2 +1,0 @@
-# Optional dedicated diarization backend. Install only for step 3.
-pyannote.audio==4.0.7

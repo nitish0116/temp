@@ -75,8 +75,7 @@ strong-word fallback cues. No recovered text is accepted without decoder evidenc
 
 This stage establishes persistent speaker identity only. Voice-characteristic
 matching belongs to the following stage and must not use pitch as a gender claim.
-`requirements/diarization.txt` isolates its heavier optional dependency set from
-the base installation.
+The unified `requirements.txt` includes the heavier diarization dependency.
 
 ## `match_speaker_voices.py`
 
@@ -126,6 +125,34 @@ The `minimum_length_scale` floor prevents abrupt, excessively fast delivery. A
 small measurement tolerance may absorb WAV rounding, but no FFmpeg `atempo` filter
 is applied by this stage.
 
+## `prepare_speaker_references.py`
+
+Builds persistent-speaker reference sets for expressive voice cloning.
+
+- `source_to_persistent_speakers(...)` maps pyannote labels to stable script IDs.
+- `turn_score(...)` ranks usable vocal-stem turns while penalizing clipping.
+- `prepare_references(...)` selects several references per speaker and writes an
+  auditable `reference-report.json`.
+- `main()` exposes the standalone CLI.
+
+The current score is intentionally simple; future selection will add embedding
+consistency, leakage, overlap, and signal-to-noise gates.
+
+## `synthesize_xtts.py`
+
+Provides the non-commercial XTTS-v2 persistent voice backend.
+
+- `install_pcm_loader()` replaces TorchCodec-dependent WAV decoding with a local
+  SoundFile loader compatible with the installed Windows CPU PyTorch stack.
+- `select_pilot(...)` chooses a speaker-diverse diagnostic subset.
+- `synthesize_xtts(...)` clones each persistent speaker, measures output, writes
+  assembly-compatible manifests/reports, and resumes accepted WAV files.
+- `main()` exposes language, pilot count, and tolerance controls.
+
+Large tolerance values are recovery diagnostics, not a final-quality mechanism:
+they can admit clips that overlap the next cue. Strict QA must send those cues
+back through re-segmentation or duration-constrained translation.
+
 ## `align_active_speaker.py`
 
 - `intersection_over_union(...)` supports cue-local face-track association.
@@ -139,7 +166,7 @@ is applied by this stage.
 - `align_active_speakers(...)` updates an assembly-compatible manifest and emits a
   complete automatic decision report.
 
-The optional dependency is isolated in `requirements/vision.txt`. Ambiguous and
+OpenCV is included in the unified `requirements.txt`. Ambiguous and
 non-multi-face cues remain unchanged; later QA can enforce project-level coverage
 thresholds using the report without involving a reviewer.
 

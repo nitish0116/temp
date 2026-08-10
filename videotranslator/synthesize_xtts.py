@@ -26,6 +26,7 @@ def install_pcm_loader() -> None:
     from TTS.tts.models import xtts
 
     def load_audio(path: str, sampling_rate: int) -> torch.Tensor:
+        """Load a PCM WAV as mono and resample it without TorchCodec."""
         samples, source_rate = sf.read(path, dtype="float32", always_2d=True)
         mono = samples.mean(axis=1)
         if source_rate != sampling_rate:
