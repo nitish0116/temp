@@ -30,7 +30,7 @@ from qa_dubbing_pipeline import dialogue_overlaps, evidence_coverage, maximum_na
 from recover_missing_speech import merge_intervals, merge_recovered, recover_uncovered_words, recovery_regions, subtract_intervals
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
-from segment_utterances import join_words, segment_words
+from segment_utterances import join_words, merge_fragments, segment_words
 
 
 def test_split_words_uses_pause_and_duration_boundaries():
@@ -72,6 +72,41 @@ def test_utterance_text_does_not_add_spaces_to_cjk_tokens():
         {"start": 0.4, "end": 0.6, "word": "。"},
     ]
     assert join_words(words) == "你好。"
+
+
+def test_incomplete_fragment_merges_with_same_speaker_neighbor():
+    """A dangling phrase is repaired without dropping its words or timing."""
+    groups = [
+        [{"start": 1.0, "end": 1.3, "word": "But,", "speaker": "one"}],
+        [{"start": 1.7, "end": 2.4, "word": "wait.", "speaker": "one"}],
+    ]
+    merged = merge_fragments(groups)
+    assert len(merged) == 1
+    assert join_words(merged[0]) == "But, wait."
+    assert (merged[0][0]["start"], merged[0][-1]["end"]) == (1.0, 2.4)
+
+
+def test_fragment_merge_preserves_short_sentences_and_speaker_boundaries():
+    """Intentional replies and different speakers are never merged away."""
+    short_reply = [
+        [{"start": 0.0, "end": 0.25, "word": "No!", "speaker": "one"}],
+        [{"start": 0.3, "end": 1.0, "word": "Leave.", "speaker": "one"}],
+    ]
+    different_speakers = [
+        [{"start": 2.0, "end": 2.2, "word": "I", "speaker": "one"}],
+        [{"start": 2.21, "end": 2.8, "word": "know.", "speaker": "two"}],
+    ]
+    assert len(merge_fragments(short_reply)) == 2
+    assert len(merge_fragments(different_speakers)) == 2
+
+
+def test_fragment_merge_obeys_hard_duration_and_character_limits():
+    """Semantic cleanup cannot recreate oversized subtitle cues."""
+    groups = [
+        [{"start": 0.0, "end": 0.2, "word": "And,", "speaker": "one"}],
+        [{"start": 0.3, "end": 9.0, "word": "later.", "speaker": "one"}],
+    ]
+    assert len(merge_fragments(groups, maximum_duration=8.0)) == 2
 
 
 def test_qa_reports_invalid_long_and_overlapping_segments():

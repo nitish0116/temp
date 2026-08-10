@@ -254,6 +254,11 @@ the words. The diarization stage performs a second word-level split at pyannote
 speaker turns, preventing two characters from sharing one subtitle cue. CJK text
 is reconstructed without inserting Latin-style spaces.
 
+A conservative cleanup pass merges dangling continuation fragments and very short
+unpunctuated fragments only when the neighboring cue has the same speaker, the
+silence gap is small, and the combined cue remains within duration and character
+limits. Complete short replies such as `No!` remain independent.
+
 The reconciled output records `provenance` on every cue, distinguishing CTC-aligned
 speech from short reference cues retained because no aligned word covered them.
 

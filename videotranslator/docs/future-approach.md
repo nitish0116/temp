@@ -19,9 +19,10 @@ Split long ASR spans using word pauses, punctuation, diarization changes, and
 speaker turns. Merge only fragments that are too short to stand alone and share
 the same persistent speaker. Never merge across a speaker boundary.
 
-Pause, punctuation, readability, and speaker-turn splitting are implemented.
-Semantic fragment scoring and safe merging of exceptionally short fragments
-remain future improvements.
+Pause, punctuation, readability, speaker-turn splitting, and conservative repair
+of incomplete/ultra-short fragments are implemented. A learned multilingual
+semantic-completeness score remains a possible later enhancement; the current
+rules deliberately prefer leaving an uncertain cue separate over a bad merge.
 
 ## 3. Translation integrity gate
 

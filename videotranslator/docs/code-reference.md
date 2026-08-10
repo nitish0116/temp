@@ -52,6 +52,8 @@ alignment, and speaker diarization.
 - `segment_words(...)` assigns every timed word to exactly one cue.
 - `join_words(...)` respects Whisper leading spaces and avoids artificial spaces
   in Chinese, Japanese, and Korean text.
+- `merge_fragments(...)` repairs only dangling or ultra-short same-speaker cues
+  while preserving terminal replies, speaker boundaries, timing, and hard limits.
 - `split_aligned_words(...)` rebuilds readable cues from acoustic word boundaries.
 - `reconciliation_candidates(...)` identifies old cues with no aligned-word evidence.
 - `build_reconciled_transcript(...)` combines aligned speech and uncovered reference

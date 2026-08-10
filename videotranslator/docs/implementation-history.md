@@ -16,7 +16,8 @@ video translator into an automatic multilingual dubbing pipeline.
    transcript, followed by multilingual model routing and Whisper-word fallback
    for unsupported or low-confidence languages.
 6. Added shared utterance-aware segmentation using acoustic pauses, multilingual
-   punctuation, readability limits, and word-level diarized speaker changes.
+   punctuation, readability limits, word-level diarized speaker changes, and
+   conservative same-speaker fragment repair.
 7. Added pyannote diarization, persistent speaker identities, and acoustic voice
    matching. Pitch is only an acoustic feature and is not treated as gender.
 8. Added duration-constrained NLLB translation and native TTS retries rather than
