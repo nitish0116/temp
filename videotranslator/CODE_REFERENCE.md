@@ -38,6 +38,20 @@ output includes word timestamps so a later forced-alignment stage can reconcile
 newly recovered speech with the canonical transcript. Source language remains
 auto-detected unless explicitly configured.
 
+## `force_align.py`
+
+- `align_one(...)` runs CTC forced alignment inside a padded rough Whisper window.
+- `split_aligned_words(...)` rebuilds readable cues from acoustic word boundaries.
+- `reconciliation_candidates(...)` identifies old cues with no aligned-word evidence.
+- `build_reconciled_transcript(...)` combines aligned speech and uncovered reference
+  cues while recording provenance and preventing silent dialogue loss.
+- `align_transcript(...)` loads the language-specific model once and returns aligned,
+  reconciled, and audit-report artifacts.
+
+The bundled automatic mapping currently covers Korean. Other input languages use
+the same implementation by supplying a compatible Hugging Face Wav2Vec2 CTC model;
+the stage fails clearly when no language model is configured.
+
 - `now()` returns UTC timestamps used in manifests.
 - `load_config(path)` loads JSON, checks required settings, and resolves paths from
   the configuration file's directory.

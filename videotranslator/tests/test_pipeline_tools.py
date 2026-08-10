@@ -10,6 +10,7 @@ from generate_dub import generate_dub, rate_to_length_scale
 from diarize_speakers import assign_voices, voice_style
 from assemble_dub import build_alignment_graph, tempo_filters
 from qa_final import stem_leakage
+from force_align import build_reconciled_transcript, interval_overlap, reconciliation_candidates
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
 
@@ -214,3 +215,30 @@ def test_final_qa_stage_is_runnable(tmp_path: Path):
     command, outputs = stage_command("final_qa", config, paths(config))
     assert command[1].endswith("qa_final.py")
     assert outputs == [paths(config)["final_qa"]]
+
+
+def test_reconciliation_preserves_reference_speech_missing_from_alignment():
+    """Reference cues with little aligned-word coverage remain reconciliation candidates."""
+    aligned = [{"words": [{"start": 1.0, "end": 2.0, "word": "one"}]}]
+    reference = [
+        {"start": 1.0, "end": 2.0, "text": "covered"},
+        {"start": 4.0, "end": 5.0, "text": "retain"},
+    ]
+
+    missing = reconciliation_candidates(reference, aligned)
+
+    assert [segment["text"] for segment in missing] == ["retain"]
+    assert interval_overlap(0.0, 3.0, [(1.0, 2.0)]) == 1.0
+
+
+def test_reconciled_transcript_records_alignment_and_reference_provenance():
+    """Canonical reconciliation inserts uncovered reference cues audibly and visibly."""
+    aligned = [{"words": [{"start": 1.0, "end": 1.5, "word": "aligned", "score": 0.9}]}]
+    retained = [{"start": 3.0, "end": 3.5, "text": "retained"}]
+
+    result = build_reconciled_transcript({"language": "xx"}, aligned, retained)
+
+    assert [segment["provenance"] for segment in result["segments"]] == [
+        "large-v3-forced-alignment",
+        "retained-reference-no-word-overlap",
+    ]

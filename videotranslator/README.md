@@ -184,3 +184,22 @@ python transcribe.py outputs/project/separation/vocals.wav --model large-v3 `
 
 This candidate must be reconciled with the existing transcript before promotion;
 relaxed VAD can recover quiet lines but may also introduce false-positive speech.
+
+## Word-level forced alignment
+
+`force_align.py` applies a language-specific CTC acoustic model to the recovered
+transcript, rebuilds cues from aligned word boundaries, and retains only reference
+cues with no aligned-word evidence. The source language selects a known alignment
+model when available; `--model` accepts another Hugging Face CTC model for other
+languages.
+
+```powershell
+python force_align.py outputs/project/step1-large-v3/vocals.json `
+  outputs/project/transcripts/source.json outputs/project/separation/vocals.wav `
+  --output-transcript outputs/project/alignment/vocals.aligned.json `
+  --output-reconciled outputs/project/alignment/vocals.reconciled.json `
+  --output-report outputs/project/alignment/alignment-report.json
+```
+
+The reconciled output records `provenance` on every cue, distinguishing CTC-aligned
+speech from short reference cues retained because no aligned word covered them.
