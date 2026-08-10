@@ -203,3 +203,22 @@ python force_align.py outputs/project/step1-large-v3/vocals.json `
 
 The reconciled output records `provenance` on every cue, distinguishing CTC-aligned
 speech from short reference cues retained because no aligned word covered them.
+
+## Dedicated speaker diarization
+
+Step 3 uses `pyannote/speaker-diarization-community-1` rather than pitch-split
+WavLM clustering. Install the optional backend, accept the model conditions on its
+Hugging Face page, and expose a read-only token through `HF_TOKEN`:
+
+```powershell
+python -m pip install -r requirements-diarization.txt
+$env:HF_TOKEN = "your-read-token"
+python diarize_pyannote.py outputs/project/alignment/vocals.reconciled.json `
+  outputs/project/separation/vocals.wav `
+  --output-script outputs/project/diarization/pyannote.assigned.json `
+  --output-report outputs/project/diarization/pyannote.report.json
+```
+
+The token is read only from the environment and is never written to configuration,
+logs, reports, or manifests. Audio is preloaded into memory so local inference does
+not depend on TorchCodec's platform decoder.

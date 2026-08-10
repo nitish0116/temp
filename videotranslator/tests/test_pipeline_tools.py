@@ -11,6 +11,7 @@ from diarize_speakers import assign_voices, voice_style
 from assemble_dub import build_alignment_graph, tempo_filters
 from qa_final import stem_leakage
 from force_align import build_reconciled_transcript, interval_overlap, reconciliation_candidates
+from diarize_pyannote import assign_turns
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
 
@@ -242,3 +243,19 @@ def test_reconciled_transcript_records_alignment_and_reference_provenance():
         "large-v3-forced-alignment",
         "retained-reference-no-word-overlap",
     ]
+
+
+def test_dedicated_diarization_assigns_maximum_overlap_and_records_fallback():
+    """Exclusive turns map deterministically without pitch-based speaker splitting."""
+    segments = [{"start": 1.0, "end": 2.0}, {"start": 5.0, "end": 6.0}]
+    turns = [
+        {"start": 0.5, "end": 2.5, "speaker": "SPEAKER_01"},
+        {"start": 7.0, "end": 8.0, "speaker": "SPEAKER_02"},
+    ]
+
+    assigned, report = assign_turns(segments, turns)
+
+    assert assigned[0]["speaker"] == "speaker-01"
+    assert assigned[0]["speaker_assignment"]["method"] == "maximum-overlap"
+    assert assigned[1]["speaker_assignment"]["method"] == "nearest-turn-fallback"
+    assert report["fallback_assignment_count"] == 1

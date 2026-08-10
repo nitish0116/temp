@@ -52,6 +52,19 @@ The bundled automatic mapping currently covers Korean. Other input languages use
 the same implementation by supplying a compatible Hugging Face Wav2Vec2 CTC model;
 the stage fails clearly when no language model is configured.
 
+## `diarize_pyannote.py`
+
+- `assign_turns(...)` maps exclusive diarization turns to transcript cues by
+  maximum temporal overlap, with auditable nearest-turn fallback only when needed.
+- `diarize(...)` runs the official local `community-1` pipeline on an in-memory
+  waveform, assigns stable IDs by first appearance, and records all source turns.
+- `main()` requires `HF_TOKEN` from the environment and never persists credentials.
+
+This stage establishes persistent speaker identity only. Voice-characteristic
+matching belongs to the following stage and must not use pitch as a gender claim.
+`requirements-diarization.txt` isolates its heavier optional dependency set from
+the base installation.
+
 - `now()` returns UTC timestamps used in manifests.
 - `load_config(path)` loads JSON, checks required settings, and resolves paths from
   the configuration file's directory.
