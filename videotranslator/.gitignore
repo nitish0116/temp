@@ -3,6 +3,7 @@ models/
 __pycache__/
 *.pyc
 .venv/
-!pipeline.example.json
+!config/
+!config/*.json
 !schemas/
 !schemas/*.json

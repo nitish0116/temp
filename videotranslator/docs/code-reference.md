@@ -1,7 +1,7 @@
 # Video Translator Code Reference
 
 This document describes the implementation of the `videotranslator` module. See
-`README.md` for installation, pipeline stages, and operator instructions.
+the [module README](../README.md) for installation, stages, and operator instructions.
 
 ## Architecture
 
@@ -62,7 +62,7 @@ the stage fails clearly when no language model is configured.
 
 This stage establishes persistent speaker identity only. Voice-characteristic
 matching belongs to the following stage and must not use pitch as a gender claim.
-`requirements-diarization.txt` isolates its heavier optional dependency set from
+`requirements/diarization.txt` isolates its heavier optional dependency set from
 the base installation.
 
 ## `match_speaker_voices.py`
@@ -126,7 +126,7 @@ is applied by this stage.
 - `align_active_speakers(...)` updates an assembly-compatible manifest and emits a
   complete automatic decision report.
 
-The optional dependency is isolated in `requirements-vision.txt`. Ambiguous and
+The optional dependency is isolated in `requirements/vision.txt`. Ambiguous and
 non-multi-face cues remain unchanged; later QA can enforce project-level coverage
 thresholds using the report without involving a reviewer.
 
@@ -162,8 +162,8 @@ the existing final encoded-media QA runs.
 Typical use:
 
 ```powershell
-python pipeline.py pipeline.example.json run --through review
-python pipeline.py pipeline.example.json status
+python pipeline.py config/pipeline.example.json run --through review
+python pipeline.py config/pipeline.example.json status
 ```
 
 Failures from child programs are re-raised after the affected stage is marked
@@ -344,7 +344,7 @@ decoder loops without source-language-specific rules.
 
 ## Configuration and schemas
 
-`pipeline.example.json` documents a complete project configuration. JSON Schema
+`config/pipeline.example.json` documents a complete project configuration. JSON Schema
 files under `schemas/` define boundaries between stages:
 
 - `pipeline-config.schema.json`: source, output, translation, quality, and dubbing

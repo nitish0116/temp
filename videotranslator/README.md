@@ -4,7 +4,8 @@ This module converts source-language video into an automatically approved Englis
 script, subtitles, speaker-aware English dubbing, and a final mixed video. Runs are
 controlled by JSON configuration and recorded in a manifest.
 
-See [CODE_REFERENCE.md](CODE_REFERENCE.md) for file-level APIs, examples, and errors.
+See [docs/code-reference.md](docs/code-reference.md) for file-level APIs and
+[docs/architecture.md](docs/architecture.md) for the module layout and data flow.
 
 ## Pipeline
 
@@ -39,28 +40,28 @@ FFmpeg must be on `PATH`. From the repository root:
 .\.venv\Scripts\python.exe -m pip install -r videotranslator\requirements.txt
 ```
 
-Copy `pipeline.example.json` for each video and adjust its paths, models, language,
+Copy `config/pipeline.example.json` for each video and adjust its paths, models, language,
 and quality thresholds. Relative paths resolve from the configuration file.
 
 ## Run
 
 ```powershell
 .\.venv\Scripts\python.exe videotranslator\pipeline.py `
-  videotranslator\pipeline.example.json run --through review
+  videotranslator\config\pipeline.example.json run --through review
 ```
 
 Run through selectable-subtitle export:
 
 ```powershell
 .\.venv\Scripts\python.exe videotranslator\pipeline.py `
-  videotranslator\pipeline.example.json run --through subtitle_mux
+  videotranslator\config\pipeline.example.json run --through subtitle_mux
 ```
 
 Inspect status:
 
 ```powershell
 .\.venv\Scripts\python.exe videotranslator\pipeline.py `
-  videotranslator\pipeline.example.json status
+  videotranslator\config\pipeline.example.json status
 ```
 
 Completed stages with existing artifacts are skipped. Add `--force` to rebuild.
@@ -169,7 +170,7 @@ before the next cue and applies bounded slowdown to avoid unnaturally short line
 Run the complete pipeline with:
 
 ```powershell
-python pipeline.py pipeline.example.json run --through final_qa
+python pipeline.py config/pipeline.example.json run --through final_qa
 ```
 
 For a non-English target, set `translation.target_language`. Common ISO language
@@ -220,7 +221,7 @@ WavLM clustering. Install the optional backend, accept the model conditions on i
 Hugging Face page, and expose a read-only token through `HF_TOKEN`:
 
 ```powershell
-python -m pip install -r requirements-diarization.txt
+python -m pip install -r requirements/diarization.txt
 $env:HF_TOKEN = "your-read-token"
 python diarize_pyannote.py outputs/project/alignment/vocals.reconciled.json `
   outputs/project/separation/vocals.wav `
@@ -295,7 +296,7 @@ tracks. The visual onset correction is capped at 250 ms and clamped against the
 neighboring synthesized clips so it cannot create dialogue overlap.
 
 ```powershell
-python -m pip install -r requirements-vision.txt
+python -m pip install -r requirements/vision.txt
 python align_active_speaker.py input.mp4 english.constrained.json `
   synthesis/dub-manifest.json `
   --output-manifest active-speaker/dub-manifest.aligned.json `

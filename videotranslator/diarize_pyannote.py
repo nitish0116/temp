@@ -78,7 +78,7 @@ def diarize(
         from pyannote.audio import Pipeline
     except ImportError as error:
         raise RuntimeError(
-            "pyannote.audio is not installed; install requirements-diarization.txt"
+            "pyannote.audio is not installed; install requirements/diarization.txt"
         ) from error
     waveform, sample_rate = librosa.load(audio_path, sr=16_000, mono=True)
     pipeline = Pipeline.from_pretrained(model_name, token=token)
