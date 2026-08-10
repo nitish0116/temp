@@ -12,6 +12,7 @@ from assemble_dub import build_alignment_graph, tempo_filters
 from qa_final import stem_leakage
 from force_align import build_reconciled_transcript, interval_overlap, reconciliation_candidates
 from diarize_pyannote import assign_turns
+from match_speaker_voices import match_profiles
 from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from qa_transcript import analyze
 
@@ -259,3 +260,15 @@ def test_dedicated_diarization_assigns_maximum_overlap_and_records_fallback():
     assert assigned[0]["speaker_assignment"]["method"] == "maximum-overlap"
     assert assigned[1]["speaker_assignment"]["method"] == "nearest-turn-fallback"
     assert report["fallback_assignment_count"] == 1
+
+
+def test_multi_feature_voice_matching_is_unique_and_not_name_based():
+    """Global acoustic matching assigns the nearest distinct profiles."""
+    low = {"log_pitch": 1.0, "pitch_range": 1.0, "log_centroid": 1.0, "log_bandwidth": 1.0, "energy_range": 1.0}
+    high = {"log_pitch": 3.0, "pitch_range": 3.0, "log_centroid": 3.0, "log_bandwidth": 3.0, "energy_range": 3.0}
+    assignments, distances = match_profiles(
+        {"speaker-01": low, "speaker-02": high},
+        {"voice-arbitrary-a": high, "voice-arbitrary-b": low},
+    )
+    assert assignments == {"speaker-01": "voice-arbitrary-b", "speaker-02": "voice-arbitrary-a"}
+    assert set(distances) == {"speaker-01", "speaker-02"}

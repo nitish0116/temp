@@ -65,6 +65,17 @@ matching belongs to the following stage and must not use pitch as a gender claim
 `requirements-diarization.txt` isolates its heavier optional dependency set from
 the base installation.
 
+## `match_speaker_voices.py`
+
+- `acoustic_profile(...)` measures five characteristics without interpreting them
+  as gender.
+- `collect_speaker_audio(...)` aggregates bounded pyannote turns per persistent ID.
+- `synthesize_probe(...)` creates reusable neutral Piper comparison samples.
+- `match_profiles(...)` uses weighted standardized distance and Hungarian assignment
+  to select globally optimal unique voices.
+- `match_voices(...)` writes persistent voice assignments and a complete feature,
+  weight, distance, and provenance report.
+
 - `now()` returns UTC timestamps used in manifests.
 - `load_config(path)` loads JSON, checks required settings, and resolves paths from
   the configuration file's directory.

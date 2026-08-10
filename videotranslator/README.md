@@ -222,3 +222,14 @@ python diarize_pyannote.py outputs/project/alignment/vocals.reconciled.json `
 The token is read only from the environment and is never written to configuration,
 logs, reports, or manifests. Audio is preloaded into memory so local inference does
 not depend on TorchCodec's platform decoder.
+
+## Persistent-speaker voice matching
+
+`match_speaker_voices.py` profiles each pyannote speaker and candidate Piper voice
+using pitch, pitch range, spectral centroid, spectral bandwidth, and energy range.
+A Hungarian assignment selects the globally closest unique voice for every speaker.
+Pitch is the strongest acoustic constraint but is not used alone, and the report
+explicitly records `gender_inference: false`.
+
+Candidate voice probe clips are cached. For target languages without a built-in
+neutral probe sentence, provide `--probe-text` in that language.
