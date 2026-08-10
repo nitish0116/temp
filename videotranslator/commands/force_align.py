@@ -154,10 +154,23 @@ def split_aligned_words(segments: list[dict], maximum_duration: float = 8.0, max
     ]
 
 
-def build_reconciled_transcript(transcript: dict, aligned: list[dict], retained: list[dict]) -> dict:
-    """Combine aligned word cues with only acoustically uncovered reference cues."""
+def build_reconciled_transcript(
+    transcript: dict,
+    aligned: list[dict],
+    retained: list[dict],
+    maximum_unaligned_duration: float = 8.0,
+) -> dict:
+    """Combine word-aligned cues with plausible uncovered reference cues.
+
+    Long reference spans without aligned words are unreliable ASR timing rather
+    than usable subtitle anchors. Independent diarization recovery is responsible
+    for recovering speech from those gaps.
+    """
     canonical = split_aligned_words(aligned)
     for segment in retained:
+        duration = float(segment["end"]) - float(segment["start"])
+        if duration <= 0 or duration > maximum_unaligned_duration:
+            continue
         canonical.append(
             {
                 "start": segment["start"],
@@ -210,7 +223,12 @@ def align_one(
     frame_seconds = (rough_end - rough_start) / emissions.shape[1]
     words = []
     cursor = 0
-    for text_word in segment["text"].split():
+    source_units = [
+        str(word.get("word", "")).strip()
+        for word in segment.get("words", [])
+        if str(word.get("word", "")).strip()
+    ] or segment["text"].split()
+    for text_word in source_units:
         word_tokens = [
             token for token in processor.tokenizer(text_word, add_special_tokens=False).input_ids
             if token != unknown and token != processor.tokenizer.word_delimiter_token_id

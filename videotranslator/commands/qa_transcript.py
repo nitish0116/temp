@@ -81,6 +81,43 @@ def source_speech_coverage(subtitles: dict, source: dict) -> tuple[float, float]
     return covered_events / len(source_cues), min(1.0, covered_seconds / total_seconds)
 
 
+def diarized_speech_coverage(subtitles: dict, diarization: dict) -> tuple[float, float]:
+    """Measure subtitle coverage of independently detected speaker turns.
+
+    This catches speech omitted by ASR, which cannot be detected by comparing a
+    subtitle file only with the transcript from which it was created.
+    """
+    cues = [(float(item["start"]), float(item["end"])) for item in subtitles.get("segments", [])]
+    turns = [
+        (float(turn["start"]), float(turn["end"]))
+        for turn in diarization.get("turns", [])
+        if turn.get("start") is not None and turn.get("end") is not None
+        and float(turn["end"]) > float(turn["start"])
+    ]
+    if not turns:
+        return 1.0, 1.0
+    covered_turns = 0
+    covered_seconds = 0.0
+    total_seconds = sum(end - start for start, end in turns)
+    for start, end in turns:
+        overlaps = sorted(
+            (max(start, left), min(end, right))
+            for left, right in cues
+            if min(end, right) > max(start, left)
+        )
+        merged: list[list[float]] = []
+        for left, right in overlaps:
+            if merged and left <= merged[-1][1]:
+                merged[-1][1] = max(merged[-1][1], right)
+            else:
+                merged.append([left, right])
+        overlap = sum(right - left for left, right in merged)
+        covered_seconds += overlap
+        if overlap >= min(0.1, (end - start) * 0.5):
+            covered_turns += 1
+    return covered_turns / len(turns), min(1.0, covered_seconds / total_seconds)
+
+
 def malformed_text_reasons(text: str) -> list[str]:
     """Return deterministic reasons why cue text is incomplete or corrupted."""
     reasons = []
@@ -108,6 +145,9 @@ def analyze(
     source_transcript: dict | None = None,
     minimum_source_event_coverage: float = 0.98,
     minimum_source_time_coverage: float = 0.95,
+    diarization_report: dict | None = None,
+    minimum_diarized_turn_coverage: float = 0.90,
+    minimum_diarized_time_coverage: float = 0.90,
 ) -> dict:
     """Return blocking timing, readability, text, and source-coverage issues."""
     segments = transcript.get("segments")
@@ -158,6 +198,15 @@ def analyze(
         if time_coverage < minimum_source_time_coverage:
             issues.append({"type": "missing_source_time", "coverage": round(time_coverage, 4), "minimum": minimum_source_time_coverage})
 
+    diarized_coverage = None
+    if diarization_report is not None:
+        turn_coverage, time_coverage = diarized_speech_coverage(transcript, diarization_report)
+        diarized_coverage = {"turn_coverage": turn_coverage, "time_coverage": time_coverage}
+        if turn_coverage < minimum_diarized_turn_coverage:
+            issues.append({"type": "missing_diarized_turns", "coverage": round(turn_coverage, 4), "minimum": minimum_diarized_turn_coverage})
+        if time_coverage < minimum_diarized_time_coverage:
+            issues.append({"type": "missing_diarized_time", "coverage": round(time_coverage, 4), "minimum": minimum_diarized_time_coverage})
+
     counts: dict[str, int] = {}
     for issue in issues:
         counts[issue["type"]] = counts.get(issue["type"], 0) + 1
@@ -174,10 +223,13 @@ def analyze(
             "maximum_characters_per_second": maximum_characters_per_second,
             "minimum_source_event_coverage": minimum_source_event_coverage,
             "minimum_source_time_coverage": minimum_source_time_coverage,
+            "minimum_diarized_turn_coverage": minimum_diarized_turn_coverage,
+            "minimum_diarized_time_coverage": minimum_diarized_time_coverage,
         },
         "maximum_segment_duration": maximum_duration,
         "maximum_observed_characters_per_second": round(max(reading_speeds, default=0.0), 2),
         "source_coverage": coverage,
+        "diarized_coverage": diarized_coverage,
         "issue_counts": counts,
         "issues": issues,
     }
@@ -189,6 +241,7 @@ def main() -> None:
     parser.add_argument("transcript", type=Path)
     parser.add_argument("-o", "--output", type=Path, required=True)
     parser.add_argument("--source-transcript", type=Path)
+    parser.add_argument("--diarization-report", type=Path)
     parser.add_argument("--minimum-duration", type=float, default=0.5)
     parser.add_argument("--maximum-duration", type=float, default=12.0)
     parser.add_argument("--maximum-characters", type=int, default=84)
@@ -197,10 +250,13 @@ def main() -> None:
     parser.add_argument("--maximum-characters-per-second", type=float, default=20.0)
     parser.add_argument("--minimum-source-event-coverage", type=float, default=0.98)
     parser.add_argument("--minimum-source-time-coverage", type=float, default=0.95)
+    parser.add_argument("--minimum-diarized-turn-coverage", type=float, default=0.90)
+    parser.add_argument("--minimum-diarized-time-coverage", type=float, default=0.90)
     args = parser.parse_args()
 
     transcript = json.loads(args.transcript.read_text(encoding="utf-8"))
     source = json.loads(args.source_transcript.read_text(encoding="utf-8")) if args.source_transcript else None
+    diarization = json.loads(args.diarization_report.read_text(encoding="utf-8")) if args.diarization_report else None
     report = analyze(
         transcript,
         args.maximum_duration,
@@ -212,6 +268,9 @@ def main() -> None:
         source_transcript=source,
         minimum_source_event_coverage=args.minimum_source_event_coverage,
         minimum_source_time_coverage=args.minimum_source_time_coverage,
+        diarization_report=diarization,
+        minimum_diarized_turn_coverage=args.minimum_diarized_turn_coverage,
+        minimum_diarized_time_coverage=args.minimum_diarized_time_coverage,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

@@ -173,9 +173,12 @@ def main() -> None:
     args = parser.parse_args()
     token = os.environ.get("HF_TOKEN")
     if not token:
-        raise RuntimeError(
-            "HF_TOKEN is not configured. Accept the community-1 model terms and set a read token."
-        )
+        try:
+            from huggingface_hub import get_token
+
+            token = get_token()
+        except ImportError:
+            token = None
     transcript = json.loads(args.transcript.read_text(encoding="utf-8"))
     assigned, report = diarize(
         transcript, args.audio, token, args.model, args.minimum_speakers,

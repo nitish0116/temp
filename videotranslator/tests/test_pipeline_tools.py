@@ -229,6 +229,29 @@ def test_subtitle_qa_rejects_missing_source_speech_coverage():
     assert malformed_text_reasons("unfinished,") == ["incomplete_ending"]
 
 
+def test_subtitle_qa_rejects_missing_independent_diarized_speech():
+    """Diarization catches speech absent from the ASR-derived source transcript."""
+    target = {"segments": [{"start": 0.0, "end": 1.0, "text": "First."}]}
+    diarization = {"turns": [
+        {"start": 0.0, "end": 1.0, "speaker": "A"},
+        {"start": 2.0, "end": 3.0, "speaker": "B"},
+    ]}
+    report = analyze(target, 8.0, diarization_report=diarization)
+    assert report["diarized_coverage"] == {"turn_coverage": 0.5, "time_coverage": 0.5}
+    assert report["issue_counts"] == {"missing_diarized_turns": 1, "missing_diarized_time": 1}
+
+
+def test_reconciliation_drops_long_unaligned_reference_spans():
+    """A long ASR span without word evidence must not become a subtitle cue."""
+    transcript = {"language": "ja", "segments": []}
+    retained = [
+        {"start": 1.0, "end": 3.0, "text": "short"},
+        {"start": 10.0, "end": 35.0, "text": "bad timing"},
+    ]
+    result = build_reconciled_transcript(transcript, [], retained)
+    assert [segment["text"] for segment in result["segments"]] == ["short"]
+
+
 def test_subtitle_qa_cli_writes_report_and_exits_nonzero_on_failure(tmp_path, monkeypatch):
     """A failed gate leaves diagnostics but prevents downstream promotion."""
     transcript = tmp_path / "bad.json"
