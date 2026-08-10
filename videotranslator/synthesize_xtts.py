@@ -77,7 +77,10 @@ def synthesize_xtts(
         refs = [clip["path"] for clip in references.get("speakers", {}).get(speaker, {}).get("clips", [])]
         output = clips_dir / f"{segment_id}.wav"
         allowed = permitted_duration(segment)
-        if not refs:
+        if output.is_file():
+            duration = media_duration(output)
+            status, error = "generated", None
+        elif not refs:
             status, error, duration = "failed", f"no reference audio for {speaker}", 0.0
         else:
             try:
@@ -122,8 +125,9 @@ def main() -> None:
     parser.add_argument("-o", "--output", required=True, type=Path)
     parser.add_argument("--language", default="en")
     parser.add_argument("--pilot-count", type=int, default=0)
+    parser.add_argument("--tolerance", type=float, default=1.06)
     args = parser.parse_args()
-    _, report = synthesize_xtts(json.loads(args.script.read_text(encoding="utf-8")), json.loads(args.references.read_text(encoding="utf-8")), args.output, args.language, args.pilot_count)
+    _, report = synthesize_xtts(json.loads(args.script.read_text(encoding="utf-8")), json.loads(args.references.read_text(encoding="utf-8")), args.output, args.language, args.pilot_count, args.tolerance)
     print(json.dumps({key: report[key] for key in ("processed", "generated", "failed")}, indent=2))
 
 
