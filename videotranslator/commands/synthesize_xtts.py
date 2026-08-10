@@ -18,6 +18,10 @@ try:
 except ImportError:  # Direct script execution.
     from generate_dub import media_duration
     from synthesize_constrained import permitted_duration, stable_segment_id, trim_edge_silence
+try:
+    from .runtime_device import resolve_device
+except ImportError:
+    from runtime_device import resolve_device
 
 MODEL = "tts_models/multilingual/multi-dataset/xtts_v2"
 
@@ -64,13 +68,15 @@ def select_pilot(segments: list[dict], count: int) -> list[tuple[int, dict]]:
 def synthesize_xtts(
     script: dict, references: dict, output_dir: Path, language: str = "en",
     pilot_count: int = 0, tolerance: float = 1.06,
+    device: str = "auto",
 ) -> tuple[dict, dict]:
     """Render cloned speech and reject clips outside their timing windows."""
     from TTS.api import TTS
 
     os.environ.setdefault("COQUI_TOS_AGREED", "1")
     install_pcm_loader()
-    model = TTS(MODEL, progress_bar=True).to("cpu")
+    selected_device = resolve_device(device)
+    model = TTS(MODEL, progress_bar=True).to(selected_device)
     indexed = list(enumerate(script["segments"]))
     if pilot_count:
         indexed = select_pilot(script["segments"], pilot_count)
@@ -132,8 +138,9 @@ def main() -> None:
     parser.add_argument("--language", default="en")
     parser.add_argument("--pilot-count", type=int, default=0)
     parser.add_argument("--tolerance", type=float, default=1.06)
+    parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     args = parser.parse_args()
-    _, report = synthesize_xtts(json.loads(args.script.read_text(encoding="utf-8")), json.loads(args.references.read_text(encoding="utf-8")), args.output, args.language, args.pilot_count, args.tolerance)
+    _, report = synthesize_xtts(json.loads(args.script.read_text(encoding="utf-8")), json.loads(args.references.read_text(encoding="utf-8")), args.output, args.language, args.pilot_count, args.tolerance, args.device)
     print(json.dumps({key: report[key] for key in ("processed", "generated", "failed")}, indent=2))
 
 

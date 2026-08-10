@@ -23,6 +23,13 @@
       },
       "additionalProperties": false
     },
+    "compute": {
+      "type": "object",
+      "properties": {
+        "device": {"enum": ["auto", "cpu", "cuda"], "default": "auto"}
+      },
+      "additionalProperties": false
+    },
     "quality": {
       "type": "object",
       "properties": {
@@ -53,7 +60,7 @@
       "type": "object",
       "properties": {
         "model": {"type": "string", "minLength": 1},
-        "device": {"enum": ["cpu", "cuda"]},
+        "device": {"enum": ["auto", "cpu", "cuda"]},
         "shifts": {"type": "integer", "minimum": 0}
       },
       "additionalProperties": false

@@ -18,6 +18,10 @@ try:
     from .segment_utterances import join_words, segment_words
 except ImportError:  # Direct script execution.
     from segment_utterances import join_words, segment_words
+try:
+    from .runtime_device import resolve_device
+except ImportError:
+    from runtime_device import resolve_device
 
 
 ALIGNMENT_MODELS = {
@@ -191,10 +195,11 @@ def align_one(
     target = [token for token in target if token != unknown]
     if not target:
         return {**segment, "alignment_status": "failed", "alignment_error": "no supported CTC tokens"}
+    device = next(model.parameters()).device
     inputs = processor(audio, sampling_rate=sample_rate, return_tensors="pt")
     with torch.inference_mode():
-        emissions = model(inputs.input_values).logits.log_softmax(dim=-1)
-    targets = torch.tensor([target], dtype=torch.int32)
+        emissions = model(inputs.input_values.to(device)).logits.log_softmax(dim=-1)
+    targets = torch.tensor([target], dtype=torch.int32, device=device)
     try:
         path, scores = forced_align(emissions, targets, blank=processor.tokenizer.pad_token_id)
     except RuntimeError as error:
@@ -245,6 +250,7 @@ def align_transcript(
     model_name: str | None,
     padding: float,
     minimum_language_probability: float = 0.5,
+    device: str = "auto",
 ) -> tuple[dict, dict, dict]:
     """Align all candidate cues and identify reference-only speech for reconciliation."""
     route = select_alignment_route(transcript, model_name, minimum_language_probability)
@@ -254,7 +260,8 @@ def align_transcript(
         try:
             waveform, sample_rate = librosa.load(audio_path, sr=16_000, mono=True)
             processor = AutoProcessor.from_pretrained(selected_model)
-            model = AutoModelForCTC.from_pretrained(selected_model)
+            selected_device = resolve_device(device)
+            model = AutoModelForCTC.from_pretrained(selected_model).to(selected_device)
             model.eval()
             ctc_results = [
                 align_one(waveform, sample_rate, segment, processor, model, padding)
@@ -304,6 +311,7 @@ def main() -> None:
     parser.add_argument("reference", type=Path)
     parser.add_argument("audio", type=Path)
     parser.add_argument("--model")
+    parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     parser.add_argument("--minimum-language-probability", type=float, default=0.5)
     parser.add_argument("--padding", type=float, default=0.75)
     parser.add_argument("--output-transcript", type=Path, required=True)
@@ -313,7 +321,8 @@ def main() -> None:
     transcript = json.loads(args.transcript.read_text(encoding="utf-8"))
     reference = json.loads(args.reference.read_text(encoding="utf-8"))
     aligned, reconciled, report = align_transcript(
-        transcript, reference, args.audio, args.model, args.padding, args.minimum_language_probability
+        transcript, reference, args.audio, args.model, args.padding,
+        args.minimum_language_probability, args.device
     )
     args.output_transcript.parent.mkdir(parents=True, exist_ok=True)
     args.output_report.parent.mkdir(parents=True, exist_ok=True)

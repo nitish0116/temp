@@ -20,6 +20,10 @@ except ImportError:  # Direct script execution.
     from auto_prepare_script import clean_translation_repetition, nllb_code
     from generate_dub import media_duration
     from match_speaker_voices import PROBE_TEXT
+try:
+    from .runtime_device import resolve_device
+except ImportError:
+    from runtime_device import resolve_device
 
 
 def available_windows(segments: list[dict], maximum_extension: float = 0.75) -> list[float]:
@@ -126,7 +130,8 @@ def generate_translation(
     maximum_tokens: int,
 ) -> str:
     """Generate one repetition-controlled NLLB translation."""
-    inputs = tokenizer(text, return_tensors="pt", truncation=True)
+    device = next(model.parameters()).device
+    inputs = {key: value.to(device) for key, value in tokenizer(text, return_tensors="pt", truncation=True).items()}
     generated = model.generate(
         **inputs,
         forced_bos_token_id=target_token,
@@ -152,6 +157,7 @@ def translate_constrained(
     maximum_ratio: float,
     maximum_extension: float,
     default_rate: float,
+    device: str = "auto",
 ) -> tuple[dict, dict]:
     """Translate all cues, retry overlong lines, and return an automatic fit report."""
     source_language = transcript["language"]
@@ -162,7 +168,8 @@ def translate_constrained(
     if not sample_text:
         raise ValueError(f"Provide --probe-text for target language {target_language!r}")
     tokenizer = AutoTokenizer.from_pretrained(model_name, src_lang=source_code)
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    selected_device = resolve_device(device)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(selected_device)
     target_token = tokenizer.convert_tokens_to_ids(target_code)
     input_segments = transcript["segments"]
     segments = deduplicate_adjacent_cues(input_segments)
@@ -251,6 +258,7 @@ def main() -> None:
     parser.add_argument("transcript", type=Path)
     parser.add_argument("--target-language", default="en")
     parser.add_argument("--model", default="facebook/nllb-200-distilled-600M")
+    parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     parser.add_argument("--source-model-language")
     parser.add_argument("--target-model-language")
     parser.add_argument("--probe-dir", type=Path, required=True)
@@ -266,6 +274,7 @@ def main() -> None:
         transcript, args.target_language, args.model, args.source_model_language,
         args.target_model_language, args.probe_dir, args.probe_text,
         args.maximum_ratio, args.maximum_extension, args.default_characters_per_second,
+        args.device,
     )
     args.output_script.parent.mkdir(parents=True, exist_ok=True)
     args.output_report.parent.mkdir(parents=True, exist_ok=True)

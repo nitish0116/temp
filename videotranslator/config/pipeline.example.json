@@ -3,6 +3,9 @@
   "project_id": "noble-my-love-episode-1",
   "input_video": "../sample Data/EP.1.v0.1639315485.720p.mp4",
   "output_root": "../outputs/noble-my-love-episode-1",
+  "compute": {
+    "device": "auto"
+  },
   "translation": {
     "source_language": null,
     "target_language": "en",
@@ -30,7 +33,7 @@
   },
   "separation": {
     "model": "htdemucs",
-    "device": "cpu",
+    "device": "auto",
     "shifts": 1
   },
   "dubbing": {

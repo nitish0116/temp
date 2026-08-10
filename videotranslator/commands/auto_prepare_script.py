@@ -25,6 +25,11 @@ except ImportError:  # Direct script execution.
     from segment_utterances import join_words, segment_words
     from transcribe import srt_timestamp
 
+try:
+    from .runtime_device import resolve_device, whisper_compute_type
+except ImportError:
+    from runtime_device import resolve_device, whisper_compute_type
+
 
 def split_words(words: list[dict], maximum_duration: float, maximum_chars: int) -> list[list[dict]]:
     """Split words at pauses, duration limits, or readable subtitle lengths.
@@ -47,6 +52,7 @@ def transcribe_and_decide(
     maximum_duration: float,
     maximum_chars: int,
     task: str = "translate",
+    device: str = "auto",
 ) -> tuple[dict, dict, list[str]]:
     """Translate media and make timing, silence, and confidence decisions.
 
@@ -54,7 +60,10 @@ def transcribe_and_decide(
     note per accepted cue. The model uses word timestamps and VAD so subtitle
     boundaries follow actual speech instead of spanning silence.
     """
-    model = WhisperModel(model_name, device="cpu", compute_type="int8")
+    selected_device = resolve_device(device)
+    model = WhisperModel(
+        model_name, device=selected_device, compute_type=whisper_compute_type(selected_device)
+    )
     iterator, info = model.transcribe(
         str(input_path),
         language=language,
@@ -171,10 +180,11 @@ def run_candidate(
     maximum_chars: int,
     maximum_low_confidence_ratio: float,
     maximum_rejection_ratio: float,
+    device: str = "auto",
 ) -> dict:
     """Transcribe one canonical source-language pass and score its quality."""
     source, source_decisions, source_notes = transcribe_and_decide(
-        input_path, model_name, language, maximum_duration, maximum_chars, "transcribe"
+        input_path, model_name, language, maximum_duration, maximum_chars, "transcribe", device
     )
     source_metrics = quality_metrics(source, source_decisions, source_notes)
     passed = passes_gate(source_metrics, maximum_low_confidence_ratio, maximum_rejection_ratio)
@@ -219,6 +229,7 @@ def translate_target(
     model_name: str,
     source_model_language: str | None,
     target_model_language: str | None,
+    device: str = "auto",
 ) -> dict:
     """Translate canonical source cues to any target while preserving boundaries."""
     from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
@@ -227,7 +238,8 @@ def translate_target(
     source_code = nllb_code(source_language, source_model_language)
     target_code = nllb_code(target_language, target_model_language)
     tokenizer = AutoTokenizer.from_pretrained(model_name, src_lang=source_code)
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    selected_device = resolve_device(device)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(selected_device)
     texts = [segment["text"] for segment in source_transcript["segments"]]
     translated: list[str] = []
     target_token = tokenizer.convert_tokens_to_ids(target_code)
@@ -235,6 +247,7 @@ def translate_target(
         inputs = tokenizer(
             texts[start : start + 16], return_tensors="pt", padding=True, truncation=True
         )
+        inputs = {key: value.to(selected_device) for key, value in inputs.items()}
         generated = model.generate(
             **inputs,
             forced_bos_token_id=target_token,
@@ -362,6 +375,7 @@ def main() -> None:
     parser.add_argument("input", type=Path, help="Source audio or video")
     parser.add_argument("--project-id", required=True)
     parser.add_argument("--model", default="small")
+    parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     parser.add_argument("--fallback-model")
     parser.add_argument("--language", help="Source language code")
     parser.add_argument("--target-language", default="en")
@@ -385,6 +399,7 @@ def main() -> None:
         args.maximum_characters,
         args.maximum_low_confidence_ratio,
         args.maximum_rejection_ratio,
+        args.device,
     )
     candidates = [primary]
     if not primary["passed"] and args.fallback_model:
@@ -398,6 +413,7 @@ def main() -> None:
                 args.maximum_characters,
                 args.maximum_low_confidence_ratio,
                 args.maximum_rejection_ratio,
+                args.device,
             )
         )
     passing = [candidate for candidate in candidates if candidate["passed"]]
@@ -414,7 +430,7 @@ def main() -> None:
     else:
         transcript = translate_target(
             selected["source"], args.target_language, args.translation_model,
-            args.source_model_language, args.target_model_language,
+            args.source_model_language, args.target_model_language, args.device,
         )
     quality_notes = selected["source_notes"]
     coverage = translation_coverage(selected["source"], transcript)

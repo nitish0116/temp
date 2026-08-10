@@ -13,6 +13,11 @@ import librosa
 import numpy as np
 from faster_whisper import WhisperModel
 
+try:
+    from .runtime_device import resolve_device, whisper_compute_type
+except ImportError:
+    from runtime_device import resolve_device, whisper_compute_type
+
 
 Interval = tuple[float, float]
 
@@ -327,6 +332,7 @@ def main() -> None:
     parser.add_argument("diarization_report", type=Path)
     parser.add_argument("vocals", type=Path)
     parser.add_argument("--model", default="large-v3")
+    parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     parser.add_argument("--strong-transcript", type=Path)
     parser.add_argument("--language")
     parser.add_argument("--minimum-duration", type=float, default=0.25)
@@ -351,7 +357,8 @@ def main() -> None:
         args.merge_gap,
     )
     waveform, sample_rate = librosa.load(args.vocals, sr=16_000, mono=True)
-    model = WhisperModel(args.model, device="cpu", compute_type="int8")
+    device = resolve_device(args.device)
+    model = WhisperModel(args.model, device=device, compute_type=whisper_compute_type(device))
     recovered, attempts = transcribe_regions(
         waveform,
         sample_rate,

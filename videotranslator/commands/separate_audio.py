@@ -14,8 +14,13 @@ from demucs.apply import apply_model
 from demucs.audio import AudioFile
 from demucs.pretrained import get_model
 
+try:
+    from .runtime_device import resolve_device
+except ImportError:
+    from runtime_device import resolve_device
 
-def separate_audio(video: Path, output_dir: Path, model: str = "htdemucs", device: str = "cpu", shifts: int = 1) -> dict:
+
+def separate_audio(video: Path, output_dir: Path, model: str = "htdemucs", device: str = "auto", shifts: int = 1) -> dict:
     """Extract full-quality audio and write ``vocals.wav`` and ``accompaniment.wav``.
 
     Example: separating a film soundtrack lets the dub replace speech without
@@ -29,6 +34,7 @@ def separate_audio(video: Path, output_dir: Path, model: str = "htdemucs", devic
         ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(video), "-vn", "-ac", "2", "-ar", "44100", "-c:a", "pcm_s16le", str(source_mix)],
         check=True,
     )
+    device = resolve_device(device)
     separator = get_model(model)
     separator.to(device)
     separator.eval()
@@ -76,7 +82,7 @@ def main() -> None:
     parser.add_argument("video", type=Path)
     parser.add_argument("-o", "--output-dir", type=Path, required=True)
     parser.add_argument("--model", default="htdemucs")
-    parser.add_argument("--device", default="cpu")
+    parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     parser.add_argument("--shifts", type=int, default=1)
     args = parser.parse_args()
     report = separate_audio(args.video, args.output_dir, args.model, args.device, args.shifts)

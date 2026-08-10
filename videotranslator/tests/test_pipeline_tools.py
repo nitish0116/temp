@@ -32,6 +32,7 @@ from videotranslator.commands.recover_missing_speech import merge_intervals, mer
 from videotranslator.pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from videotranslator.commands.qa_transcript import analyze, malformed_text_reasons, required_line_count, source_speech_coverage
 from videotranslator.commands.segment_utterances import join_words, merge_fragments, segment_words
+from videotranslator.commands import runtime_device
 
 
 def test_split_words_uses_pause_and_duration_boundaries():
@@ -48,6 +49,18 @@ def test_split_words_uses_pause_and_duration_boundaries():
         ["Hello", " world"],
         ["Again"],
     ]
+
+
+def test_compute_device_prefers_cuda_and_falls_back_to_cpu(monkeypatch):
+    """Automatic compute uses an accessible GPU without requiring one."""
+    monkeypatch.setattr(runtime_device.torch.cuda, "is_available", lambda: True)
+    assert runtime_device.resolve_device("auto") == "cuda"
+    assert runtime_device.whisper_compute_type("cuda") == "float16"
+    monkeypatch.setattr(runtime_device.torch.cuda, "is_available", lambda: False)
+    assert runtime_device.resolve_device("auto") == "cpu"
+    assert runtime_device.resolve_device("cpu") == "cpu"
+    with pytest.raises(RuntimeError):
+        runtime_device.resolve_device("cuda")
 
 
 def test_utterance_segmentation_uses_punctuation_pause_and_speaker_changes():
@@ -265,6 +278,18 @@ def test_pipeline_defaults_to_detected_source_and_english_target(tmp_path: Path)
     assert "--language" not in command
     assert command[command.index("--target-language") + 1] == "en"
     assert artifact_paths["transcript_json"].name.endswith(".auto.en.json")
+
+
+def test_pipeline_defaults_heavy_stages_to_automatic_compute(tmp_path: Path):
+    """Configuration-free execution prefers CUDA and remains CPU-safe."""
+    config = {
+        "project_id": "example",
+        "input_video": str(tmp_path / "episode.mp4"),
+        "output_root": str(tmp_path / "outputs"),
+        "translation": {"target_language": "en", "model": "small"},
+    }
+    command, _ = stage_command("separate", config, paths(config))
+    assert command[command.index("--device") + 1] == "auto"
 
 
 def test_final_assembly_uses_separated_accompaniment(tmp_path: Path):

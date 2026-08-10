@@ -49,8 +49,12 @@ New-Item -ItemType Directory -Force $run | Out-Null
 ```powershell
 ..\.venv\Scripts\python.exe commands/extract_audio.py $video -o "$run\source.wav"
 ..\.venv\Scripts\python.exe commands/separate_audio.py $video -o "$run\separation" `
-  --model htdemucs --device cpu --shifts 1
+  --model htdemucs --device auto --shifts 1
 ```
+
+`--device auto` prefers CUDA and falls back to CPU. Use `--device cpu` only to
+force CPU execution. An NVIDIA driver alone is insufficient: the environment
+must contain a CUDA-enabled PyTorch build for CUDA to be reported as available.
 
 Outputs include `vocals.wav` and `accompaniment.wav`. Downstream speech stages
 use the vocal stem; final assembly uses the accompaniment.

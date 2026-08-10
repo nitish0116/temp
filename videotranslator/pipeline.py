@@ -124,12 +124,12 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
         return [python, str(COMMANDS / "extract_audio.py"), str(artifact_paths["video"]), "-o", str(artifact_paths["audio"])], [artifact_paths["audio"]]
     if stage == "separate":
         separation = config.get("separation", {})
-        command = [python, str(COMMANDS / "separate_audio.py"), str(artifact_paths["video"]), "-o", str(artifact_paths["separation_dir"]), "--model", separation.get("model", "htdemucs"), "--device", separation.get("device", "cpu"), "--shifts", str(separation.get("shifts", 1))]
+        command = [python, str(COMMANDS / "separate_audio.py"), str(artifact_paths["video"]), "-o", str(artifact_paths["separation_dir"]), "--model", separation.get("model", "htdemucs"), "--device", separation.get("device", config.get("compute", {}).get("device", "auto")), "--shifts", str(separation.get("shifts", 1))]
         return command, [artifact_paths["accompaniment"], artifact_paths["vocals"], artifact_paths["separation_report"]]
     if stage == "translate":
         settings = config.get("translation", {})
         quality = config.get("quality", {})
-        command = [python, str(COMMANDS / "auto_prepare_script.py"), str(artifact_paths["audio"]), "--project-id", config["project_id"], "--model", settings.get("model", "small"), "--maximum-duration", str(quality.get("maximum_segment_duration", 12.0)), "--maximum-characters", str(quality.get("maximum_subtitle_characters", 84)), "-o", str(artifact_paths["transcript_dir"])]
+        command = [python, str(COMMANDS / "auto_prepare_script.py"), str(artifact_paths["audio"]), "--project-id", config["project_id"], "--model", settings.get("model", "small"), "--device", config.get("compute", {}).get("device", "auto"), "--maximum-duration", str(quality.get("maximum_segment_duration", 12.0)), "--maximum-characters", str(quality.get("maximum_subtitle_characters", 84)), "-o", str(artifact_paths["transcript_dir"])]
         if settings.get("fallback_model"):
             command += ["--fallback-model", settings["fallback_model"]]
         if settings.get("source_language"):
@@ -174,7 +174,7 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
     if stage == "diarize":
         settings = config.get("translation", {})
         diarization = config.get("diarization", {})
-        command = [python, str(COMMANDS / "diarize_speakers.py"), str(artifact_paths["approved_script"]), str(artifact_paths["audio"]), "--target-language", settings.get("target_language", "en"), "--maximum-speakers", str(diarization.get("maximum_speakers", 10)), "--embedding-model", diarization.get("embedding_model", "microsoft/wavlm-base-plus-sv"), "--output-script", str(artifact_paths["diarized_script"]), "--output-report", str(artifact_paths["diarization_report"])]
+        command = [python, str(COMMANDS / "diarize_speakers.py"), str(artifact_paths["approved_script"]), str(artifact_paths["audio"]), "--target-language", settings.get("target_language", "en"), "--maximum-speakers", str(diarization.get("maximum_speakers", 10)), "--embedding-model", diarization.get("embedding_model", "microsoft/wavlm-base-plus-sv"), "--device", config.get("compute", {}).get("device", "auto"), "--output-script", str(artifact_paths["diarized_script"]), "--output-report", str(artifact_paths["diarization_report"])]
         return command, [artifact_paths["diarized_script"], artifact_paths["diarization_report"]]
     if stage == "review":
         return [python, str(COMMANDS / "burn_subtitles.py"), str(artifact_paths["video"]), str(artifact_paths["srt"]), "-o", str(artifact_paths["review"])], [artifact_paths["review"]]

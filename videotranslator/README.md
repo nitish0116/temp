@@ -54,6 +54,8 @@ Detailed operations and project state:
 
 Copy `config/pipeline.example.json` for each video and adjust its paths, models, language,
 and quality thresholds. Relative paths resolve from the configuration file.
+`compute.device` defaults to `auto`: CUDA is selected when CUDA-enabled PyTorch
+can access an NVIDIA GPU, otherwise every supported stage falls back to CPU.
 
 ## Run
 

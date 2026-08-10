@@ -16,6 +16,10 @@ try:
     from .segment_utterances import join_words, segment_words
 except ImportError:  # Direct script execution.
     from segment_utterances import join_words, segment_words
+try:
+    from .runtime_device import resolve_device
+except ImportError:
+    from runtime_device import resolve_device
 
 
 DEFAULT_MODEL = "pyannote/speaker-diarization-community-1"
@@ -111,6 +115,7 @@ def diarize(
     model_name: str = DEFAULT_MODEL,
     minimum_speakers: int | None = None,
     maximum_speakers: int | None = None,
+    device: str = "auto",
 ) -> tuple[dict, dict]:
     """Run local pyannote diarization and assign its exclusive turns to cues."""
     try:
@@ -120,7 +125,9 @@ def diarize(
             "pyannote.audio is not installed; install the unified requirements.txt"
         ) from error
     waveform, sample_rate = librosa.load(audio_path, sr=16_000, mono=True)
+    selected_device = resolve_device(device)
     pipeline = Pipeline.from_pretrained(model_name, token=token)
+    pipeline.to(torch.device(selected_device))
     parameters: dict[str, int] = {}
     if minimum_speakers is not None:
         parameters["min_speakers"] = minimum_speakers
@@ -144,6 +151,7 @@ def diarize(
         "method": "pyannote-community-1-exclusive",
         "model": model_name,
         "audio": str(audio_path.resolve()),
+        "device": selected_device,
         "turn_count": len(turns),
         "turns": turns,
         **assignment,
@@ -159,6 +167,7 @@ def main() -> None:
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--minimum-speakers", type=int)
     parser.add_argument("--maximum-speakers", type=int)
+    parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     parser.add_argument("--output-script", type=Path, required=True)
     parser.add_argument("--output-report", type=Path, required=True)
     args = parser.parse_args()
@@ -169,7 +178,8 @@ def main() -> None:
         )
     transcript = json.loads(args.transcript.read_text(encoding="utf-8"))
     assigned, report = diarize(
-        transcript, args.audio, token, args.model, args.minimum_speakers, args.maximum_speakers
+        transcript, args.audio, token, args.model, args.minimum_speakers,
+        args.maximum_speakers, args.device
     )
     args.output_script.parent.mkdir(parents=True, exist_ok=True)
     args.output_report.parent.mkdir(parents=True, exist_ok=True)

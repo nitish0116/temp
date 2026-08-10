@@ -18,6 +18,11 @@ except ImportError:
 
 from faster_whisper import WhisperModel
 
+try:
+    from .runtime_device import resolve_device, whisper_compute_type
+except ImportError:
+    from runtime_device import resolve_device, whisper_compute_type
+
 
 def srt_timestamp(seconds: float) -> str:
     """Convert seconds to the ``HH:MM:SS,mmm`` format required by SRT.
@@ -41,6 +46,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("input", type=Path, help="Audio or video file to transcribe")
     parser.add_argument("--model", default="small", help="Whisper model (default: small)")
+    parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     parser.add_argument("--language", help="Spoken language code; omit for auto-detection")
     parser.add_argument(
         "--task",
@@ -66,7 +72,9 @@ def main() -> None:
         raise FileNotFoundError(f"Input file not found: {args.input}")
 
     print(f"Loading Whisper model: {args.model}")
-    model = WhisperModel(args.model, device="cpu", compute_type="int8")
+    device = resolve_device(args.device)
+    print(f"Compute device: {device}")
+    model = WhisperModel(args.model, device=device, compute_type=whisper_compute_type(device))
     segments_iterator, info = model.transcribe(
         str(args.input),
         language=args.language,

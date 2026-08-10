@@ -38,6 +38,12 @@ output includes word timestamps so a later forced-alignment stage can reconcile
 newly recovered speech with the canonical transcript. Source language remains
 auto-detected unless explicitly configured.
 
+## `commands/runtime_device.py`
+
+Centralizes `auto`, `cuda`, and `cpu` selection. `resolve_device("auto")` selects
+CUDA only when PyTorch can actually access it and otherwise returns CPU;
+`whisper_compute_type(...)` selects float16 on CUDA and int8 on CPU.
+
 ## `commands/force_align.py`
 
 - `align_one(...)` runs CTC forced alignment inside a padded rough Whisper window.

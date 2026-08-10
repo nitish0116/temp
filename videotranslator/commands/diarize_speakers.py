@@ -20,6 +20,10 @@ try:
     from .generate_dub import available_voices
 except ImportError:  # Direct script execution.
     from generate_dub import available_voices
+try:
+    from .runtime_device import resolve_device
+except ImportError:
+    from runtime_device import resolve_device
 
 
 SAMPLE_RATE = 16_000
@@ -88,11 +92,13 @@ def choose_clusters(embeddings: np.ndarray, maximum_speakers: int) -> tuple[np.n
 
 
 def speaker_embeddings(
-    utterances: list[np.ndarray], model_name: str, batch_size: int = 8
+    utterances: list[np.ndarray], model_name: str, batch_size: int = 8,
+    device: str = "auto",
 ) -> np.ndarray:
     """Create normalized local WavLM speaker x-vectors in small CPU batches."""
     extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_name)
-    model = WavLMForXVector.from_pretrained(model_name)
+    selected_device = resolve_device(device)
+    model = WavLMForXVector.from_pretrained(model_name).to(selected_device)
     model.eval()
     results = []
     with torch.inference_mode():
@@ -101,6 +107,7 @@ def speaker_embeddings(
                 utterances[start : start + batch_size], sampling_rate=SAMPLE_RATE,
                 padding=True, return_tensors="pt",
             )
+            inputs = {key: value.to(selected_device) for key, value in inputs.items()}
             embedding = torch.nn.functional.normalize(model(**inputs).embeddings, dim=-1)
             results.append(embedding.cpu().numpy())
     return np.concatenate(results)
@@ -178,6 +185,7 @@ def diarize(
     target_language: str,
     maximum_speakers: int,
     embedding_model: str,
+    device: str = "auto",
 ) -> tuple[dict, dict]:
     """Cluster approved cues, assign voices, and return script plus audit report."""
     if approved_script.get("approval", {}).get("status") != "approved":
@@ -187,7 +195,7 @@ def diarize(
         segment_audio(wav, segment["start"], segment["end"])
         for segment in approved_script["segments"]
     ]
-    embeddings = speaker_embeddings(utterances, embedding_model)
+    embeddings = speaker_embeddings(utterances, embedding_model, device=device)
     labels, selection = choose_clusters(embeddings, maximum_speakers)
     labels, segment_styles = split_clusters_by_pitch(labels, utterances)
     unique_labels = sorted(set(int(label) for label in labels))
@@ -233,13 +241,14 @@ def main() -> None:
     parser.add_argument("--target-language", default="en")
     parser.add_argument("--maximum-speakers", type=int, default=10)
     parser.add_argument("--embedding-model", default="microsoft/wavlm-base-plus-sv")
+    parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     parser.add_argument("--output-script", type=Path, required=True)
     parser.add_argument("--output-report", type=Path, required=True)
     args = parser.parse_args()
     approved = json.loads(args.approved_script.read_text(encoding="utf-8"))
     assigned, report = diarize(
         approved, args.audio, args.target_language, args.maximum_speakers,
-        args.embedding_model,
+        args.embedding_model, args.device,
     )
     args.output_script.parent.mkdir(parents=True, exist_ok=True)
     args.output_report.parent.mkdir(parents=True, exist_ok=True)
