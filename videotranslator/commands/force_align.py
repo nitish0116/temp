@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 import argparse
 import json
 import math
@@ -13,7 +14,10 @@ import torch
 from torchaudio.functional import forced_align, merge_tokens
 from transformers import AutoModelForCTC, AutoProcessor
 
-from segment_utterances import join_words, segment_words
+try:
+    from .segment_utterances import join_words, segment_words
+except ImportError:  # Direct script execution.
+    from segment_utterances import join_words, segment_words
 
 
 ALIGNMENT_MODELS = {

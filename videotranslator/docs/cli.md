@@ -47,8 +47,8 @@ New-Item -ItemType Directory -Force $run | Out-Null
 ## 4. Extract and separate audio
 
 ```powershell
-..\.venv\Scripts\python.exe extract_audio.py $video -o "$run\source.wav"
-..\.venv\Scripts\python.exe separate_audio.py $video -o "$run\separation" `
+..\.venv\Scripts\python.exe commands/extract_audio.py $video -o "$run\source.wav"
+..\.venv\Scripts\python.exe commands/separate_audio.py $video -o "$run\separation" `
   --model htdemucs --device cpu --shifts 1
 ```
 
@@ -60,9 +60,9 @@ use the vocal stem; final assembly uses the accompaniment.
 Omit `--language` to detect the input language automatically.
 
 ```powershell
-..\.venv\Scripts\python.exe transcribe.py "$run\separation\vocals.wav" `
+..\.venv\Scripts\python.exe commands/transcribe.py "$run\separation\vocals.wav" `
   --model large-v3 -o "$run\transcription"
-..\.venv\Scripts\python.exe qa_transcript.py `
+..\.venv\Scripts\python.exe commands/qa_transcript.py `
   "$run\transcription\vocals.json" -o "$run\transcription\qa.json" `
   --source-transcript "$run\transcription\source.json" `
   --minimum-duration 0.5 --maximum-duration 12 `
@@ -72,13 +72,13 @@ Omit `--language` to detect the input language automatically.
 
 ## 6. Forced alignment
 
-`force_align.py` automatically selects a model for English, French, German,
+`commands/force_align.py` automatically selects a model for English, French, German,
 Spanish, Hindi, Japanese, Chinese, Arabic, or Korean. Unsupported and
 low-confidence languages safely retain Whisper word timestamps. Pass `--model`
 to override the automatic route.
 
 ```powershell
-..\.venv\Scripts\python.exe force_align.py `
+..\.venv\Scripts\python.exe commands/force_align.py `
   "$run\transcription\vocals.json" "$run\reference.json" `
   "$run\separation\vocals.wav" `
   --output-transcript "$run\alignment\aligned.json" `
@@ -89,7 +89,7 @@ to override the automatic route.
 ## 7. Dedicated speaker diarization
 
 ```powershell
-..\.venv\Scripts\python.exe diarize_pyannote.py `
+..\.venv\Scripts\python.exe commands/diarize_pyannote.py `
   "$run\alignment\reconciled.json" "$run\separation\vocals.wav" `
   --output-script "$run\diarization\speakers.json" `
   --output-report "$run\diarization\report.json" `
@@ -101,7 +101,7 @@ Speaker IDs are persistent within one video. Pitch is not treated as gender.
 ## 8. Recover missing speech
 
 ```powershell
-..\.venv\Scripts\python.exe recover_missing_speech.py `
+..\.venv\Scripts\python.exe commands/recover_missing_speech.py `
   "$run\diarization\speakers.json" "$run\diarization\report.json" `
   "$run\separation\vocals.wav" `
   --strong-transcript "$run\transcription\vocals.json" `
@@ -116,7 +116,7 @@ words that forced alignment lost.
 ## 9. Piper voice matching and constrained translation
 
 ```powershell
-..\.venv\Scripts\python.exe match_speaker_voices.py `
+..\.venv\Scripts\python.exe commands/match_speaker_voices.py `
   "$run\recovery\source.complete.json" "$run\diarization\report.json" `
   "$run\separation\vocals.wav" `
   --voice en_GB-alba-medium --voice en_GB-aru-medium `
@@ -124,7 +124,7 @@ words that forced alignment lost.
   --output-script "$run\voices\assigned.json" `
   --output-report "$run\voices\report.json"
 
-..\.venv\Scripts\python.exe translate_constrained.py `
+..\.venv\Scripts\python.exe commands/translate_constrained.py `
   "$run\voices\assigned.json" --target-language en `
   --probe-dir "$run\voice-probes" `
   --output-script "$run\translation\english.json" `
@@ -134,7 +134,7 @@ words that forced alignment lost.
 ## 10A. Piper synthesis
 
 ```powershell
-..\.venv\Scripts\python.exe synthesize_constrained.py `
+..\.venv\Scripts\python.exe commands/synthesize_constrained.py `
   "$run\translation\english.json" -o "$run\synthesis-piper" `
   --models-dir "$run\models" --project-id my-project
 ```
@@ -146,7 +146,7 @@ Piper is fast and commercial-friendly, but its voices are less expressive.
 First select clean reference turns automatically:
 
 ```powershell
-..\.venv\Scripts\python.exe prepare_speaker_references.py `
+..\.venv\Scripts\python.exe commands/prepare_speaker_references.py `
   "$run\separation\vocals.wav" "$run\diarization\report.json" `
   "$run\translation\english.json" -o "$run\xtts-references"
 ```
@@ -154,11 +154,11 @@ First select clean reference turns automatically:
 Generate a speaker-diverse pilot or the complete script:
 
 ```powershell
-..\.venv\Scripts\python.exe synthesize_xtts.py `
+..\.venv\Scripts\python.exe commands/synthesize_xtts.py `
   "$run\translation\english.json" "$run\xtts-references\reference-report.json" `
   -o "$run\xtts-pilot" --language en --pilot-count 7
 
-..\.venv\Scripts\python.exe synthesize_xtts.py `
+..\.venv\Scripts\python.exe commands/synthesize_xtts.py `
   "$run\translation\english.json" "$run\xtts-references\reference-report.json" `
   -o "$run\synthesis-xtts" --language en
 ```
@@ -170,12 +170,12 @@ overlaps. Failed cues should instead return to translation correction.
 ## 11. Active-speaker alignment and cross-stage QA
 
 ```powershell
-..\.venv\Scripts\python.exe align_active_speaker.py $video `
+..\.venv\Scripts\python.exe commands/align_active_speaker.py $video `
   "$run\translation\english.json" "$run\synthesis-xtts\dub-manifest.json" `
   --output-manifest "$run\active-speaker\manifest.json" `
   --output-report "$run\active-speaker\report.json"
 
-..\.venv\Scripts\python.exe qa_dubbing_pipeline.py `
+..\.venv\Scripts\python.exe commands/qa_dubbing_pipeline.py `
   "$run\translation\english.json" "$run\translation\report.json" `
   "$run\active-speaker\manifest.json" "$run\synthesis-xtts\synthesis-report.json" `
   "$run\active-speaker\report.json" `
@@ -189,7 +189,7 @@ overlaps. Failed cues should instead return to translation correction.
 Only assemble after QA passes.
 
 ```powershell
-..\.venv\Scripts\python.exe assemble_dub.py $video `
+..\.venv\Scripts\python.exe commands/assemble_dub.py $video `
   "$run\active-speaker\manifest.json" `
   -o "$run\final\english-dubbed.mp4" `
   --background "$run\separation\accompaniment.wav" `
@@ -199,7 +199,7 @@ Only assemble after QA passes.
 For subtitle timing inspection:
 
 ```powershell
-..\.venv\Scripts\python.exe burn_subtitles.py $video subtitles.srt `
+..\.venv\Scripts\python.exe commands/burn_subtitles.py $video subtitles.srt `
   -o "$run\final\subtitle-timing.mp4"
 ```
 
@@ -208,7 +208,7 @@ For subtitle timing inspection:
 Every stage exposes `--help`, for example:
 
 ```powershell
-..\.venv\Scripts\python.exe recover_missing_speech.py --help
-..\.venv\Scripts\python.exe synthesize_xtts.py --help
-..\.venv\Scripts\python.exe qa_dubbing_pipeline.py --help
+..\.venv\Scripts\python.exe commands/recover_missing_speech.py --help
+..\.venv\Scripts\python.exe commands/synthesize_xtts.py --help
+..\.venv\Scripts\python.exe commands/qa_dubbing_pipeline.py --help
 ```

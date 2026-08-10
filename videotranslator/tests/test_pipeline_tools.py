@@ -4,14 +4,14 @@ import json
 from pathlib import Path
 
 import pytest
-import qa_transcript
+from videotranslator.commands import qa_transcript
 
-from auto_prepare_script import clean_translation_repetition, make_approval, nllb_code, passes_gate, passes_translation_gate, quality_metrics, split_words, translation_coverage
-from generate_dub import generate_dub, rate_to_length_scale
-from diarize_speakers import assign_voices, voice_style
-from assemble_dub import build_alignment_graph, tempo_filters
-from qa_final import stem_leakage
-from force_align import (
+from videotranslator.commands.auto_prepare_script import clean_translation_repetition, make_approval, nllb_code, passes_gate, passes_translation_gate, quality_metrics, split_words, translation_coverage
+from videotranslator.commands.generate_dub import generate_dub, rate_to_length_scale
+from videotranslator.commands.diarize_speakers import assign_voices, voice_style
+from videotranslator.commands.assemble_dub import build_alignment_graph, tempo_filters
+from videotranslator.commands.qa_final import stem_leakage
+from videotranslator.commands.force_align import (
     align_transcript,
     build_reconciled_transcript,
     interval_overlap,
@@ -20,18 +20,18 @@ from force_align import (
     select_alignment_route,
     whisper_timestamp_alignment,
 )
-from diarize_pyannote import assign_turns
-from match_speaker_voices import match_profiles
-from prepare_speaker_references import source_to_persistent_speakers
-from synthesize_xtts import select_pilot
-from translate_constrained import available_windows, character_budget, deduplicate_adjacent_cues, estimated_duration
-from synthesize_constrained import active_sample_bounds, next_length_scale, permitted_duration, stable_segment_id
-from align_active_speaker import bounded_onset_offset, dominant_track, intersection_over_union, timeline_safe_offset
-from qa_dubbing_pipeline import dialogue_overlaps, evidence_coverage, maximum_native_tempo, speaker_reassignments
-from recover_missing_speech import merge_intervals, merge_recovered, recover_uncovered_words, recovery_regions, subtract_intervals
-from pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
-from qa_transcript import analyze, malformed_text_reasons, required_line_count, source_speech_coverage
-from segment_utterances import join_words, merge_fragments, segment_words
+from videotranslator.commands.diarize_pyannote import assign_turns
+from videotranslator.commands.match_speaker_voices import match_profiles
+from videotranslator.commands.prepare_speaker_references import source_to_persistent_speakers
+from videotranslator.commands.synthesize_xtts import select_pilot
+from videotranslator.commands.translate_constrained import available_windows, character_budget, deduplicate_adjacent_cues, estimated_duration
+from videotranslator.commands.synthesize_constrained import active_sample_bounds, next_length_scale, permitted_duration, stable_segment_id
+from videotranslator.commands.align_active_speaker import bounded_onset_offset, dominant_track, intersection_over_union, timeline_safe_offset
+from videotranslator.commands.qa_dubbing_pipeline import dialogue_overlaps, evidence_coverage, maximum_native_tempo, speaker_reassignments
+from videotranslator.commands.recover_missing_speech import merge_intervals, merge_recovered, recover_uncovered_words, recovery_regions, subtract_intervals
+from videotranslator.pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
+from videotranslator.commands.qa_transcript import analyze, malformed_text_reasons, required_line_count, source_speech_coverage
+from videotranslator.commands.segment_utterances import join_words, merge_fragments, segment_words
 
 
 def test_split_words_uses_pause_and_duration_boundaries():
@@ -261,6 +261,7 @@ def test_pipeline_defaults_to_detected_source_and_english_target(tmp_path: Path)
 
     command, _ = stage_command("translate", config, artifact_paths)
 
+    assert Path(command[1]).parent.name == "commands"
     assert "--language" not in command
     assert command[command.index("--target-language") + 1] == "en"
     assert artifact_paths["transcript_json"].name.endswith(".auto.en.json")

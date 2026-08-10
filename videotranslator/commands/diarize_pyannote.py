@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 import argparse
 import json
 import os
@@ -11,7 +12,10 @@ from typing import Any
 import librosa
 import torch
 
-from segment_utterances import join_words, segment_words
+try:
+    from .segment_utterances import join_words, segment_words
+except ImportError:  # Direct script execution.
+    from segment_utterances import join_words, segment_words
 
 
 DEFAULT_MODEL = "pyannote/speaker-diarization-community-1"

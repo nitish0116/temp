@@ -5,14 +5,19 @@ The model is optional and licensed for non-commercial use under CPML.
 
 from __future__ import annotations
 
+
 import argparse
 import json
 import os
 import math
 from pathlib import Path
 
-from generate_dub import media_duration
-from synthesize_constrained import permitted_duration, stable_segment_id, trim_edge_silence
+try:
+    from .generate_dub import media_duration
+    from .synthesize_constrained import permitted_duration, stable_segment_id, trim_edge_silence
+except ImportError:  # Direct script execution.
+    from generate_dub import media_duration
+    from synthesize_constrained import permitted_duration, stable_segment_id, trim_edge_silence
 
 MODEL = "tts_models/multilingual/multi-dataset/xtts_v2"
 

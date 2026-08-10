@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+
 import argparse
 import json
 from pathlib import Path
 from typing import Any
 
-from synthesize_constrained import stable_segment_id
+try:
+    from .synthesize_constrained import stable_segment_id
+except ImportError:  # Direct script execution.
+    from synthesize_constrained import stable_segment_id
 
 
 def add_finding(findings: list[dict], code: str, detail: str, items: list[str] | None = None) -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 import argparse
 import json
 import math
@@ -11,9 +12,14 @@ from typing import Any
 
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-from auto_prepare_script import clean_translation_repetition, nllb_code
-from generate_dub import media_duration
-from match_speaker_voices import PROBE_TEXT
+try:
+    from .auto_prepare_script import clean_translation_repetition, nllb_code
+    from .generate_dub import media_duration
+    from .match_speaker_voices import PROBE_TEXT
+except ImportError:  # Direct script execution.
+    from auto_prepare_script import clean_translation_repetition, nllb_code
+    from generate_dub import media_duration
+    from match_speaker_voices import PROBE_TEXT
 
 
 def available_windows(segments: list[dict], maximum_extension: float = 0.75) -> list[float]:

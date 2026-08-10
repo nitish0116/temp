@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 import argparse
 import json
 from pathlib import Path
@@ -15,7 +16,10 @@ from sklearn.mixture import GaussianMixture
 import torch
 from transformers import Wav2Vec2FeatureExtractor, WavLMForXVector
 
-from generate_dub import available_voices
+try:
+    from .generate_dub import available_voices
+except ImportError:  # Direct script execution.
+    from generate_dub import available_voices
 
 
 SAMPLE_RATE = 16_000

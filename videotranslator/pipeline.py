@@ -12,6 +12,7 @@ from typing import Any
 
 
 HERE = Path(__file__).resolve().parent
+COMMANDS = HERE / "commands"
 RUNNABLE_STAGES = (
     "extract",
     "separate",
@@ -120,15 +121,15 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
     """
     python = sys.executable
     if stage == "extract":
-        return [python, str(HERE / "extract_audio.py"), str(artifact_paths["video"]), "-o", str(artifact_paths["audio"])], [artifact_paths["audio"]]
+        return [python, str(COMMANDS / "extract_audio.py"), str(artifact_paths["video"]), "-o", str(artifact_paths["audio"])], [artifact_paths["audio"]]
     if stage == "separate":
         separation = config.get("separation", {})
-        command = [python, str(HERE / "separate_audio.py"), str(artifact_paths["video"]), "-o", str(artifact_paths["separation_dir"]), "--model", separation.get("model", "htdemucs"), "--device", separation.get("device", "cpu"), "--shifts", str(separation.get("shifts", 1))]
+        command = [python, str(COMMANDS / "separate_audio.py"), str(artifact_paths["video"]), "-o", str(artifact_paths["separation_dir"]), "--model", separation.get("model", "htdemucs"), "--device", separation.get("device", "cpu"), "--shifts", str(separation.get("shifts", 1))]
         return command, [artifact_paths["accompaniment"], artifact_paths["vocals"], artifact_paths["separation_report"]]
     if stage == "translate":
         settings = config.get("translation", {})
         quality = config.get("quality", {})
-        command = [python, str(HERE / "auto_prepare_script.py"), str(artifact_paths["audio"]), "--project-id", config["project_id"], "--model", settings.get("model", "small"), "--maximum-duration", str(quality.get("maximum_segment_duration", 12.0)), "--maximum-characters", str(quality.get("maximum_subtitle_characters", 84)), "-o", str(artifact_paths["transcript_dir"])]
+        command = [python, str(COMMANDS / "auto_prepare_script.py"), str(artifact_paths["audio"]), "--project-id", config["project_id"], "--model", settings.get("model", "small"), "--maximum-duration", str(quality.get("maximum_segment_duration", 12.0)), "--maximum-characters", str(quality.get("maximum_subtitle_characters", 84)), "-o", str(artifact_paths["transcript_dir"])]
         if settings.get("fallback_model"):
             command += ["--fallback-model", settings["fallback_model"]]
         if settings.get("source_language"):
@@ -150,7 +151,7 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
     if stage == "qa":
         quality = config.get("quality", {})
         command = [
-            python, str(HERE / "qa_transcript.py"), str(artifact_paths["transcript_json"]),
+            python, str(COMMANDS / "qa_transcript.py"), str(artifact_paths["transcript_json"]),
             "-o", str(artifact_paths["qa"]),
             "--source-transcript", str(artifact_paths["source_transcript"]),
             "--minimum-duration", str(quality.get("minimum_subtitle_duration", 0.5)),
@@ -166,26 +167,26 @@ def stage_command(stage: str, config: dict, artifact_paths: dict[str, Path]) -> 
     if stage == "tts":
         settings = config.get("translation", {})
         dubbing = config.get("dubbing", {})
-        command = [python, str(HERE / "generate_dub.py"), str(artifact_paths["diarized_script"]), "-o", str(artifact_paths["dub_dir"]), "--target-language", settings.get("target_language", "en"), "--rate", dubbing.get("rate", "+0%"), "--retries", str(dubbing.get("retries", 3))]
+        command = [python, str(COMMANDS / "generate_dub.py"), str(artifact_paths["diarized_script"]), "-o", str(artifact_paths["dub_dir"]), "--target-language", settings.get("target_language", "en"), "--rate", dubbing.get("rate", "+0%"), "--retries", str(dubbing.get("retries", 3))]
         if dubbing.get("voice"):
             command += ["--voice", dubbing["voice"]]
         return command, [artifact_paths["dub_manifest"]]
     if stage == "diarize":
         settings = config.get("translation", {})
         diarization = config.get("diarization", {})
-        command = [python, str(HERE / "diarize_speakers.py"), str(artifact_paths["approved_script"]), str(artifact_paths["audio"]), "--target-language", settings.get("target_language", "en"), "--maximum-speakers", str(diarization.get("maximum_speakers", 10)), "--embedding-model", diarization.get("embedding_model", "microsoft/wavlm-base-plus-sv"), "--output-script", str(artifact_paths["diarized_script"]), "--output-report", str(artifact_paths["diarization_report"])]
+        command = [python, str(COMMANDS / "diarize_speakers.py"), str(artifact_paths["approved_script"]), str(artifact_paths["audio"]), "--target-language", settings.get("target_language", "en"), "--maximum-speakers", str(diarization.get("maximum_speakers", 10)), "--embedding-model", diarization.get("embedding_model", "microsoft/wavlm-base-plus-sv"), "--output-script", str(artifact_paths["diarized_script"]), "--output-report", str(artifact_paths["diarization_report"])]
         return command, [artifact_paths["diarized_script"], artifact_paths["diarization_report"]]
     if stage == "review":
-        return [python, str(HERE / "burn_subtitles.py"), str(artifact_paths["video"]), str(artifact_paths["srt"]), "-o", str(artifact_paths["review"])], [artifact_paths["review"]]
+        return [python, str(COMMANDS / "burn_subtitles.py"), str(artifact_paths["video"]), str(artifact_paths["srt"]), "-o", str(artifact_paths["review"])], [artifact_paths["review"]]
     if stage == "subtitle_mux":
-        return [python, str(HERE / "mux_subtitles.py"), str(artifact_paths["video"]), str(artifact_paths["srt"]), "-o", str(artifact_paths["subtitled"])], [artifact_paths["subtitled"]]
+        return [python, str(COMMANDS / "mux_subtitles.py"), str(artifact_paths["video"]), str(artifact_paths["srt"]), "-o", str(artifact_paths["subtitled"])], [artifact_paths["subtitled"]]
     if stage == "assemble":
         dubbing = config.get("dubbing", {})
-        command = [python, str(HERE / "assemble_dub.py"), str(artifact_paths["video"]), str(artifact_paths["dub_manifest"]), "-o", str(artifact_paths["dubbed"]), "--subtitles", str(artifact_paths["srt"]), "--background", str(artifact_paths["accompaniment"]), "--source-volume", str(dubbing.get("source_volume", 0.8)), "--dub-volume", str(dubbing.get("dub_volume", 1.0)), "--minimum-occupancy", str(dubbing.get("minimum_dialogue_occupancy", 0.65)), "--minimum-tempo", str(dubbing.get("minimum_tempo", 0.75))]
+        command = [python, str(COMMANDS / "assemble_dub.py"), str(artifact_paths["video"]), str(artifact_paths["dub_manifest"]), "-o", str(artifact_paths["dubbed"]), "--subtitles", str(artifact_paths["srt"]), "--background", str(artifact_paths["accompaniment"]), "--source-volume", str(dubbing.get("source_volume", 0.8)), "--dub-volume", str(dubbing.get("dub_volume", 1.0)), "--minimum-occupancy", str(dubbing.get("minimum_dialogue_occupancy", 0.65)), "--minimum-tempo", str(dubbing.get("minimum_tempo", 0.75))]
         return command, [artifact_paths["dubbed"], artifact_paths["assembly_report"]]
     if stage == "final_qa":
         quality = config.get("quality", {})
-        command = [python, str(HERE / "qa_final.py"), str(artifact_paths["dubbed"]), str(artifact_paths["dub_manifest"]), str(artifact_paths["diarized_script"]), str(artifact_paths["assembly_report"]), str(artifact_paths["vocals"]), str(artifact_paths["accompaniment"]), "-o", str(artifact_paths["final_qa"]), "--maximum-tempo", str(quality.get("maximum_tempo_factor", 3.0)), "--maximum-leakage", str(quality.get("maximum_vocal_leakage", 0.35))]
+        command = [python, str(COMMANDS / "qa_final.py"), str(artifact_paths["dubbed"]), str(artifact_paths["dub_manifest"]), str(artifact_paths["diarized_script"]), str(artifact_paths["assembly_report"]), str(artifact_paths["vocals"]), str(artifact_paths["accompaniment"]), "-o", str(artifact_paths["final_qa"]), "--maximum-tempo", str(quality.get("maximum_tempo_factor", 3.0)), "--maximum-leakage", str(quality.get("maximum_vocal_leakage", 0.35))]
         return command, [artifact_paths["final_qa"]]
     raise ValueError(f"Unknown stage: {stage}")
 

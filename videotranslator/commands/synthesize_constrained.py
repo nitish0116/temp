@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 import argparse
 import array
 import json
@@ -11,7 +12,10 @@ from typing import Any
 
 from piper import PiperVoice, SynthesisConfig
 
-from generate_dub import ensure_voice, media_duration
+try:
+    from .generate_dub import ensure_voice, media_duration
+except ImportError:  # Direct script execution.
+    from generate_dub import ensure_voice, media_duration
 
 
 def stable_segment_id(segment: dict, index: int) -> str:

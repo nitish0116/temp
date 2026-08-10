@@ -58,21 +58,21 @@ and quality thresholds. Relative paths resolve from the configuration file.
 ## Run
 
 ```powershell
-.\.venv\Scripts\python.exe videotranslator\pipeline.py `
+.\.venv\Scripts\python.exe -m videotranslator `
   videotranslator\config\pipeline.example.json run --through review
 ```
 
 Run through selectable-subtitle export:
 
 ```powershell
-.\.venv\Scripts\python.exe videotranslator\pipeline.py `
+.\.venv\Scripts\python.exe -m videotranslator `
   videotranslator\config\pipeline.example.json run --through subtitle_mux
 ```
 
 Inspect status:
 
 ```powershell
-.\.venv\Scripts\python.exe videotranslator\pipeline.py `
+.\.venv\Scripts\python.exe -m videotranslator `
   videotranslator\config\pipeline.example.json status
 ```
 
@@ -125,39 +125,39 @@ segment IDs connect generated speech to timing and decision provenance.
 
 ## Standalone tools
 
-- `extract_audio.py`: normalize audio for speech recognition.
-- `separate_audio.py`: local Demucs two-stem separation into reusable vocals and
+- `commands/extract_audio.py`: normalize audio for speech recognition.
+- `commands/separate_audio.py`: local Demucs two-stem separation into reusable vocals and
   accompaniment tracks.
-- `transcribe.py`: simple ad hoc transcription or direct translation.
-- `auto_prepare_script.py`: adaptive canonical transcription, translation, and automatic approval;
+- `commands/transcribe.py`: simple ad hoc transcription or direct translation.
+- `commands/auto_prepare_script.py`: adaptive canonical transcription, translation, and automatic approval;
   source language is detected when omitted, target language defaults to `en`, and
   NLLB preserves every canonical source cue for all translated targets.
-- `generate_dub.py`: local Piper voice selection, model caching, clip generation,
+- `commands/generate_dub.py`: local Piper voice selection, model caching, clip generation,
   retries, duration measurement, and dub-manifest creation.
-- `assemble_dub.py`: cue alignment, overrun tempo fitting, automatic soundtrack
+- `commands/assemble_dub.py`: cue alignment, overrun tempo fitting, automatic soundtrack
   ducking, native-tempo placement for constrained clips, final audio mixing,
   optional subtitle muxing, and MP4 export.
-- `diarize_speakers.py`: local WavLM speaker embeddings, automatic speaker-count
+- `commands/diarize_speakers.py`: local WavLM speaker embeddings, automatic speaker-count
   selection, stable speaker IDs, pitch-style estimation, and distinct voice assignment.
-- `translate_constrained.py`: NLLB translation with per-voice duration budgets,
+- `commands/translate_constrained.py`: NLLB translation with per-voice duration budgets,
   bounded silence borrowing, duplicate-fragment cleanup, and automatic retries.
-- `synthesize_constrained.py`: assigned-voice Piper synthesis with edge-silence
+- `commands/synthesize_constrained.py`: assigned-voice Piper synthesis with edge-silence
   trimming, measured duration retries, and no post-processing tempo changes.
-- `align_active_speaker.py`: optional face tracking, lower-face motion scoring, and
+- `commands/align_active_speaker.py`: optional face tracking, lower-face motion scoring, and
   bounded visual-onset correction for multi-character scenes.
-- `qa_dubbing_pipeline.py`: strict automatic cross-stage QA for speech coverage,
+- `commands/qa_dubbing_pipeline.py`: strict automatic cross-stage QA for speech coverage,
   speaker identity, tempo, onset alignment, overlap, and visual confidence.
-- `qa_transcript.py`: blocking timing, readability, text-integrity, and source
+- `commands/qa_transcript.py`: blocking timing, readability, text-integrity, and source
   dialogue-coverage checks.
-- `burn_subtitles.py`: optional top-subtitle diagnostic render.
-- `mux_subtitles.py`: selectable English subtitle track without media re-encoding.
-- `qa_final.py`: automatic clip, timing, speaker, stream, duration, loudness, and
+- `commands/burn_subtitles.py`: optional top-subtitle diagnostic render.
+- `commands/mux_subtitles.py`: selectable English subtitle track without media re-encoding.
+- `commands/qa_final.py`: automatic clip, timing, speaker, stream, duration, loudness, and
   stem-leakage checks with safe gain normalization when required.
 
 Example automatic preparation:
 
 ```powershell
-.\.venv\Scripts\python.exe videotranslator\auto_prepare_script.py `
+.\.venv\Scripts\python.exe videotranslator\commands\auto_prepare_script.py `
   "videotranslator\sample Data\EP.1.v0.1639315485.720p.mp4" `
   --project-id noble-my-love-episode-1 --language ko `
   --model small --fallback-model medium `
@@ -194,12 +194,12 @@ remain local after public model files are downloaded.
 
 ## Strong isolated-vocal transcription
 
-For difficult soundtracks, `transcribe.py` supports relaxed Silero VAD and emits
+For difficult soundtracks, `commands/transcribe.py` supports relaxed Silero VAD and emits
 word timestamps for later forced-alignment reconciliation. Run it against the
 Demucs vocal stem without replacing the approved transcript:
 
 ```powershell
-python transcribe.py outputs/project/separation/vocals.wav --model large-v3 `
+python commands/transcribe.py outputs/project/separation/vocals.wav --model large-v3 `
   --vad-threshold 0.25 --minimum-speech-ms 100 --minimum-silence-ms 300 `
   --speech-padding-ms 250 --no-speech-threshold 0.8 `
   -o outputs/project/step1-large-v3
@@ -210,14 +210,14 @@ relaxed VAD can recover quiet lines but may also introduce false-positive speech
 
 ## Missing-speech recovery
 
-`recover_missing_speech.py` treats pyannote turns and the strong Whisper transcript
+`commands/recover_missing_speech.py` treats pyannote turns and the strong Whisper transcript
 as independent evidence rather than assuming the canonical cue list is complete.
 It decodes uncovered vocal regions without VAD in one batched `large-v3` pass,
 maps recovered words back to source time, retains strong-ASR words lost by CTC,
 and merges contained duplicates without discarding their timing envelope.
 
 ```powershell
-python recover_missing_speech.py alignment/vocals.reconciled.json `
+python commands/recover_missing_speech.py alignment/vocals.reconciled.json `
   diarization/diarization-report.json separation/vocals.wav `
   --strong-transcript step1-large-v3/vocals.json --model large-v3 `
   --output-transcript recovery/source.coverage-complete.json `
@@ -230,7 +230,7 @@ clip coverage alone is not sufficient.
 
 ## Word-level forced alignment
 
-`force_align.py` applies a language-specific CTC acoustic model to the recovered
+`commands/force_align.py` applies a language-specific CTC acoustic model to the recovered
 transcript, rebuilds cues from aligned word boundaries, and retains only reference
 cues with no aligned-word evidence. The detected language automatically routes
 English, French, German, Spanish, Hindi, Japanese, Chinese, Arabic, and Korean to
@@ -238,7 +238,7 @@ language-specific models. Unknown or low-confidence languages retain Whisper wor
 timestamps instead of using an incompatible model. `--model` overrides routing.
 
 ```powershell
-python force_align.py outputs/project/step1-large-v3/vocals.json `
+python commands/force_align.py outputs/project/step1-large-v3/vocals.json `
   outputs/project/transcripts/source.json outputs/project/separation/vocals.wav `
   --output-transcript outputs/project/alignment/vocals.aligned.json `
   --output-reconciled outputs/project/alignment/vocals.reconciled.json `
@@ -272,7 +272,7 @@ Hugging Face page, and expose a read-only token through `HF_TOKEN`:
 ```powershell
 python -m pip install -r requirements.txt
 $env:HF_TOKEN = "your-read-token"
-python diarize_pyannote.py outputs/project/alignment/vocals.reconciled.json `
+python commands/diarize_pyannote.py outputs/project/alignment/vocals.reconciled.json `
   outputs/project/separation/vocals.wav `
   --output-script outputs/project/diarization/pyannote.assigned.json `
   --output-report outputs/project/diarization/pyannote.report.json
@@ -284,7 +284,7 @@ not depend on TorchCodec's platform decoder.
 
 ## Persistent-speaker voice matching
 
-`match_speaker_voices.py` profiles each pyannote speaker and candidate Piper voice
+`commands/match_speaker_voices.py` profiles each pyannote speaker and candidate Piper voice
 using pitch, pitch range, spectral centroid, spectral bandwidth, and energy range.
 A Hungarian assignment selects the globally closest unique voice for every speaker.
 Pitch is the strongest acoustic constraint but is not used alone, and the report
@@ -303,7 +303,7 @@ when their normalized text contains one another. The command fails when any line
 is still estimated to require excessive tempo adjustment.
 
 ```powershell
-python translate_constrained.py outputs/project/voices.assigned.json `
+python commands/translate_constrained.py outputs/project/voices.assigned.json `
   --target-language en --probe-dir outputs/project/probes `
   --output-script outputs/project/english.constrained.json `
   --output-report outputs/project/translation-report.json
@@ -322,9 +322,9 @@ selected automatically from clean pyannote turns in the isolated vocal stem;
 pitch is not used to infer gender or select a voice.
 
 ```powershell
-python prepare_speaker_references.py separation/vocals.wav `
+python commands/prepare_speaker_references.py separation/vocals.wav `
   diarization/diarization-report.json english.constrained.json -o references
-python synthesize_xtts.py english.constrained.json references/reference-report.json `
+python commands/synthesize_xtts.py english.constrained.json references/reference-report.json `
   -o synthesis-xtts --language en
 ```
 
@@ -342,7 +342,7 @@ are regenerated with Piper's native duration control, bounded by
 to FFmpeg for tempo correction.
 
 ```powershell
-python synthesize_constrained.py outputs/project/english.constrained.json `
+python commands/synthesize_constrained.py outputs/project/english.constrained.json `
   -o outputs/project/synthesis --models-dir outputs/project/models `
   --minimum-length-scale 0.85 --tolerance 1.02
 ```
@@ -351,7 +351,7 @@ python synthesize_constrained.py outputs/project/english.constrained.json `
 post-processing tempo was used. `dub-manifest.json` remains compatible with the
 existing assembly stage.
 
-Use `assemble_dub.py --preserve-native-tempo` after constrained synthesis and
+Use `commands/assemble_dub.py --preserve-native-tempo` after constrained synthesis and
 step-8 QA. This places the measured WAV clips without adding FFmpeg `atempo`
 filters; the QA gate must already have verified that the clips do not overlap.
 
@@ -365,7 +365,7 @@ neighboring synthesized clips so it cannot create dialogue overlap.
 
 ```powershell
 python -m pip install -r requirements.txt
-python align_active_speaker.py input.mp4 english.constrained.json `
+python commands/align_active_speaker.py input.mp4 english.constrained.json `
   synthesis/dub-manifest.json `
   --output-manifest active-speaker/dub-manifest.aligned.json `
   --output-report active-speaker/active-speaker-report.json
@@ -383,7 +383,7 @@ reported, visual onset correction is excessive, generated dialogue overlaps, or
 multi-face alignment confidence is below the configured threshold.
 
 ```powershell
-python qa_dubbing_pipeline.py english.constrained.json translation-report.json `
+python commands/qa_dubbing_pipeline.py english.constrained.json translation-report.json `
   active-speaker/dub-manifest.aligned.json synthesis/synthesis-report.json `
   active-speaker/active-speaker-report.json `
   -o qa/dubbing-pipeline-qa.json

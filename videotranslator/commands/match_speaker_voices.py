@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 import argparse
 import json
 import math
@@ -15,7 +16,10 @@ import numpy as np
 from piper import PiperVoice, SynthesisConfig
 from scipy.optimize import linear_sum_assignment
 
-from generate_dub import ensure_voice
+try:
+    from .generate_dub import ensure_voice
+except ImportError:  # Direct script execution.
+    from generate_dub import ensure_voice
 
 
 SAMPLE_RATE = 16_000

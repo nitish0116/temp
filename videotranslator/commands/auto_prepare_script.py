@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 import argparse
 import json
 import re
@@ -17,8 +18,12 @@ except ImportError:
 
 from faster_whisper import WhisperModel
 
-from transcribe import srt_timestamp
-from segment_utterances import join_words, segment_words
+try:
+    from .segment_utterances import join_words, segment_words
+    from .transcribe import srt_timestamp
+except ImportError:  # Direct script execution.
+    from segment_utterances import join_words, segment_words
+    from transcribe import srt_timestamp
 
 
 def split_words(words: list[dict], maximum_duration: float, maximum_chars: int) -> list[list[dict]]:

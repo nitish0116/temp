@@ -30,7 +30,7 @@ an interrupted run resumable and provides provenance for every generated artifac
 The main orchestrator. It does not contain media-processing logic; it builds and
 runs commands for the specialized scripts.
 
-## `transcribe.py`
+## `commands/transcribe.py`
 
 The standalone transcription tool accepts configurable VAD threshold, minimum
 speech/silence duration, speech padding, and Whisper no-speech threshold. JSON
@@ -38,13 +38,13 @@ output includes word timestamps so a later forced-alignment stage can reconcile
 newly recovered speech with the canonical transcript. Source language remains
 auto-detected unless explicitly configured.
 
-## `force_align.py`
+## `commands/force_align.py`
 
 - `align_one(...)` runs CTC forced alignment inside a padded rough Whisper window.
 - `split_aligned_words(...)` creates readable utterances through the shared
   pause-, punctuation-, speaker-, duration-, and character-aware segmenter.
 
-## `segment_utterances.py`
+## `commands/segment_utterances.py`
 
 Shared, deterministic subtitle-boundary logic used by transcription, forced
 alignment, and speaker diarization.
@@ -65,7 +65,7 @@ The bundled automatic mapping currently covers Korean. Other input languages use
 the same implementation by supplying a compatible Hugging Face Wav2Vec2 CTC model;
 the stage fails clearly when no language model is configured.
 
-## `recover_missing_speech.py`
+## `commands/recover_missing_speech.py`
 
 - `subtract_intervals(...)` identifies independent speech outside canonical cues.
 - `recovery_regions(...)` preserves canonical cues as hard region boundaries.
@@ -78,7 +78,7 @@ the stage fails clearly when no language model is configured.
 The recovery report distinguishes decoder attempts, promoted targeted cues, and
 strong-word fallback cues. No recovered text is accepted without decoder evidence.
 
-## `diarize_pyannote.py`
+## `commands/diarize_pyannote.py`
 
 - `assign_turns(...)` maps exclusive diarization turns to transcript cues by
   maximum temporal overlap, with auditable nearest-turn fallback only when needed.
@@ -90,7 +90,7 @@ This stage establishes persistent speaker identity only. Voice-characteristic
 matching belongs to the following stage and must not use pitch as a gender claim.
 The unified `requirements.txt` includes the heavier diarization dependency.
 
-## `match_speaker_voices.py`
+## `commands/match_speaker_voices.py`
 
 - `acoustic_profile(...)` measures five characteristics without interpreting them
   as gender.
@@ -101,7 +101,7 @@ The unified `requirements.txt` includes the heavier diarization dependency.
 - `match_voices(...)` writes persistent voice assignments and a complete feature,
   weight, distance, and provenance report.
 
-## `translate_constrained.py`
+## `commands/translate_constrained.py`
 
 - `available_windows(...)` adds only bounded trailing silence to each cue window.
 - `deduplicate_adjacent_cues(...)` merges adjacent same-speaker alignment fragments
@@ -114,7 +114,7 @@ The unified `requirements.txt` includes the heavier diarization dependency.
   automatic fit report while preserving speaker and voice metadata.
 
 ```powershell
-python translate_constrained.py outputs/voices.assigned.json `
+python commands/translate_constrained.py outputs/voices.assigned.json `
   --target-language en --probe-dir outputs/probes `
   --output-script outputs/english.constrained.json `
   --output-report outputs/translation-report.json
@@ -123,7 +123,7 @@ python translate_constrained.py outputs/voices.assigned.json `
 The process exits with an error if any generated line remains over its permitted
 ratio, so unsuitable translations cannot silently proceed to TTS.
 
-## `synthesize_constrained.py`
+## `commands/synthesize_constrained.py`
 
 - `stable_segment_id(...)` preserves an upstream ID or creates a deterministic one.
 - `permitted_duration(...)` consumes the speaking window recorded by step 5.
@@ -138,7 +138,7 @@ The `minimum_length_scale` floor prevents abrupt, excessively fast delivery. A
 small measurement tolerance may absorb WAV rounding, but no FFmpeg `atempo` filter
 is applied by this stage.
 
-## `prepare_speaker_references.py`
+## `commands/prepare_speaker_references.py`
 
 Builds persistent-speaker reference sets for expressive voice cloning.
 
@@ -151,7 +151,7 @@ Builds persistent-speaker reference sets for expressive voice cloning.
 The current score is intentionally simple; future selection will add embedding
 consistency, leakage, overlap, and signal-to-noise gates.
 
-## `synthesize_xtts.py`
+## `commands/synthesize_xtts.py`
 
 Provides the non-commercial XTTS-v2 persistent voice backend.
 
@@ -166,7 +166,7 @@ Large tolerance values are recovery diagnostics, not a final-quality mechanism:
 they can admit clips that overlap the next cue. Strict QA must send those cues
 back through re-segmentation or duration-constrained translation.
 
-## `align_active_speaker.py`
+## `commands/align_active_speaker.py`
 
 - `intersection_over_union(...)` supports cue-local face-track association.
 - `mouth_patch(...)` extracts normalized lower-face pixels for motion measurement.
@@ -183,7 +183,7 @@ OpenCV is included in the unified `requirements.txt`. Ambiguous and
 non-multi-face cues remain unchanged; later QA can enforce project-level coverage
 thresholds using the report without involving a reviewer.
 
-## `qa_dubbing_pipeline.py`
+## `commands/qa_dubbing_pipeline.py`
 
 - `speech_coverage(...)` verifies every canonical cue has a nonempty generated WAV.
 - `speaker_reassignments(...)` compares persistent speaker-to-voice mappings with
@@ -225,7 +225,7 @@ Failures from child programs are re-raised after the affected stage is marked
 `failed`. A stage is skipped only when both its manifest state and expected files
 indicate completion.
 
-## `extract_audio.py`
+## `commands/extract_audio.py`
 
 Normalizes video audio for speech recognition.
 
@@ -235,13 +235,13 @@ Normalizes video audio for speech recognition.
 - `main()` chooses the default output path and executes extraction.
 
 ```powershell
-python extract_audio.py episode.mp4 -o outputs/audio/episode.wav
+python commands/extract_audio.py episode.mp4 -o outputs/audio/episode.wav
 ```
 
 It raises `FileNotFoundError` for missing input, `RuntimeError` when FFmpeg is not
 available, and `subprocess.CalledProcessError` when conversion fails.
 
-## `auto_prepare_script.py`
+## `commands/auto_prepare_script.py`
 
 This is the canonical translation and automatic timing-repair implementation.
 
@@ -256,7 +256,7 @@ This is the canonical translation and automatic timing-repair implementation.
 - `main()` selects the best passing candidate and writes approved artifacts.
 
 ```powershell
-python auto_prepare_script.py outputs/audio/episode.wav `
+python commands/auto_prepare_script.py outputs/audio/episode.wav `
   --project-id episode-1 --language ko --model small --fallback-model medium `
   -o outputs/episode-1/transcripts
 ```
@@ -265,7 +265,7 @@ The decision report records every candidate and threshold. If the primary model
 fails, the fallback runs automatically. If none passes, the command fails rather
 than requesting user review or sending uncertain text to TTS.
 
-## `transcribe.py`
+## `commands/transcribe.py`
 
 A simpler standalone Whisper interface retained for ad hoc transcription.
 
@@ -274,14 +274,14 @@ A simpler standalone Whisper interface retained for ad hoc transcription.
   task.
 - `main()` writes plain text, structured JSON, and SRT.
 
-Use `auto_prepare_script.py` for production pipeline runs because it adds word-level
+Use `commands/auto_prepare_script.py` for production pipeline runs because it adds word-level
 repair, hallucination handling, and an auditable decision report.
 
 For non-English targets, `translate_target(...)` loads NLLB locally and preserves
 the finalized source cue boundaries. `nllb_code(...)` maps common ISO language codes
 and accepts explicit NLLB codes for less common languages.
 
-## `qa_transcript.py`
+## `commands/qa_transcript.py`
 
 Performs deterministic blocking checks without invoking a model.
 
@@ -293,7 +293,7 @@ Performs deterministic blocking checks without invoking a model.
 - `main()` writes the report and exits nonzero when any blocking issue exists.
 
 ```powershell
-python qa_transcript.py episode.auto.en.json -o episode.qa.json `
+python commands/qa_transcript.py episode.auto.en.json -o episode.qa.json `
   --source-transcript episode.source.json --maximum-duration 8 `
   --minimum-duration 0.5 --maximum-characters-per-second 20
 ```
@@ -301,7 +301,7 @@ python qa_transcript.py episode.auto.en.json -o episode.qa.json `
 The report is always written. A failed report exits with status 1, so pipeline
 orchestration cannot promote or mux subtitles that did not pass.
 
-## `burn_subtitles.py`
+## `commands/burn_subtitles.py`
 
 Creates a visual review copy.
 
@@ -313,7 +313,7 @@ Creates a visual review copy.
 The video is re-encoded with H.264 because burned subtitles become image pixels.
 The English position deliberately leaves bottom hardcoded subtitles visible.
 
-## `mux_subtitles.py`
+## `commands/mux_subtitles.py`
 
 Creates a delivery copy with selectable subtitles.
 
@@ -321,10 +321,10 @@ Creates a delivery copy with selectable subtitles.
   as MP4 `mov_text`.
 - `parse_args()` and `main()` provide the CLI.
 
-Unlike `burn_subtitles.py`, this operation does not re-encode video or audio and
+Unlike `commands/burn_subtitles.py`, this operation does not re-encode video or audio and
 therefore preserves quality. Player support determines display position and style.
 
-## `generate_dub.py`
+## `commands/generate_dub.py`
 
 Generates voice clips locally; approved text is never sent to a TTS service.
 
@@ -338,11 +338,11 @@ Generates voice clips locally; approved text is never sent to a TTS service.
 - `media_duration(...)` uses FFprobe to measure generated audio.
 
 ```powershell
-python generate_dub.py outputs/transcripts/episode.approved.json `
+python commands/generate_dub.py outputs/transcripts/episode.approved.json `
   -o outputs/dub --target-language en
 ```
 
-## `separate_audio.py`
+## `commands/separate_audio.py`
 
 - `separate_audio(...)` extracts a stereo 44.1 kHz source mix, runs local Demucs
   two-stem inference, and writes reusable `vocals.wav` and `accompaniment.wav`.
@@ -350,7 +350,7 @@ python generate_dub.py outputs/transcripts/episode.approved.json `
 - Only the accompaniment enters the final translated mix; the vocal stem is kept
   for diagnostics and alternate exports.
 
-## `assemble_dub.py`
+## `commands/assemble_dub.py`
 
 - `tempo_filters(factor)` decomposes large tempo changes into safe FFmpeg filters.
 - `build_alignment_graph(clips, duration, ..., preserve_native_tempo)` places clips
@@ -360,12 +360,12 @@ python generate_dub.py outputs/transcripts/episode.approved.json `
   soundtrack, copies the video stream, and optionally adds selectable subtitles.
 
 ```powershell
-python assemble_dub.py episode.mp4 outputs/dub/dub-manifest.json `
+python commands/assemble_dub.py episode.mp4 outputs/dub/dub-manifest.json `
   -o outputs/final/episode.en-dubbed.mp4 --subtitles episode.en.srt `
   --preserve-native-tempo
 ```
 
-## `qa_final.py`
+## `commands/qa_final.py`
 
 - `probe_media(...)` verifies program duration and required media streams.
 - `audio_levels(...)` detects unsafe peaks and out-of-range program loudness.
@@ -378,7 +378,7 @@ python assemble_dub.py episode.mp4 outputs/dub/dub-manifest.json `
 Warnings remain auditable without blocking delivery; structural, timing, missing
 media, or audio-safety failures stop the pipeline without requesting user review.
 
-## `diarize_speakers.py`
+## `commands/diarize_speakers.py`
 
 Performs local acoustic speaker clustering before TTS.
 
@@ -395,7 +395,7 @@ The pitch style is an acoustic matching hint, not a gender assertion. Recurring
 clusters keep the same voice throughout the video, and the report records cluster
 size, pitch estimate, selected voice, method, and silhouette score.
 
-`auto_prepare_script.py` uses a single detected-language transcript as canonical
+`commands/auto_prepare_script.py` uses a single detected-language transcript as canonical
 timing. `translate_target(...)` applies local NLLB for every different target,
 including English, while `translation_coverage(...)` requires one-to-one cue and
 timestamp preservation. `clean_translation_repetition(...)` removes runaway
@@ -432,13 +432,13 @@ model download or full media encode:
 Run from `videotranslator`:
 
 ```powershell
-..\.venv\Scripts\python.exe -m pytest tests -q
+.\.venv\Scripts\python.exe -m pytest videotranslator\tests -q
 ```
 
 ## Extension points
 
 Alignment, source separation, mixing, and export are implemented. If no separated
-background is supplied directly to `assemble_dub.py`, it retains soundtrack ducking
+background is supplied directly to `commands/assemble_dub.py`, it retains soundtrack ducking
 as a backward-compatible fallback.
 
 New stages should follow the existing pattern: deterministic artifact paths, a

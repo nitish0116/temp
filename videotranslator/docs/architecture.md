@@ -1,25 +1,23 @@
 # Video Translator Architecture
 
 The module uses standalone stage commands connected by versioned JSON artifacts.
-Executable scripts remain at the module root so commands work from a source checkout
-without installing a Python package. Supporting files are grouped by purpose.
+Like Markdown Cleaner, the module root holds its primary orchestrator while stage
+executables live in a dedicated `commands` package and resources are grouped by
+purpose. Commands remain directly executable from a source checkout.
 
 ## Directory layout
 
 ```text
 videotranslator/
 |-- pipeline.py                 # resumable legacy orchestrator
-|-- *_audio.py, transcribe.py   # audio and transcription commands
-|-- force_align.py              # word-level alignment
-|-- diarize_*.py                # speaker identity
-|-- match_speaker_voices.py     # persistent acoustic voice matching
-|-- translate_constrained.py    # duration-aware translation
-|-- synthesize_constrained.py   # measured, bounded TTS
-|-- prepare_speaker_references.py # automatic clean voice-cloning references
-|-- synthesize_xtts.py          # optional expressive cloned-voice TTS
-|-- align_active_speaker.py     # visual speaker/onset alignment
-|-- qa_*.py                     # transcript, dubbing, and media gates
-|-- assemble_dub.py             # native-tempo mix and export
+|-- __main__.py                 # python -m videotranslator entry point
+|-- commands/                   # executable pipeline stages and shared helpers
+|   |-- *_audio.py, transcribe.py
+|   |-- force_align.py, segment_utterances.py
+|   |-- diarize_*.py, match_speaker_voices.py
+|   |-- translate_*.py, synthesize_*.py
+|   |-- qa_*.py, assemble_dub.py
+|   `-- burn_subtitles.py, mux_subtitles.py
 |-- config/                     # example runtime configuration
 |-- docs/                       # architecture and API reference
 |-- requirements.txt            # unified pinned runtime dependencies
