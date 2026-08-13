@@ -23,6 +23,14 @@ def stable_segment_id(segment: dict, index: int) -> str:
     return str(segment.get("id") or segment.get("segment_id") or f"seg-{index + 1:04d}")
 
 
+def synthesis_text(segment: dict) -> str:
+    """Read canonical target text while retaining legacy TTS compatibility."""
+    text = segment.get("translated_text") or segment.get("text")
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError(f"Segment {segment.get('id')} has no synthesis text")
+    return text.strip()
+
+
 def permitted_duration(segment: dict) -> float:
     """Return the step-5 speaking window, falling back to the cue duration."""
     constraint = segment.get("duration_constraint", {})
@@ -116,7 +124,7 @@ def synthesize_segment(
     for attempt_number in range(1, retries + 2):
         try:
             duration = synthesize_attempt(
-                voice, segment["text"], output_path, scale
+                voice, synthesis_text(segment), output_path, scale
             )
             ratio = duration / allowed if allowed > 0 else float("inf")
             attempts.append(
@@ -132,7 +140,11 @@ def synthesize_segment(
                     "segment_id": segment_id,
                     "start": segment["start"],
                     "end": segment["end"],
-                    "text": segment["text"],
+                    "text": synthesis_text(segment),
+                    "speaker": segment.get("speaker"),
+                    "semantic_group_id": segment.get("semantic_group_id"),
+                    "source_cue_ids": segment.get("source_cue_ids", []),
+                    "provenance": segment.get("provenance", []),
                     "voice": voice_name,
                     "audio_path": str(output_path.resolve()),
                     "generated_duration": duration,
@@ -169,7 +181,11 @@ def synthesize_segment(
         "segment_id": segment_id,
         "start": segment["start"],
         "end": segment["end"],
-        "text": segment["text"],
+        "text": synthesis_text(segment),
+        "speaker": segment.get("speaker"),
+        "semantic_group_id": segment.get("semantic_group_id"),
+        "source_cue_ids": segment.get("source_cue_ids", []),
+        "provenance": segment.get("provenance", []),
         "voice": voice_name,
         "audio_path": str(output_path.resolve()),
         "generated_duration": 0.0,

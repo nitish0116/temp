@@ -27,6 +27,8 @@ from videotranslator.commands.prepare_speaker_references import source_to_persis
 from videotranslator.commands.synthesize_xtts import select_pilot
 from videotranslator.commands.translate_constrained import available_windows, character_budget, deduplicate_adjacent_cues, estimated_duration
 from videotranslator.commands.synthesize_constrained import active_sample_bounds, next_length_scale, permitted_duration, stable_segment_id
+from videotranslator.commands.synthesize_constrained import synthesis_text
+from videotranslator.commands.prepare_canonical_tts import canonical_is_approved, prepare_canonical_tts
 from videotranslator.commands.align_active_speaker import bounded_onset_offset, dominant_track, intersection_over_union, timeline_safe_offset
 from videotranslator.commands.qa_dubbing_pipeline import dialogue_overlaps, evidence_coverage, maximum_native_tempo, speaker_reassignments
 from videotranslator.commands.recover_missing_speech import merge_intervals, merge_recovered, preserve_speech_envelopes, recover_uncovered_words, recovery_regions, subtract_intervals
@@ -1438,3 +1440,34 @@ def test_xtts_pilot_contains_distinct_speakers():
         {"start": 7, "end": 10, "speaker": "two"},
     ]
     assert {item[1]["speaker"] for item in select_pilot(segments, 2)} == {"one", "two"}
+
+
+def test_approved_canonical_data_prepares_complete_tts_handoff():
+    canonical = adapt_legacy_transcript({
+        "language": "ja", "task": "transcribe", "output_language": "ja",
+        "segments": [{"id": "cue-1", "start": 1.0, "end": 3.0, "text": "source", "speaker": "speaker-01"}],
+    })
+    canonical = translated_document(canonical, ["Target text."], "en", "model", "ja", "en")
+    canonical["metadata"]["translation_integrity"] = {"passed": True}
+    script = prepare_canonical_tts(canonical, {"speaker-01": "en_US-test-medium"})
+    segment = script["segments"][0]
+    assert canonical_is_approved(canonical)
+    assert segment["text"] == "Target text."
+    assert segment["voice"] == "en_US-test-medium"
+    assert segment["duration_constraint"]["available_seconds"] == 2.0
+    assert segment["semantic_group_id"] == canonical["segments"][0]["semantic_group_id"]
+    assert segment["source_cue_ids"] == canonical["segments"][0]["source_cue_ids"]
+    assert segment["provenance"][-1]["stage"] == "tts-handoff"
+    assert synthesis_text(segment) == "Target text."
+
+
+def test_canonical_tts_rejects_unapproved_data_or_missing_voice():
+    canonical = adapt_legacy_transcript({
+        "language": "en", "task": "translate", "output_language": "es",
+        "segments": [{"id": "cue", "start": 0.0, "end": 1.0, "text": "Target."}],
+    })
+    with pytest.raises(ValueError, match="explicitly approved"):
+        prepare_canonical_tts(canonical, {"unknown": "voice"})
+    canonical["metadata"]["approval"] = {"status": "approved"}
+    with pytest.raises(ValueError, match="No voice assigned"):
+        prepare_canonical_tts(canonical)

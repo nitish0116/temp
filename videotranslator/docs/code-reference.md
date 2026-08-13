@@ -137,6 +137,18 @@ strong-word fallback cues. No recovered text is accepted without decoder evidenc
 - The CLI requires an explicit instruction-following seq2seq model. It is fully
   headless; identical completed requests can resume from the optional cache.
 
+## `commands/prepare_canonical_tts.py`
+
+- `canonical_is_approved(...)` requires an explicit canonical approval or passing
+  translation-integrity decision before speech synthesis.
+- `prepare_canonical_tts(...)` converts approved canonical target cues into the
+  compatibility script consumed by Piper/XTTS while retaining speaker,
+  semantic-group ID, source cue IDs, timing, confidence, and provenance.
+- Voice assignment is keyed by persistent speaker identity. Missing voices and
+  empty target text are blocking errors rather than interactive decisions.
+- The exact canonical cue window becomes the duration constraint used by native
+  TTS regeneration and later non-overlap assembly.
+
 ## `commands/diarize_pyannote.py`
 
 - `assign_turns(...)` maps exclusive diarization turns to transcript cues by
