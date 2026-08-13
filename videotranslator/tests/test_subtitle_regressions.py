@@ -9,7 +9,7 @@ from videotranslator.commands.canonical_timed_text import validate_canonical_tim
 from videotranslator.commands.map_translation_cues import map_translated_groups
 from videotranslator.commands.qa_transcript import analyze
 from videotranslator.commands.translate_contextual import translate_contextual
-from videotranslator.commands.repair_subtitles import repair, repair_short_cues
+from videotranslator.commands.repair_subtitles import repair, repair_short_cues, redistribute_group_timing, subtitle_lines
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "subtitle_quality_baseline.json"
@@ -149,3 +149,22 @@ def test_short_cue_merges_only_with_same_speaker_and_semantic_group():
     incompatible = [dict(base[0]), {**base[1], "speaker": "two"}]
     retained = repair_short_cues(incompatible, 0.5, 12.0, 84, 20.0)
     assert len(retained) == 2
+
+
+def test_semantic_group_timing_is_redistributed_by_target_density():
+    cues = [
+        {"id": "a", "semantic_group_id": "g", "start": 0.0, "end": 1.0, "text": "1234567890"},
+        {"id": "b", "semantic_group_id": "g", "start": 1.0, "end": 4.0, "text": "123456789012345678901234567890"},
+    ]
+    result = redistribute_group_timing(cues, 20.0)
+    assert result[0]["end"] == 1.0
+    assert result[1]["start"] == 1.0
+    assert all(len(re.sub(r"\s+", "", cue["text"])) / (cue["end"] - cue["start"]) <= 20 for cue in result)
+
+
+def test_subtitle_layout_balances_words_and_preserves_text():
+    text = "one two three four five six seven"
+    laid_out = subtitle_lines(text, maximum_line_characters=20)
+    assert laid_out.count("\n") == 1
+    assert laid_out.replace("\n", " ") == text
+    assert all(len(line) <= 20 for line in laid_out.splitlines())

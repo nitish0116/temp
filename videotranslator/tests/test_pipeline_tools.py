@@ -253,7 +253,7 @@ def test_repair_splits_receive_unique_ids_and_parent_lineage():
     assert all(cue["metadata"]["parent_cue_id"] == "parent" for cue in repaired["segments"])
     assert all(cue["source_cue_ids"] == [4] for cue in repaired["segments"])
     assert all(cue["speaker"] == "speaker-01" for cue in repaired["segments"])
-    assert all(cue["provenance"][-1]["method"] == "split-display-cue" for cue in repaired["segments"])
+    assert all(any(event["method"] == "split-display-cue" for event in cue["provenance"]) for cue in repaired["segments"])
 
 
 def test_diarization_preserves_canonical_identity_and_records_assignment():

@@ -187,6 +187,55 @@ def repair_short_cues(
     return repaired
 
 
+def subtitle_lines(text: str, maximum_line_characters: int = 42, maximum_lines: int = 2) -> str:
+    """Balance display text across at most two language-aware lines when possible."""
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    if len(cleaned) <= maximum_line_characters:
+        return cleaned
+    words = cleaned.split()
+    if len(words) == 1:
+        chunks = [cleaned[index:index + maximum_line_characters] for index in range(0, len(cleaned), maximum_line_characters)]
+    else:
+        chunks, current = [], ""
+        for word in words:
+            candidate = word if not current else f"{current} {word}"
+            if current and len(candidate) > maximum_line_characters:
+                chunks.append(current)
+                current = word
+            else:
+                current = candidate
+        if current:
+            chunks.append(current)
+    return "\n".join(chunks) if len(chunks) <= maximum_lines else cleaned
+
+
+def redistribute_group_timing(cues: list[dict], maximum_characters_per_second: float) -> list[dict]:
+    """Allocate a semantic group's full envelope by target text density."""
+    output = [dict(cue) for cue in cues]
+    groups: dict[str, list[int]] = {}
+    for index, cue in enumerate(output):
+        groups.setdefault(str(cue.get("semantic_group_id") or cue.get("id") or index), []).append(index)
+    for group_id, indexes in groups.items():
+        if len(indexes) < 2:
+            continue
+        start, end = float(output[indexes[0]]["start"]), float(output[indexes[-1]]["end"])
+        weights = [max(1, len(re.sub(r"\s+", "", str(output[index].get(_display_field(output[index]), ""))))) for index in indexes]
+        total = sum(weights)
+        if (end - start) * maximum_characters_per_second + 1e-9 < total:
+            continue
+        cursor, cumulative = start, 0
+        for position, (index, weight) in enumerate(zip(indexes, weights)):
+            cumulative += weight
+            cue_end = end if position == len(indexes) - 1 else start + (end - start) * cumulative / total
+            output[index]["start"], output[index]["end"] = round(cursor, 3), round(cue_end, 3)
+            output[index]["provenance"] = append_provenance(
+                output[index], "subtitle-repair", "redistribute-semantic-group-timing",
+                semantic_group_id=group_id,
+            )
+            cursor = cue_end
+    return output
+
+
 def split_cue(
     cue: dict, maximum_characters: int, maximum_duration: float = 12.0,
 ) -> list[dict]:
@@ -230,6 +279,7 @@ def repair(
     maximum_characters: int = 84,
     maximum_characters_per_second: float = 20.0,
     maximum_duration: float = 12.0,
+    maximum_line_characters: int = 42,
 ) -> dict:
     """Split long text and borrow only neighboring silence for readability."""
     cues = [part for cue in transcript.get("segments", []) for part in split_cue(cue, maximum_characters, maximum_duration)]
@@ -238,6 +288,7 @@ def repair(
         cues, minimum_duration, maximum_duration, maximum_characters,
         maximum_characters_per_second,
     )
+    cues = redistribute_group_timing(cues, maximum_characters_per_second)
     for index, cue in enumerate(cues):
         displayed = cue.get("translated_text") or cue.get("source_text") or cue.get("text", "")
         characters = len(re.sub(r"\s+", "", str(displayed)))
@@ -249,6 +300,8 @@ def repair(
         if end - start < required:
             start = max(previous_end, end - required)
         cue["start"], cue["end"] = round(start, 3), round(end, 3)
+        field = _display_field(cue)
+        cue[field] = subtitle_lines(str(cue[field]), maximum_line_characters)
     if transcript.get("artifact_type") == "canonical_timed_text":
         return {
             **transcript,
@@ -277,11 +330,13 @@ def main() -> None:
     parser.add_argument("--maximum-characters", type=int, default=84)
     parser.add_argument("--maximum-characters-per-second", type=float, default=20.0)
     parser.add_argument("--maximum-duration", type=float, default=12.0)
+    parser.add_argument("--maximum-line-characters", type=int, default=42)
     args = parser.parse_args()
     transcript = json.loads(args.transcript.read_text(encoding="utf-8"))
     repaired = repair(
         transcript, args.minimum_duration, args.maximum_characters,
         args.maximum_characters_per_second, args.maximum_duration,
+        args.maximum_line_characters,
     )
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
     args.output_srt.parent.mkdir(parents=True, exist_ok=True)
