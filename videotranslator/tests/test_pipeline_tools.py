@@ -56,6 +56,11 @@ from videotranslator.commands.translate_contextual import (
     translation_prompt,
     translation_request,
 )
+from videotranslator.commands.qa_translation_integrity import (
+    enforce_translation_integrity,
+    integrity_issues,
+    semantic_pieces,
+)
 from videotranslator.commands.finalize_subtitles import finalize
 from videotranslator.commands.repair_subtitles import repair, split_cue, text_chunks
 
@@ -491,6 +496,53 @@ def test_contextual_translation_rejects_wrong_stage_and_empty_output():
         translate_contextual(wrong_stage, "en", "model", lambda request: "target")
     with pytest.raises(RuntimeError, match="empty text"):
         translate_contextual(clean, "en", "model", lambda request: "  ")
+
+
+def test_translation_integrity_detects_numbers_density_and_repetition():
+    assert {item["type"] for item in integrity_issues("Order 12 items", "Order 13 items")} == {"number_mismatch"}
+    assert integrity_issues("A sufficiently long source sentence", "x")[0]["type"] == "translation_too_short"
+    assert integrity_issues("hello", "yes, yes, yes")[0]["type"] in {"translation_too_long", "repeated_translation_clause"}
+
+
+def test_translation_integrity_retries_and_preserves_lineage():
+    clean = _clean_context_fixture()
+    translated = translate_contextual(clean, "en", "model", lambda request: "x")
+
+    repaired, report = enforce_translation_integrity(
+        translated, lambda source, context: f"Valid translation for {source}",
+    )
+
+    assert report["passed"]
+    assert all(item["id"] == source["id"] for item, source in zip(repaired["segments"], clean["segments"]))
+    assert all(item["provenance"][-1]["stage"] == "translation-integrity" for item in repaired["segments"])
+
+
+def test_translation_integrity_uses_semantic_resegmentation_after_retry():
+    clean = build_clean_transcript({
+        "language": "en", "task": "transcribe", "output_language": "en",
+        "segments": [{"start": 0, "end": 4, "text": "First clause, second clause.", "speaker": "one"}],
+    })
+    translated = translate_contextual(clean, "es", "model", lambda request: "x")
+    routes = []
+
+    def retry(source, context):
+        routes.append(context["route"])
+        return "x" if context["route"] == "retry" else f"translated {source}"
+
+    repaired, report = enforce_translation_integrity(translated, retry)
+
+    assert semantic_pieces("First clause, second clause.") == ["First clause", "second clause."]
+    assert "semantic-resegmentation" in routes
+    assert report["passed"]
+    assert repaired["segments"][0]["translated_text"].startswith("translated First")
+
+
+def test_translation_integrity_retains_rejection_after_bounded_failure():
+    clean = _clean_context_fixture()
+    translated = translate_contextual(clean, "en", "model", lambda request: "x")
+    _, report = enforce_translation_integrity(translated, lambda source, context: "x")
+    assert not report["passed"]
+    assert report["failed_group_count"] == len(clean["segments"])
 
 
 def test_split_words_uses_pause_and_duration_boundaries():
