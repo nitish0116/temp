@@ -120,6 +120,47 @@ def assign_turns(segments: list[dict], turns: list[dict]) -> tuple[list[dict], d
     }
 
 
+def reconcile_unmatched_turns(
+    segments: list[dict], turns: list[dict], speech_evidence: list[dict],
+    maximum_gap: float = 0.35, maximum_turn_duration: float = 1.5,
+) -> tuple[list[dict], list[dict]]:
+    """Attach small supported turns to compatible neighboring speaker cues."""
+    updated = json.loads(json.dumps(segments))
+    decisions = []
+    for turn in turns:
+        start, end = float(turn["start"]), float(turn["end"])
+        if end - start > maximum_turn_duration:
+            decisions.append({**turn, "status": "retained-unmatched", "reason": "turn-too-long"})
+            continue
+        supported = any(overlap_seconds(start, end, item) > 0 for item in speech_evidence)
+        if not supported:
+            decisions.append({**turn, "status": "retained-unmatched", "reason": "no-speech-evidence"})
+            continue
+        if any(overlap_seconds(start, end, cue) > 0 for cue in updated):
+            continue
+        candidates = []
+        for cue in updated:
+            speaker = cue.get("speaker")
+            if not speaker or speaker == "unknown" or speaker != turn.get("speaker"):
+                continue
+            gap = min(abs(start - float(cue["end"])), abs(float(cue["start"]) - end))
+            if gap <= maximum_gap:
+                candidates.append((gap, cue))
+        if not candidates:
+            decisions.append({**turn, "status": "retained-unmatched", "reason": "no-compatible-neighbor"})
+            continue
+        _gap, cue = min(candidates, key=lambda item: item[0])
+        old = [cue["start"], cue["end"]]
+        cue["start"] = round(min(float(cue["start"]), start), 3)
+        cue["end"] = round(max(float(cue["end"]), end), 3)
+        cue["provenance"] = append_provenance(
+            cue, "speaker-diarization", "reconcile-supported-unmatched-turn",
+            old_timing=old, turn=[start, end], speaker=turn["speaker"],
+        )
+        decisions.append({**turn, "status": "attached", "cue_id": cue.get("id")})
+    return updated, decisions
+
+
 def diarize(
     transcript: dict,
     audio_path: Path,

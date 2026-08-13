@@ -21,7 +21,7 @@ from videotranslator.commands.force_align import (
     select_alignment_route,
     whisper_timestamp_alignment,
 )
-from videotranslator.commands.diarize_pyannote import assign_turns
+from videotranslator.commands.diarize_pyannote import assign_turns, reconcile_unmatched_turns
 from videotranslator.commands.match_speaker_voices import match_profiles
 from videotranslator.commands.prepare_speaker_references import source_to_persistent_speakers
 from videotranslator.commands.synthesize_xtts import select_pilot
@@ -284,6 +284,25 @@ def test_diarization_preserves_canonical_identity_and_records_assignment():
     assert cue["speaker"] == "speaker-01"
     assert cue["metadata"]["speaker_assignment"]["source_label"] == "RAW_0"
     assert cue["provenance"][-1]["stage"] == "speaker-diarization"
+
+
+def test_small_supported_turn_attaches_to_compatible_speaker():
+    cues = [{"id": "cue", "start": 1.0, "end": 2.0, "text": "x", "speaker": "speaker-01"}]
+    turns = [{"start": 2.1, "end": 2.3, "speaker": "speaker-01"}]
+    evidence = [{"start": 2.05, "end": 2.35}]
+    reconciled, decisions = reconcile_unmatched_turns(cues, turns, evidence)
+    assert reconciled[0]["end"] == 2.3
+    assert decisions[0]["status"] == "attached"
+    assert reconciled[0]["provenance"][-1]["method"] == "reconcile-supported-unmatched-turn"
+
+
+def test_unmatched_turn_does_not_invent_or_cross_speakers():
+    cues = [{"id": "cue", "start": 1.0, "end": 2.0, "text": "x", "speaker": "speaker-01"}]
+    turns = [{"start": 2.1, "end": 2.3, "speaker": "speaker-02"}]
+    evidence = [{"start": 2.05, "end": 2.35}]
+    reconciled, decisions = reconcile_unmatched_turns(cues, turns, evidence)
+    assert reconciled == cues
+    assert decisions[0]["reason"] == "no-compatible-neighbor"
 
 
 def test_canonical_translation_exports_without_discarding_internal_metadata(tmp_path: Path):
