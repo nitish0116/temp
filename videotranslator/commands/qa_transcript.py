@@ -160,7 +160,11 @@ def analyze(
     for index, segment in enumerate(segments):
         start = float(segment["start"])
         end = float(segment["end"])
-        raw_text = str(segment["text"])
+        raw_text = str(
+            segment.get("translated_text")
+            or segment.get("source_text")
+            or segment.get("text", "")
+        )
         text = raw_text.strip()
         duration = end - start
         if start < previous_end:

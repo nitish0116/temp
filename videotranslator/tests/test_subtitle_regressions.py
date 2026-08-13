@@ -226,3 +226,9 @@ def test_export_blocks_overlapping_or_empty_canonical_cues():
         assert False, "empty cue should fail"
     except ValueError as error:
         assert "no display text" in str(error)
+
+
+def test_independent_qa_accepts_canonical_translated_text_field():
+    mapped = mapped_fixture("Short target. Another target.")
+    report = analyze(mapped, maximum_duration=12.0)
+    assert "empty_text" not in report["issue_counts"]
