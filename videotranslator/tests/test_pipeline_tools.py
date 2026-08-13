@@ -684,19 +684,26 @@ def test_pascal_uses_supported_whisper_precision(monkeypatch):
     assert runtime_device.whisper_compute_type("cuda") == "int8_float32"
 
 
-def test_headless_runtime_replaces_unwritable_or_missing_caches(tmp_path: Path, monkeypatch):
-    """An unattended run always receives writable run-local model caches."""
-    blocked = tmp_path / "blocked"
+def test_headless_runtime_rejects_unwritable_shared_cache(tmp_path: Path, monkeypatch):
+    """An unattended run never hides large model downloads inside run output."""
     monkeypatch.setattr(
         "videotranslator.commands.create_subtitles._is_writable_directory",
         lambda path: False,
     )
+    with pytest.raises(RuntimeError, match="Shared cache HF_HOME is not writable"):
+        prepare_runtime_environment(tmp_path / "output", {"PYTHON_CACHE_HOME": str(tmp_path / "shared")})
 
-    env, events = prepare_runtime_environment(tmp_path / "output", {"HF_HOME": str(blocked)})
 
-    assert env["HF_HOME"] == str(tmp_path / "output" / "model-cache" / "huggingface")
-    assert Path(env["TORCH_HOME"]).is_dir()
-    assert {event["stage"] for event in events} == {"startup"}
+def test_headless_runtime_uses_one_shared_cache_root(tmp_path: Path):
+    shared = tmp_path / "shared"
+    env, events = prepare_runtime_environment(
+        tmp_path / "output", {"PYTHON_CACHE_HOME": str(shared)}
+    )
+    assert env["HF_HOME"] == str(shared / "huggingface")
+    assert env["TORCH_HOME"] == str(shared / "torch")
+    assert env["MPLCONFIGDIR"] == str(shared / "matplotlib")
+    assert events == []
+    assert not (tmp_path / "output" / "model-cache").exists()
 
 
 def test_headless_token_check_accepts_supported_environment_names():

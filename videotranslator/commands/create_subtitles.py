@@ -91,26 +91,24 @@ def _is_writable_directory(path: Path) -> bool:
 def prepare_runtime_environment(
     output: Path, source: dict[str, str] | None = None,
 ) -> tuple[dict[str, str], list[dict[str, str]]]:
-    """Choose writable model caches and record automatic substitutions."""
+    """Use shared model caches so downloaded models never live in run outputs."""
     env = dict(os.environ if source is None else source)
     fallbacks: list[dict[str, str]] = []
+    shared_root = Path(env.get("PYTHON_CACHE_HOME", r"D:\PythonCaches"))
     cache_defaults = {
-        "HF_HOME": (Path.home() / ".cache" / "huggingface", output / "model-cache" / "huggingface"),
-        "TORCH_HOME": (Path.home() / ".cache" / "torch", output / "model-cache" / "torch"),
-        "MPLCONFIGDIR": (Path.home() / ".cache" / "matplotlib", output / "model-cache" / "matplotlib"),
+        "HF_HOME": shared_root / "huggingface",
+        "TORCH_HOME": shared_root / "torch",
+        "MPLCONFIGDIR": shared_root / "matplotlib",
     }
-    for variable, (default_path, local_path) in cache_defaults.items():
+    for variable, default_path in cache_defaults.items():
         configured = env.get(variable)
         candidate = Path(configured).expanduser() if configured else default_path
-        if _is_writable_directory(candidate):
-            continue
-        local_path.mkdir(parents=True, exist_ok=True)
-        env[variable] = str(local_path)
-        fallbacks.append({
-            "stage": "startup",
-            "reason": f"{variable} was unset or not writable",
-            "resolution": f"use run-local cache {local_path}",
-        })
+        if not _is_writable_directory(candidate):
+            raise RuntimeError(
+                f"Shared cache {variable} is not writable: {candidate}. "
+                "Grant write access or set PYTHON_CACHE_HOME to a writable common directory."
+            )
+        env[variable] = str(candidate)
     env.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
     return env, fallbacks
 
