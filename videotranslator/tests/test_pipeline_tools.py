@@ -34,6 +34,11 @@ from videotranslator.pipeline import RUNNABLE_STAGES, load_config, paths, stage_
 from videotranslator.commands.qa_transcript import analyze, malformed_text_reasons, required_line_count, source_speech_coverage
 from videotranslator.commands.segment_utterances import join_words, merge_fragments, segment_words
 from videotranslator.commands import runtime_device
+from videotranslator.commands.canonical_timed_text import (
+    adapt_legacy_transcript,
+    to_legacy_transcript,
+    validate_canonical_timed_text,
+)
 from videotranslator.install_dependencies import parse_compute_capability, select_profile
 from videotranslator.commands.create_subtitles import (
     artifact_paths as subtitle_artifact_paths,
@@ -80,6 +85,91 @@ def test_subtitle_improvement_baseline_is_frozen_and_reproducible():
     observed = set(report["issue_counts"])
     assert set(fixture["expected_issue_types"]) <= observed
     assert report["passed"] is False
+
+
+def test_legacy_transcript_round_trips_through_canonical_schema():
+    """Compatibility conversion preserves current transcript data exactly."""
+    legacy = {
+        "language": "ja",
+        "language_probability": 0.98,
+        "task": "transcribe",
+        "output_language": "ja",
+        "alignment_model": "example/model",
+        "segments": [{
+            "id": "original-7",
+            "semantic_group_id": "thought-3",
+            "source_cue_ids": [7, 8],
+            "start": 1.25,
+            "end": 2.75,
+            "text": "synthetic source text",
+            "speaker": "speaker_1",
+            "words": [{"start": 1.25, "end": 1.7, "word": "synthetic"}],
+            "confidence": {"asr": 0.91},
+            "notes": "fixture metadata",
+        }],
+    }
+
+    canonical = adapt_legacy_transcript(legacy)
+
+    validate_canonical_timed_text(canonical)
+    assert canonical["schema_version"] == 1
+    assert canonical["artifact_type"] == "canonical_timed_text"
+    assert canonical["segments"][0]["speaker"] == "speaker_1"
+    assert canonical["segments"][0]["source_cue_ids"] == [7, 8]
+    assert canonical["segments"][0]["provenance"][-1]["method"] == "legacy-transcript-adapter-v1"
+    assert to_legacy_transcript(canonical) == legacy
+
+
+def test_translated_legacy_artifact_marks_unavailable_source_text():
+    """Migration does not invent source dialogue absent from old translations."""
+    legacy = {
+        "language": "ja",
+        "language_probability": 0.9,
+        "task": "translate",
+        "output_language": "en",
+        "segments": [{"start": 1.0, "end": 2.0, "text": "Translated text."}],
+    }
+
+    canonical = adapt_legacy_transcript(legacy)
+
+    assert canonical["stage"] == "translated"
+    assert canonical["segments"][0]["source_text"] is None
+    assert canonical["segments"][0]["translated_text"] == "Translated text."
+    assert to_legacy_transcript(canonical) == legacy
+
+
+def test_canonical_validation_rejects_duplicate_ids_and_invalid_timing():
+    """Stable identity and positive timing are blocking schema invariants."""
+    canonical = adapt_legacy_transcript({
+        "language": "en",
+        "task": "transcribe",
+        "output_language": "en",
+        "segments": [
+            {"id": "one", "start": 0.0, "end": 1.0, "text": "One."},
+            {"id": "two", "start": 1.0, "end": 2.0, "text": "Two."},
+        ],
+    })
+    canonical["segments"][1]["id"] = "one"
+    with pytest.raises(ValueError, match="duplicate segment id"):
+        validate_canonical_timed_text(canonical)
+
+    canonical["segments"][1]["id"] = "two"
+    canonical["segments"][1]["end"] = canonical["segments"][1]["start"]
+    with pytest.raises(ValueError, match="invalid timing"):
+        validate_canonical_timed_text(canonical)
+
+
+def test_canonical_json_schema_is_versioned_and_closed():
+    """The portable JSON contract matches the code-level schema identity."""
+    schema = json.loads(
+        (Path(__file__).parents[1] / "schemas" / "canonical-timed-text.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert schema["properties"]["schema_version"] == {"const": 1}
+    assert schema["properties"]["artifact_type"] == {"const": "canonical_timed_text"}
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["segments"]["items"]["additionalProperties"] is False
 
 
 def test_split_words_uses_pause_and_duration_boundaries():

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "canonical-timed-text.schema.json",
+  "title": "Video Translator canonical timed text",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_type",
+    "stage",
+    "source_language",
+    "output_language",
+    "segments"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "artifact_type": {"const": "canonical_timed_text"},
+    "stage": {
+      "enum": ["raw_asr", "clean_transcript", "canonical_source", "translated"]
+    },
+    "source_language": {"type": "string", "minLength": 1},
+    "output_language": {"type": "string", "minLength": 1},
+    "language_probability": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "metadata": {"type": "object"},
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "semantic_group_id",
+          "source_cue_ids",
+          "start",
+          "end",
+          "source_text",
+          "translated_text",
+          "speaker",
+          "words",
+          "confidence",
+          "provenance"
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "semantic_group_id": {"type": "string", "minLength": 1},
+          "source_cue_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": ["string", "integer"]}
+          },
+          "start": {"type": "number", "minimum": 0},
+          "end": {"type": "number", "exclusiveMinimum": 0},
+          "source_text": {"type": ["string", "null"]},
+          "translated_text": {"type": ["string", "null"]},
+          "speaker": {"type": "string", "minLength": 1},
+          "words": {"type": "array", "items": {"type": "object"}},
+          "confidence": {"type": "object"},
+          "provenance": {"type": "array", "items": {"type": "object"}},
+          "metadata": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
