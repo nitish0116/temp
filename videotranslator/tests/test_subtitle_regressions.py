@@ -14,7 +14,7 @@ from videotranslator.commands.translate_contextual import FallbackContextTransla
 from videotranslator.commands.export_subtitles import ass_content, export_subtitles, srt_content
 from videotranslator.commands.reprocess_subtitles import metric_comparison, reprocess_existing, upstream_recommendations
 from videotranslator.commands.headless_preflight import PreflightError, preflight_reprocess
-from videotranslator.commands.run_canonical_subtitles import run_canonical_attempt, stable_diarization_turns
+from videotranslator.commands.run_canonical_subtitles import align_recovered_envelopes, run_canonical_attempt, stable_diarization_turns
 from videotranslator.commands.create_subtitles import parse_args as parse_subtitle_args
 from videotranslator.commands.repair_subtitles import iterative_repair, repair, repair_short_cues, redistribute_group_timing, subtitle_lines
 
@@ -366,6 +366,14 @@ def test_raw_diarization_labels_map_to_stable_first_appearance_ids():
     ]})
     by_source = {item["source_label"]: item["speaker"] for item in turns}
     assert by_source == {"A": "speaker-01", "B": "speaker-02"}
+
+
+def test_recovered_envelopes_align_to_nearby_strong_words():
+    recovered = {"segments": [{"start": 1.2, "end": 1.8, "text": "dialogue"}]}
+    strong = {"segments": [{"words": [{"start": 1.0, "end": 2.0, "word": "dialogue"}]}]}
+    aligned = align_recovered_envelopes(recovered, strong)
+    assert aligned["segments"][0]["start"] == 1.0
+    assert aligned["segments"][0]["end"] == 2.0
 
 
 def test_empty_contextual_output_uses_direct_translation_fallback():

@@ -136,23 +136,26 @@ def reconcile_unmatched_turns(
         if not supported:
             decisions.append({**turn, "status": "retained-unmatched", "reason": "no-speech-evidence"})
             continue
-        if any(overlap_seconds(start, end, cue) > 0 for cue in updated):
-            continue
         candidates = []
-        for cue in updated:
+        for index, cue in enumerate(updated):
             speaker = cue.get("speaker")
             if not speaker or speaker == "unknown" or speaker != turn.get("speaker"):
                 continue
-            gap = min(abs(start - float(cue["end"])), abs(float(cue["start"]) - end))
+            overlap = overlap_seconds(start, end, cue)
+            gap = 0.0 if overlap > 0 else min(abs(start - float(cue["end"])), abs(float(cue["start"]) - end))
             if gap <= maximum_gap:
-                candidates.append((gap, cue))
+                candidates.append((-overlap, gap, index, cue))
         if not candidates:
             decisions.append({**turn, "status": "retained-unmatched", "reason": "no-compatible-neighbor"})
             continue
-        _gap, cue = min(candidates, key=lambda item: item[0])
+        _overlap, _gap, index, cue = min(candidates, key=lambda item: (item[0], item[1]))
         old = [cue["start"], cue["end"]]
-        cue["start"] = round(min(float(cue["start"]), start), 3)
-        cue["end"] = round(max(float(cue["end"]), end), 3)
+        previous_end = float(updated[index - 1]["end"]) if index else float("-inf")
+        next_start = float(updated[index + 1]["start"]) if index + 1 < len(updated) else float("inf")
+        proposed_start = min(float(cue["start"]), start)
+        proposed_end = max(float(cue["end"]), end)
+        cue["start"] = round(proposed_start if proposed_start >= previous_end else float(cue["start"]), 3)
+        cue["end"] = round(proposed_end if proposed_end <= next_start else float(cue["end"]), 3)
         cue["provenance"] = append_provenance(
             cue, "speaker-diarization", "reconcile-supported-unmatched-turn",
             old_timing=old, turn=[start, end], speaker=turn["speaker"],

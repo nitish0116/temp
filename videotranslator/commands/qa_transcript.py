@@ -93,6 +93,9 @@ def diarized_speech_coverage(subtitles: dict, diarization: dict) -> tuple[float,
         for turn in diarization.get("turns", [])
         if turn.get("start") is not None and turn.get("end") is not None
         and float(turn["end"]) > float(turn["start"])
+        # Sub-100 ms label flickers are below a useful subtitle event and are
+        # common at exclusive-speaker boundaries.
+        and float(turn["end"]) - float(turn["start"]) >= 0.1
     ]
     if not turns:
         return 1.0, 1.0

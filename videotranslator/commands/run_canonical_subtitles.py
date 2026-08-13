@@ -59,6 +59,30 @@ def assign_missing_speakers(segments: list[dict], turns: list[dict]) -> list[dic
     return output
 
 
+def align_recovered_envelopes(recovered: dict, strong: dict, maximum_gap: float = 0.5) -> dict:
+    """Expand recovered cues to nearby strong-ASR words without adding duplicate text."""
+    output = json.loads(json.dumps(recovered))
+    words = [
+        word for segment in strong.get("segments", []) for word in segment.get("words", [])
+        if word.get("start") is not None and word.get("end") is not None
+    ]
+    for word in words:
+        start, end = float(word["start"]), float(word["end"])
+        midpoint = (start + end) / 2
+        candidates = []
+        for index, cue in enumerate(output.get("segments", [])):
+            left, right = float(cue["start"]), float(cue["end"])
+            distance = 0.0 if left <= midpoint <= right else min(abs(midpoint - left), abs(midpoint - right))
+            if distance <= maximum_gap:
+                candidates.append((distance, index))
+        if candidates:
+            _distance, index = min(candidates)
+            cue = output["segments"][index]
+            cue["start"] = round(min(float(cue["start"]), start), 3)
+            cue["end"] = round(max(float(cue["end"]), end), 3)
+    return output
+
+
 def run_canonical_attempt(
     recovered_source: dict,
     strong_source: dict,
@@ -75,6 +99,7 @@ def run_canonical_attempt(
 ) -> dict:
     """Execute Steps 4–15 for one recovered-source candidate."""
     turns = stable_diarization_turns(diarization_report)
+    recovered_source = align_recovered_envelopes(recovered_source, strong_source)
     source = {**recovered_source, "segments": assign_missing_speakers(recovered_source["segments"], turns)}
     clean = build_clean_transcript(source)
     prior_integrity_path = output / "translation-integrity.json"
@@ -103,8 +128,12 @@ def run_canonical_attempt(
         translated, retry, maximum_retries=maximum_retries,
     )
     mapped = map_translated_groups(integrity, maximum_characters=64)
+    speech_evidence = [
+        word for segment in strong_source.get("segments", []) for word in segment.get("words", [])
+    ] or strong_source.get("segments", [])
     reconciled_segments, reconciliation = reconcile_unmatched_turns(
-        mapped["segments"], turns, turns,
+        mapped["segments"], turns, speech_evidence, maximum_gap=0.5,
+        maximum_turn_duration=12.0,
     )
     mapped["segments"] = reconciled_segments
     repaired, optimization = iterative_repair(
