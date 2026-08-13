@@ -9,6 +9,7 @@ from videotranslator.commands.canonical_timed_text import validate_canonical_tim
 from videotranslator.commands.map_translation_cues import map_translated_groups
 from videotranslator.commands.qa_transcript import analyze
 from videotranslator.commands.translate_contextual import translate_contextual
+from videotranslator.commands.export_subtitles import ass_content, export_subtitles, srt_content
 from videotranslator.commands.repair_subtitles import iterative_repair, repair, repair_short_cues, redistribute_group_timing, subtitle_lines
 
 
@@ -187,3 +188,41 @@ def test_iterative_repair_repeated_run_has_stable_semantic_output():
     second_state = [(cue["start"], cue["end"], cue["text"]) for cue in second["segments"]]
     assert first_state == second_state
     assert audit["termination_reason"] == "stable-state"
+
+
+def test_validated_srt_and_ass_exports_match_canonical_cues(tmp_path: Path):
+    mapped = mapped_fixture()
+    srt, ass = tmp_path / "output.srt", tmp_path / "output.ass"
+    report = export_subtitles(mapped, srt, ass)
+    assert report["cue_count"] == len(mapped["segments"])
+    assert srt.read_text(encoding="utf-8").count(" --> ") == len(mapped["segments"])
+    ass_text = ass.read_text(encoding="utf-8")
+    assert ass_text.count("Dialogue: ") == len(mapped["segments"])
+    assert "Style: speaker-01" in ass_text
+    assert all(cue["translated_text"] in srt.read_text(encoding="utf-8") for cue in mapped["segments"])
+
+
+def test_ass_export_preserves_line_breaks_and_speaker_style():
+    mapped = mapped_fixture()
+    mapped["segments"][0]["translated_text"] = "Line one\nLine two"
+    content = ass_content(mapped)
+    assert "Line one\\NLine two" in content
+    assert ",speaker-01,speaker-01," in content
+
+
+def test_export_blocks_overlapping_or_empty_canonical_cues():
+    mapped = mapped_fixture()
+    mapped["segments"][1]["start"] = mapped["segments"][0]["end"] - 0.1
+    try:
+        srt_content(mapped)
+        assert False, "overlap should fail"
+    except ValueError as error:
+        assert "overlaps" in str(error)
+    mapped = mapped_fixture()
+    mapped["segments"][0]["translated_text"] = ""
+    mapped["segments"][0]["source_text"] = None
+    try:
+        srt_content(mapped)
+        assert False, "empty cue should fail"
+    except ValueError as error:
+        assert "no display text" in str(error)
