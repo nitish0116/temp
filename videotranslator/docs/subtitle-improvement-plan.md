@@ -1,17 +1,20 @@
-# Subtitle quality improvement plan
+# Subtitle translation and quality improvement plan
 
 ## Purpose
 
-This document preserves the findings from the first full subtitle run and the
-ordered plan for improving subtitle quality. Work should proceed one verified
-step at a time. Existing transcription, alignment, diarization, and translation
-artifacts should be reused whenever possible so that expensive stages are not
-repeated without evidence that they are the source of a failure.
+This is the authoritative, ordered plan for improving subtitle creation and
+translation. It combines the findings from the first complete episode run with
+the principles in `video_translator_subtitle_translation_architecture.docx`.
 
-The workflow must remain deterministic and suitable for headless execution. A
-failed quality gate must retain its best candidate and diagnostics; it must not
-silently promote a rejected subtitle or require a coding assistant to decide how
-to continue.
+The central architectural decision is that structured source-language timed text
+is the canonical hand-off between ASR, translation, subtitle export, TTS, and
+dubbing. SRT and ASS are exports, not internal source data. Work proceeds one
+verified step at a time and reuses existing artifacts unless metrics prove that
+an upstream stage must be rerun.
+
+The workflow must remain deterministic and headless. It may produce `final.srt`
+only after QA passes. Otherwise, it retains `rejected.srt`, reports, provenance,
+and a nonzero exit code without requiring coding-assistant intervention.
 
 ## Regression baseline
 
@@ -23,8 +26,7 @@ Baseline report:
 
 `outputs/duty-first-kiss-later-episode-1-subtitles/subtitle-pipeline-report.json`
 
-The automatic workflow rejected all three recovery profiles and selected attempt
-2, the balanced profile, as the strongest candidate.
+The pipeline rejected all three profiles and selected attempt 2, `balanced`.
 
 | Metric | Baseline | Required |
 | --- | ---: | ---: |
@@ -39,195 +41,280 @@ The automatic workflow rejected all three recovery profiles and selected attempt
 | Longest cue | 35.756 seconds | 12 seconds maximum |
 | Maximum reading speed | 73.17 characters/second | 20 maximum |
 
-The event coverage shows that transcription found almost all speech events. The
-main problems are subtitle timing reconstruction, readability, and preservation
-of the full source speech envelope. The first improvements therefore belong in
-repair and reconciliation, not in a more expensive full transcription.
+Almost every speech event was found. The immediate failures are timing,
+readability, source-time coverage, and a small diarized-turn deficit. Translation
+quality also has an architectural risk because the current implementation
+translates cues independently and drops useful metadata.
 
-## Target pipeline shape
+## Required representations
 
-The long-term processing order is:
+The pipeline must preserve three distinct representations:
 
-```text
-Speech detection
-  -> word-level transcription
-  -> speaker assignment
-  -> sentence reconstruction
-  -> translation
-  -> subtitle segmentation
-  -> timing optimization
-  -> independent QA
+1. **Raw ASR**: direct recognition output, confidence, model, language detection,
+   raw segments, and word timestamps.
+2. **Clean semantic transcript**: normalized source text grouped into complete
+   utterances or thoughts, independent of display cue boundaries.
+3. **Canonical timed text**: source timing, word timing, speaker identity,
+   semantic-group membership, source/target text, confidence, and provenance.
+
+A canonical segment requires stable IDs and should support at least:
+
+```json
+{
+  "id": "cue-0021",
+  "semantic_group_id": "group-0012",
+  "source_cue_ids": [21, 22],
+  "start": 75.2,
+  "end": 79.3,
+  "source_text": "Source-language utterance",
+  "translated_text": "Target-language utterance",
+  "speaker": "speaker_1",
+  "words": [],
+  "confidence": {},
+  "provenance": []
+}
 ```
 
-Whisper segments are evidence for speech and word timing; they should not be
-treated as final subtitle boundaries.
+Schema changes must be versioned. CLI and JSON consumers must either migrate
+together or retain a compatibility adapter.
 
-## Ordered implementation plan
+## Target pipeline
 
-### 1. Freeze the baseline
+```text
+Video/audio
+  -> speech detection
+  -> raw word-level ASR
+  -> forced alignment and recovery
+  -> speaker diarization and reconciliation
+  -> clean semantic transcript
+  -> canonical source-language timed text
+  -> context-aware, direct source-to-target translation
+  -> translated semantic groups
+  -> mapping into display subtitle cues
+  -> timing and readability optimization
+  -> independent QA and promotion gate
+  -> SRT/ASS export
+  -> optional TTS and dubbing from the same canonical data
+```
 
-- Retain the selected attempt, QA report, and pipeline report as regression data.
-- Add a compact fixture containing representative long, short, fast, and
-  unmatched cues rather than committing the complete copyrighted episode.
-- Record the baseline values above in automated tests or test metadata.
+ASR segments are timing evidence, not final subtitle boundaries. Subtitle cues
+are display units, not necessarily translation units.
 
-Exit condition: tests can demonstrate the existing failures before repair logic
-is changed.
+## Ordered implementation steps
 
-### 2. Add timing regression tests
+### 1. Freeze the regression baseline
 
-Add focused tests for:
+- Preserve the selected attempt and its reports.
+- Create a compact, non-copyrighted fixture representing long, short, fast,
+  overlapping, missing-coverage, multi-cue sentence, and speaker-turn cases.
+- Store baseline metrics in test metadata.
 
-- splitting a cue longer than 12 seconds;
-- merging or extending a cue shorter than 0.5 seconds;
-- reducing a cue above 20 characters per second;
-- preventing overlaps and negative durations;
-- preserving chronological order and text content;
-- preserving or improving source and diarization coverage;
-- terminating iterative repair even when no valid improvement exists.
+Exit: tests reproduce the known failures without models, network, or GPU.
 
-Exit condition: the new tests fail for the intended reasons and do not require
-models, network access, or a GPU.
+### 2. Define and version the canonical timed-text schema
 
-### 3. Split excessively long cues
+- Define raw-ASR, clean-transcript, semantic-group, canonical-cue, and translated
+  fields.
+- Require stable IDs, source mappings, word timing, speaker, confidence, and
+  provenance.
+- Add schema validation and compatibility adapters for existing JSON artifacts.
+- Keep credentials and machine-specific paths out of portable data.
 
-Implement deterministic splitting in `commands/repair_subtitles.py` using the
-best available boundary evidence in this order:
+Exit: representative old and new artifacts validate and round-trip without losing
+text, timing, speaker, or provenance.
 
-1. word timestamps and sufficiently large pauses;
-2. sentence-ending punctuation;
-3. clause punctuation;
-4. balanced word or character boundaries as a final fallback.
+### 3. Preserve metadata through every stage
 
-Every produced cue must remain within the parent cue's time envelope, retain all
-text in order, avoid overlap, and stay below the configured duration and line
-length limits.
+- Stop translation and repair from reducing a segment to only start/end/text.
+- Propagate IDs, source cue IDs, semantic group ID, speaker, words, confidence,
+  and provenance.
+- Define which stage owns each field and which fields are immutable.
 
-Exit condition: the 35.756-second baseline cue is divided into readable cues and
-no new timing violations are introduced.
+Exit: an automated lineage test traces every exported cue back to source words
+and a speaker or an explicit unknown-speaker value.
 
-### 4. Repair very short cues
+### 4. Build the clean semantic transcript
 
-For cues shorter than 0.5 seconds:
+- Normalize raw ASR without changing meaning.
+- Join sentence continuations split by ASR or subtitle boundaries.
+- Split genuine multi-sentence ASR spans.
+- Use punctuation, pauses, speaker changes, word timestamps, and language-aware
+  rules; never join across an incompatible speaker boundary.
+- Preserve the original raw text and mapping for audit.
 
-1. extend into adjacent silence when sufficient room exists;
-2. otherwise merge with a neighboring cue when speaker, gap, duration, reading
-   speed, and line-length constraints remain valid;
-3. prefer the neighbor from the same source segment and speaker;
-4. retain the cue and report an unresolved issue if neither operation is safe.
+Exit: semantic groups represent coherent utterances and retain complete mappings
+to raw ASR and canonical timing.
 
-Do not move a cue across another cue, consume known speech assigned elsewhere, or
-change dialogue order.
+### 5. Add contextual semantic-group translation
 
-Exit condition: all safely repairable short cues pass while irreparable cases
-remain explicitly reported.
+- Translate semantic groups rather than individual display cues.
+- Provide a bounded context window, initially three preceding and three following
+  groups, while requesting output only for the current group.
+- Preserve names, numbers, terminology, tone, and speaker context.
+- Translate directly from the detected source language to the target language
+  when the selected model supports the pair; do not require English as a pivot.
+- Cache translations by source text, language pair, model, prompt/configuration,
+  and context signature.
 
-### 5. Make reading-speed repair translation-aware
+Exit: multi-cue sentences translate as one thought, direct language pairs work,
+and repeated headless runs are deterministic or explicitly versioned.
 
-For translated text above the configured characters-per-second limit:
+### 6. Add translation-integrity QA and retry
 
-1. borrow unused silence before or after the cue;
-2. split the translation at grammatical boundaries and distribute the available
-   speech envelope;
-3. rebalance adjacent cues when their combined envelope permits it;
-4. optionally request constrained translation only when timing operations cannot
-   produce a readable result.
+- Check completeness, semantic similarity, names, numbers, repetitions,
+  hallucinations, punctuation, and source/target information density.
+- Retry a failed group with constrained instructions or an approved fallback
+  model.
+- If retry fails, re-segment the semantic group and translate its subgroups.
+- Never delete source meaning or lower thresholds merely to pass.
 
-Automatic text deletion or arbitrary QA-threshold relaxation is not permitted.
+Exit: every semantic group has a passing translation or a machine-readable
+rejection reason.
 
-Exit condition: repaired cues meet the reading-speed target without lost text,
-overlap, or timing drift.
+### 7. Map translated groups into display cues
 
-### 6. Preserve source speech envelopes
+- Treat the complete semantic group as the translation unit and its constituent
+  timing windows as subtitle-layout inputs.
+- Segment translated text at target-language grammatical boundaries.
+- Allocate text across source timing using word density, pauses, speaker turns,
+  available duration, line length, and reading speed.
+- Keep a reversible mapping from target cues to semantic and source groups.
 
-Improve missing-speech recovery so recovered text retains the complete supported
-speech region rather than shrinking timing to only high-confidence recognized
-words. Use VAD, aligned word timing, neighboring source events, and diarization
-turn boundaries as independent evidence.
+Exit: no translated sentence is arbitrarily broken by the old source cue count,
+and all translated text is mapped exactly once.
 
-Aggressive recovery should run only where VAD and/or diarization support speech.
-Low-confidence repetition, hallucination, music, and isolated noise must remain
-rejectable.
+### 8. Add comprehensive timing regression tests
 
-Exit condition: source time coverage reaches at least 95% without materially
-reducing event precision or producing overlapping cues.
+Cover long-cue splitting, short-cue extension/merge, reading speed, line length,
+overlap, invalid duration, chronological order, text preservation, source and
+diarization coverage, idempotence, and bounded convergence.
 
-### 7. Reconcile unmatched diarization turns
+Exit: tests fail for the intended reasons before each repair rule is implemented.
 
-Attach a small unmatched speaker turn to a nearby cue only when:
+### 9. Split excessively long cues
 
-- the temporal gap is below a configured bound;
-- no conflicting subtitle occupies the interval;
-- the speaker is compatible with the neighboring cue; and
-- independent speech evidence supports the turn.
+Split cues above 12 seconds using word pauses, sentence punctuation, clause
+punctuation, then balanced target-language boundaries. Retain all text and stay
+inside the semantic group's supported timing envelope.
 
-Exit condition: diarized turn coverage reaches at least 90% while diarized time
-coverage remains at or above 90%.
+Exit: the 35.756-second baseline cue is repaired without overlap or text loss.
 
-### 8. Add bounded iterative repair
+### 10. Repair very short cues
 
-Run the split, extend, merge, and reading-speed operations in a stable order.
-Repeat only while the objective quality score improves, with a small configured
-maximum number of passes. Record every mutation with the rule, cue identifiers,
-old timing, and new timing.
+- First extend into verified adjacent silence.
+- Otherwise merge with a compatible neighbor when speaker, semantic group, gap,
+  duration, line length, and reading speed remain valid.
+- Never consume another speaker's time or reorder dialogue.
+- Report objectively irreparable cues.
 
-Exit condition: repeated execution is idempotent, convergence is bounded, and
-the repair provenance explains every changed cue.
+Exit: every safely repairable sub-0.5-second cue passes.
 
-### 9. Reprocess existing artifacts
+### 11. Optimize reading speed and layout
 
-Run only repair and QA against the selected balanced attempt first. Do not rerun
-audio extraction, transcription, alignment, diarization, recovery, or translation
-unless the resulting metrics show that an upstream artifact prevents the target
-from being reached.
+- Borrow verified silence, split at target-language boundaries, and rebalance
+  adjacent cues within one semantic group.
+- Enforce duration, characters per second, maximum characters, maximum two lines,
+  and language-aware line breaking.
+- Request a meaning-preserving constrained translation only after timing and
+  segmentation cannot fit the text.
 
-Exit condition: a new report compares the candidate against the frozen baseline.
+Exit: no cue exceeds 20 characters per second or layout limits without a recorded
+irreparable reason.
 
-### 10. Escalate upstream only with evidence
+### 12. Preserve complete source speech envelopes
 
-If repair alone cannot meet coverage gates:
+Use VAD, aligned words, neighboring source events, and diarization turns so
+recovered cues cover supported speech rather than only recognized word interiors.
+Apply aggressive recovery only to independently supported speech. Reject likely
+music, noise, low-confidence repetition, and hallucination.
 
-- run the improved recovery/reconciliation stages using existing audio and
-  transcription;
-- rerun translation only for changed source cues;
-- rerun full transcription only if missing speech is confirmed in the canonical
-  transcript itself.
+Exit: source event coverage is at least 98% and source time coverage at least 95%
+without overlaps or material precision loss.
 
-Exit condition: every expensive rerun has a recorded metric-based reason.
+### 13. Reconcile unmatched diarization turns
 
-### 11. Finalize documentation and headless operation
+Attach a small unmatched turn only when the temporal gap is bounded, no cue
+conflicts, speaker continuity is compatible, and independent speech evidence
+supports it. Preserve unknown or overlapping speakers explicitly rather than
+inventing an identity.
 
-Document command examples, configuration values, QA thresholds, fallback order,
-artifact reuse, exit codes, and failure reports. Tests and execution must not
-depend on interactive input or coding-assistant intervention.
+Exit: diarized turn and time coverage are both at least 90%.
 
-Exit condition: a clean headless process can either produce `final.srt` or retain
-`rejected.srt` with enough diagnostics for the next scheduled run or a human
-reviewer.
+### 14. Add bounded iterative optimization and provenance
+
+Run segmentation, splitting, extension, merging, and speed/layout optimization in
+a stable order. Repeat only while an objective score improves, with a small pass
+limit. Record rule, cue IDs, old/new values, reason, and score effect.
+
+Exit: execution converges, is idempotent, and every mutation is explainable.
+
+### 15. Export SRT and ASS from canonical data
+
+- Generate SRT and optional ASS only after canonical target cues pass validation.
+- Keep export formatting out of translation and timing logic.
+- Preserve speaker/style metadata in ASS where supported.
+- Validate exported timestamps, ordering, encoding, and content against canonical
+  data.
+
+Exit: export/import comparison detects no lost text or timing changes within the
+format's precision.
+
+### 16. Use canonical timed text for TTS and dubbing
+
+Provide translated text, timing window, speaker, semantic group, and provenance
+to voice selection and synthesis. Maintain one persistent voice per speaker,
+enforce non-overlap, and use constrained regeneration rather than arbitrary speed
+changes when speech does not fit.
+
+Exit: subtitle and dubbing paths consume the same approved canonical artifact.
+
+### 17. Reprocess existing episode artifacts incrementally
+
+Migrate and reuse existing transcription, alignment, diarization, recovery, and
+translation artifacts. Run the cheapest changed stages first. Rerun translation
+for changed semantic groups only; rerun ASR only when canonical source evidence
+is demonstrably missing.
+
+Exit: the new report compares every metric with the frozen baseline and records
+the reason for each expensive rerun.
+
+### 18. Complete headless orchestration and documentation
+
+- Add every new stage, schema version, cache key, timeout, retry, and exit code to
+  the orchestrator and CLI documentation.
+- Preflight credentials, writable caches, model availability, disk space, GPU
+  compatibility, and resumable artifacts.
+- Record automatic fallbacks without secrets.
+- Retain rejected candidates and never promote them as final.
+
+Exit: a clean scheduled process can finish or fail safely with sufficient
+machine-readable diagnostics and no coding-assistant decision.
 
 ## Definition of done
 
-The improvement is complete when the representative regression fixture and the
-episode run satisfy all of the following without manually editing subtitles:
+The fixture suite and episode run must satisfy all applicable requirements:
 
-- no overlaps or invalid timestamps;
-- no cue shorter than 0.5 seconds unless marked objectively irreparable;
-- no cue longer than 12 seconds;
-- no cue above 20 characters per second;
-- source event coverage at least 98%;
-- source time coverage at least 95%;
-- diarized turn coverage at least 90%;
-- diarized time coverage at least 90%;
-- every fallback and repair appears in machine-readable provenance;
-- a rejected result is never named or promoted as `final.srt`.
+- source text is represented exactly once in clean semantic groups;
+- every target group maps to source group and cue IDs;
+- speakers, words, confidence, and provenance survive downstream stages;
+- contextual translation passes integrity QA;
+- no overlap or invalid timestamp exists;
+- no cue is shorter than 0.5 seconds unless objectively irreparable;
+- no cue exceeds 12 seconds, 20 characters per second, or layout limits;
+- source event coverage is at least 98%;
+- source time coverage is at least 95%;
+- diarized turn and time coverage are at least 90%;
+- SRT/ASS exports match approved canonical data;
+- every fallback and mutation is recorded;
+- rejection never produces or retains `final.srt`.
 
 ## Implementation discipline
 
 - Complete and verify one numbered step before beginning the next.
 - Prefer deterministic local transformations over another model invocation.
-- Do not weaken a QA threshold merely to make a run pass.
-- Preserve existing artifacts until their replacements have passed QA.
-- Keep credentials in environment variables; never write tokens into reports,
-  configuration, logs, tests, or source control.
+- Never translate display cues independently when they share a semantic group.
+- Never weaken QA merely to make a run pass.
+- Preserve prior artifacts until replacements pass QA.
+- Keep credentials in environment variables and out of source, logs, and reports.
 - Keep model/device fallbacks bounded and record the selected configuration.
 
