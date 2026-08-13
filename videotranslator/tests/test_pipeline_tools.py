@@ -47,6 +47,41 @@ from videotranslator.commands.finalize_subtitles import finalize
 from videotranslator.commands.repair_subtitles import repair, text_chunks
 
 
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_subtitle_improvement_baseline_is_frozen_and_reproducible():
+    """The synthetic fixture preserves the episode baseline and failure classes."""
+    fixture = json.loads(
+        (FIXTURES / "subtitle_quality_baseline.json").read_text(encoding="utf-8")
+    )
+    baseline = fixture["episode_baseline"]
+    assert baseline == {
+        "selected_attempt": 2,
+        "profile": "balanced",
+        "segment_count": 443,
+        "source_event_coverage": 0.9971896955503513,
+        "source_time_coverage": 0.9131696520063969,
+        "diarized_turn_coverage": 0.8960784313725491,
+        "diarized_time_coverage": 0.9129217575534889,
+        "short_duration_count": 19,
+        "fast_reading_speed_count": 25,
+        "long_duration_count": 1,
+        "longest_duration": 35.756,
+        "maximum_characters_per_second": 73.17,
+    }
+
+    report = analyze(
+        fixture["candidate"],
+        maximum_duration=12.0,
+        source_transcript=fixture["source_evidence"],
+        diarization_report=fixture["diarization_evidence"],
+    )
+    observed = set(report["issue_counts"])
+    assert set(fixture["expected_issue_types"]) <= observed
+    assert report["passed"] is False
+
+
 def test_split_words_uses_pause_and_duration_boundaries():
     """A one-second speech pause starts a new subtitle cue."""
     words = [
