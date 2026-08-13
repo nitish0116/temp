@@ -29,7 +29,7 @@ from videotranslator.commands.translate_constrained import available_windows, ch
 from videotranslator.commands.synthesize_constrained import active_sample_bounds, next_length_scale, permitted_duration, stable_segment_id
 from videotranslator.commands.align_active_speaker import bounded_onset_offset, dominant_track, intersection_over_union, timeline_safe_offset
 from videotranslator.commands.qa_dubbing_pipeline import dialogue_overlaps, evidence_coverage, maximum_native_tempo, speaker_reassignments
-from videotranslator.commands.recover_missing_speech import merge_intervals, merge_recovered, recover_uncovered_words, recovery_regions, subtract_intervals
+from videotranslator.commands.recover_missing_speech import merge_intervals, merge_recovered, preserve_speech_envelopes, recover_uncovered_words, recovery_regions, subtract_intervals
 from videotranslator.pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
 from videotranslator.commands.qa_transcript import analyze, malformed_text_reasons, required_line_count, source_speech_coverage
 from videotranslator.commands.segment_utterances import join_words, merge_fragments, segment_words
@@ -1373,6 +1373,24 @@ def test_strong_asr_words_missing_from_timeline_become_fallback_cues():
     assert len(recovered) == 1
     assert recovered[0]["text"] == "missing"
     assert recovered[0]["provenance"] == "retained-large-v3-word-coverage"
+
+
+def test_recovered_words_expand_to_independent_speech_envelope():
+    recovered = [{"start": 2.0, "end": 2.5, "text": "synthetic", "provenance": "decoder"}]
+    evidence = [{"start": 1.5, "end": 3.0, "speaker": "one"}]
+    canonical = [{"start": 0.0, "end": 1.0}, {"start": 3.5, "end": 4.0}]
+    result = preserve_speech_envelopes(recovered, evidence, canonical)
+    assert (result[0]["start"], result[0]["end"]) == (1.5, 3.0)
+    assert result[0]["speech_envelope"]["status"] == "expanded"
+    assert result[0]["provenance"][-1]["method"] == "independent-speech-envelope"
+
+
+def test_speech_envelope_never_crosses_canonical_neighbor():
+    recovered = [{"start": 2.0, "end": 2.5, "text": "synthetic"}]
+    evidence = [{"start": 0.5, "end": 4.0}]
+    canonical = [{"start": 0.0, "end": 1.8}, {"start": 2.8, "end": 4.0}]
+    result = preserve_speech_envelopes(recovered, evidence, canonical)
+    assert (result[0]["start"], result[0]["end"]) == (1.8, 2.8)
 
 
 def test_source_evidence_coverage_is_independent_of_generated_clips():

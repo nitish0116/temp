@@ -325,6 +325,43 @@ def recover_uncovered_words(
     return recovered
 
 
+def preserve_speech_envelopes(
+    recovered: list[dict], evidence: list[dict], canonical_segments: list[dict],
+    minimum_overlap: float = 0.03,
+) -> list[dict]:
+    """Expand recovered word interiors to independently supported speech bounds."""
+    output = json.loads(json.dumps(recovered))
+    canonical = [(float(item["start"]), float(item["end"])) for item in canonical_segments]
+    for cue in output:
+        start, end = float(cue["start"]), float(cue["end"])
+        supported = [
+            item for item in evidence
+            if max(0.0, min(end, float(item["end"])) - max(start, float(item["start"]))) >= minimum_overlap
+        ]
+        if not supported:
+            cue.setdefault("speech_envelope", {"status": "no-independent-evidence"})
+            continue
+        envelope_start = min(float(item["start"]) for item in supported)
+        envelope_end = max(float(item["end"]) for item in supported)
+        previous_end = max((right for left, right in canonical if right <= start), default=0.0)
+        next_start = min((left for left, right in canonical if left >= end), default=envelope_end)
+        expanded_start = max(previous_end, min(start, envelope_start))
+        expanded_end = min(next_start, max(end, envelope_end))
+        cue["start"], cue["end"] = round(expanded_start, 3), round(expanded_end, 3)
+        cue["speech_envelope"] = {
+            "status": "expanded",
+            "evidence_count": len(supported),
+            "word_start": start,
+            "word_end": end,
+        }
+        provenance = cue.get("provenance")
+        cue["provenance"] = [
+            *([{"stage": "legacy", "method": str(provenance)}] if provenance and not isinstance(provenance, list) else provenance or []),
+            {"stage": "speech-recovery", "method": "independent-speech-envelope", "evidence_count": len(supported)},
+        ]
+    return output
+
+
 def main() -> None:
     """Recover uncovered speech and write candidate, promoted transcript, and report."""
     parser = argparse.ArgumentParser(description=__doc__)
