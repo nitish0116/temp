@@ -122,6 +122,21 @@ strong-word fallback cues. No recovered text is accepted without decoder evidenc
 - The standalone CLI writes a validated `clean_transcript` artifact and requires
   no model, network, GPU, or interactive input.
 
+## `commands/translate_contextual.py`
+
+- `translation_request(...)` supplies the current semantic group with a bounded
+  window of preceding and following source dialogue; the default is three groups
+  on each side.
+- `translation_prompt(...)` directs an instruction-following model to translate
+  only the current group directly from source to target and use neighbors solely
+  for linguistic context.
+- `translate_contextual(...)` preserves canonical IDs, timing, source mappings,
+  speaker, words, confidence, metadata, and provenance while adding target text.
+- Cache keys include the protocol version, model, direct language pair, current
+  text, and complete context window, preventing reuse across incompatible runs.
+- The CLI requires an explicit instruction-following seq2seq model. It is fully
+  headless; identical completed requests can resume from the optional cache.
+
 ## `commands/diarize_pyannote.py`
 
 - `assign_turns(...)` maps exclusive diarization turns to transcript cues by

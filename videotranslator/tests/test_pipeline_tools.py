@@ -50,6 +50,12 @@ from videotranslator.commands.create_subtitles import (
     run_recovery_with_fallbacks,
 )
 from videotranslator.commands.translate_subtitles import write_srt as write_translated_srt
+from videotranslator.commands.translate_contextual import (
+    cache_key,
+    translate_contextual,
+    translation_prompt,
+    translation_request,
+)
 from videotranslator.commands.finalize_subtitles import finalize
 from videotranslator.commands.repair_subtitles import repair, split_cue, text_chunks
 
@@ -375,6 +381,116 @@ def test_clean_transcript_preserves_aligned_words_and_grouping_provenance():
     assert cue["source_cue_ids"] == ["raw-1"]
     assert cue["confidence"]["source_cues"]["raw-1"] == {"asr": 0.94}
     assert cue["provenance"][-1]["stage"] == "semantic-grouping"
+
+
+def _clean_context_fixture() -> dict:
+    """Return four isolated synthetic semantic groups for context tests."""
+    source = {
+        "language": "ja", "language_probability": 1.0,
+        "task": "transcribe", "output_language": "ja",
+        "segments": [
+            {"id": index, "start": index * 2.0, "end": index * 2.0 + 1.0,
+             "text": f"Synthetic sentence {index}.", "speaker": f"speaker-0{index % 2 + 1}"}
+            for index in range(1, 5)
+        ],
+    }
+    return build_clean_transcript(source)
+
+
+def test_context_request_contains_bounded_neighbors_and_direct_language_pair():
+    """The current group receives context without using an English pivot."""
+    clean = _clean_context_fixture()
+
+    request = translation_request(clean["segments"], 2, "ja", "hi", context_size=2)
+    prompt = translation_prompt(request)
+
+    assert request.current_text == "Synthetic sentence 3."
+    assert request.previous == ("Synthetic sentence 1.", "Synthetic sentence 2.")
+    assert request.following == ("Synthetic sentence 4.",)
+    assert "directly from ja to hi" in prompt
+    assert "Return only the translation of CURRENT" in prompt
+
+
+def test_contextual_translation_preserves_groups_and_records_configuration():
+    """Translated semantic groups retain source lineage and context provenance."""
+    clean = _clean_context_fixture()
+    requests = []
+
+    def fake_translate(request):
+        requests.append(request)
+        return f"target::{request.current_text}"
+
+    translated = translate_contextual(
+        clean, "hi", "fixture-model-v1", fake_translate, context_size=3
+    )
+
+    validate_canonical_timed_text(translated)
+    assert translated["stage"] == "translated"
+    assert translated["source_language"] == "ja"
+    assert translated["output_language"] == "hi"
+    assert len(requests) == len(clean["segments"])
+    for source, target in zip(clean["segments"], translated["segments"]):
+        assert target["id"] == source["id"]
+        assert target["semantic_group_id"] == source["semantic_group_id"]
+        assert target["source_cue_ids"] == source["source_cue_ids"]
+        assert target["source_text"] == source["source_text"]
+        assert target["speaker"] == source["speaker"]
+        assert target["translated_text"].startswith("target::")
+        assert target["provenance"][-1]["stage"] == "contextual-translation"
+    assert translated["metadata"]["contextual_translation"]["direct_language_pair"] == ["ja", "hi"]
+
+
+def test_contextual_translation_cache_avoids_repeat_model_calls(tmp_path: Path):
+    """Identical versioned requests resume headlessly from deterministic cache."""
+    clean = _clean_context_fixture()
+    calls = []
+
+    def fake_translate(request):
+        calls.append(request.group_id)
+        return f"translated {request.group_id}"
+
+    first = translate_contextual(
+        clean, "en", "fixture-model-v1", fake_translate,
+        cache_directory=tmp_path,
+    )
+    assert len(calls) == len(clean["segments"])
+    calls.clear()
+    second = translate_contextual(
+        clean, "en", "fixture-model-v1", fake_translate,
+        cache_directory=tmp_path,
+    )
+
+    assert calls == []
+    assert [item["translated_text"] for item in second["segments"]] == [
+        item["translated_text"] for item in first["segments"]
+    ]
+    assert second["metadata"]["contextual_translation"]["cache_hits"] == len(clean["segments"])
+
+
+def test_context_cache_key_changes_with_context_model_or_language():
+    """Cached output cannot leak across distinct linguistic configurations."""
+    clean = _clean_context_fixture()
+    request = translation_request(clean["segments"], 1, "ja", "en")
+    changed_language = translation_request(clean["segments"], 1, "ja", "es")
+    changed_context = translation_request(clean["segments"], 1, "ja", "en", context_size=0)
+
+    keys = {
+        cache_key(request, "model-a"),
+        cache_key(request, "model-b"),
+        cache_key(changed_language, "model-a"),
+        cache_key(changed_context, "model-a"),
+    }
+    assert len(keys) == 4
+
+
+def test_contextual_translation_rejects_wrong_stage_and_empty_output():
+    """Only clean groups with complete translations can be promoted."""
+    clean = _clean_context_fixture()
+    wrong_stage = {**clean, "stage": "canonical_source"}
+    with pytest.raises(ValueError, match="clean_transcript"):
+        translate_contextual(wrong_stage, "en", "model", lambda request: "target")
+    with pytest.raises(RuntimeError, match="empty text"):
+        translate_contextual(clean, "en", "model", lambda request: "  ")
 
 
 def test_split_words_uses_pause_and_duration_boundaries():
