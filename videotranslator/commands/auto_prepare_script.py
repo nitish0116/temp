@@ -223,6 +223,51 @@ def nllb_code(language: str, explicit_code: str | None) -> str:
     return NLLB_LANGUAGE_CODES[base]
 
 
+def translated_document(
+    source_transcript: dict,
+    translated: list[str],
+    target_language: str,
+    model_name: str,
+    source_code: str,
+    target_code: str,
+) -> dict:
+    """Attach translations without discarding canonical source lineage."""
+    try:
+        from .canonical_timed_text import append_provenance
+    except ImportError:
+        from canonical_timed_text import append_provenance
+    canonical_input = source_transcript.get("artifact_type") == "canonical_timed_text"
+    source_segments = source_transcript["segments"]
+    if len(translated) != len(source_segments) or any(not text.strip() for text in translated):
+        raise RuntimeError("Target-language translation returned incomplete segments")
+    result = {
+        **source_transcript,
+        "language": source_transcript.get("source_language") or source_transcript.get("language"),
+        "language_probability": source_transcript.get("language_probability"),
+        "task": "translate",
+        "output_language": target_language,
+        "segments": [
+            {
+                **source,
+                "source_text": source.get("source_text") or source.get("text"),
+                "translated_text": text.strip(),
+                **({} if canonical_input else {"text": text.strip()}),
+                "provenance": append_provenance(
+                    source, "translation", "direct-source-to-target",
+                    model=model_name, source_language=source_code,
+                    target_language=target_code,
+                ),
+            }
+            for source, text in zip(source_segments, translated)
+        ],
+    }
+    if canonical_input:
+        result.pop("language", None)
+        result.pop("task", None)
+        result["stage"] = "translated"
+    return result
+
+
 def translate_target(
     source_transcript: dict,
     target_language: str,
@@ -234,13 +279,18 @@ def translate_target(
     """Translate canonical source cues to any target while preserving boundaries."""
     from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-    source_language = source_transcript["language"]
+    source_language = source_transcript.get("source_language") or source_transcript["language"]
     source_code = nllb_code(source_language, source_model_language)
     target_code = nllb_code(target_language, target_model_language)
     tokenizer = AutoTokenizer.from_pretrained(model_name, src_lang=source_code)
     selected_device = resolve_device(device)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(selected_device)
-    texts = [segment["text"] for segment in source_transcript["segments"]]
+    texts = [
+        segment.get("source_text") or segment.get("text")
+        for segment in source_transcript["segments"]
+    ]
+    if any(not isinstance(text, str) or not text.strip() for text in texts):
+        raise ValueError("Every source segment requires nonempty source text")
     translated: list[str] = []
     target_token = tokenizer.convert_tokens_to_ids(target_code)
     for start in range(0, len(texts), 16):
@@ -257,18 +307,10 @@ def translate_target(
         )
         translated.extend(tokenizer.batch_decode(generated, skip_special_tokens=True))
     translated = [clean_translation_repetition(text) for text in translated]
-    if len(translated) != len(texts) or any(not text.strip() for text in translated):
-        raise RuntimeError("Target-language translation returned incomplete segments")
-    return {
-        "language": source_language,
-        "language_probability": source_transcript["language_probability"],
-        "task": "translate",
-        "output_language": target_language,
-        "segments": [
-            {"start": source["start"], "end": source["end"], "text": text.strip()}
-            for source, text in zip(source_transcript["segments"], translated)
-        ],
-    }
+    return translated_document(
+        source_transcript, translated, target_language, model_name,
+        source_code, target_code,
+    )
 
 
 def clean_translation_repetition(text: str, maximum_repeats: int = 2) -> str:

@@ -17,7 +17,7 @@ except ImportError:
 def write_srt(path: Path, segments: list[dict]) -> None:
     """Write translated cue dictionaries as UTF-8 SRT."""
     content = "\n\n".join(
-        f"{index}\n{srt_timestamp(item['start'])} --> {srt_timestamp(item['end'])}\n{item['text']}"
+        f"{index}\n{srt_timestamp(item['start'])} --> {srt_timestamp(item['end'])}\n{item.get('translated_text') or item.get('source_text') or item.get('text', '')}"
         for index, item in enumerate(segments, start=1)
     )
     path.write_text(content + "\n", encoding="utf-8")

@@ -9,8 +9,10 @@ import re
 from pathlib import Path
 
 try:
+    from .canonical_timed_text import append_provenance
     from .transcribe import srt_timestamp
 except ImportError:
+    from canonical_timed_text import append_provenance
     from transcribe import srt_timestamp
 
 
@@ -44,9 +46,14 @@ def text_chunks(text: str, maximum_characters: int = 84) -> list[str]:
 
 def split_cue(cue: dict, maximum_characters: int) -> list[dict]:
     """Partition one cue's time proportionally across readable text chunks."""
-    chunks = text_chunks(str(cue["text"]), maximum_characters)
+    text_field = "translated_text" if cue.get("translated_text") is not None else "source_text" if cue.get("source_text") is not None else "text"
+    chunks = text_chunks(str(cue[text_field]), maximum_characters)
     if len(chunks) == 1:
-        return [{**cue, "text": chunks[0]}]
+        return [{
+            **cue,
+            text_field: chunks[0],
+            "provenance": append_provenance(cue, "subtitle-repair", "text-normalization"),
+        }]
     start, end = float(cue["start"]), float(cue["end"])
     weights = [max(1, len(re.sub(r"\s+", "", chunk))) for chunk in chunks]
     total = sum(weights)
@@ -54,7 +61,20 @@ def split_cue(cue: dict, maximum_characters: int) -> list[dict]:
     output = []
     for index, (chunk, weight) in enumerate(zip(chunks, weights)):
         chunk_end = end if index == len(chunks) - 1 else cursor + (end - start) * weight / total
-        output.append({**cue, "start": round(cursor, 3), "end": round(chunk_end, 3), "text": chunk})
+        parent_id = str(cue.get("id") or f"cue-{round(start, 3)}")
+        metadata = {**cue.get("metadata", {}), "parent_cue_id": parent_id}
+        output.append({
+            **cue,
+            "id": f"{parent_id}.part-{index + 1:02d}",
+            **({"metadata": metadata} if "metadata" in cue else {"parent_cue_id": parent_id}),
+            "start": round(cursor, 3),
+            "end": round(chunk_end, 3),
+            text_field: chunk,
+            "provenance": append_provenance(
+                cue, "subtitle-repair", "split-display-cue",
+                parent_cue_id=parent_id, part=index + 1, part_count=len(chunks),
+            ),
+        })
         cursor = chunk_end
     return output
 
@@ -69,7 +89,8 @@ def repair(
     cues = [part for cue in transcript.get("segments", []) for part in split_cue(cue, maximum_characters)]
     cues.sort(key=lambda item: (float(item["start"]), float(item["end"])))
     for index, cue in enumerate(cues):
-        characters = len(re.sub(r"\s+", "", str(cue["text"])))
+        displayed = cue.get("translated_text") or cue.get("source_text") or cue.get("text", "")
+        characters = len(re.sub(r"\s+", "", str(displayed)))
         required = max(minimum_duration, characters / maximum_characters_per_second)
         previous_end = float(cues[index - 1]["end"]) if index else 0.0
         next_start = float(cues[index + 1]["start"]) if index + 1 < len(cues) else math.inf
@@ -78,13 +99,19 @@ def repair(
         if end - start < required:
             start = max(previous_end, end - required)
         cue["start"], cue["end"] = round(start, 3), round(end, 3)
+    if transcript.get("artifact_type") == "canonical_timed_text":
+        return {
+            **transcript,
+            "metadata": {**transcript.get("metadata", {}), "readability_repaired": True},
+            "segments": cues,
+        }
     return {**transcript, "segments": cues, "readability_repaired": True}
 
 
 def write_srt(path: Path, segments: list[dict]) -> None:
     """Write repaired cues as UTF-8 SRT."""
     content = "\n\n".join(
-        f"{index}\n{srt_timestamp(item['start'])} --> {srt_timestamp(item['end'])}\n{item['text']}"
+        f"{index}\n{srt_timestamp(item['start'])} --> {srt_timestamp(item['end'])}\n{item.get('translated_text') or item.get('source_text') or item.get('text', '')}"
         for index, item in enumerate(segments, 1)
     )
     path.write_text(content + "\n", encoding="utf-8")

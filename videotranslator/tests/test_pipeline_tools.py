@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from videotranslator.commands import qa_transcript
 
-from videotranslator.commands.auto_prepare_script import clean_translation_repetition, make_approval, nllb_code, passes_gate, passes_translation_gate, quality_metrics, split_words, translation_coverage
+from videotranslator.commands.auto_prepare_script import clean_translation_repetition, make_approval, nllb_code, passes_gate, passes_translation_gate, quality_metrics, split_words, translated_document, translation_coverage
 from videotranslator.commands.generate_dub import generate_dub, piper_models_dir, rate_to_length_scale
 from videotranslator.commands.diarize_speakers import assign_voices, voice_style
 from videotranslator.commands.assemble_dub import build_alignment_graph, tempo_filters
@@ -48,8 +48,9 @@ from videotranslator.commands.create_subtitles import (
     recovery_candidates,
     run_recovery_with_fallbacks,
 )
+from videotranslator.commands.translate_subtitles import write_srt as write_translated_srt
 from videotranslator.commands.finalize_subtitles import finalize
-from videotranslator.commands.repair_subtitles import repair, text_chunks
+from videotranslator.commands.repair_subtitles import repair, split_cue, text_chunks
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -170,6 +171,126 @@ def test_canonical_json_schema_is_versioned_and_closed():
     assert schema["properties"]["artifact_type"] == {"const": "canonical_timed_text"}
     assert schema["additionalProperties"] is False
     assert schema["properties"]["segments"]["items"]["additionalProperties"] is False
+
+
+def test_translation_preserves_complete_canonical_lineage():
+    """Translation enriches canonical cues instead of rebuilding lossy triples."""
+    canonical = adapt_legacy_transcript({
+        "language": "ja",
+        "language_probability": 0.99,
+        "task": "transcribe",
+        "output_language": "ja",
+        "segments": [{
+            "id": "source-1",
+            "semantic_group_id": "thought-1",
+            "source_cue_ids": [1, 2],
+            "start": 1.0,
+            "end": 3.0,
+            "text": "synthetic source",
+            "speaker": "speaker-01",
+            "words": [{"start": 1.0, "end": 1.5, "word": "synthetic"}],
+            "confidence": {"asr": 0.95},
+        }],
+    })
+
+    translated = translated_document(
+        canonical, ["Synthetic target."], "en", "test-model", "jpn_Jpan", "eng_Latn"
+    )
+
+    validate_canonical_timed_text(translated)
+    cue = translated["segments"][0]
+    assert cue["id"] == "source-1"
+    assert cue["semantic_group_id"] == "thought-1"
+    assert cue["source_cue_ids"] == [1, 2]
+    assert cue["source_text"] == "synthetic source"
+    assert cue["translated_text"] == "Synthetic target."
+    assert cue["speaker"] == "speaker-01"
+    assert cue["words"][0]["word"] == "synthetic"
+    assert cue["confidence"] == {"asr": 0.95}
+    assert cue["provenance"][-1]["stage"] == "translation"
+
+
+def test_repair_splits_receive_unique_ids_and_parent_lineage():
+    """One-to-many display repair retains ancestry without duplicate cue IDs."""
+    canonical = adapt_legacy_transcript({
+        "language": "en",
+        "language_probability": 1.0,
+        "task": "transcribe",
+        "output_language": "en",
+        "segments": [{
+            "id": "parent",
+            "semantic_group_id": "thought",
+            "source_cue_ids": [4],
+            "start": 0.0,
+            "end": 4.0,
+            "text": "One synthetic sentence. Another synthetic sentence.",
+            "speaker": "speaker-01",
+        }],
+    })
+
+    repaired = repair(canonical, maximum_characters=28)
+
+    validate_canonical_timed_text(repaired)
+    assert len(repaired["segments"]) == 2
+    assert [cue["id"] for cue in repaired["segments"]] == ["parent.part-01", "parent.part-02"]
+    assert all(cue["metadata"]["parent_cue_id"] == "parent" for cue in repaired["segments"])
+    assert all(cue["source_cue_ids"] == [4] for cue in repaired["segments"])
+    assert all(cue["speaker"] == "speaker-01" for cue in repaired["segments"])
+    assert all(cue["provenance"][-1]["method"] == "split-display-cue" for cue in repaired["segments"])
+
+
+def test_diarization_preserves_canonical_identity_and_records_assignment():
+    """Speaker assignment adds metadata and provenance without losing lineage."""
+    canonical = adapt_legacy_transcript({
+        "language": "en",
+        "language_probability": 1.0,
+        "task": "transcribe",
+        "output_language": "en",
+        "segments": [{
+            "id": "cue-1",
+            "semantic_group_id": "thought-1",
+            "source_cue_ids": [1],
+            "start": 0.0,
+            "end": 1.0,
+            "text": "Synthetic.",
+        }],
+    })
+
+    assigned, _ = assign_turns(
+        canonical["segments"], [{"start": 0.0, "end": 1.0, "speaker": "RAW_0"}]
+    )
+    canonical["segments"] = assigned
+
+    validate_canonical_timed_text(canonical)
+    cue = canonical["segments"][0]
+    assert cue["id"] == "cue-1"
+    assert cue["speaker"] == "speaker-01"
+    assert cue["metadata"]["speaker_assignment"]["source_label"] == "RAW_0"
+    assert cue["provenance"][-1]["stage"] == "speaker-diarization"
+
+
+def test_canonical_translation_exports_without_discarding_internal_metadata(tmp_path: Path):
+    """SRT serialization reads target text while canonical JSON retains lineage."""
+    canonical = adapt_legacy_transcript({
+        "language": "ja",
+        "language_probability": 1.0,
+        "task": "transcribe",
+        "output_language": "ja",
+        "segments": [{
+            "id": "source-1", "start": 0.0, "end": 1.0,
+            "text": "synthetic source", "speaker": "speaker-01",
+        }],
+    })
+    translated = translated_document(
+        canonical, ["Synthetic target."], "en", "test-model", "jpn_Jpan", "eng_Latn"
+    )
+    output = tmp_path / "translated.srt"
+
+    write_translated_srt(output, translated["segments"])
+
+    assert "Synthetic target." in output.read_text(encoding="utf-8")
+    assert translated["segments"][0]["source_text"] == "synthetic source"
+    assert translated["segments"][0]["speaker"] == "speaker-01"
 
 
 def test_split_words_uses_pause_and_duration_boundaries():

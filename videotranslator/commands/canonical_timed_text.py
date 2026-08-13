@@ -20,6 +20,25 @@ DOCUMENT_FIELDS = {
 }
 
 
+def provenance_entries(value: Any) -> list[dict[str, Any]]:
+    """Normalize old string provenance into the canonical event representation."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return deepcopy(value)
+    if isinstance(value, dict):
+        return [deepcopy(value)]
+    return [{"stage": "legacy", "method": str(value)}]
+
+
+def append_provenance(segment: dict[str, Any], stage: str, method: str, **details: Any) -> list[dict[str, Any]]:
+    """Return prior lineage plus one machine-readable stage event."""
+    return [
+        *provenance_entries(segment.get("provenance")),
+        {"stage": stage, "method": method, **details},
+    ]
+
+
 def validate_canonical_timed_text(document: dict[str, Any]) -> None:
     """Validate required types and invariants without a runtime dependency."""
     unexpected_document_fields = set(document) - DOCUMENT_FIELDS
@@ -93,10 +112,7 @@ def adapt_legacy_transcript(document: dict[str, Any]) -> dict[str, Any]:
     for index, legacy in enumerate(document["segments"], start=1):
         cue_id = legacy.get("id", index)
         legacy_extra = {key: deepcopy(value) for key, value in legacy.items() if key not in {"start", "end", "text", "words", "speaker", "provenance"}}
-        prior_provenance = legacy.get("provenance")
-        provenance = deepcopy(prior_provenance) if isinstance(prior_provenance, list) else []
-        if prior_provenance and not isinstance(prior_provenance, list):
-            provenance.append({"stage": "legacy", "method": str(prior_provenance)})
+        provenance = provenance_entries(legacy.get("provenance"))
         provenance.append({"stage": "schema-migration", "method": "legacy-transcript-adapter-v1"})
         segments.append({
             "id": f"cue-{int(cue_id):04d}" if isinstance(cue_id, int) else str(cue_id),

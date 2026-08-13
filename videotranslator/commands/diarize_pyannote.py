@@ -17,8 +17,10 @@ try:
 except ImportError:  # Direct script execution.
     from segment_utterances import join_words, segment_words
 try:
+    from .canonical_timed_text import append_provenance
     from .runtime_device import resolve_device
 except ImportError:
+    from canonical_timed_text import append_provenance
     from runtime_device import resolve_device
 
 
@@ -67,11 +69,12 @@ def assign_turns(segments: list[dict], turns: list[dict]) -> tuple[list[dict], d
                 )
             annotated.append({**word, "speaker": stable[selected["speaker"]]})
         for group in segment_words(annotated):
+            canonical = "source_text" in segment and "text" not in segment
             expanded.append({
                 **segment,
                 "start": round(float(group[0]["start"]), 3),
                 "end": round(float(group[-1]["end"]), 3),
-                "text": join_words(group),
+                **({"source_text": join_words(group)} if canonical else {"text": join_words(group)}),
                 "words": group,
                 "speaker": group[0]["speaker"],
             })
@@ -93,11 +96,20 @@ def assign_turns(segments: list[dict], turns: list[dict]) -> tuple[list[dict], d
             fallback_count += 1
         speaker = stable[selected["speaker"]]
         segment["speaker"] = speaker
-        segment["speaker_assignment"] = {
+        assignment = {
             "method": method,
             "overlap_seconds": round(overlap, 4),
             "source_label": selected["speaker"],
         }
+        if "metadata" in segment and "source_text" in segment:
+            segment["metadata"] = {**segment["metadata"], "speaker_assignment": assignment}
+        else:
+            segment["speaker_assignment"] = assignment
+        segment["provenance"] = append_provenance(
+            segment, "speaker-diarization", method,
+            speaker=speaker, source_label=selected["speaker"],
+            overlap_seconds=round(overlap, 4),
+        )
         speaker_counts[speaker] = speaker_counts.get(speaker, 0) + 1
     return updated, {
         "speaker_count": len(stable),
