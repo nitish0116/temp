@@ -10,7 +10,7 @@ from videotranslator.commands.build_clean_transcript import build_clean_transcri
 from videotranslator.commands.canonical_timed_text import validate_canonical_timed_text
 from videotranslator.commands.map_translation_cues import map_translated_groups
 from videotranslator.commands.qa_transcript import analyze
-from videotranslator.commands.translate_contextual import translate_contextual
+from videotranslator.commands.translate_contextual import FallbackContextTranslator, translate_contextual
 from videotranslator.commands.export_subtitles import ass_content, export_subtitles, srt_content
 from videotranslator.commands.reprocess_subtitles import metric_comparison, reprocess_existing, upstream_recommendations
 from videotranslator.commands.headless_preflight import PreflightError, preflight_reprocess
@@ -297,6 +297,7 @@ def test_main_subtitle_command_defaults_to_contextual_translation():
     args = parse_subtitle_args(["video.mp4"])
     assert args.translation_model == "google/flan-t5-base"
     assert args.translation_context_size == 3
+    assert args.translation_fallback_model == "facebook/nllb-200-distilled-600M"
     assert args.legacy_cue_translation is False
 
 
@@ -334,3 +335,15 @@ def test_raw_diarization_labels_map_to_stable_first_appearance_ids():
     ]})
     by_source = {item["source_label"]: item["speaker"] for item in turns}
     assert by_source == {"A": "speaker-01", "B": "speaker-02"}
+
+
+def test_empty_contextual_output_uses_direct_translation_fallback():
+    backend = FallbackContextTranslator(lambda request: "", lambda request: "fallback target")
+    clean = build_clean_transcript({
+        "language": "en", "task": "transcribe", "output_language": "en",
+        "segments": [{"start": 0.0, "end": 1.0, "text": "Synthetic.", "speaker": "one"}],
+    })
+    translated = translate_contextual(clean, "en", "primary", backend)
+    assert all(item["translated_text"] == "fallback target" for item in translated["segments"])
+    assert len(backend.events) == len(clean["segments"])
+    assert backend.events[0]["reason"] == "empty-primary-output"

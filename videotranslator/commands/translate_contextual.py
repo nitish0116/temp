@@ -189,6 +189,72 @@ class TransformersContextTranslator:
         return self.tokenizer.decode(generated[0], skip_special_tokens=True).strip()
 
 
+class NLLBFallbackTranslator:
+    """Reliable direct semantic-group translation when an instruction model fails."""
+
+    def __init__(self, model_name: str, device: str = "cpu") -> None:
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+        self.model_name = model_name
+        self.device = resolve_device(device)
+        self.AutoTokenizer = AutoTokenizer
+        self.model_class = AutoModelForSeq2SeqLM
+        self.tokenizer = None
+        self.model = None
+        self.source_code = None
+
+    def __call__(self, request: TranslationRequest) -> str:
+        try:
+            from .auto_prepare_script import nllb_code
+        except ImportError:
+            from auto_prepare_script import nllb_code
+
+        source_code = nllb_code(request.source_language, None)
+        target_code = nllb_code(request.target_language, None)
+        if self.model is None or self.source_code != source_code:
+            self.tokenizer = self.AutoTokenizer.from_pretrained(
+                self.model_name, src_lang=source_code
+            )
+            self.model = self.model_class.from_pretrained(self.model_name).to(self.device)
+            self.source_code = source_code
+        inputs = self.tokenizer(
+            request.current_text, return_tensors="pt", truncation=True, max_length=512
+        )
+        inputs = {key: value.to(self.device) for key, value in inputs.items()}
+        target_token = self.tokenizer.convert_tokens_to_ids(target_code)
+        generated = self.model.generate(
+            **inputs, forced_bos_token_id=target_token, max_new_tokens=256,
+            no_repeat_ngram_size=3, repetition_penalty=1.1,
+        )
+        return self.tokenizer.decode(generated[0], skip_special_tokens=True).strip()
+
+
+class FallbackContextTranslator:
+    """Use contextual translation first and record deterministic direct fallbacks."""
+
+    def __init__(self, primary: Callable[[TranslationRequest], str], fallback: Callable[[TranslationRequest], str]) -> None:
+        self.primary = primary
+        self.fallback = fallback
+        self.events: list[dict] = []
+
+    def __call__(self, request: TranslationRequest) -> str:
+        try:
+            result = self.primary(request).strip()
+        except Exception as error:
+            self.events.append({
+                "group_id": request.group_id, "reason": type(error).__name__,
+                "resolution": "direct-translation-fallback",
+            })
+            return self.fallback(request).strip()
+        if result:
+            return result
+        self.events.append({
+            "group_id": request.group_id, "reason": "empty-primary-output",
+            "resolution": "direct-translation-fallback",
+        })
+        return self.fallback(request).strip()
+
+
 def main() -> None:
     """Translate a clean transcript with a local instruction-following model."""
     parser = argparse.ArgumentParser(description=__doc__)

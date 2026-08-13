@@ -15,11 +15,11 @@ from pathlib import Path
 try:
     from .runtime_device import resolve_device
     from .run_canonical_subtitles import run_canonical_attempt
-    from .translate_contextual import TransformersContextTranslator
+    from .translate_contextual import FallbackContextTranslator, NLLBFallbackTranslator, TransformersContextTranslator
 except ImportError:
     from runtime_device import resolve_device
     from run_canonical_subtitles import run_canonical_attempt
-    from translate_contextual import TransformersContextTranslator
+    from translate_contextual import FallbackContextTranslator, NLLBFallbackTranslator, TransformersContextTranslator
 
 
 HERE = Path(__file__).resolve().parent
@@ -200,7 +200,10 @@ def create_subtitles(args: argparse.Namespace) -> dict:
     python = sys.executable
     contextual_backend = None
     if not args.legacy_cue_translation:
-        contextual_backend = TransformersContextTranslator(args.translation_model, args.device)
+        contextual_backend = FallbackContextTranslator(
+            TransformersContextTranslator(args.translation_model, args.device),
+            NLLBFallbackTranslator(args.translation_fallback_model, "cpu"),
+        )
 
     run_command([python, str(HERE / "extract_audio.py"), str(video), "-o", str(paths["audio"])], [paths["audio"]], force=args.force, env=env)
     transcribe = [python, str(HERE / "transcribe.py"), str(paths["audio"]), "--model", args.whisper_model, "--device", args.device, "-o", str(paths["transcription_dir"]), "--vad-threshold", "0.35", "--minimum-speech-ms", "100", "--minimum-silence-ms", "300", "--speech-padding-ms", "350", "--no-speech-threshold", "0.8"]
@@ -247,6 +250,7 @@ def create_subtitles(args: argparse.Namespace) -> dict:
                 minimum_diarized_turn_coverage=args.minimum_diarized_turn_coverage,
                 minimum_diarized_time_coverage=args.minimum_diarized_time_coverage,
             )
+            canonical_report["translation_fallbacks"] = list(contextual_backend.events)
             report = canonical_report["qa"]
             selected_srt = attempt / "canonical" / f"{canonical_report['status']}.srt"
             selected_json = attempt / "canonical" / "canonical-subtitles.json"
@@ -280,6 +284,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--whisper-model", default="large-v3")
     parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     parser.add_argument("--translation-model", default="google/flan-t5-base")
+    parser.add_argument("--translation-fallback-model", default="facebook/nllb-200-distilled-600M")
     parser.add_argument("--translation-context-size", type=int, default=3)
     parser.add_argument("--translation-retries", type=int, default=1)
     parser.add_argument(
