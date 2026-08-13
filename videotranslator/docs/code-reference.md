@@ -108,6 +108,20 @@ the stage fails clearly when no language model is configured.
 The recovery report distinguishes decoder attempts, promoted targeted cues, and
 strong-word fallback cues. No recovered text is accepted without decoder evidence.
 
+## `commands/build_clean_transcript.py`
+
+- `build_clean_transcript(...)` upgrades legacy transcripts to canonical timed
+  text and reconstructs coherent source-language semantic groups.
+- Aligned words are grouped using pauses, terminal punctuation, and speaker
+  changes; wordless legacy cues use deterministic sentence splitting with
+  proportional timing.
+- Incomplete neighboring fragments may join only within configured gap and
+  duration bounds and never across a speaker boundary.
+- Every group retains raw source text, source cue IDs, words, confidence, stable
+  identity, and machine-readable grouping provenance.
+- The standalone CLI writes a validated `clean_transcript` artifact and requires
+  no model, network, GPU, or interactive input.
+
 ## `commands/diarize_pyannote.py`
 
 - `assign_turns(...)` maps exclusive diarization turns to transcript cues by

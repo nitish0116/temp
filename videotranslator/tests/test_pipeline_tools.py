@@ -39,6 +39,7 @@ from videotranslator.commands.canonical_timed_text import (
     to_legacy_transcript,
     validate_canonical_timed_text,
 )
+from videotranslator.commands.build_clean_transcript import build_clean_transcript
 from videotranslator.install_dependencies import parse_compute_capability, select_profile
 from videotranslator.commands.create_subtitles import (
     artifact_paths as subtitle_artifact_paths,
@@ -291,6 +292,89 @@ def test_canonical_translation_exports_without_discarding_internal_metadata(tmp_
     assert "Synthetic target." in output.read_text(encoding="utf-8")
     assert translated["segments"][0]["source_text"] == "synthetic source"
     assert translated["segments"][0]["speaker"] == "speaker-01"
+
+
+def test_clean_transcript_joins_same_speaker_sentence_continuations():
+    """Display boundaries do not force incomplete thoughts into translation units."""
+    source = {
+        "language": "en", "language_probability": 1.0,
+        "task": "transcribe", "output_language": "en",
+        "segments": [
+            {"id": 1, "start": 0.0, "end": 1.0, "text": "This thought", "speaker": "speaker-01"},
+            {"id": 2, "start": 1.2, "end": 2.0, "text": "continues here.", "speaker": "speaker-01"},
+        ],
+    }
+
+    clean = build_clean_transcript(source)
+
+    validate_canonical_timed_text(clean)
+    assert clean["stage"] == "clean_transcript"
+    assert len(clean["segments"]) == 1
+    assert clean["segments"][0]["source_text"] == "This thought continues here."
+    assert clean["segments"][0]["source_cue_ids"] == [1, 2]
+    assert clean["segments"][0]["metadata"]["raw_source_texts"] == [
+        "This thought", "continues here.",
+    ]
+
+
+def test_clean_transcript_never_joins_different_speakers():
+    """A sentence continuation cannot cross an incompatible speaker boundary."""
+    source = {
+        "language": "en", "task": "transcribe", "output_language": "en",
+        "segments": [
+            {"id": 1, "start": 0.0, "end": 1.0, "text": "Incomplete", "speaker": "speaker-01"},
+            {"id": 2, "start": 1.1, "end": 2.0, "text": "Other speaker.", "speaker": "speaker-02"},
+        ],
+    }
+
+    clean = build_clean_transcript(source)
+
+    assert len(clean["segments"]) == 2
+    assert [item["speaker"] for item in clean["segments"]] == ["speaker-01", "speaker-02"]
+
+
+def test_clean_transcript_splits_multiple_sentences_inside_one_rough_cue():
+    """A broad ASR span is divided into genuine semantic translation units."""
+    source = {
+        "language": "en", "task": "transcribe", "output_language": "en",
+        "segments": [{
+            "id": 7, "start": 0.0, "end": 4.0,
+            "text": "First synthetic sentence. Second synthetic sentence.",
+            "speaker": "speaker-01",
+        }],
+    }
+
+    clean = build_clean_transcript(source)
+
+    assert [item["source_text"] for item in clean["segments"]] == [
+        "First synthetic sentence.", "Second synthetic sentence.",
+    ]
+    assert all(item["source_cue_ids"] == [7] for item in clean["segments"])
+    assert clean["segments"][0]["end"] == clean["segments"][1]["start"]
+
+
+def test_clean_transcript_preserves_aligned_words_and_grouping_provenance():
+    """Semantic reconstruction retains acoustic evidence for downstream timing."""
+    source = {
+        "language": "en", "language_probability": 0.97,
+        "task": "transcribe", "output_language": "en",
+        "segments": [{
+            "id": "raw-1", "start": 0.0, "end": 1.0, "text": "Aligned words.",
+            "speaker": "speaker-01", "confidence": {"asr": 0.94},
+            "words": [
+                {"start": 0.0, "end": 0.4, "word": "Aligned"},
+                {"start": 0.5, "end": 1.0, "word": "words."},
+            ],
+        }],
+    }
+
+    clean = build_clean_transcript(source)
+
+    cue = clean["segments"][0]
+    assert [word["word"] for word in cue["words"]] == ["Aligned", "words."]
+    assert cue["source_cue_ids"] == ["raw-1"]
+    assert cue["confidence"]["source_cues"]["raw-1"] == {"asr": 0.94}
+    assert cue["provenance"][-1]["stage"] == "semantic-grouping"
 
 
 def test_split_words_uses_pause_and_duration_boundaries():
