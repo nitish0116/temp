@@ -236,10 +236,13 @@ Use this command when the required output is a translated SRT rather than a full
 
 The command automatically extracts audio, detects the spoken language, transcribes
 with word timestamps, force-aligns supported languages, runs speaker diarization,
-retries uncovered speech with three increasingly permissive profiles, translates,
-repairs readability, and applies independent coverage QA. `final.srt` exists only on
-a passing run. Failed runs retain the best candidate as `rejected.srt` with a complete
-`subtitle-pipeline-report.json`; no user review decision is required.
+retries uncovered speech with three increasingly permissive profiles, constructs a
+clean semantic transcript, translates each semantic group with surrounding context,
+applies translation-integrity retry, maps target-language display cues, reconciles
+supported speaker turns, performs bounded timing repair, and applies independent QA.
+`final.srt` exists only on a passing run. Failed runs retain the best candidate as
+`rejected.srt` with a complete `subtitle-pipeline-report.json`; no user review
+decision is required.
 
 For unattended execution, export `HF_TOKEN` in the scheduler's environment. The
 workflow fails immediately with an actionable message if diarization needs the token
@@ -253,6 +256,10 @@ Useful options:
 - `-o outputs/my-video` selects the artifact directory.
 - `--source-language ja` overrides automatic source-language detection.
 - `--maximum-attempts 1|2|3` limits recovery cost.
+- `--translation-model google/flan-t5-base` selects the contextual instruction model.
+- `--translation-context-size 3` controls preceding/following semantic context.
+- `--translation-retries 1` bounds translation-integrity regeneration.
+- `--legacy-cue-translation` explicitly selects the former independent-cue route.
 - `--recovery-timeout-seconds 1800` limits each recovery model/device attempt.
 - `--offline` prevents model metadata network checks when weights are cached.
 - `--force` rebuilds all stages instead of resuming existing artifacts.

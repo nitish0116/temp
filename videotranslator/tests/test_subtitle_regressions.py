@@ -14,6 +14,8 @@ from videotranslator.commands.translate_contextual import translate_contextual
 from videotranslator.commands.export_subtitles import ass_content, export_subtitles, srt_content
 from videotranslator.commands.reprocess_subtitles import metric_comparison, reprocess_existing, upstream_recommendations
 from videotranslator.commands.headless_preflight import PreflightError, preflight_reprocess
+from videotranslator.commands.run_canonical_subtitles import run_canonical_attempt, stable_diarization_turns
+from videotranslator.commands.create_subtitles import parse_args as parse_subtitle_args
 from videotranslator.commands.repair_subtitles import iterative_repair, repair, repair_short_cues, redistribute_group_timing, subtitle_lines
 
 
@@ -289,3 +291,46 @@ def test_headless_preflight_rejects_missing_or_mismatched_artifacts(tmp_path: Pa
         preflight_reprocess(source, target, tmp_path / "output", minimum_free_bytes=1)
     with pytest.raises(PreflightError, match="not found"):
         preflight_reprocess(tmp_path / "missing.json", target, tmp_path / "output", minimum_free_bytes=1)
+
+
+def test_main_subtitle_command_defaults_to_contextual_translation():
+    args = parse_subtitle_args(["video.mp4"])
+    assert args.translation_model == "google/flan-t5-base"
+    assert args.translation_context_size == 3
+    assert args.legacy_cue_translation is False
+
+
+def test_canonical_attempt_runs_semantic_translation_through_validated_export(tmp_path: Path):
+    source = {
+        "language": "en", "language_probability": 1.0,
+        "task": "transcribe", "output_language": "en",
+        "segments": [{
+            "id": 1, "start": 0.0, "end": 2.0,
+            "text": "Synthetic source.",
+            "words": [{"start": 0.0, "end": 1.8, "word": "Synthetic source."}],
+        }],
+    }
+    diarization = {
+        "turns": [{"start": 0.0, "end": 2.0, "speaker": "RAW_A"}],
+    }
+    result = run_canonical_attempt(
+        source, source, diarization, "es", "fixture-model",
+        lambda request: "Destino sintetico.", tmp_path,
+    )
+    assert result["status"] == "passed"
+    assert result["translation_integrity"]["passed"]
+    assert (tmp_path / "clean-transcript.json").is_file()
+    assert (tmp_path / "contextual-translation.json").is_file()
+    assert (tmp_path / "passed.srt").is_file()
+    assert (tmp_path / "passed.ass").is_file()
+    assert result["qa"]["passed"]
+
+
+def test_raw_diarization_labels_map_to_stable_first_appearance_ids():
+    turns = stable_diarization_turns({"turns": [
+        {"start": 2.0, "end": 3.0, "speaker": "B"},
+        {"start": 0.0, "end": 1.0, "speaker": "A"},
+        {"start": 4.0, "end": 5.0, "speaker": "A"},
+    ]})
+    by_source = {item["source_label"]: item["speaker"] for item in turns}
+    assert by_source == {"A": "speaker-01", "B": "speaker-02"}

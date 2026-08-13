@@ -88,8 +88,10 @@ can access an NVIDIA GPU, otherwise every supported stage falls back to CPU.
 ## Run
 
 For fully automatic subtitle creation, use the single-command workflow. It detects
-the source language, uses CUDA when available, retries missing-speech recovery, and
-promotes an SRT only when every QA gate passes:
+the source language, uses CUDA when available, retries missing-speech recovery,
+builds semantic source groups, translates with surrounding context, validates
+translation integrity, remaps target-language display cues, and promotes an SRT
+only when every QA gate passes:
 
 ```powershell
 .\.venv\Scripts\python.exe -m videotranslator subtitles `
@@ -101,6 +103,12 @@ Successful runs create `final.srt`. A run that exhausts all recovery profiles cr
 `rejected.srt` and `subtitle-pipeline-report.json`, then exits with status 2. Resume is
 automatic; pass `--force` to rebuild existing stages. Use `--offline` when all model
 weights are already cached and internet access is unavailable.
+
+Contextual translation is the default and uses `google/flan-t5-base` unless
+`--translation-model` selects another local or Hugging Face instruction-following
+seq2seq model. `--translation-context-size` defaults to three groups on each side.
+The former independent NLLB cue route is available only through the explicit
+`--legacy-cue-translation` compatibility flag.
 
 The command is safe to run from a headless scheduler. It checks for the Hugging Face
 credential before expensive stages, replaces missing or unwritable model caches with

@@ -14,8 +14,12 @@ from pathlib import Path
 
 try:
     from .runtime_device import resolve_device
+    from .run_canonical_subtitles import run_canonical_attempt
+    from .translate_contextual import TransformersContextTranslator
 except ImportError:
     from runtime_device import resolve_device
+    from run_canonical_subtitles import run_canonical_attempt
+    from translate_contextual import TransformersContextTranslator
 
 
 HERE = Path(__file__).resolve().parent
@@ -194,6 +198,9 @@ def create_subtitles(args: argparse.Namespace) -> dict:
             "in the headless process environment after accepting the pyannote model terms."
         )
     python = sys.executable
+    contextual_backend = None
+    if not args.legacy_cue_translation:
+        contextual_backend = TransformersContextTranslator(args.translation_model, args.device)
 
     run_command([python, str(HERE / "extract_audio.py"), str(video), "-o", str(paths["audio"])], [paths["audio"]], force=args.force, env=env)
     transcribe = [python, str(HERE / "transcribe.py"), str(paths["audio"]), "--model", args.whisper_model, "--device", args.device, "-o", str(paths["transcription_dir"]), "--vad-threshold", "0.35", "--minimum-speech-ms", "100", "--minimum-silence-ms", "300", "--speech-padding-ms", "350", "--no-speech-threshold", "0.8"]
@@ -221,12 +228,30 @@ def create_subtitles(args: argparse.Namespace) -> dict:
             requested_model=args.whisper_model, requested_device=args.device,
             timeout=args.recovery_timeout_seconds, events=fallback_events,
         )
-        run_command([python, str(HERE / "translate_subtitles.py"), str(recovered), "--target-language", args.target_language, "--device", args.device, "--output-json", str(translated), "--output-srt", str(aligned_srt)], [translated, aligned_srt], force=args.force, env=env)
-        run_command([python, str(HERE / "repair_subtitles.py"), str(translated), "--output-json", str(repaired), "--output-srt", str(repaired_srt), "--minimum-duration", "0.52", "--maximum-characters", "64", "--maximum-characters-per-second", "19"], [repaired, repaired_srt], force=args.force, env=env)
-        qa = [python, str(HERE / "qa_transcript.py"), str(repaired), "-o", str(qa_path), "--source-transcript", str(paths["source"]), "--diarization-report", str(paths["diarization_report"]), "--minimum-diarized-turn-coverage", str(args.minimum_diarized_turn_coverage), "--minimum-diarized-time-coverage", str(args.minimum_diarized_time_coverage)]
-        completed = subprocess.run(qa, check=False, env=env)
-        report = json.loads(qa_path.read_text(encoding="utf-8"))
-        attempts.append({"number": index, "profile": profile["name"], "passed": report["passed"], "score": quality_score(report), "srt": str(repaired_srt), "qa": str(qa_path), "recovery_model": recovery_model, "recovery_device": recovery_device, "qa_report": report})
+        if args.legacy_cue_translation:
+            run_command([python, str(HERE / "translate_subtitles.py"), str(recovered), "--target-language", args.target_language, "--device", args.device, "--output-json", str(translated), "--output-srt", str(aligned_srt)], [translated, aligned_srt], force=args.force, env=env)
+            run_command([python, str(HERE / "repair_subtitles.py"), str(translated), "--output-json", str(repaired), "--output-srt", str(repaired_srt), "--minimum-duration", "0.52", "--maximum-characters", "64", "--maximum-characters-per-second", "19"], [repaired, repaired_srt], force=args.force, env=env)
+            qa = [python, str(HERE / "qa_transcript.py"), str(repaired), "-o", str(qa_path), "--source-transcript", str(paths["source"]), "--diarization-report", str(paths["diarization_report"]), "--minimum-diarized-turn-coverage", str(args.minimum_diarized_turn_coverage), "--minimum-diarized-time-coverage", str(args.minimum_diarized_time_coverage)]
+            completed = subprocess.run(qa, check=False, env=env)
+            report = json.loads(qa_path.read_text(encoding="utf-8"))
+            selected_srt, selected_json = repaired_srt, repaired
+            canonical_report = None
+        else:
+            canonical_report = run_canonical_attempt(
+                json.loads(recovered.read_text(encoding="utf-8")),
+                json.loads(paths["source"].read_text(encoding="utf-8")),
+                json.loads(paths["diarization_report"].read_text(encoding="utf-8")),
+                args.target_language, args.translation_model, contextual_backend,
+                attempt / "canonical", context_size=args.translation_context_size,
+                maximum_retries=args.translation_retries,
+                minimum_diarized_turn_coverage=args.minimum_diarized_turn_coverage,
+                minimum_diarized_time_coverage=args.minimum_diarized_time_coverage,
+            )
+            report = canonical_report["qa"]
+            selected_srt = attempt / "canonical" / f"{canonical_report['status']}.srt"
+            selected_json = attempt / "canonical" / "canonical-subtitles.json"
+            completed = subprocess.CompletedProcess([], 0 if canonical_report["status"] == "passed" else 2)
+        attempts.append({"number": index, "profile": profile["name"], "passed": completed.returncode == 0 and report["passed"], "score": quality_score(report), "srt": str(selected_srt), "json": str(selected_json), "qa": str(qa_path if args.legacy_cue_translation else attempt / 'canonical' / 'qa.json'), "recovery_model": recovery_model, "recovery_device": recovery_device, "canonical_pipeline": canonical_report, "qa_report": report})
         if completed.returncode == 0 and report["passed"]:
             break
 
@@ -235,7 +260,7 @@ def create_subtitles(args: argparse.Namespace) -> dict:
     selected = passed or best
     destination = paths["final"] if passed else paths["rejected"]
     shutil.copy2(selected["srt"], destination)
-    shutil.copy2(Path(selected["srt"]).with_name("subtitles.json"), paths["target_json"])
+    shutil.copy2(selected["json"], paths["target_json"])
     other = paths["rejected"] if passed else paths["final"]
     if other.exists():
         other.unlink()
@@ -254,6 +279,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--source-language")
     parser.add_argument("--whisper-model", default="large-v3")
     parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
+    parser.add_argument("--translation-model", default="google/flan-t5-base")
+    parser.add_argument("--translation-context-size", type=int, default=3)
+    parser.add_argument("--translation-retries", type=int, default=1)
+    parser.add_argument(
+        "--legacy-cue-translation", action="store_true",
+        help="Use the old independent NLLB cue translator instead of canonical contextual translation",
+    )
     parser.add_argument("--maximum-speakers", type=int)
     parser.add_argument("--maximum-attempts", type=int, choices=(1, 2, 3), default=3)
     parser.add_argument("--minimum-diarized-turn-coverage", type=float, default=0.90)
