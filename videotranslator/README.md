@@ -46,6 +46,17 @@ non-commercial project. Transformers is pinned below 5 for XTTS compatibility.
 The Windows environment uses matched PyTorch/TorchAudio CUDA 12.8 wheels; verify
 installation with `torch.cuda.is_available()` before a long media run.
 
+Piper voice models default to each run's `<output-dir>\models` directory. To reuse
+downloaded voices across projects, set `PIPER_MODELS_DIR` to a shared cache before
+starting the process, for example:
+
+```powershell
+$env:PIPER_MODELS_DIR = "D:\PythonCaches\piper\voices"
+```
+
+The environment override affects public Piper model files only; generated clips,
+manifests, and other run artifacts remain inside the selected output directory.
+
 Detailed operations and project state:
 
 - [Stage-by-stage CLI runbook](docs/cli.md)

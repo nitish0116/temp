@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import wave
@@ -73,6 +74,11 @@ def ensure_voice(voice_name: str, models_dir: Path) -> Path:
     if not model_path.is_file() or not config_path.is_file():
         download_voice(voice_name, models_dir)
     return model_path
+
+
+def piper_models_dir(output_dir: Path) -> Path:
+    """Return the shared Piper cache override or the run-local fallback."""
+    return Path(os.environ.get("PIPER_MODELS_DIR", str(output_dir / "models")))
 
 
 def rate_to_length_scale(rate: str) -> float:
@@ -150,8 +156,9 @@ def generate_dub(
     voice_names = sorted(
         {segment.get("voice") or default_voice for segment in approved_script["segments"]}
     )
+    models_dir = piper_models_dir(output_dir)
     piper_voices = {
-        voice_name: PiperVoice.load(ensure_voice(voice_name, output_dir / "models"))
+        voice_name: PiperVoice.load(ensure_voice(voice_name, models_dir))
         for voice_name in voice_names
     }
     synthesis_config = SynthesisConfig(length_scale=rate_to_length_scale(rate))

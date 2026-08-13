@@ -7,7 +7,7 @@ import pytest
 from videotranslator.commands import qa_transcript
 
 from videotranslator.commands.auto_prepare_script import clean_translation_repetition, make_approval, nllb_code, passes_gate, passes_translation_gate, quality_metrics, split_words, translation_coverage
-from videotranslator.commands.generate_dub import generate_dub, rate_to_length_scale
+from videotranslator.commands.generate_dub import generate_dub, piper_models_dir, rate_to_length_scale
 from videotranslator.commands.diarize_speakers import assign_voices, voice_style
 from videotranslator.commands.assemble_dub import build_alignment_graph, tempo_filters
 from videotranslator.commands.qa_final import stem_leakage
@@ -402,6 +402,22 @@ def test_tts_rejects_scripts_without_automatic_approval(tmp_path: Path):
 
     with pytest.raises(ValueError, match="automatically approved"):
         generate_dub(unapproved, tmp_path, "en", None, "+0%", 1)
+
+
+def test_piper_models_dir_uses_shared_environment_cache(tmp_path: Path, monkeypatch):
+    """A configured shared cache prevents duplicate voice downloads per run."""
+    shared_cache = tmp_path / "shared-piper-voices"
+    monkeypatch.setenv("PIPER_MODELS_DIR", str(shared_cache))
+
+    assert piper_models_dir(tmp_path / "run") == shared_cache
+
+
+def test_piper_models_dir_defaults_to_output_directory(tmp_path: Path, monkeypatch):
+    """Existing run-local cache behavior remains when no override is configured."""
+    monkeypatch.delenv("PIPER_MODELS_DIR", raising=False)
+    output_dir = tmp_path / "run"
+
+    assert piper_models_dir(output_dir) == output_dir / "models"
 
 
 def test_language_and_speech_rate_defaults_are_deterministic():

@@ -353,6 +353,8 @@ Generates voice clips locally; approved text is never sent to a TTS service.
 - `select_voice(...)` downloads only Piper's public voice index and chooses a stable
   medium-quality voice matching the target language.
 - `ensure_voice(...)` caches the selected public ONNX model.
+- `piper_models_dir(...)` uses `PIPER_MODELS_DIR` for a shared voice cache when
+  configured and otherwise preserves the run-local `<output-dir>/models` default.
 - `rate_to_length_scale(...)` translates percentage speed into Piper timing.
 - `generate_clip(...)` synthesizes and measures one WAV with retries.
 - `generate_dub(...)` enforces automatic approval, reuses cached clips, and returns
