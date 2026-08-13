@@ -265,7 +265,7 @@ class CausalContextTranslator:
 
 
 class NLLBFallbackTranslator:
-    """Reliable direct semantic-group translation when an instruction model fails."""
+    """GPU-first direct translation with automatic CUDA-memory recovery."""
 
     def __init__(self, model_name: str, device: str = "cpu") -> None:
         from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
@@ -277,21 +277,19 @@ class NLLBFallbackTranslator:
         self.tokenizer = None
         self.model = None
         self.source_code = None
+        self.runtime_events: list[dict] = []
 
-    def __call__(self, request: TranslationRequest) -> str:
-        try:
-            from .auto_prepare_script import nllb_code
-        except ImportError:
-            from auto_prepare_script import nllb_code
+    def _load(self, source_code: str) -> None:
+        import torch
 
-        source_code = nllb_code(request.source_language, None)
-        target_code = nllb_code(request.target_language, None)
-        if self.model is None or self.source_code != source_code:
-            self.tokenizer = self.AutoTokenizer.from_pretrained(
-                self.model_name, src_lang=source_code
-            )
-            self.model = self.model_class.from_pretrained(self.model_name).to(self.device)
-            self.source_code = source_code
+        self.tokenizer = self.AutoTokenizer.from_pretrained(
+            self.model_name, src_lang=source_code
+        )
+        kwargs = {"dtype": torch.float16} if self.device == "cuda" else {}
+        self.model = self.model_class.from_pretrained(self.model_name, **kwargs).to(self.device)
+        self.source_code = source_code
+
+    def _generate(self, request: TranslationRequest, target_code: str) -> str:
         inputs = self.tokenizer(
             request.current_text, return_tensors="pt", truncation=True, max_length=512
         )
@@ -302,6 +300,35 @@ class NLLBFallbackTranslator:
             no_repeat_ngram_size=3, repetition_penalty=1.1,
         )
         return self.tokenizer.decode(generated[0], skip_special_tokens=True).strip()
+
+    def __call__(self, request: TranslationRequest) -> str:
+        try:
+            from .auto_prepare_script import nllb_code
+        except ImportError:
+            from auto_prepare_script import nllb_code
+
+        source_code = nllb_code(request.source_language, None)
+        target_code = nllb_code(request.target_language, None)
+        try:
+            if self.model is None or self.source_code != source_code:
+                self._load(source_code)
+            return self._generate(request, target_code)
+        except RuntimeError as error:
+            if self.device != "cuda" or "out of memory" not in str(error).casefold():
+                raise
+            import torch
+
+            self.model = self.model.to("cpu") if self.model is not None else None
+            self.device = "cpu"
+            torch.cuda.empty_cache()
+            self.runtime_events.append({
+                "group_id": request.group_id,
+                "reason": "cuda-out-of-memory",
+                "resolution": "continue-nllb-on-cpu",
+            })
+            if self.model is None:
+                self._load(source_code)
+            return self._generate(request, target_code)
 
 
 class FallbackContextTranslator:

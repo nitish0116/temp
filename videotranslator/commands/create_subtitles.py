@@ -201,7 +201,7 @@ def create_subtitles(args: argparse.Namespace) -> dict:
         primary_class = CausalContextTranslator if args.translation_backend == "causal" else TransformersContextTranslator
         contextual_backend = FallbackContextTranslator(
             primary_class(args.translation_model, args.device),
-            NLLBFallbackTranslator(args.translation_fallback_model, "cpu"),
+            NLLBFallbackTranslator(args.translation_fallback_model, args.device),
         )
 
     run_command([python, str(HERE / "extract_audio.py"), str(video), "-o", str(paths["audio"])], [paths["audio"]], force=args.force, env=env)

@@ -345,6 +345,19 @@ def test_semantic_groups_preserve_complete_source_timing_envelope():
     assert clean["segments"][0]["end"] == clean["segments"][1]["start"]
 
 
+def test_overlapping_source_envelopes_cannot_collapse_semantic_groups():
+    source = {
+        "language": "ja", "task": "transcribe", "output_language": "ja",
+        "segments": [
+            {"id": 1, "start": 0.0, "end": 2.5, "text": "one", "words": [{"start": 0.5, "end": 1.0, "word": "one"}]},
+            {"id": 2, "start": 0.8, "end": 3.0, "text": "two", "words": [{"start": 1.5, "end": 2.0, "word": "two"}]},
+        ],
+    }
+    clean = build_clean_transcript(source, maximum_gap=0.1)
+    assert all(item["end"] > item["start"] for item in clean["segments"])
+    assert all(left["end"] <= right["start"] for left, right in zip(clean["segments"], clean["segments"][1:]))
+
+
 def test_raw_diarization_labels_map_to_stable_first_appearance_ids():
     turns = stable_diarization_turns({"turns": [
         {"start": 2.0, "end": 3.0, "speaker": "B"},

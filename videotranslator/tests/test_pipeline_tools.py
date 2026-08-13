@@ -69,6 +69,19 @@ from videotranslator.commands.map_translation_cues import (
     map_translated_groups,
     pause_boundaries,
 )
+
+
+def test_display_mapping_keeps_short_multi_chunk_cues_valid():
+    clean = build_clean_transcript({
+        "language": "en", "task": "transcribe", "output_language": "en",
+        "segments": [{"start": 0.0, "end": 0.184, "text": "short", "speaker": "one"}],
+    })
+    translated = translate_contextual(
+        clean, "en", "model", lambda request: "A" * 64 + " " + "B" * 64
+    )
+    mapped = map_translated_groups(translated, maximum_characters=64)
+    assert len(mapped["segments"]) == 2
+    assert all(item["end"] > item["start"] for item in mapped["segments"])
 from videotranslator.commands.finalize_subtitles import finalize
 from videotranslator.commands.repair_subtitles import repair, split_cue, text_chunks
 

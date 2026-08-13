@@ -34,13 +34,17 @@ def allocate_boundaries(
     cumulative = 0
     boundaries = []
     available = [point for point in acoustic if start < point < end]
-    for weight in weights[:-1]:
+    boundary_count = len(weights) - 1
+    for index, weight in enumerate(weights[:-1]):
         cumulative += weight
         ideal = start + (end - start) * cumulative / total
-        lower = boundaries[-1] + 0.05 if boundaries else start + 0.05
-        candidates = [point for point in available if lower < point < end - 0.05]
+        # Keep at least one output millisecond for every remaining cue. A fixed
+        # 50 ms margin can collapse short recovered groups after rounding.
+        lower = boundaries[-1] + 0.001 if boundaries else start + 0.001
+        upper = end - (boundary_count - index) * 0.001
+        candidates = [point for point in available if lower <= point <= upper]
         chosen = min(candidates, key=lambda point: abs(point - ideal)) if candidates else ideal
-        boundaries.append(round(max(lower, min(chosen, end - 0.05)), 3))
+        boundaries.append(round(max(lower, min(chosen, upper)), 3))
         available = [point for point in available if point > boundaries[-1]]
     return boundaries
 
