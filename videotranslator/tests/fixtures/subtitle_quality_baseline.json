@@ -1,0 +1,81 @@
+{
+  "fixture_version": 1,
+  "description": "Synthetic regression fixture derived from issue categories and aggregate metrics only; it contains no episode dialogue.",
+  "episode_baseline": {
+    "selected_attempt": 2,
+    "profile": "balanced",
+    "segment_count": 443,
+    "source_event_coverage": 0.9971896955503513,
+    "source_time_coverage": 0.9131696520063969,
+    "diarized_turn_coverage": 0.8960784313725491,
+    "diarized_time_coverage": 0.9129217575534889,
+    "short_duration_count": 19,
+    "fast_reading_speed_count": 25,
+    "long_duration_count": 1,
+    "longest_duration": 35.756,
+    "maximum_characters_per_second": 73.17
+  },
+  "candidate": {
+    "language": "source",
+    "output_language": "target",
+    "segments": [
+      {
+        "id": "synthetic-long",
+        "semantic_group_id": "thought-1",
+        "start": 0.0,
+        "end": 35.756,
+        "text": "A deliberately long synthetic subtitle cue."
+      },
+      {
+        "id": "synthetic-short-fast",
+        "semantic_group_id": "thought-2",
+        "start": 36.0,
+        "end": 36.082,
+        "text": "Rapid synthetic line."
+      },
+      {
+        "id": "synthetic-overlap",
+        "semantic_group_id": "thought-3",
+        "start": 36.05,
+        "end": 37.05,
+        "text": "Overlap example."
+      },
+      {
+        "id": "synthetic-continuation-a",
+        "semantic_group_id": "thought-4",
+        "start": 38.0,
+        "end": 39.0,
+        "text": "The first display cue"
+      },
+      {
+        "id": "synthetic-continuation-b",
+        "semantic_group_id": "thought-4",
+        "start": 39.0,
+        "end": 40.0,
+        "text": "continues the same thought."
+      }
+    ]
+  },
+  "source_evidence": {
+    "segments": [
+      {"start": 0.0, "end": 40.0, "text": "covered synthetic speech"},
+      {"start": 50.0, "end": 55.0, "text": "intentionally uncovered synthetic speech"}
+    ]
+  },
+  "diarization_evidence": {
+    "turns": [
+      {"start": 0.0, "end": 40.0, "speaker": "speaker_1"},
+      {"start": 60.0, "end": 70.0, "speaker": "speaker_2"}
+    ]
+  },
+  "expected_issue_types": [
+    "long_duration",
+    "short_duration",
+    "fast_reading_speed",
+    "overlap",
+    "missing_source_events",
+    "missing_source_time",
+    "missing_diarized_turns",
+    "missing_diarized_time"
+  ]
+}
