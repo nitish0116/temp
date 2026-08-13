@@ -76,6 +76,7 @@ Detailed operations and project state:
 - [Stage-by-stage CLI runbook](docs/cli.md)
 - [Implementation history and known limitations](docs/implementation-history.md)
 - [Future automatic quality approach](docs/future-approach.md)
+- [Subtitle quality improvement plan](docs/subtitle-improvement-plan.md)
 - [Architecture](docs/architecture.md)
 - [Code reference](docs/code-reference.md)
 
