@@ -9,6 +9,7 @@ from videotranslator.commands.canonical_timed_text import validate_canonical_tim
 from videotranslator.commands.map_translation_cues import map_translated_groups
 from videotranslator.commands.qa_transcript import analyze
 from videotranslator.commands.translate_contextual import translate_contextual
+from videotranslator.commands.repair_subtitles import repair
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "subtitle_quality_baseline.json"
@@ -86,3 +87,34 @@ def test_qa_contract_blocks_short_long_fast_and_overlapping_cues():
     ]}
     report = analyze(transcript, maximum_duration=12.0)
     assert {"long_duration", "overlap", "short_duration", "fast_reading_speed"} <= set(report["issue_counts"])
+
+
+def test_long_cue_is_split_with_hard_duration_and_text_conservation():
+    transcript = {"segments": [{
+        "id": "long", "start": 0.0, "end": 35.756,
+        "text": "First synthetic phrase. Second synthetic phrase. Third synthetic phrase.",
+        "words": [
+            {"start": 0.0, "end": 8.0, "word": "First"},
+            {"start": 10.0, "end": 20.0, "word": "Second"},
+            {"start": 23.0, "end": 35.756, "word": "Third"},
+        ],
+    }]}
+    repaired = repair(transcript, maximum_duration=12.0)
+    cues = repaired["segments"]
+    assert len(cues) >= 3
+    assert all(cue["end"] - cue["start"] <= 12.0 for cue in cues)
+    assert compact(" ".join(cue["text"] for cue in cues)) == compact(transcript["segments"][0]["text"])
+    assert len({cue["id"] for cue in cues}) == len(cues)
+
+
+def test_long_cue_split_prefers_a_safe_acoustic_pause():
+    transcript = {"segments": [{
+        "start": 0.0, "end": 20.0, "text": "First half. Second half.",
+        "words": [
+            {"start": 0.0, "end": 8.0, "word": "First"},
+            {"start": 12.0, "end": 20.0, "word": "Second"},
+        ],
+    }]}
+    cues = repair(transcript, maximum_duration=12.0)["segments"]
+    assert cues[0]["end"] == 10.0
+    assert cues[1]["start"] == 10.0
