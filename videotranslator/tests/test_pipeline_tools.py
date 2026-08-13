@@ -33,6 +33,7 @@ from videotranslator.pipeline import RUNNABLE_STAGES, load_config, paths, stage_
 from videotranslator.commands.qa_transcript import analyze, malformed_text_reasons, required_line_count, source_speech_coverage
 from videotranslator.commands.segment_utterances import join_words, merge_fragments, segment_words
 from videotranslator.commands import runtime_device
+from videotranslator.install_dependencies import parse_compute_capability, select_profile
 from videotranslator.commands.create_subtitles import artifact_paths as subtitle_artifact_paths, quality_score
 from videotranslator.commands.finalize_subtitles import finalize
 from videotranslator.commands.repair_subtitles import repair, text_chunks
@@ -57,6 +58,8 @@ def test_split_words_uses_pause_and_duration_boundaries():
 def test_compute_device_prefers_cuda_and_falls_back_to_cpu(monkeypatch):
     """Automatic compute uses an accessible GPU without requiring one."""
     monkeypatch.setattr(runtime_device.torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(runtime_device.torch.cuda, "get_device_capability", lambda: (8, 6))
+    monkeypatch.setattr(runtime_device.torch.cuda, "get_arch_list", lambda: ["sm_75", "sm_86"])
     assert runtime_device.resolve_device("auto") == "cuda"
     assert runtime_device.whisper_compute_type("cuda") == "float16"
     monkeypatch.setattr(runtime_device.torch.cuda, "is_available", lambda: False)
@@ -64,6 +67,31 @@ def test_compute_device_prefers_cuda_and_falls_back_to_cpu(monkeypatch):
     assert runtime_device.resolve_device("cpu") == "cpu"
     with pytest.raises(RuntimeError):
         runtime_device.resolve_device("cuda")
+
+
+def test_compute_device_rejects_an_unsupported_torch_architecture(monkeypatch):
+    """CUDA availability alone cannot select a wheel lacking the installed GPU."""
+    monkeypatch.setattr(runtime_device.torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(runtime_device.torch.cuda, "get_device_capability", lambda: (6, 1))
+    monkeypatch.setattr(runtime_device.torch.cuda, "get_arch_list", lambda: ["sm_75", "sm_86"])
+
+    assert runtime_device.resolve_device("auto") == "cpu"
+    with pytest.raises(RuntimeError, match="compute capability 6.1"):
+        runtime_device.resolve_device("cuda")
+
+
+def test_pascal_uses_supported_whisper_precision(monkeypatch):
+    """CTranslate2 uses its documented int8/float32 path on compute 6.1."""
+    monkeypatch.setattr(runtime_device.torch.cuda, "get_device_capability", lambda: (6, 1))
+    assert runtime_device.whisper_compute_type("cuda") == "int8_float32"
+
+
+def test_dependency_profile_selection_covers_pascal_modern_and_cpu_hosts():
+    """Hardware-aware installation selects one explicit PyTorch wheel family."""
+    assert parse_compute_capability("NVIDIA GeForce GTX 1050, 6.1\n") == (6, 1)
+    assert select_profile((6, 1)) == "cu126"
+    assert select_profile((7, 5)) == "cu128"
+    assert select_profile(None) == "cpu"
 
 
 def test_finalized_subtitles_cover_rough_speech_window_without_overlap():

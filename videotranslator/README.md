@@ -34,17 +34,31 @@ stops before TTS.
 
 ## Setup
 
-FFmpeg must be on `PATH`. From the repository root:
+FFmpeg must be on `PATH`. From the repository root, use the hardware-aware
+installer. It queries `nvidia-smi` without importing the currently installed
+Torch build and installs exactly one matching profile:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r videotranslator\requirements.txt
+.\.venv\Scripts\python.exe videotranslator\install_dependencies.py
 ```
+
+| Detected system | Profile | Torch wheels |
+|---|---|---|
+| No NVIDIA GPU | `cpu` | CPU |
+| Compute capability below 7.5, including GTX 1050 `6.1` | `cu126` | CUDA 12.6 |
+| Compute capability 7.5 or newer | `cu128` | CUDA 12.8 |
+
+Override detection with `--profile cpu`, `--profile cu126`, or `--profile
+cu128`. `requirements.txt` remains the direct-install default for this GTX 1050
+workstation and includes `requirements/torch-cu126.txt`; other systems should use
+the installer. Shared dependencies live in `requirements/common.txt`, making it
+straightforward to add another explicit Torch profile later.
 
 The unified requirements file includes diarization, vision, and expressive TTS.
 XTTS-v2 model weights use the Coqui Public Model License and are enabled for this
 non-commercial project. Transformers is pinned below 5 for XTTS compatibility.
-The Windows environment uses matched PyTorch/TorchAudio CUDA 12.8 wheels; verify
-installation with `torch.cuda.is_available()` before a long media run.
+Runtime selection checks both CUDA availability and whether the installed Torch
+wheel supports the detected GPU architecture before choosing CUDA.
 
 Piper voice models default to each run's `<output-dir>\models` directory. To reuse
 downloaded voices across projects, set `PIPER_MODELS_DIR` to a shared cache before

@@ -7,8 +7,13 @@ for a new project.
 ## 1. Installation
 
 ```powershell
-..\.venv\Scripts\python.exe -m pip install -r requirements.txt
+..\.venv\Scripts\python.exe install_dependencies.py
 ```
+
+The installer selects CPU, CUDA 12.6 for pre-Turing NVIDIA GPUs such as the GTX
+1050 (`sm_61`), or CUDA 12.8 for Turing and newer GPUs. Pass `--profile` to make
+the choice explicit. A direct `pip install -r requirements.txt` installs this
+workstation's CUDA 12.6 default.
 
 Install FFmpeg separately and ensure `ffmpeg` and `ffprobe` are on `PATH`.
 Pyannote also needs a Hugging Face **read** token and accepted access to
@@ -55,8 +60,9 @@ New-Item -ItemType Directory -Force $run | Out-Null
 `--device auto` prefers CUDA and falls back to CPU. Use `--device cpu` only to
 force CPU execution. An NVIDIA driver alone is insufficient: the environment
 must contain a CUDA-enabled PyTorch build for CUDA to be reported as available.
-The unified requirements pin the matched `2.11.0+cu128` Torch and TorchAudio
-wheels from PyTorch's CUDA 12.8 index.
+The selected profile pins matched Torch and TorchAudio 2.11 wheels. Runtime
+selection also checks the wheel's compiled architecture list, so an incompatible
+CUDA wheel falls back to CPU instead of failing after model loading.
 
 Outputs include `vocals.wav` and `accompaniment.wav`. Downstream speech stages
 use the vocal stem; final assembly uses the accompaniment.

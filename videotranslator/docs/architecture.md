@@ -20,7 +20,9 @@ videotranslator/
 |   `-- burn_subtitles.py, mux_subtitles.py
 |-- config/                     # example runtime configuration
 |-- docs/                       # architecture and API reference
-|-- requirements.txt            # unified pinned runtime dependencies
+|-- requirements.txt            # GTX 1050 direct-install dependency entry point
+|-- requirements/               # shared dependencies and explicit Torch profiles
+|-- install_dependencies.py     # hardware-aware profile installer
 |-- schemas/                    # JSON handoff contracts
 |-- tests/                      # deterministic unit tests
 |-- models/                     # ignored local model cache
@@ -53,8 +55,10 @@ automatically by retaining the safe prior artifact; there is no manual-review st
 
 ## Dependency boundaries
 
-`requirements.txt` is the single pinned environment definition. Comments group
-the core runtime, pyannote diarization, OpenCV vision, and XTTS-v2 expressive TTS.
+`requirements/common.txt` pins hardware-neutral dependencies. Separate CPU,
+CUDA 12.6, and CUDA 12.8 files pin matched Torch/TorchAudio wheels, while
+`install_dependencies.py` selects exactly one profile from NVIDIA compute
+capability. The root `requirements.txt` composes the GTX 1050 CUDA 12.6 default.
 XTTS-v2 model weights use the Coqui Public Model License and are appropriate here
 because this project is non-commercial. Transformers remains on the tested 4.x
 release because XTTS imports APIs removed in Transformers 5.x.

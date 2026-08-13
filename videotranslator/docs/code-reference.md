@@ -41,8 +41,16 @@ auto-detected unless explicitly configured.
 ## `commands/runtime_device.py`
 
 Centralizes `auto`, `cuda`, and `cpu` selection. `resolve_device("auto")` selects
-CUDA only when PyTorch can actually access it and otherwise returns CPU;
-`whisper_compute_type(...)` selects float16 on CUDA and int8 on CPU.
+CUDA only when PyTorch can access it and its compiled architecture list supports
+the installed GPU. Pascal Whisper uses CTranslate2's `int8_float32` path; newer
+CUDA devices use float16 and CPU uses int8.
+
+## `install_dependencies.py`
+
+Queries `nvidia-smi` for compute capability before importing Torch. It selects
+the CPU profile when no NVIDIA GPU is present, CUDA 12.6 below capability 7.5,
+and CUDA 12.8 for capability 7.5 or newer. `--profile` supports deterministic
+manual selection and `--dry-run` prints the exact pip commands.
 
 ## `commands/force_align.py`
 
