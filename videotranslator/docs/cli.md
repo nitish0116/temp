@@ -241,10 +241,18 @@ repairs readability, and applies independent coverage QA. `final.srt` exists onl
 a passing run. Failed runs retain the best candidate as `rejected.srt` with a complete
 `subtitle-pipeline-report.json`; no user review decision is required.
 
+For unattended execution, export `HF_TOKEN` in the scheduler's environment. The
+workflow fails immediately with an actionable message if diarization needs the token
+and none is available. Unwritable Hugging Face, Torch, and Matplotlib caches are
+replaced with directories below the output folder. Speech recovery automatically
+steps down through bounded model/device combinations after an error or timeout, and
+records those decisions under `automatic_fallbacks` in the pipeline report.
+
 Useful options:
 
 - `-o outputs/my-video` selects the artifact directory.
 - `--source-language ja` overrides automatic source-language detection.
 - `--maximum-attempts 1|2|3` limits recovery cost.
+- `--recovery-timeout-seconds 1800` limits each recovery model/device attempt.
 - `--offline` prevents model metadata network checks when weights are cached.
 - `--force` rebuilds all stages instead of resuming existing artifacts.

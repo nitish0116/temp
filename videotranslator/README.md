@@ -101,6 +101,14 @@ Successful runs create `final.srt`. A run that exhausts all recovery profiles cr
 automatic; pass `--force` to rebuild existing stages. Use `--offline` when all model
 weights are already cached and internet access is unavailable.
 
+The command is safe to run from a headless scheduler. It checks for the Hugging Face
+credential before expensive stages, replaces missing or unwritable model caches with
+run-local caches, and bounds each missing-speech recovery attempt to 30 minutes. A
+failed or oversized recovery configuration is retried with progressively smaller GPU
+models and finally a small CPU model. Every substitution is written to
+`automatic_fallbacks` in `subtitle-pipeline-report.json`. Set
+`--recovery-timeout-seconds` to tune the per-configuration limit.
+
 ```powershell
 .\.venv\Scripts\python.exe -m videotranslator `
   videotranslator\config\pipeline.example.json run --through review

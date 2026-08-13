@@ -1,6 +1,7 @@
 """Focused unit tests for deterministic video-translator pipeline helpers."""
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -34,7 +35,14 @@ from videotranslator.commands.qa_transcript import analyze, malformed_text_reaso
 from videotranslator.commands.segment_utterances import join_words, merge_fragments, segment_words
 from videotranslator.commands import runtime_device
 from videotranslator.install_dependencies import parse_compute_capability, select_profile
-from videotranslator.commands.create_subtitles import artifact_paths as subtitle_artifact_paths, quality_score
+from videotranslator.commands.create_subtitles import (
+    artifact_paths as subtitle_artifact_paths,
+    hugging_face_token_available,
+    prepare_runtime_environment,
+    quality_score,
+    recovery_candidates,
+    run_recovery_with_fallbacks,
+)
 from videotranslator.commands.finalize_subtitles import finalize
 from videotranslator.commands.repair_subtitles import repair, text_chunks
 
@@ -84,6 +92,64 @@ def test_pascal_uses_supported_whisper_precision(monkeypatch):
     """CTranslate2 uses its documented int8/float32 path on compute 6.1."""
     monkeypatch.setattr(runtime_device.torch.cuda, "get_device_capability", lambda: (6, 1))
     assert runtime_device.whisper_compute_type("cuda") == "int8_float32"
+
+
+def test_headless_runtime_replaces_unwritable_or_missing_caches(tmp_path: Path, monkeypatch):
+    """An unattended run always receives writable run-local model caches."""
+    blocked = tmp_path / "blocked"
+    monkeypatch.setattr(
+        "videotranslator.commands.create_subtitles._is_writable_directory",
+        lambda path: False,
+    )
+
+    env, events = prepare_runtime_environment(tmp_path / "output", {"HF_HOME": str(blocked)})
+
+    assert env["HF_HOME"] == str(tmp_path / "output" / "model-cache" / "huggingface")
+    assert Path(env["TORCH_HOME"]).is_dir()
+    assert {event["stage"] for event in events} == {"startup"}
+
+
+def test_headless_token_check_accepts_supported_environment_names():
+    """Schedulers can inject either standard Hugging Face token variable."""
+    assert hugging_face_token_available({"HF_TOKEN": "secret"})
+    legacy_env = {"HUGGING_FACE_HUB_TOKEN": "secret"}
+    assert hugging_face_token_available(legacy_env)
+    assert legacy_env["HF_TOKEN"] == "secret"
+
+
+def test_cpu_recovery_avoids_unbounded_large_model(monkeypatch):
+    """Large Whisper recovery is capped on CPU to prevent hour-long stalls."""
+    monkeypatch.setattr("videotranslator.commands.create_subtitles.resolve_device", lambda device: "cpu")
+
+    assert recovery_candidates("large-v3", "auto") == [("medium", "cpu"), ("small", "cpu")]
+
+
+def test_recovery_retries_a_smaller_model_after_failure(tmp_path: Path, monkeypatch):
+    """A failed large-model recovery resolves itself without operator action."""
+    output = tmp_path / "recovered.json"
+    report = tmp_path / "report.json"
+    calls = []
+
+    def fake_run(command, expected, **kwargs):
+        calls.append((command[command.index("--model") + 1], command[command.index("--device") + 1]))
+        if len(calls) == 1:
+            raise subprocess.CalledProcessError(1, command)
+        for path in expected:
+            path.write_text("{}", encoding="utf-8")
+
+    monkeypatch.setattr("videotranslator.commands.create_subtitles.resolve_device", lambda device: "cuda")
+    monkeypatch.setattr("videotranslator.commands.create_subtitles.run_command", fake_run)
+    events = []
+    command = ["python", "recover.py", "--model", "large-v3", "--device", "auto"]
+
+    selected = run_recovery_with_fallbacks(
+        command, [output, report], force=False, env={}, requested_model="large-v3",
+        requested_device="auto", timeout=30, events=events,
+    )
+
+    assert selected == ("medium", "cuda")
+    assert calls == [("large-v3", "cuda"), ("medium", "cuda")]
+    assert len(events) == 2
 
 
 def test_dependency_profile_selection_covers_pascal_modern_and_cpu_hosts():
