@@ -10,6 +10,7 @@ from videotranslator.commands.map_translation_cues import map_translated_groups
 from videotranslator.commands.qa_transcript import analyze
 from videotranslator.commands.translate_contextual import translate_contextual
 from videotranslator.commands.export_subtitles import ass_content, export_subtitles, srt_content
+from videotranslator.commands.reprocess_subtitles import metric_comparison, reprocess_existing, upstream_recommendations
 from videotranslator.commands.repair_subtitles import iterative_repair, repair, repair_short_cues, redistribute_group_timing, subtitle_lines
 
 
@@ -232,3 +233,31 @@ def test_independent_qa_accepts_canonical_translated_text_field():
     mapped = mapped_fixture("Short target. Another target.")
     report = analyze(mapped, maximum_duration=12.0)
     assert "empty_text" not in report["issue_counts"]
+
+
+def test_incremental_reprocessor_reuses_expensive_artifacts_and_promotes_pass(tmp_path: Path):
+    source = {"language": "en", "language_probability": 1.0, "task": "transcribe", "output_language": "en", "segments": [
+        {"start": 0.0, "end": 2.0, "text": "Synthetic source."},
+    ]}
+    target = {"language": "en", "task": "translate", "output_language": "es", "segments": [
+        {"start": 0.0, "end": 2.0, "text": "Destino sintetico."},
+    ]}
+    result = reprocess_existing(source, target, tmp_path)
+    assert result["status"] == "passed"
+    assert (tmp_path / "passed.srt").is_file()
+    assert not (tmp_path / "rejected.srt").exists()
+    assert "transcription" in result["reused_stages"]
+    assert result["executed_stages"] == ["canonical-migration", "display-mapping", "iterative-repair", "qa", "export"]
+
+
+def test_incremental_report_explains_cheapest_upstream_reruns():
+    qa = {"issue_counts": {"fast_reading_speed": 2, "missing_diarized_turns": 1}}
+    assert [item["stage"] for item in upstream_recommendations(qa)] == [
+        "contextual-translation-and-display-mapping", "diarization-reconciliation",
+    ]
+    comparison = metric_comparison(
+        {"segment_count": 10, "fast_reading_speed_count": 4},
+        {"segment_count": 11, "issue_counts": {"fast_reading_speed": 2}},
+    )
+    assert comparison["delta"]["segment_count"] == 1
+    assert comparison["delta"]["fast_reading_speed_count"] == -2
