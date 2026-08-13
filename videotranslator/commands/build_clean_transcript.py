@@ -114,6 +114,34 @@ def _merge_continuations(units: list[dict], maximum_gap: float, maximum_duration
     return groups
 
 
+def _restore_source_envelopes(clean_segments: list[dict], source_segments: list[dict]) -> None:
+    """Restore source-cue edges and divide internal pauses without creating overlaps."""
+    for source in source_segments:
+        source_ids = {str(value) for value in source.get("source_cue_ids", [])}
+        indexes = [
+            index for index, segment in enumerate(clean_segments)
+            if source_ids.intersection(str(value) for value in segment["source_cue_ids"])
+        ]
+        if not indexes:
+            continue
+        first, last = indexes[0], indexes[-1]
+        clean_segments[first]["start"] = min(clean_segments[first]["start"], float(source["start"]))
+        clean_segments[last]["end"] = max(clean_segments[last]["end"], float(source["end"]))
+        for left, right in zip(indexes, indexes[1:]):
+            if right != left + 1:
+                continue
+            boundary = (clean_segments[left]["end"] + clean_segments[right]["start"]) / 2
+            clean_segments[left]["end"] = boundary
+            clean_segments[right]["start"] = boundary
+    for left, right in zip(clean_segments, clean_segments[1:]):
+        if left["end"] > right["start"]:
+            boundary = (left["end"] + right["start"]) / 2
+            left["end"], right["start"] = boundary, boundary
+    for segment in clean_segments:
+        segment["start"] = round(segment["start"], 3)
+        segment["end"] = round(segment["end"], 3)
+
+
 def build_clean_transcript(
     document: dict,
     maximum_gap: float = 0.9,
@@ -170,6 +198,7 @@ def build_clean_transcript(
                 "raw_source_texts": [source.get("source_text") for source in source_segments],
             },
         })
+    _restore_source_envelopes(clean_segments, canonical["segments"])
     result = {
         **canonical,
         "stage": "clean_transcript",

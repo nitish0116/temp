@@ -77,9 +77,18 @@ def run_canonical_attempt(
     turns = stable_diarization_turns(diarization_report)
     source = {**recovered_source, "segments": assign_missing_speakers(recovered_source["segments"], turns)}
     clean = build_clean_transcript(source)
+    prior_integrity_path = output / "translation-integrity.json"
+    refresh_group_ids: set[str] = set()
+    if prior_integrity_path.is_file():
+        prior_integrity = json.loads(prior_integrity_path.read_text(encoding="utf-8"))
+        refresh_group_ids = {
+            str(item["semantic_group_id"])
+            for item in prior_integrity.get("results", []) if not item.get("passed", False)
+        }
     translated = translate_contextual(
         clean, target_language, model_name, translate_one,
         context_size=context_size, cache_directory=output / "translation-cache",
+        refresh_group_ids=refresh_group_ids,
     )
 
     def retry(text: str, context: dict) -> str:

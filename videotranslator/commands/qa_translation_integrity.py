@@ -29,10 +29,13 @@ def integrity_issues(
     source_numbers, target_numbers = NUMBER.findall(source), NUMBER.findall(target)
     if source_numbers != target_numbers:
         issues.append({"type": "number_mismatch", "source": source_numbers, "target": target_numbers})
-    ratio = len(re.sub(r"\s+", "", target)) / max(1, len(re.sub(r"\s+", "", source)))
+    source_length = len(re.sub(r"\s+", "", source))
+    ratio = len(re.sub(r"\s+", "", target)) / max(1, source_length)
+    # A single CJK glyph can legitimately expand into a multiword English subtitle.
+    effective_maximum = 30.0 if source_length <= 4 else 15.0 if source_length <= 8 else maximum_length_ratio
     if ratio < minimum_length_ratio:
         issues.append({"type": "translation_too_short", "ratio": round(ratio, 4)})
-    if ratio > maximum_length_ratio:
+    if ratio > effective_maximum:
         issues.append({"type": "translation_too_long", "ratio": round(ratio, 4)})
     if REPEATED_CLAUSE.search(target):
         issues.append({"type": "repeated_translation_clause"})

@@ -179,7 +179,7 @@ def analyze(
             characters = len(re.sub(r"\s+", "", text))
             speed = characters / duration
             reading_speeds.append(speed)
-            if speed > maximum_characters_per_second:
+            if speed > maximum_characters_per_second + 1e-6:
                 issues.append({"type": "fast_reading_speed", "segment": index, "characters_per_second": round(speed, 2)})
         if not text:
             issues.append({"type": "empty_text", "segment": index})

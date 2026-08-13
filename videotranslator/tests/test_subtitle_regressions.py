@@ -328,6 +328,23 @@ def test_canonical_attempt_runs_semantic_translation_through_validated_export(tm
     assert result["qa"]["passed"]
 
 
+def test_semantic_groups_preserve_complete_source_timing_envelope():
+    source = {
+        "language": "ja", "task": "transcribe", "output_language": "ja",
+        "segments": [{
+            "id": 1, "start": 0.0, "end": 4.0, "text": "one two",
+            "words": [
+                {"start": 0.5, "end": 1.0, "word": "one"},
+                {"start": 3.0, "end": 3.5, "word": "two"},
+            ],
+        }],
+    }
+    clean = build_clean_transcript(source, maximum_gap=0.1)
+    assert clean["segments"][0]["start"] == 0.0
+    assert clean["segments"][-1]["end"] == 4.0
+    assert clean["segments"][0]["end"] == clean["segments"][1]["start"]
+
+
 def test_raw_diarization_labels_map_to_stable_first_appearance_ids():
     turns = stable_diarization_turns({"turns": [
         {"start": 2.0, "end": 3.0, "speaker": "B"},

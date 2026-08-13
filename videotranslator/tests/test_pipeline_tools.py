@@ -54,6 +54,7 @@ from videotranslator.commands.create_subtitles import (
 from videotranslator.commands.translate_subtitles import write_srt as write_translated_srt
 from videotranslator.commands.translate_contextual import (
     cache_key,
+    normalize_translation_response,
     translate_contextual,
     translation_prompt,
     translation_request,
@@ -498,6 +499,23 @@ def test_contextual_translation_cache_avoids_repeat_model_calls(tmp_path: Path):
     assert second["metadata"]["contextual_translation"]["cache_hits"] == len(clean["segments"])
 
 
+def test_contextual_translation_selectively_refreshes_failed_groups(tmp_path: Path):
+    clean = _clean_context_fixture()
+    translate_contextual(clean, "en", "model", lambda request: "old", cache_directory=tmp_path)
+    calls = []
+    refreshed = translate_contextual(
+        clean, "en", "model", lambda request: calls.append(request.group_id) or "new",
+        cache_directory=tmp_path, refresh_group_ids={"semantic-0002"},
+    )
+    assert calls == ["semantic-0002"]
+    assert [item["translated_text"] for item in refreshed["segments"]] == ["old", "new", "old", "old"]
+
+
+def test_translation_response_normalizes_only_safe_wrappers():
+    assert normalize_translation_response('Translation: "Hello there."') == "Hello there."
+    assert normalize_translation_response("```text\nHello there.\n```") == "Hello there."
+
+
 def test_context_cache_key_changes_with_context_model_or_language():
     """Cached output cannot leak across distinct linguistic configurations."""
     clean = _clean_context_fixture()
@@ -528,6 +546,7 @@ def test_translation_integrity_detects_numbers_density_and_repetition():
     assert {item["type"] for item in integrity_issues("Order 12 items", "Order 13 items")} == {"number_mismatch"}
     assert integrity_issues("A sufficiently long source sentence", "x")[0]["type"] == "translation_too_short"
     assert integrity_issues("hello", "yes, yes, yes")[0]["type"] in {"translation_too_long", "repeated_translation_clause"}
+    assert integrity_issues("行け", "Go over there right now") == []
 
 
 def test_translation_integrity_retries_and_preserves_lineage():

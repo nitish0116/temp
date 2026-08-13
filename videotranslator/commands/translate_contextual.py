@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
@@ -18,6 +19,21 @@ except ImportError:
 
 
 CONTEXT_PROTOCOL_VERSION = 1
+WRAPPER_PREFIX = re.compile(
+    r"^\s*(?:translation|translated\s+(?:text|dialogue)|answer)\s*:\s*",
+    re.IGNORECASE,
+)
+
+
+def normalize_translation_response(text: str) -> str:
+    """Remove harmless presentation wrappers without rewriting translated content."""
+    cleaned = text.strip()
+    if cleaned.startswith("```") and cleaned.endswith("```"):
+        cleaned = re.sub(r"^```(?:\w+)?\s*|\s*```$", "", cleaned).strip()
+    cleaned = WRAPPER_PREFIX.sub("", cleaned).strip()
+    if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in {'"', "'", "“", "”"}:
+        cleaned = cleaned[1:-1].strip()
+    return cleaned
 
 
 @dataclass(frozen=True)
@@ -126,6 +142,7 @@ def translate_contextual(
     *,
     context_size: int = 3,
     cache_directory: Path | None = None,
+    refresh_group_ids: set[str] | None = None,
 ) -> dict:
     """Translate every semantic group while retaining canonical source evidence."""
     validate_canonical_timed_text(document)
@@ -141,10 +158,11 @@ def translate_contextual(
             segments, index, document["source_language"], target_language, context_size
         )
         key = cache_key(request, model)
-        translated_text = _read_cached(cache_directory, key)
+        refresh = request.group_id in (refresh_group_ids or set())
+        translated_text = None if refresh else _read_cached(cache_directory, key)
         cache_hit = translated_text is not None
         if not cache_hit:
-            translated_text = translate_one(request).strip()
+            translated_text = normalize_translation_response(translate_one(request))
             if not translated_text:
                 raise RuntimeError(f"Translation returned empty text for {request.group_id}")
             _write_cached(cache_directory, key, translated_text)
@@ -174,6 +192,7 @@ def translate_contextual(
                 "direct_language_pair": [document["source_language"], target_language],
                 "cache_hits": cache_hits,
                 "translated_group_count": len(translated_segments),
+                "refreshed_group_count": len(refresh_group_ids or set()),
             },
         },
         "segments": translated_segments,
@@ -295,13 +314,13 @@ class FallbackContextTranslator:
 
     def __call__(self, request: TranslationRequest) -> str:
         try:
-            result = self.primary(request).strip()
+            result = normalize_translation_response(self.primary(request))
         except Exception as error:
             self.events.append({
                 "group_id": request.group_id, "reason": type(error).__name__,
                 "resolution": "direct-translation-fallback",
             })
-            return self.fallback(request).strip()
+            return normalize_translation_response(self.fallback(request))
         if result and valid_translation_response(result, request):
             return result
         self.events.append({
@@ -309,7 +328,7 @@ class FallbackContextTranslator:
             "reason": "empty-primary-output" if not result else "invalid-primary-output-contract",
             "resolution": "direct-translation-fallback",
         })
-        return self.fallback(request).strip()
+        return normalize_translation_response(self.fallback(request))
 
 
 def main() -> None:
