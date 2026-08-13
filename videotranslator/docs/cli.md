@@ -256,7 +256,8 @@ Useful options:
 - `-o outputs/my-video` selects the artifact directory.
 - `--source-language ja` overrides automatic source-language detection.
 - `--maximum-attempts 1|2|3` limits recovery cost.
-- `--translation-model google/flan-t5-base` selects the contextual instruction model.
+- `--translation-model Qwen/Qwen2.5-0.5B-Instruct` selects the contextual instruction model.
+- `--translation-backend causal|seq2seq` selects the matching Transformers architecture.
 - `--translation-context-size 3` controls preceding/following semantic context.
 - `--translation-retries 1` bounds translation-integrity regeneration.
 - `--legacy-cue-translation` explicitly selects the former independent-cue route.

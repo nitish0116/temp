@@ -104,9 +104,10 @@ Successful runs create `final.srt`. A run that exhausts all recovery profiles cr
 automatic; pass `--force` to rebuild existing stages. Use `--offline` when all model
 weights are already cached and internet access is unavailable.
 
-Contextual translation is the default and uses `google/flan-t5-base` unless
-`--translation-model` selects another local or Hugging Face instruction-following
-seq2seq model. `--translation-context-size` defaults to three groups on each side.
+Contextual translation is the default and uses `Qwen/Qwen2.5-0.5B-Instruct`, a
+small multilingual causal instruction model, unless `--translation-model` selects
+another model. Set `--translation-backend seq2seq` for encoder-decoder instruction
+models. `--translation-context-size` defaults to three groups on each side.
 The former independent NLLB cue route is available only through the explicit
 `--legacy-cue-translation` compatibility flag.
 

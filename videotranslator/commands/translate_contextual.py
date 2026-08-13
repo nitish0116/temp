@@ -66,6 +66,23 @@ def translation_prompt(request: TranslationRequest) -> str:
     )
 
 
+def valid_translation_response(text: str, request: TranslationRequest) -> bool:
+    """Reject instruction leakage, context copying, and verbose model commentary."""
+    cleaned = text.strip()
+    if not cleaned or len(cleaned) > max(120, len(request.current_text) * 6):
+        return False
+    lowered = cleaned.casefold()
+    forbidden = (
+        "current:", "previous context", "following context", "translation:",
+        "here's the", "here is the", "this translation", "source text",
+    )
+    if any(marker in lowered for marker in forbidden):
+        return False
+    if any(context.strip() and context.strip() in cleaned for context in (*request.previous, *request.following)):
+        return False
+    return len([line for line in cleaned.splitlines() if line.strip()]) <= 2
+
+
 def cache_key(request: TranslationRequest, model: str) -> str:
     """Key translations by the complete versioned linguistic input."""
     payload = {
@@ -189,6 +206,45 @@ class TransformersContextTranslator:
         return self.tokenizer.decode(generated[0], skip_special_tokens=True).strip()
 
 
+class CausalContextTranslator:
+    """Chat-template backend for small multilingual causal instruction models."""
+
+    def __init__(self, model_name: str, device: str = "auto") -> None:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        self.model_name = model_name
+        self.device = resolve_device(device)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        dtype = torch.float16 if self.device == "cuda" else torch.float32
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_name, dtype=dtype,
+        ).to(self.device)
+
+    def __call__(self, request: TranslationRequest) -> str:
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a professional subtitle translator. Output only the translated current dialogue. Never explain, label, quote, or translate context.",
+            },
+            {"role": "user", "content": translation_prompt(request)},
+        ]
+        prompt = self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        inputs = self.tokenizer(
+            prompt, return_tensors="pt", truncation=True, max_length=2048
+        )
+        inputs = {key: value.to(self.device) for key, value in inputs.items()}
+        generated = self.model.generate(
+            **inputs, max_new_tokens=256, do_sample=False,
+            no_repeat_ngram_size=3, repetition_penalty=1.1,
+            pad_token_id=self.tokenizer.eos_token_id,
+        )
+        new_tokens = generated[0][inputs["input_ids"].shape[-1]:]
+        return self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+
+
 class NLLBFallbackTranslator:
     """Reliable direct semantic-group translation when an instruction model fails."""
 
@@ -246,10 +302,11 @@ class FallbackContextTranslator:
                 "resolution": "direct-translation-fallback",
             })
             return self.fallback(request).strip()
-        if result:
+        if result and valid_translation_response(result, request):
             return result
         self.events.append({
-            "group_id": request.group_id, "reason": "empty-primary-output",
+            "group_id": request.group_id,
+            "reason": "empty-primary-output" if not result else "invalid-primary-output-contract",
             "resolution": "direct-translation-fallback",
         })
         return self.fallback(request).strip()

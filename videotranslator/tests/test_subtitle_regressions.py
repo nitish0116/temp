@@ -10,7 +10,7 @@ from videotranslator.commands.build_clean_transcript import build_clean_transcri
 from videotranslator.commands.canonical_timed_text import validate_canonical_timed_text
 from videotranslator.commands.map_translation_cues import map_translated_groups
 from videotranslator.commands.qa_transcript import analyze
-from videotranslator.commands.translate_contextual import FallbackContextTranslator, translate_contextual
+from videotranslator.commands.translate_contextual import FallbackContextTranslator, translate_contextual, translation_request, valid_translation_response
 from videotranslator.commands.export_subtitles import ass_content, export_subtitles, srt_content
 from videotranslator.commands.reprocess_subtitles import metric_comparison, reprocess_existing, upstream_recommendations
 from videotranslator.commands.headless_preflight import PreflightError, preflight_reprocess
@@ -295,7 +295,8 @@ def test_headless_preflight_rejects_missing_or_mismatched_artifacts(tmp_path: Pa
 
 def test_main_subtitle_command_defaults_to_contextual_translation():
     args = parse_subtitle_args(["video.mp4"])
-    assert args.translation_model == "google/flan-t5-base"
+    assert args.translation_model == "Qwen/Qwen2.5-0.5B-Instruct"
+    assert args.translation_backend == "causal"
     assert args.translation_context_size == 3
     assert args.translation_fallback_model == "facebook/nllb-200-distilled-600M"
     assert args.legacy_cue_translation is False
@@ -347,3 +348,21 @@ def test_empty_contextual_output_uses_direct_translation_fallback():
     assert all(item["translated_text"] == "fallback target" for item in translated["segments"])
     assert len(backend.events) == len(clean["segments"])
     assert backend.events[0]["reason"] == "empty-primary-output"
+
+
+def test_verbose_or_context_leaking_translation_uses_fallback():
+    clean = build_clean_transcript({
+        "language": "ja", "task": "transcribe", "output_language": "ja",
+        "segments": [
+            {"start": 0.0, "end": 1.0, "text": "source one", "speaker": "one"},
+            {"start": 2.0, "end": 3.0, "text": "source two", "speaker": "one"},
+        ],
+    })
+    request = translation_request(clean["segments"], 0, "ja", "en")
+    assert not valid_translation_response("Here's the translation:\nTarget", request)
+    assert not valid_translation_response("Target source two", request)
+    backend = FallbackContextTranslator(
+        lambda item: "Here's the translation:\nTarget", lambda item: "Clean target"
+    )
+    assert backend(request) == "Clean target"
+    assert backend.events[0]["reason"] == "invalid-primary-output-contract"

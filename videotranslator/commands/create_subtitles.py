@@ -15,11 +15,11 @@ from pathlib import Path
 try:
     from .runtime_device import resolve_device
     from .run_canonical_subtitles import run_canonical_attempt
-    from .translate_contextual import FallbackContextTranslator, NLLBFallbackTranslator, TransformersContextTranslator
+    from .translate_contextual import CausalContextTranslator, FallbackContextTranslator, NLLBFallbackTranslator, TransformersContextTranslator
 except ImportError:
     from runtime_device import resolve_device
     from run_canonical_subtitles import run_canonical_attempt
-    from translate_contextual import FallbackContextTranslator, NLLBFallbackTranslator, TransformersContextTranslator
+    from translate_contextual import CausalContextTranslator, FallbackContextTranslator, NLLBFallbackTranslator, TransformersContextTranslator
 
 
 HERE = Path(__file__).resolve().parent
@@ -200,8 +200,9 @@ def create_subtitles(args: argparse.Namespace) -> dict:
     python = sys.executable
     contextual_backend = None
     if not args.legacy_cue_translation:
+        primary_class = CausalContextTranslator if args.translation_backend == "causal" else TransformersContextTranslator
         contextual_backend = FallbackContextTranslator(
-            TransformersContextTranslator(args.translation_model, args.device),
+            primary_class(args.translation_model, args.device),
             NLLBFallbackTranslator(args.translation_fallback_model, "cpu"),
         )
 
@@ -283,7 +284,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--source-language")
     parser.add_argument("--whisper-model", default="large-v3")
     parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
-    parser.add_argument("--translation-model", default="google/flan-t5-base")
+    parser.add_argument("--translation-model", default="Qwen/Qwen2.5-0.5B-Instruct")
+    parser.add_argument("--translation-backend", choices=("causal", "seq2seq"), default="causal")
     parser.add_argument("--translation-fallback-model", default="facebook/nllb-200-distilled-600M")
     parser.add_argument("--translation-context-size", type=int, default=3)
     parser.add_argument("--translation-retries", type=int, default=1)
