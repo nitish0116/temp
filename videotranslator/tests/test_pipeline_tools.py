@@ -61,6 +61,11 @@ from videotranslator.commands.qa_translation_integrity import (
     integrity_issues,
     semantic_pieces,
 )
+from videotranslator.commands.map_translation_cues import (
+    allocate_boundaries,
+    map_translated_groups,
+    pause_boundaries,
+)
 from videotranslator.commands.finalize_subtitles import finalize
 from videotranslator.commands.repair_subtitles import repair, split_cue, text_chunks
 
@@ -543,6 +548,53 @@ def test_translation_integrity_retains_rejection_after_bounded_failure():
     _, report = enforce_translation_integrity(translated, lambda source, context: "x")
     assert not report["passed"]
     assert report["failed_group_count"] == len(clean["segments"])
+
+
+def test_display_mapping_uses_source_pause_and_preserves_target_text_once():
+    clean = build_clean_transcript({
+        "language": "en", "task": "transcribe", "output_language": "en",
+        "segments": [{
+            "id": 1, "start": 0.0, "end": 2.5,
+            "text": "Synthetic source sentence.", "speaker": "speaker-01",
+            "words": [
+                {"start": 0.0, "end": 1.0, "word": "Synthetic"},
+                {"start": 1.5, "end": 2.5, "word": "source."},
+            ],
+        }],
+    })
+    translated = translate_contextual(
+        clean, "es", "model",
+        lambda request: "First translated sentence. Second translated sentence.",
+    )
+
+    mapped = map_translated_groups(translated, maximum_characters=30)
+
+    validate_canonical_timed_text(mapped)
+    assert len(mapped["segments"]) == 2
+    assert mapped["segments"][0]["end"] == 1.25
+    assert mapped["segments"][1]["start"] == 1.25
+    assert " ".join(cue["translated_text"] for cue in mapped["segments"]) == translated["segments"][0]["translated_text"]
+    assert {cue["semantic_group_id"] for cue in mapped["segments"]} == {"semantic-0001"}
+    assert [cue["id"] for cue in mapped["segments"]] == [
+        "semantic-0001.display-01", "semantic-0001.display-02",
+    ]
+    assert mapped["segments"][0]["source_text"] is not None
+    assert mapped["segments"][1]["source_text"] is None
+
+
+def test_display_boundary_allocation_falls_back_to_weighted_timing():
+    boundaries = allocate_boundaries(0.0, 10.0, ["short", "a much longer part"], [])
+    assert boundaries == [2.5]
+    assert pause_boundaries([
+        {"start": 0.0, "end": 1.0}, {"start": 1.05, "end": 2.0},
+    ]) == []
+
+
+def test_display_mapping_rejects_missing_translation():
+    clean = _clean_context_fixture()
+    invalid = {**clean, "stage": "translated"}
+    with pytest.raises(ValueError, match="has no translation"):
+        map_translated_groups(invalid)
 
 
 def test_split_words_uses_pause_and_duration_boundaries():
