@@ -14,6 +14,7 @@ try:
     from .map_translation_cues import map_translated_groups
     from .qa_transcript import analyze
     from .repair_subtitles import iterative_repair
+    from .headless_preflight import PreflightError, preflight_reprocess
 except ImportError:
     from auto_prepare_script import translated_document
     from canonical_timed_text import adapt_legacy_transcript
@@ -21,6 +22,7 @@ except ImportError:
     from map_translation_cues import map_translated_groups
     from qa_transcript import analyze
     from repair_subtitles import iterative_repair
+    from headless_preflight import PreflightError, preflight_reprocess
 
 
 def metric_snapshot(report: dict) -> dict:
@@ -143,13 +145,27 @@ def main() -> None:
     parser.add_argument("--diarization", type=Path)
     parser.add_argument("--baseline", type=Path)
     parser.add_argument("--maximum-passes", type=int, default=4)
+    parser.add_argument("--minimum-free-mb", type=int, default=100)
     args = parser.parse_args()
     load = lambda path: json.loads(path.read_text(encoding="utf-8"))
+    try:
+        preflight = preflight_reprocess(
+            args.source, args.translated, args.output,
+            diarization_path=args.diarization,
+            minimum_free_bytes=args.minimum_free_mb * 1024 * 1024,
+        )
+    except PreflightError as error:
+        print(json.dumps({"status": "preflight-failed", "error": str(error)}, indent=2))
+        raise SystemExit(3) from error
     result = reprocess_existing(
-        load(args.source), load(args.translated), args.output,
-        diarization=load(args.diarization) if args.diarization else None,
+        preflight["documents"]["source"], preflight["documents"]["translated"], args.output,
+        diarization=preflight["documents"].get("diarization"),
         baseline=load(args.baseline) if args.baseline else None,
         maximum_passes=args.maximum_passes,
+    )
+    result["preflight"] = {key: value for key, value in preflight.items() if key != "documents"}
+    (args.output / "incremental-report.json").write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     print(json.dumps({"status": result["status"], "comparison": result["comparison"], "upstream_recommendations": result["upstream_recommendations"]}, indent=2))
     if result["status"] != "passed":

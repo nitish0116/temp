@@ -4,6 +4,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 from videotranslator.commands.build_clean_transcript import build_clean_transcript
 from videotranslator.commands.canonical_timed_text import validate_canonical_timed_text
 from videotranslator.commands.map_translation_cues import map_translated_groups
@@ -11,6 +13,7 @@ from videotranslator.commands.qa_transcript import analyze
 from videotranslator.commands.translate_contextual import translate_contextual
 from videotranslator.commands.export_subtitles import ass_content, export_subtitles, srt_content
 from videotranslator.commands.reprocess_subtitles import metric_comparison, reprocess_existing, upstream_recommendations
+from videotranslator.commands.headless_preflight import PreflightError, preflight_reprocess
 from videotranslator.commands.repair_subtitles import iterative_repair, repair, repair_short_cues, redistribute_group_timing, subtitle_lines
 
 
@@ -261,3 +264,28 @@ def test_incremental_report_explains_cheapest_upstream_reruns():
     )
     assert comparison["delta"]["segment_count"] == 1
     assert comparison["delta"]["fast_reading_speed_count"] == -2
+
+
+def test_headless_preflight_validates_artifacts_output_and_resume(tmp_path: Path):
+    source = tmp_path / "source.json"
+    target = tmp_path / "target.json"
+    output = tmp_path / "output"
+    source.write_text(json.dumps({"segments": [{"text": "source"}]}), encoding="utf-8")
+    target.write_text(json.dumps({"segments": [{"text": "target"}]}), encoding="utf-8")
+    output.mkdir()
+    (output / "qa.json").write_text("{}", encoding="utf-8")
+    report = preflight_reprocess(source, target, output, minimum_free_bytes=1)
+    assert report["passed"]
+    assert report["checks"][-1]["found"] == ["qa.json"]
+    assert "documents" in report
+
+
+def test_headless_preflight_rejects_missing_or_mismatched_artifacts(tmp_path: Path):
+    source = tmp_path / "source.json"
+    target = tmp_path / "target.json"
+    source.write_text(json.dumps({"segments": [{}, {}]}), encoding="utf-8")
+    target.write_text(json.dumps({"segments": [{}]}), encoding="utf-8")
+    with pytest.raises(PreflightError, match="segment mismatch"):
+        preflight_reprocess(source, target, tmp_path / "output", minimum_free_bytes=1)
+    with pytest.raises(PreflightError, match="not found"):
+        preflight_reprocess(tmp_path / "missing.json", target, tmp_path / "output", minimum_free_bytes=1)

@@ -249,6 +249,12 @@ def main() -> None:
 
         subtitle_main(sys.argv[2:])
         return
+    if len(sys.argv) > 1 and sys.argv[1] == "reprocess-subtitles":
+        from .commands.reprocess_subtitles import main as reprocess_main
+
+        sys.argv = [sys.argv[0], *sys.argv[2:]]
+        reprocess_main()
+        return
     parser = argparse.ArgumentParser(description="Structured video translation pipeline")
     parser.add_argument("config", type=Path, help="Pipeline configuration JSON")
     subparsers = parser.add_subparsers(dest="command", required=True)

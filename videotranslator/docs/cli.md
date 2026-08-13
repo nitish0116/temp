@@ -256,3 +256,22 @@ Useful options:
 - `--recovery-timeout-seconds 1800` limits each recovery model/device attempt.
 - `--offline` prevents model metadata network checks when weights are cached.
 - `--force` rebuilds all stages instead of resuming existing artifacts.
+
+## 15. Headless incremental canonical reprocessing
+
+Use `reprocess-subtitles` when transcription, alignment, diarization, recovery,
+and translation already exist. It executes canonical migration, display mapping,
+bounded repair, independent QA, and validated SRT/ASS export only. The report
+records reused/executed stages, before/after metrics, resume artifacts, and the
+cheapest justified upstream rerun.
+
+Preflight checks validate readable JSON, equal source/target segment counts,
+writable output, at least 100 MB free space by default, and existing resumable
+artifacts. `--minimum-free-mb` changes the disk threshold.
+
+Exit codes:
+
+- `0`: all QA gates passed and `passed.srt`/`passed.ass` were created.
+- `1`: unexpected runtime failure.
+- `2`: QA rejected the result; `rejected.srt`/`rejected.ass` and reports remain.
+- `3`: preflight prerequisite failure; expensive processing did not start.

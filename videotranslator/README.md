@@ -110,6 +110,23 @@ models and finally a small CPU model. Every substitution is written to
 `automatic_fallbacks` in `subtitle-pipeline-report.json`. Set
 `--recovery-timeout-seconds` to tune the per-configuration limit.
 
+To reprocess existing source and translated artifacts through the canonical
+Step 15 path without rerunning ASR or models:
+
+```powershell
+..\.venv\Scripts\python.exe -m videotranslator reprocess-subtitles `
+  outputs/project/attempts/02-balanced/source.complete.json `
+  outputs/project/attempts/02-balanced/translated.json `
+  -o outputs/project/incremental `
+  --diarization outputs/project/diarization/report.json `
+  --baseline tests/fixtures/subtitle_quality_baseline.json
+```
+
+The headless command preflights readable JSON artifacts, matching segment counts,
+writable output, free disk space, and resumable outputs. Exit `0` means QA passed,
+`2` means a rejected subtitle and complete diagnostics were retained, and `3`
+means a prerequisite failed before processing. Runtime failures use exit `1`.
+
 ```powershell
 .\.venv\Scripts\python.exe -m videotranslator `
   videotranslator\config\pipeline.example.json run --through review
