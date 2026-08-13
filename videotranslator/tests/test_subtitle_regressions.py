@@ -9,7 +9,7 @@ from videotranslator.commands.canonical_timed_text import validate_canonical_tim
 from videotranslator.commands.map_translation_cues import map_translated_groups
 from videotranslator.commands.qa_transcript import analyze
 from videotranslator.commands.translate_contextual import translate_contextual
-from videotranslator.commands.repair_subtitles import repair
+from videotranslator.commands.repair_subtitles import repair, repair_short_cues
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "subtitle_quality_baseline.json"
@@ -118,3 +118,34 @@ def test_long_cue_split_prefers_a_safe_acoustic_pause():
     cues = repair(transcript, maximum_duration=12.0)["segments"]
     assert cues[0]["end"] == 10.0
     assert cues[1]["start"] == 10.0
+
+
+def test_short_cue_extends_only_into_available_silence():
+    cues = repair_short_cues(
+        [
+            {"start": 0.0, "end": 1.0, "text": "First."},
+            {"start": 1.2, "end": 1.3, "text": "Hi."},
+            {"start": 1.7, "end": 2.5, "text": "Third."},
+        ],
+        0.5, 12.0, 84, 20.0,
+    )
+    assert cues[1]["start"] >= cues[0]["end"]
+    assert cues[1]["end"] <= cues[2]["start"]
+    assert round(cues[1]["end"] - cues[1]["start"], 3) == 0.5
+    assert cues[1]["provenance"][-1]["method"] == "extend-short-cue-into-silence"
+
+
+def test_short_cue_merges_only_with_same_speaker_and_semantic_group():
+    base = [
+        {"id": "a", "semantic_group_id": "g", "source_cue_ids": [1], "speaker": "one", "start": 0.0, "end": 0.2, "text": "Hi"},
+        {"id": "b", "semantic_group_id": "g", "source_cue_ids": [2], "speaker": "one", "start": 0.2, "end": 1.2, "text": "there."},
+    ]
+    merged = repair_short_cues(base, 0.5, 12.0, 84, 20.0)
+    assert len(merged) == 1
+    assert merged[0]["text"] == "Hi there."
+    assert merged[0]["source_cue_ids"] == [1, 2]
+    assert merged[0]["provenance"][-1]["method"] == "merge-short-compatible-cues"
+
+    incompatible = [dict(base[0]), {**base[1], "speaker": "two"}]
+    retained = repair_short_cues(incompatible, 0.5, 12.0, 84, 20.0)
+    assert len(retained) == 2

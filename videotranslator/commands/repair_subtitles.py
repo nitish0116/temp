@@ -84,6 +84,109 @@ def _bounded_timing_points(cue: dict, count: int, maximum_duration: float) -> li
     return [*points, end]
 
 
+def _display_field(cue: dict) -> str:
+    return "translated_text" if cue.get("translated_text") is not None else "source_text" if cue.get("source_text") is not None else "text"
+
+
+def _merge_compatible(
+    left: dict, right: dict, maximum_gap: float, maximum_duration: float,
+    maximum_characters: int, maximum_characters_per_second: float,
+) -> bool:
+    gap = float(right["start"]) - float(left["end"])
+    field = _display_field(left)
+    if _display_field(right) != field:
+        return False
+    text = f"{left[field].strip()} {right[field].strip()}".strip()
+    duration = float(right["end"]) - float(left["start"])
+    same_speaker = left.get("speaker", "unknown") == right.get("speaker", "unknown")
+    left_group, right_group = left.get("semantic_group_id"), right.get("semantic_group_id")
+    same_group = not left_group or not right_group or left_group == right_group
+    return (
+        same_speaker and same_group and 0 <= gap <= maximum_gap
+        and 0 < duration <= maximum_duration and len(text) <= maximum_characters
+        and len(re.sub(r"\s+", "", text)) / duration <= maximum_characters_per_second
+    )
+
+
+def _merged_cue(left: dict, right: dict) -> dict:
+    """Merge compatible neighbors while retaining both source mappings."""
+    field = _display_field(left)
+    source_ids = []
+    for source_id in [*left.get("source_cue_ids", []), *right.get("source_cue_ids", [])]:
+        if source_id not in source_ids:
+            source_ids.append(source_id)
+    left_id, right_id = str(left.get("id", "left")), str(right.get("id", "right"))
+    metadata = {
+        **left.get("metadata", {}),
+        "merged_cue_ids": [left_id, right_id],
+    }
+    return {
+        **left,
+        "id": f"{left_id}+{right_id}",
+        "source_cue_ids": source_ids or left.get("source_cue_ids", []),
+        "start": min(float(left["start"]), float(right["start"])),
+        "end": max(float(left["end"]), float(right["end"])),
+        field: f"{left[field].strip()} {right[field].strip()}".strip(),
+        "words": [*left.get("words", []), *right.get("words", [])],
+        **({"metadata": metadata} if "metadata" in left else {"merged_cue_ids": [left_id, right_id]}),
+        "provenance": append_provenance(
+            left, "subtitle-repair", "merge-short-compatible-cues",
+            merged_cue_ids=[left_id, right_id],
+        ),
+    }
+
+
+def repair_short_cues(
+    cues: list[dict], minimum_duration: float, maximum_duration: float,
+    maximum_characters: int, maximum_characters_per_second: float,
+    maximum_merge_gap: float = 0.45,
+) -> list[dict]:
+    """Extend into free space, then merge only objectively compatible short cues."""
+    repaired = [dict(cue) for cue in cues]
+    index = 0
+    while index < len(repaired):
+        cue = repaired[index]
+        start, end = float(cue["start"]), float(cue["end"])
+        if end - start >= minimum_duration:
+            index += 1
+            continue
+        previous_end = float(repaired[index - 1]["end"]) if index else 0.0
+        next_start = float(repaired[index + 1]["start"]) if index + 1 < len(repaired) else end + minimum_duration
+        needed = minimum_duration - (end - start)
+        add_after = min(needed, max(0.0, next_start - end))
+        end += add_after
+        needed -= add_after
+        add_before = min(needed, max(0.0, start - previous_end))
+        start -= add_before
+        cue["start"], cue["end"] = round(start, 3), round(end, 3)
+        if end - start + 1e-9 >= minimum_duration:
+            cue["provenance"] = append_provenance(
+                cue, "subtitle-repair", "extend-short-cue-into-silence",
+                added_before=round(add_before, 3), added_after=round(add_after, 3),
+            )
+            index += 1
+            continue
+        if index + 1 < len(repaired) and _merge_compatible(
+            cue, repaired[index + 1], maximum_merge_gap, maximum_duration,
+            maximum_characters, maximum_characters_per_second,
+        ):
+            repaired[index:index + 2] = [_merged_cue(cue, repaired[index + 1])]
+            continue
+        if index and _merge_compatible(
+            repaired[index - 1], cue, maximum_merge_gap, maximum_duration,
+            maximum_characters, maximum_characters_per_second,
+        ):
+            repaired[index - 1:index + 1] = [_merged_cue(repaired[index - 1], cue)]
+            index = max(0, index - 1)
+            continue
+        cue["provenance"] = append_provenance(
+            cue, "subtitle-repair", "short-cue-unresolved",
+            duration=round(end - start, 3),
+        )
+        index += 1
+    return repaired
+
+
 def split_cue(
     cue: dict, maximum_characters: int, maximum_duration: float = 12.0,
 ) -> list[dict]:
@@ -131,6 +234,10 @@ def repair(
     """Split long text and borrow only neighboring silence for readability."""
     cues = [part for cue in transcript.get("segments", []) for part in split_cue(cue, maximum_characters, maximum_duration)]
     cues.sort(key=lambda item: (float(item["start"]), float(item["end"])))
+    cues = repair_short_cues(
+        cues, minimum_duration, maximum_duration, maximum_characters,
+        maximum_characters_per_second,
+    )
     for index, cue in enumerate(cues):
         displayed = cue.get("translated_text") or cue.get("source_text") or cue.get("text", "")
         characters = len(re.sub(r"\s+", "", str(displayed)))
