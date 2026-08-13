@@ -311,6 +311,88 @@ def repair(
     return {**transcript, "segments": cues, "readability_repaired": True}
 
 
+def _cue_state(document: dict) -> tuple:
+    """Return semantic output state while ignoring append-only audit provenance."""
+    return tuple(
+        (
+            cue.get("id"), round(float(cue["start"]), 3), round(float(cue["end"]), 3),
+            cue.get("translated_text"), cue.get("source_text"), cue.get("text"),
+        )
+        for cue in document.get("segments", [])
+    )
+
+
+def iterative_repair(
+    transcript: dict,
+    *,
+    maximum_passes: int = 4,
+    minimum_duration: float = 0.5,
+    maximum_duration: float = 12.0,
+    maximum_characters: int = 84,
+    maximum_line_characters: int = 42,
+    maximum_characters_per_second: float = 20.0,
+) -> tuple[dict, dict]:
+    """Accept only improving repair passes and stop at convergence or a hard limit."""
+    if maximum_passes < 1:
+        raise ValueError("maximum_passes must be positive")
+    try:
+        from .qa_transcript import analyze
+    except ImportError:
+        from qa_transcript import analyze
+
+    current = transcript
+    initial = analyze(
+        current, maximum_duration, minimum_duration=minimum_duration,
+        maximum_characters=maximum_characters,
+        maximum_line_characters=maximum_line_characters,
+        maximum_characters_per_second=maximum_characters_per_second,
+    )
+    current_score = len(initial["issues"])
+    passes = []
+    reason = "maximum-passes"
+    for number in range(1, maximum_passes + 1):
+        candidate = repair(
+            current, minimum_duration, maximum_characters,
+            maximum_characters_per_second, maximum_duration,
+            maximum_line_characters,
+        )
+        report = analyze(
+            candidate, maximum_duration, minimum_duration=minimum_duration,
+            maximum_characters=maximum_characters,
+            maximum_line_characters=maximum_line_characters,
+            maximum_characters_per_second=maximum_characters_per_second,
+        )
+        score = len(report["issues"])
+        stable = _cue_state(candidate) == _cue_state(current)
+        improved = score < current_score
+        passes.append({
+            "number": number, "score_before": current_score, "score_after": score,
+            "improved": improved, "stable": stable,
+            "issue_counts": report["issue_counts"],
+        })
+        if improved:
+            current, current_score = candidate, score
+        if stable:
+            reason = "stable-state"
+            break
+        if not improved:
+            reason = "no-objective-improvement"
+            break
+        if score == 0:
+            reason = "quality-target-reached"
+            break
+    audit = {
+        "schema_version": 1, "maximum_passes": maximum_passes,
+        "initial_score": len(initial["issues"]), "final_score": current_score,
+        "termination_reason": reason, "passes": passes,
+    }
+    if current.get("artifact_type") == "canonical_timed_text":
+        current = {**current, "metadata": {**current.get("metadata", {}), "iterative_repair": audit}}
+    else:
+        current = {**current, "iterative_repair": audit}
+    return current, audit
+
+
 def write_srt(path: Path, segments: list[dict]) -> None:
     """Write repaired cues as UTF-8 SRT."""
     content = "\n\n".join(

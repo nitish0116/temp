@@ -9,7 +9,7 @@ from videotranslator.commands.canonical_timed_text import validate_canonical_tim
 from videotranslator.commands.map_translation_cues import map_translated_groups
 from videotranslator.commands.qa_transcript import analyze
 from videotranslator.commands.translate_contextual import translate_contextual
-from videotranslator.commands.repair_subtitles import repair, repair_short_cues, redistribute_group_timing, subtitle_lines
+from videotranslator.commands.repair_subtitles import iterative_repair, repair, repair_short_cues, redistribute_group_timing, subtitle_lines
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "subtitle_quality_baseline.json"
@@ -168,3 +168,22 @@ def test_subtitle_layout_balances_words_and_preserves_text():
     assert laid_out.count("\n") == 1
     assert laid_out.replace("\n", " ") == text
     assert all(len(line) <= 20 for line in laid_out.splitlines())
+
+
+def test_iterative_repair_is_bounded_and_records_objective_progress():
+    transcript = {"segments": [{"start": 0.0, "end": 20.0, "text": "First synthetic sentence. Second synthetic sentence."}]}
+    repaired, audit = iterative_repair(transcript, maximum_passes=3)
+    assert len(audit["passes"]) <= 3
+    assert audit["final_score"] <= audit["initial_score"]
+    assert audit["termination_reason"] in {"stable-state", "quality-target-reached", "no-objective-improvement", "maximum-passes"}
+    assert repaired["iterative_repair"] == audit
+
+
+def test_iterative_repair_repeated_run_has_stable_semantic_output():
+    transcript = {"segments": [{"start": 0.0, "end": 0.2, "text": "Hi."}]}
+    first, _ = iterative_repair(transcript)
+    second, audit = iterative_repair(first)
+    first_state = [(cue["start"], cue["end"], cue["text"]) for cue in first["segments"]]
+    second_state = [(cue["start"], cue["end"], cue["text"]) for cue in second["segments"]]
+    assert first_state == second_state
+    assert audit["termination_reason"] == "stable-state"
