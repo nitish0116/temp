@@ -5,11 +5,15 @@ description: Load and maintain the repository's durable assistant handoff. Use w
 
 # Project History
 
-Run this from the repository root:
+Activate the environment configured for the current workstation, then run this
+from the repository root:
 
-```powershell
-D:\Git\Projects\.venv\Scripts\python.exe -m videotranslator history
+```text
+python -m videotranslator history
 ```
+
+Use `python3` instead when that is the active environment's Python command. Do
+not assume a drive letter, username, shell, or virtual-environment location.
 
 Use the printed handoff, Git status, and recent commits to summarize:
 
@@ -22,8 +26,14 @@ Read files linked by `videotranslator/docs/project-handoff.md` only when needed.
 Prefer current code, tests, and Git evidence over stale prose.
 
 When recording a new handoff, update `videotranslator/docs/project-handoff.md`
-with durable decisions, verification results, blockers, and one concrete next
-step. Keep it concise. Never include raw conversations, secrets, credentials,
-personal data, or bulky logs. Acknowledge that unexported assistant transcripts
-cannot be recovered from the repository.
+directly, or prepare a complete replacement and run:
 
+```text
+python -m videotranslator history --update-from path/to/handoff-next.md
+```
+
+The replacement must start with `# Video Translator project handoff`. Record
+durable decisions, verification results, blockers, and one concrete next step.
+Keep it concise. Never include raw conversations, secrets, credentials, personal
+data, or bulky logs. Acknowledge that unexported assistant transcripts cannot be
+recovered from the repository. Run the display command again to review the result.

@@ -96,13 +96,19 @@ can access an NVIDIA GPU, otherwise every supported stage falls back to CPU.
 On a new system or in a new coding-assistant session, load the durable handoff and
 live Git evidence with:
 
-```powershell
-D:\Git\Projects\.venv\Scripts\python.exe -m videotranslator history
+```text
+python -m videotranslator history
 ```
 
 `/history` is also defined as a repository assistant convention in `AGENTS.md`.
 It summarizes committed project context; it cannot retrieve private, unexported
 conversation transcripts from another assistant product.
+
+To install a prepared complete replacement handoff, run:
+
+```text
+python -m videotranslator history --update-from path/to/handoff-next.md
+```
 
 ## Run
 

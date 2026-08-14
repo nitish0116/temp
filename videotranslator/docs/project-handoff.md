@@ -49,6 +49,10 @@ wrong, especially the Mandarin Treaty of Shimonoseki group.
 
 ## Environment and model setup
 
+The paths below describe the current workstation; they are not required paths for
+another system. On a new system, choose local equivalents and activate that
+system's Python environment before running project commands.
+
 - Shared virtual environment: `D:\Git\Projects\.venv`
 - Shared cache root: `D:\PythonCaches`
 - Hugging Face cache: `D:\PythonCaches\huggingface`
@@ -71,9 +75,18 @@ Before changing code, run:
 
 ```powershell
 git status -sb
-D:\Git\Projects\.venv\Scripts\python.exe -m videotranslator history
-D:\Git\Projects\.venv\Scripts\python.exe -m pytest videotranslator\tests -q
+python -m videotranslator history
+python -m pytest videotranslator\tests -q
 ```
+
+## Portable handoff workflow
+
+After activating the destination system's Python environment, display the handoff
+with `python -m videotranslator history`. To install a prepared complete update,
+run `python -m videotranslator history --update-from path/to/handoff-next.md`,
+review the resulting Git diff, and commit it. The replacement document must begin
+with `# Video Translator project handoff`. A coding assistant may instead edit this
+tracked file directly when asked to update the handoff.
 
 ## Authoritative references
 
@@ -90,4 +103,3 @@ not preserve private Codex/Copilot/other assistant chats, local model caches,
 virtual environments, ignored outputs, credentials, or uncommitted files. If a
 conversation contains a durable decision, summarize that decision here before
 switching systems; do not commit the raw transcript.
-

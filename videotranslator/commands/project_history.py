@@ -10,6 +10,7 @@ from pathlib import Path
 PROJECT = Path(__file__).resolve().parents[1]
 REPOSITORY = PROJECT.parent
 DEFAULT_HANDOFF = PROJECT / "docs" / "project-handoff.md"
+HANDOFF_HEADING = "# Video Translator project handoff"
 
 
 def git_output(repository: Path, arguments: list[str]) -> str:
@@ -60,16 +61,55 @@ def render_history(
     )
 
 
+def update_handoff(
+    source: Path,
+    destination: Path = DEFAULT_HANDOFF,
+) -> Path:
+    """Validate and atomically install a complete project handoff document.
+
+    Example:: ``update_handoff(Path("handoff-next.md"))`` replaces the tracked
+    handoff only when the source is non-empty and starts with the required title.
+    """
+    source = source.resolve()
+    destination = destination.resolve()
+    if source == destination:
+        raise ValueError("update source must be different from the tracked handoff")
+    if not source.is_file():
+        raise FileNotFoundError(f"Handoff update not found: {source}")
+    content = source.read_text(encoding="utf-8").strip()
+    if not content:
+        raise ValueError("handoff update must not be empty")
+    if content.splitlines()[0].strip() != HANDOFF_HEADING:
+        raise ValueError(f"handoff update must start with: {HANDOFF_HEADING}")
+    if "\x00" in content:
+        raise ValueError("handoff update must be plain UTF-8 Markdown")
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(f".{destination.name}.tmp")
+    temporary.write_text(f"{content}\n", encoding="utf-8")
+    temporary.replace(destination)
+    return destination
+
+
 def main(argv: list[str] | None = None) -> None:
-    """Print assistant-neutral project history for a human or coding agent."""
+    """Display project history or install a validated replacement handoff."""
     parser = argparse.ArgumentParser(
-        description="Show the durable project handoff plus live Git history",
+        description="Show or update the durable, assistant-neutral project handoff",
     )
     parser.add_argument("--commits", type=int, default=8)
+    parser.add_argument(
+        "--update-from",
+        type=Path,
+        metavar="MARKDOWN",
+        help="replace the tracked handoff with a complete validated Markdown file",
+    )
     args = parser.parse_args(argv)
+    if args.update_from is not None:
+        updated = update_handoff(args.update_from)
+        print(f"Updated project handoff: {updated}")
+        return
     print(render_history(commit_count=args.commits))
 
 
 if __name__ == "__main__":
     main()
-

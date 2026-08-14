@@ -68,7 +68,7 @@ from videotranslator.commands.qa_translation_integrity import (
     integrity_issues,
     semantic_pieces,
 )
-from videotranslator.commands.project_history import render_history
+from videotranslator.commands.project_history import render_history, update_handoff
 from videotranslator.commands.map_translation_cues import (
     allocate_boundaries,
     map_translated_groups,
@@ -116,6 +116,33 @@ def test_project_history_combines_handoff_and_live_git_evidence(
     assert "main...origin/main [ahead 1]" in rendered
     assert "abc 2026-08-14 update" in rendered
     assert "Commits not in upstream" in rendered
+
+
+def test_project_handoff_update_validates_and_replaces_atomically(tmp_path: Path):
+    """Only a complete, correctly titled handoff can replace the durable file."""
+    destination = tmp_path / "project-handoff.md"
+    destination.write_text("old content\n", encoding="utf-8")
+    source = tmp_path / "handoff-next.md"
+    source.write_text(
+        "# Video Translator project handoff\n\nNext action: qualify a model.\n",
+        encoding="utf-8",
+    )
+
+    assert update_handoff(source, destination) == destination.resolve()
+    assert destination.read_text(encoding="utf-8") == source.read_text(encoding="utf-8")
+    assert not (tmp_path / ".project-handoff.md.tmp").exists()
+
+
+def test_project_handoff_update_rejects_invalid_document(tmp_path: Path):
+    """Invalid input leaves the existing durable handoff untouched."""
+    destination = tmp_path / "project-handoff.md"
+    destination.write_text("existing handoff\n", encoding="utf-8")
+    source = tmp_path / "invalid.md"
+    source.write_text("# Unrelated notes\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="must start with"):
+        update_handoff(source, destination)
+    assert destination.read_text(encoding="utf-8") == "existing handoff\n"
 
 
 def test_lazy_translator_does_not_construct_backend_until_called():
