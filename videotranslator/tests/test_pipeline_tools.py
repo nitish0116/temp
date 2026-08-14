@@ -53,6 +53,7 @@ from videotranslator.commands.create_subtitles import (
 )
 from videotranslator.commands.translate_subtitles import write_srt as write_translated_srt
 from videotranslator.commands.translate_contextual import (
+    TranslationRequest,
     cache_key,
     normalize_translation_response,
     translate_contextual,
@@ -466,6 +467,15 @@ def test_context_request_contains_bounded_neighbors_and_direct_language_pair():
     assert "Return only the translation of CURRENT" in prompt
 
 
+def test_integrity_translation_prompt_requires_explicit_source_numbers():
+    request = TranslationRequest(
+        "integrity", "ko", "en", "27세에서 31세", (), (), ("27", "31")
+    )
+    prompt = translation_prompt(request)
+    assert "Preserve these explicit numerals exactly" in prompt
+    assert "27, 31" in prompt
+
+
 def test_contextual_translation_preserves_groups_and_records_configuration():
     """Translated semantic groups retain source lineage and context provenance."""
     clean = _clean_context_fixture()
@@ -570,6 +580,12 @@ def test_translation_integrity_detects_numbers_density_and_repetition():
     assert integrity_issues("A sufficiently long source sentence", "x")[0]["type"] == "translation_too_short"
     assert integrity_issues("hello", "yes, yes, yes")[0]["type"] in {"translation_too_long", "repeated_translation_clause"}
     assert integrity_issues("行け", "Go over there right now") == []
+    assert integrity_issues("number one", "No. 1") == []
+    assert integrity_issues("Return in 3 days", "Return in three days") == []
+    assert integrity_issues("Ages 27 and 31", "Ages twenty-seven and thirty-one") == []
+    assert integrity_issues("Age 27", "Age 28")[0]["type"] == "number_mismatch"
+    assert integrity_issues("Henry 3세, 5대 조부", "Henry III, fifth-generation ancestor") == []
+    assert integrity_issues("100만 돌파", "surpassed one million") == []
 
 
 def test_translation_integrity_retries_and_preserves_lineage():

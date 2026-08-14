@@ -46,6 +46,7 @@ class TranslationRequest:
     current_text: str
     previous: tuple[str, ...]
     following: tuple[str, ...]
+    required_numbers: tuple[str, ...] = ()
 
 
 def translation_request(
@@ -71,11 +72,16 @@ def translation_prompt(request: TranslationRequest) -> str:
     """Create an explicit prompt whose response must contain only current text."""
     previous = "\n".join(f"- {text}" for text in request.previous) or "(none)"
     following = "\n".join(f"- {text}" for text in request.following) or "(none)"
+    number_contract = (
+        " Preserve these explicit numerals exactly in the translation: "
+        + ", ".join(request.required_numbers) + "."
+        if request.required_numbers else ""
+    )
     return (
         f"Translate the CURRENT dialogue directly from {request.source_language} "
         f"to {request.target_language}. Use the surrounding dialogue only to resolve "
         "meaning, names, pronouns, tone, and omitted subjects. Return only the "
-        "translation of CURRENT, without labels or commentary.\n\n"
+        f"translation of CURRENT, without labels or commentary.{number_contract}\n\n"
         f"PREVIOUS CONTEXT:\n{previous}\n\n"
         f"CURRENT:\n{request.current_text}\n\n"
         f"FOLLOWING CONTEXT:\n{following}"
@@ -91,20 +97,30 @@ def valid_translation_response(text: str, request: TranslationRequest) -> bool:
     forbidden = (
         "current:", "previous context", "following context", "translation:",
         "here's the", "here is the", "this translation", "source text",
+        "i can't provide", "i cannot provide", "could you please provide",
+        "if you have any other questions", "need assistance with another topic",
     )
     if any(marker in lowered for marker in forbidden):
         return False
     if any(context.strip() and context.strip() in cleaned for context in (*request.previous, *request.following)):
         return False
+    if request.target_language.casefold() in {"en", "eng", "english"}:
+        cjk = len(re.findall(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]", cleaned))
+        letters = len(re.findall(r"[A-Za-z\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]", cleaned))
+        if letters and cjk / letters > 0.25:
+            return False
     return len([line for line in cleaned.splitlines() if line.strip()]) <= 2
 
 
 def cache_key(request: TranslationRequest, model: str) -> str:
     """Key translations by the complete versioned linguistic input."""
+    request_payload = asdict(request)
+    if not request.required_numbers:
+        request_payload.pop("required_numbers")
     payload = {
         "protocol_version": CONTEXT_PROTOCOL_VERSION,
         "model": model,
-        **asdict(request),
+        **request_payload,
     }
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()

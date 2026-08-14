@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Callable
 
@@ -83,8 +84,11 @@ def align_recovered_envelopes(recovered: dict, strong: dict, maximum_gap: float 
             cue = segments[index]
             lower = core_ends[index - 1] if index else float("-inf")
             upper = core_starts[index + 1] if index + 1 < len(segments) else float("inf")
-            cue["start"] = round(max(lower, min(float(cue["start"]), start)), 3)
-            cue["end"] = round(min(upper, max(float(cue["end"]), end)), 3)
+            old_start, old_end = float(cue["start"]), float(cue["end"])
+            proposed_start = max(lower, min(old_start, start))
+            proposed_end = min(upper, max(old_end, end))
+            cue["start"] = round(proposed_start if proposed_start < old_end else old_start, 3)
+            cue["end"] = round(proposed_end if proposed_end > old_start else old_end, 3)
     return output
 
 
@@ -126,6 +130,7 @@ def run_canonical_attempt(
             group_id=f"integrity-{context.get('route', 'retry')}-{context.get('attempt', context.get('piece', 1))}",
             source_language=clean["source_language"], target_language=target_language,
             current_text=text, previous=(), following=(),
+            required_numbers=tuple(re.findall(r"\d+(?:[.,]\d+)*", text)),
         )
         return translate_one(request)
 

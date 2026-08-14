@@ -15,6 +15,50 @@ except ImportError:
 NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 REPEATED_CLAUSE = re.compile(r"(.{2,}?)(?:\s*[,;.!?]\s*\1){2,}", re.IGNORECASE)
 BOUNDARY = re.compile(r"(?<=[.!?\u3002\uff01\uff1f\u061f\u0964\u2026])\s+|\s*(?=[,;:\u060c\u061b\uff0c\uff1b\uff1a])")
+SMALL_NUMBERS = (
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+    "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+    "seventeen", "eighteen", "nineteen",
+)
+TENS = ("", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety")
+ORDINALS = {
+    1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", 6: "sixth",
+    7: "seventh", 8: "eighth", 9: "ninth", 10: "tenth", 11: "eleventh",
+    12: "twelfth", 13: "thirteenth", 14: "fourteenth", 15: "fifteenth",
+    16: "sixteenth", 17: "seventeenth", 18: "eighteenth", 19: "nineteenth",
+    20: "twentieth",
+}
+ROMAN = {1: "i", 2: "ii", 3: "iii", 4: "iv", 5: "v", 6: "vi", 7: "vii", 8: "viii", 9: "ix", 10: "x"}
+
+
+def english_number(value: int) -> str | None:
+    """Return a normalized English rendering for subtitle-scale integers."""
+    if 0 <= value < 20:
+        return SMALL_NUMBERS[value]
+    if value < 100:
+        return TENS[value // 10] + (f" {SMALL_NUMBERS[value % 10]}" if value % 10 else "")
+    if value < 1000:
+        remainder = value % 100
+        suffix = english_number(remainder) if remainder else ""
+        return f"{SMALL_NUMBERS[value // 100]} hundred" + (f" {suffix}" if suffix else "")
+    return None
+
+
+def number_is_preserved(number: str, target_numbers: list[str], source: str, target: str) -> bool:
+    if number in target_numbers:
+        return True
+    if not number.isdigit():
+        return False
+    words = english_number(int(number))
+    normalized_target = re.sub(r"[^a-z]+", " ", target.casefold()).strip()
+    value = int(number)
+    equivalents = [words, ORDINALS.get(value), ROMAN.get(value)]
+    if re.search(rf"{re.escape(number)}\s*[만万]", source) and value * 10_000 == 1_000_000:
+        equivalents.append("million")
+    return any(
+        equivalent and re.search(rf"\b{re.escape(equivalent)}\b", normalized_target)
+        for equivalent in equivalents
+    )
 
 
 def integrity_issues(
@@ -27,7 +71,7 @@ def integrity_issues(
     if not target:
         return [{"type": "empty_translation"}]
     source_numbers, target_numbers = NUMBER.findall(source), NUMBER.findall(target)
-    if source_numbers != target_numbers:
+    if any(not number_is_preserved(number, target_numbers, source, target) for number in source_numbers):
         issues.append({"type": "number_mismatch", "source": source_numbers, "target": target_numbers})
     source_length = len(re.sub(r"\s+", "", source))
     ratio = len(re.sub(r"\s+", "", target)) / max(1, source_length)

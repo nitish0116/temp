@@ -389,6 +389,16 @@ def test_strong_word_alignment_never_crosses_adjacent_cue_cores():
     assert aligned["segments"][0]["end"] > aligned["segments"][0]["start"]
 
 
+def test_overlapping_adjacent_core_cannot_invert_aligned_source_cue():
+    recovered = {"segments": [
+        {"start": 0.0, "end": 2.0, "text": "one"},
+        {"start": 1.0, "end": 1.5, "text": "two"},
+    ]}
+    strong = {"segments": [{"words": [{"start": 0.5, "end": 1.2, "word": "word"}]}]}
+    aligned = align_recovered_envelopes(recovered, strong)
+    assert all(item["end"] > item["start"] for item in aligned["segments"])
+
+
 def test_nested_wordless_recovery_cue_merges_into_aligned_group():
     source = {
         "language": "zh", "task": "transcribe", "output_language": "zh",
@@ -431,3 +441,13 @@ def test_verbose_or_context_leaking_translation_uses_fallback():
     )
     assert backend(request) == "Clean target"
     assert backend.events[0]["reason"] == "invalid-primary-output-contract"
+
+
+def test_refusal_and_untranslated_target_script_use_direct_fallback():
+    clean = build_clean_transcript({
+        "language": "ko", "task": "transcribe", "output_language": "ko",
+        "segments": [{"start": 0.0, "end": 1.0, "text": "안녕하세요", "speaker": "one"}],
+    })
+    request = translation_request(clean["segments"], 0, "ko", "en")
+    assert not valid_translation_response("I can't provide that translation.", request)
+    assert not valid_translation_response("어디에나 소소하다고 합니다.", request)
