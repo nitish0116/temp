@@ -110,6 +110,18 @@ Successful runs create `final.srt`. A run that exhausts all recovery profiles cr
 automatic; pass `--force` to rebuild existing stages. Use `--offline` when all model
 weights are already cached and internet access is unavailable.
 
+For videos with independently reviewed dialogue, add a timestamped semantic
+sidecar. Any missing required term or present forbidden term blocks promotion and
+writes a per-attempt semantic QA report:
+
+```powershell
+..\..\.venv\Scripts\python.exe -m videotranslator subtitles `
+  "videotranslator\sample Data\episode.mp4" `
+  --semantic-reference "videotranslator\review\episode.semantic.json"
+```
+
+The sidecar contract and example are documented in [docs/schemas.md](docs/schemas.md).
+
 Contextual translation is the default and uses `Qwen/Qwen2.5-0.5B-Instruct`, a
 small multilingual causal instruction model, unless `--translation-model` selects
 another model. Set `--translation-backend seq2seq` for encoder-decoder instruction

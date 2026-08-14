@@ -7,6 +7,10 @@ import pytest
 
 from videotranslator.commands.canonical_timed_text import validate_canonical_timed_text
 from videotranslator.commands.qa_transcript import analyze
+from videotranslator.commands.qa_semantic_reference import (
+    evaluate_semantic_references,
+    references_from_manifest,
+)
 
 
 PROJECT = Path(__file__).parents[1]
@@ -50,3 +54,22 @@ def test_verified_semantic_defects_remain_explicit_release_blockers():
         generated = defect["generated"].casefold()
         assert any(term.casefold() not in generated for term in defect["required_terms"])
         assert any(term.casefold() in generated for term in defect["forbidden_terms"])
+
+
+@pytest.mark.parametrize(
+    "sample",
+    [item for item in samples() if item["manual_review"].get("verified_defects")],
+    ids=lambda item: item["id"],
+)
+def test_cached_defective_outputs_fail_the_executable_semantic_gate(sample: dict):
+    """Confirm reviewed defects block the corresponding cached canonical output."""
+    canonical_path = PROJECT / "outputs" / sample["output_directory"] / "final.en.json"
+    if not canonical_path.is_file():
+        pytest.skip("cached sample output is not present in this checkout")
+    document = json.loads(canonical_path.read_text(encoding="utf-8"))
+    references = references_from_manifest(
+        json.loads(MANIFEST.read_text(encoding="utf-8")), sample["output_directory"]
+    )
+    report = evaluate_semantic_references(document, references)
+    assert report["passed"] is False
+    assert report["failed_reference_count"] >= 1

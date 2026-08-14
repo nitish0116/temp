@@ -13,6 +13,7 @@ field or its meaning changes.
 | `manifest.schema.json` | pipeline orchestrator | Resumable stages, commands, artifacts, errors. |
 | `transcript.schema.json` | ASR/legacy commands | Compatibility timed transcript. |
 | `canonical-timed-text.schema.json` | canonical subtitle stages | Lossless text, timing, speaker, lineage handoff. |
+| `semantic-reference.schema.json` | reviewer / subtitle promotion | Optional timestamped required/forbidden semantic terms. |
 | `approved-script.schema.json` | quality gate / dubbing | Automatically approved target script. |
 | `dub-manifest.schema.json` | TTS / assembly | Voices and generated clip inventory. |
 | `dubbing-pipeline-qa.schema.json` | cross-stage QA | Pre-assembly promotion decision. |
@@ -55,6 +56,32 @@ reports and cache/model details outside the core cue contract.
 A stage moves from `pending` to `running`, then `completed` or `failed`. Completed
 states list output artifacts. Failed states retain command, timestamps, and error.
 A stage is skipped only if its state is completed and expected artifacts exist.
+
+## Optional semantic-reference sidecar
+
+When independently reviewed subtitle text is available, pass a sidecar to the
+automatic subtitle command. Each reference locates a canonical cue by timestamp
+and declares terms that must appear or must not appear:
+
+```json
+{
+  "$schema": "../schemas/semantic-reference.schema.json",
+  "schema_version": 1,
+  "video": "episode-01.mp4",
+  "references": [
+    {
+      "timestamp_seconds": 508.8,
+      "required_terms": ["Seoul"],
+      "forbidden_terms": ["Seattle"]
+    }
+  ]
+}
+```
+
+A missing cue, missing required term, or present forbidden term blocks promotion
+and is written to `semantic-reference-qa.json`. This is an optional regression and
+release gate; it does not claim to replace general semantic evaluation for unseen
+dialogue.
 
 ## Validation practice
 

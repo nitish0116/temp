@@ -15,10 +15,12 @@ from pathlib import Path
 try:
     from .runtime_device import resolve_device
     from .run_canonical_subtitles import run_canonical_attempt
+    from .qa_semantic_reference import evaluate_manifest, references_from_manifest
     from .translate_contextual import CausalContextTranslator, FallbackContextTranslator, NLLBFallbackTranslator, TransformersContextTranslator
 except ImportError:
     from runtime_device import resolve_device
     from run_canonical_subtitles import run_canonical_attempt
+    from qa_semantic_reference import evaluate_manifest, references_from_manifest
     from translate_contextual import CausalContextTranslator, FallbackContextTranslator, NLLBFallbackTranslator, TransformersContextTranslator
 
 
@@ -201,6 +203,18 @@ def create_subtitles(args: argparse.Namespace) -> dict:
     if not video.is_file():
         raise FileNotFoundError(f"Input video not found: {video}")
     output = (args.output or Path("videotranslator/outputs") / video.stem).resolve()
+    semantic_reference = getattr(args, "semantic_reference", None)
+    if semantic_reference and args.legacy_cue_translation:
+        raise ValueError("Semantic reference QA requires the canonical subtitle pipeline")
+    if semantic_reference:
+        semantic_reference = semantic_reference.resolve()
+        if not semantic_reference.is_file():
+            raise FileNotFoundError(f"Semantic reference file not found: {semantic_reference}")
+        reference_manifest = json.loads(semantic_reference.read_text(encoding="utf-8"))
+        if not references_from_manifest(reference_manifest, output.name):
+            raise ValueError(
+                f"No semantic references found for output directory {output.name!r}"
+            )
     paths = artifact_paths(video, output, args.target_language)
     output.mkdir(parents=True, exist_ok=True)
     env, fallback_events = prepare_runtime_environment(output)
@@ -274,8 +288,23 @@ def create_subtitles(args: argparse.Namespace) -> dict:
             selected_srt = attempt / "canonical" / f"{canonical_report['status']}.srt"
             selected_json = attempt / "canonical" / "canonical-subtitles.json"
             completed = subprocess.CompletedProcess([], 0 if canonical_report["status"] == "passed" else 2)
-        attempts.append({"number": index, "profile": profile["name"], "passed": completed.returncode == 0 and report["passed"], "score": quality_score(report), "srt": str(selected_srt), "json": str(selected_json), "qa": str(qa_path if args.legacy_cue_translation else attempt / 'canonical' / 'qa.json'), "recovery_model": recovery_model, "recovery_device": recovery_device, "canonical_pipeline": canonical_report, "qa_report": report})
-        if completed.returncode == 0 and report["passed"]:
+        semantic_report = None
+        if semantic_reference:
+            semantic_report = evaluate_manifest(
+                json.loads(selected_json.read_text(encoding="utf-8")),
+                semantic_reference, output.name,
+            )
+            semantic_path = attempt / "semantic-reference-qa.json"
+            semantic_path.write_text(
+                json.dumps(semantic_report, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+        passed_all = (
+            completed.returncode == 0 and report["passed"]
+            and (semantic_report is None or semantic_report["passed"])
+        )
+        attempts.append({"number": index, "profile": profile["name"], "passed": passed_all, "score": quality_score(report), "srt": str(selected_srt), "json": str(selected_json), "qa": str(qa_path if args.legacy_cue_translation else attempt / 'canonical' / 'qa.json'), "recovery_model": recovery_model, "recovery_device": recovery_device, "canonical_pipeline": canonical_report, "qa_report": report, "semantic_reference_qa": semantic_report})
+        if passed_all:
             break
 
     best = max(attempts, key=lambda item: item["score"])
@@ -287,7 +316,7 @@ def create_subtitles(args: argparse.Namespace) -> dict:
     other = paths["rejected"] if passed else paths["final"]
     if other.exists():
         other.unlink()
-    result = {"schema_version": 1, "created_at": datetime.now(timezone.utc).isoformat(), "status": "passed" if passed else "rejected", "input_video": str(video), "output_srt": str(destination), "selected_attempt": selected["number"], "automatic_fallbacks": fallback_events, "attempts": attempts}
+    result = {"schema_version": 1, "created_at": datetime.now(timezone.utc).isoformat(), "status": "passed" if passed else "rejected", "input_video": str(video), "output_srt": str(destination), "selected_attempt": selected["number"], "semantic_reference": str(semantic_reference) if semantic_reference else None, "automatic_fallbacks": fallback_events, "attempts": attempts}
     paths["report"].write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Subtitle pipeline {result['status']}: {destination}")
     return result
@@ -307,6 +336,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--translation-fallback-model", default="facebook/nllb-200-distilled-600M")
     parser.add_argument("--translation-context-size", type=int, default=3)
     parser.add_argument("--translation-retries", type=int, default=1)
+    parser.add_argument(
+        "--semantic-reference", type=Path,
+        help="Optional reviewed reference JSON; any failed reference blocks final.srt promotion",
+    )
     parser.add_argument(
         "--legacy-cue-translation", action="store_true",
         help="Use the old independent NLLB cue translator instead of canonical contextual translation",
