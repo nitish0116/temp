@@ -83,6 +83,7 @@ Detailed operations and project state:
 - [Configuration guide](docs/configuration.md)
 - [JSON schemas and artifact contracts](docs/schemas.md)
 - [Dependency reference](docs/dependencies.md)
+- [Model weights and LLM inventory](docs/model-inventory.md)
 - [Architecture](docs/architecture.md)
 - [Code reference](docs/code-reference.md)
 
@@ -133,7 +134,9 @@ checks, caches the evidence, and rejects unresolved disagreement:
 ```
 
 This mode requires the local Ollama service and configured independent model. It
-is intentionally opt-in until the three-sample Step 22 qualification passes.
+is intentionally opt-in. Step 22 rejected the current `qwen3:1.7b` backend; follow
+Step 23 and the [model inventory](docs/model-inventory.md) before enabling it for
+release use.
 
 Contextual translation is the default and uses `Qwen/Qwen2.5-0.5B-Instruct`, a
 small multilingual causal instruction model, unless `--translation-model` selects

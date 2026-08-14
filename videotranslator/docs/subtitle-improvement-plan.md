@@ -372,6 +372,28 @@ No rejected run retains `final.srt`. The prior 72-cue findings and semantic
 reference defects remain controlling evidence. A new promotion review is deferred
 until a replacement independent backend passes the three language probes.
 
+### 23. Qualify and replace the independent translation backend
+
+- Use `llama3.1:8b` as the first already-available baseline, then evaluate other
+  translation-capable models only if it misses the resource or quality gates.
+- Run bounded Japanese, Korean, and Mandarin probes before any episode-wide run.
+- Require valid target-language-only output for at least 95% of probe groups; no
+  prompt leakage, source echo, empty response, or model commentary is promotable.
+- Require all reviewed names, places, numbers, polarity, and semantic references to
+  pass, including `cute`, `Seoul`, and Treaty of Shimonoseki fixtures.
+- Measure peak RAM/VRAM, median and worst group latency, model size, cache location,
+  license/terms, and offline behavior on the target workstation.
+- Record the selected model and installation command in `docs/model-inventory.md`,
+  change the CLI default only after qualification, and invalidate agreement caches
+  without discarding accepted ASR, alignment, diarization, or primary translations.
+- Rerun Step 22 and the 72-cue review only after all three probes pass.
+
+Exit: one independent model passes all three language probes, stays within the
+documented workstation resource budget, runs headlessly from shared caches, and
+allows Step 22 to be repeated without weakening any QA threshold.
+
+Status: planned; this is the next release-blocking improvement step.
+
 ## Current usability assessment
 
 The pipeline currently creates **structurally usable draft subtitles**: timing,

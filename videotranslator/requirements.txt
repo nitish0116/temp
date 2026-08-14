@@ -1,5 +1,8 @@
 # Default workstation install: NVIDIA Pascal/GTX 1050 (compute capability 6.1).
 # For automatic hardware selection on this or another system, run:
 #   python videotranslator/install_dependencies.py
+# Python requirements do not install model weights. Before an offline or headless
+# setup, follow docs/model-inventory.md for required LLM, ASR, alignment,
+# diarization, separation, and TTS assets.
 -r requirements/torch-cu126.txt
 -r requirements/common.txt

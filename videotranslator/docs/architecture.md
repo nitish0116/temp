@@ -78,6 +78,7 @@ documentation, tests, and orchestrator command are migrated together.
 - [configuration.md](configuration.md) documents user settings and environment variables.
 - [schemas.md](schemas.md) defines serialized artifact ownership and evolution.
 - [dependencies.md](dependencies.md) maps imports to installable requirements.
+- [model-inventory.md](model-inventory.md) inventories runtime model weights and setup status.
 - [subtitle-improvement-plan.md](subtitle-improvement-plan.md) is the authoritative
   implementation plan and design history.
 - [three-sample-release-review.md](three-sample-release-review.md) records the
