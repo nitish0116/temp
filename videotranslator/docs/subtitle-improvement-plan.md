@@ -290,6 +290,76 @@ the reason for each expensive rerun.
 Exit: a clean scheduled process can finish or fail safely with sufficient
 machine-readable diagnostics and no coding-assistant decision.
 
+### 19. Add reviewed semantic-reference promotion gates
+
+- Accept an optional versioned sidecar containing reviewed timestamps, required
+  terms, and forbidden terms.
+- Resolve each timestamp to its complete semantic group rather than checking only
+  one display cue.
+- Write an auditable report for every attempt and block `final.srt` when a cue is
+  missing, a required term is absent, or a forbidden substitution is present.
+- Run the existing three-sample review manifest through the executable gate.
+
+Status: implemented. The gate correctly rejects the confirmed `cute`/`freak`,
+`Seoul`/`Seattle`, and Treaty of Shimonoseki failures.
+
+Exit: independently reviewed dialogue can participate in unattended promotion
+without hard-coded episode logic.
+
+### 20. Add independent translation-agreement QA
+
+- Generate an independent direct translation with the approved fallback backend;
+  do not ask the primary model to grade its own answer.
+- Compare translations at semantic-group granularity using named entities,
+  numbers, polarity/negation, information density, and multilingual semantic
+  similarity.
+- Treat lexical variation as valid when meaning agrees; flag material disagreement
+  rather than requiring identical wording.
+- Cache the independent candidate and agreement evidence by source text, language
+  pair, models, and QA protocol version.
+
+Exit: the three verified semantic failures are detected without supplying their
+manual reference sidecar, while valid paraphrases remain accepted.
+
+### 21. Retry semantic disagreements with a stronger model
+
+- Retry only failed semantic groups with a stronger translation-capable model and
+  explicit preservation constraints.
+- Provide bounded surrounding context, detected names/numbers, both candidate
+  translations, and the disagreement reasons without instructing the model to
+  copy either candidate blindly.
+- Re-run independent agreement and deterministic integrity QA after retry.
+- Reject an unresolved group; never select a candidate only because it is fluent
+  or shorter.
+
+Exit: every promoted semantic group either passes the first independent agreement
+check or has a recorded stronger-model retry that passes the same gate.
+
+### 22. Rerun and qualify all three sample videos
+
+- Invalidate only translation and downstream caches affected by the new QA
+  protocol; reuse accepted ASR/alignment/diarization artifacts initially.
+- Rerun the Japanese, Korean, and Mandarin samples from semantic translation
+  through export.
+- Repeat the deterministic 24-cue review for each output and compare all available
+  burned English references.
+- If corrupted source-language ASR is the cause, mark the affected groups for
+  targeted ASR/alignment recovery before translating them again.
+
+Exit: structural QA passes, no verified semantic-reference defect remains, the
+independent agreement report passes every group, and the 72-cue review finds no
+material error. Only then are the sample subtitles considered reasonably usable.
+
+## Current usability assessment
+
+The pipeline currently creates **structurally usable draft subtitles**: timing,
+coverage, cue layout, provenance, deterministic caching, headless operation, and
+export are working. It does **not yet create reliably usable final subtitles**.
+The three-sample review found material meaning, place-name, and ASR errors despite
+all structural checks passing. Step 19 prevents known reviewed errors from being
+promoted, but it cannot detect unknown errors in new dialogue. Steps 20 through 22
+are therefore release blockers for unattended, reasonably usable subtitles.
+
 ## Definition of done
 
 The fixture suite and episode run must satisfy all applicable requirements:
@@ -298,6 +368,9 @@ The fixture suite and episode run must satisfy all applicable requirements:
 - every target group maps to source group and cue IDs;
 - speakers, words, confidence, and provenance survive downstream stages;
 - contextual translation passes integrity QA;
+- reviewed semantic references pass when a sidecar is supplied;
+- independent translation agreement passes every semantic group;
+- unresolved semantic disagreements block promotion;
 - no overlap or invalid timestamp exists;
 - no cue is shorter than 0.5 seconds unless objectively irreparable;
 - no cue exceeds 12 seconds, 20 characters per second, or layout limits;
@@ -307,6 +380,7 @@ The fixture suite and episode run must satisfy all applicable requirements:
 - SRT/ASS exports match approved canonical data;
 - every fallback and mutation is recorded;
 - rejection never produces or retains `final.srt`.
+- the three-sample 72-cue semantic review contains no material error.
 
 ## Implementation discipline
 
