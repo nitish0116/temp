@@ -33,7 +33,7 @@ from videotranslator.commands.align_active_speaker import bounded_onset_offset, 
 from videotranslator.commands.qa_dubbing_pipeline import dialogue_overlaps, evidence_coverage, maximum_native_tempo, speaker_reassignments
 from videotranslator.commands.recover_missing_speech import merge_intervals, merge_recovered, preserve_speech_envelopes, recover_uncovered_words, recovery_regions, subtract_intervals
 from videotranslator.pipeline import RUNNABLE_STAGES, load_config, paths, stage_command
-from videotranslator.commands.qa_transcript import analyze, malformed_text_reasons, required_line_count, source_speech_coverage
+from videotranslator.commands.qa_transcript import analyze, diarized_speech_coverage, malformed_text_reasons, required_line_count, source_speech_coverage
 from videotranslator.commands.segment_utterances import join_words, merge_fragments, segment_words
 from videotranslator.commands import runtime_device
 from videotranslator.commands.canonical_timed_text import (
@@ -87,6 +87,16 @@ from videotranslator.commands.repair_subtitles import repair, split_cue, text_ch
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_diarization_coverage_filters_unsupported_music_labels_but_keeps_speech():
+    subtitles = {"segments": [{"start": 0.0, "end": 1.0, "text": "speech"}]}
+    diarization = {"turns": [
+        {"start": 0.0, "end": 1.0, "speaker": "one"},
+        {"start": 5.0, "end": 8.0, "speaker": "music-like-label"},
+    ]}
+    evidence = {"segments": [{"words": [{"start": 0.0, "end": 1.0, "word": "speech"}]}]}
+    assert diarized_speech_coverage(subtitles, diarization, evidence) == (1.0, 1.0)
 
 
 def test_subtitle_improvement_baseline_is_frozen_and_reproducible():

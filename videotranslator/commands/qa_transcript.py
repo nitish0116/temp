@@ -81,13 +81,23 @@ def source_speech_coverage(subtitles: dict, source: dict) -> tuple[float, float]
     return covered_events / len(source_cues), min(1.0, covered_seconds / total_seconds)
 
 
-def diarized_speech_coverage(subtitles: dict, diarization: dict) -> tuple[float, float]:
+def diarized_speech_coverage(
+    subtitles: dict, diarization: dict, speech_evidence: dict | None = None,
+) -> tuple[float, float]:
     """Measure subtitle coverage of independently detected speaker turns.
 
     This catches speech omitted by ASR, which cannot be detected by comparing a
     subtitle file only with the transcript from which it was created.
     """
     cues = [(float(item["start"]), float(item["end"])) for item in subtitles.get("segments", [])]
+    evidence = []
+    if speech_evidence is not None:
+        evidence = [
+            (float(word["start"]), float(word["end"]))
+            for segment in speech_evidence.get("segments", [])
+            for word in segment.get("words", [])
+            if word.get("start") is not None and word.get("end") is not None
+        ]
     turns = [
         (float(turn["start"]), float(turn["end"]))
         for turn in diarization.get("turns", [])
@@ -96,6 +106,12 @@ def diarized_speech_coverage(subtitles: dict, diarization: dict) -> tuple[float,
         # Sub-100 ms label flickers are below a useful subtitle event and are
         # common at exclusive-speaker boundaries.
         and float(turn["end"]) - float(turn["start"]) >= 0.1
+        and (
+            not evidence or sum(
+                max(0.0, min(float(turn["end"]), right) - max(float(turn["start"]), left))
+                for left, right in evidence
+            ) >= 0.03
+        )
     ]
     if not turns:
         return 1.0, 1.0
@@ -207,7 +223,9 @@ def analyze(
 
     diarized_coverage = None
     if diarization_report is not None:
-        turn_coverage, time_coverage = diarized_speech_coverage(transcript, diarization_report)
+        turn_coverage, time_coverage = diarized_speech_coverage(
+            transcript, diarization_report, source_transcript
+        )
         diarized_coverage = {"turn_coverage": turn_coverage, "time_coverage": time_coverage}
         if turn_coverage < minimum_diarized_turn_coverage:
             issues.append({"type": "missing_diarized_turns", "coverage": round(turn_coverage, 4), "minimum": minimum_diarized_turn_coverage})
