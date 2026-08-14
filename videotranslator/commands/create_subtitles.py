@@ -264,9 +264,11 @@ def create_subtitles(args: argparse.Namespace) -> dict:
             print("Initializing translation agreement backends", flush=True)
             independent_backend = OllamaContextTranslator(
                 args.independent_translation_model, args.ollama_endpoint,
+                device=args.ollama_device,
             )
             stronger_backend = OllamaContextTranslator(
                 args.stronger_translation_model, args.ollama_endpoint,
+                device=args.ollama_device,
             )
             semantic_similarity = MultilingualSimilarity(
                 args.semantic_similarity_model, args.device,
@@ -387,6 +389,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     )
     parser.add_argument("--ollama-endpoint", default="http://127.0.0.1:11434")
+    parser.add_argument(
+        "--ollama-device", choices=("auto", "cuda", "cpu"), default="auto",
+        help="Use Ollama GPU offload automatically when at least 8 GiB VRAM is available",
+    )
     parser.add_argument(
         "--semantic-reference", type=Path,
         help="Optional reviewed reference JSON; any failed reference blocks final.srt promotion",

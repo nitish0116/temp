@@ -5,6 +5,9 @@ from __future__ import annotations
 import torch
 
 
+MINIMUM_OLLAMA_GPU_MEMORY_BYTES = 8 * 1024**3
+
+
 def parse_cuda_architecture(architecture: str) -> tuple[int, int]:
     """Convert Torch architecture names such as ``sm_61`` into ``(6, 1)``."""
     digits = architecture.removeprefix("sm_")
@@ -40,6 +43,27 @@ def resolve_device(requested: str | None = "auto") -> str:
             )
         return "cuda"
     return "cuda" if choice == "auto" and cuda_architecture_supported() else "cpu"
+
+
+def ollama_gpu_available(
+    requested: str | None = "auto",
+    minimum_memory_bytes: int = MINIMUM_OLLAMA_GPU_MEMORY_BYTES,
+) -> bool:
+    """Select Ollama GPU offload when CUDA is supported and VRAM is reasonable.
+
+    Automatic mode requires at least 8 GiB of VRAM. Explicit ``cuda`` bypasses
+    the memory threshold but still requires a CUDA architecture supported by the
+    installed Torch profile; explicit ``cpu`` always disables offload.
+    """
+    choice = (requested or "auto").lower()
+    if choice == "cpu":
+        return False
+    selected = resolve_device(choice)
+    if selected != "cuda":
+        return False
+    if choice == "cuda":
+        return True
+    return torch.cuda.get_device_properties(0).total_memory >= minimum_memory_bytes
 
 
 def whisper_compute_type(device: str) -> str:

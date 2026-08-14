@@ -14,10 +14,10 @@ from typing import Callable
 
 try:
     from .canonical_timed_text import append_provenance, validate_canonical_timed_text
-    from .runtime_device import resolve_device
+    from .runtime_device import ollama_gpu_available, resolve_device
 except ImportError:
     from canonical_timed_text import append_provenance, validate_canonical_timed_text
-    from runtime_device import resolve_device
+    from runtime_device import ollama_gpu_available, resolve_device
 
 
 CONTEXT_PROTOCOL_VERSION = 1
@@ -496,16 +496,17 @@ class OllamaContextTranslator:
 
     def __init__(
         self, model_name: str, endpoint: str = "http://127.0.0.1:11434",
-        timeout_seconds: int = 180,
+        timeout_seconds: int = 180, device: str = "auto",
     ) -> None:
         """Configure a deterministic local model without loading it in-process.
 
         Example:: ``OllamaContextTranslator("qwen2.5:7b")`` uses the local Ollama
-        API and leaves the Python process's limited GPU memory untouched.
+        API and automatically offloads on a supported GPU with enough VRAM.
         """
         self.model_name = model_name
         self.endpoint = endpoint.rstrip("/")
         self.timeout_seconds = timeout_seconds
+        self.use_gpu = ollama_gpu_available(device)
 
     def __call__(self, request: TranslationRequest) -> str:
         """Translate one semantic group and enforce the response-only contract.
@@ -514,18 +515,20 @@ class OllamaContextTranslator:
         internal reasoning or Markdown wrappers.
         """
         prompt = translation_prompt(request) + "\n\n/no_think"
+        options = {
+            "temperature": 0,
+            "num_predict": 256,
+            "repeat_penalty": 1.1,
+            "repeat_last_n": 128,
+        }
+        if not self.use_gpu:
+            options["num_gpu"] = 0
         payload = json.dumps({
             "model": self.model_name,
             "prompt": prompt,
             "stream": False,
             "think": False,
-            "options": {
-                "temperature": 0,
-                "num_predict": 256,
-                "repeat_penalty": 1.1,
-                "repeat_last_n": 128,
-                "num_gpu": 0,
-            },
+            "options": options,
         }).encode("utf-8")
         http_request = urllib.request.Request(
             f"{self.endpoint}/api/generate", data=payload,

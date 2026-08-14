@@ -57,6 +57,9 @@ Two workstation profiles are supported through user-level environment variables:
   Blackwell Laptop GPU, 16 GB VRAM, about 65 GB RAM, and Torch CUDA 12.8.
 - Workstation B has Ollama `0.32.11`; `qwen2.5:7b` and `llama3.1:8b` occupy
   8.94 GiB total.
+- Ollama device policy defaults to automatic GPU offload with at least 8 GiB VRAM.
+  Workstation B loads Qwen fully in 4.75 GB VRAM and measured about 0.20-second
+  warmed median probe latency; explicit `cuda` and `cpu` overrides remain available.
 
 Do not replace one profile's paths with the other's. Runtime code prefers the
 active workstation's environment and uses an OS-local fallback only when no cache
@@ -68,7 +71,7 @@ on the destination system.
 
 ## Verification baseline
 
-The current workstation suite reports `172 passed, 5 skipped`. The five skips
+The current workstation suite reports `173 passed, 5 skipped`. The five skips
 require cached release artifacts absent from this checkout. The maintainability
 scan now excludes the ignored workspace-local `.venv`; targeted translation and
 agreement tests also pass (`48 passed`).

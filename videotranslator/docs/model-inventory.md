@@ -63,10 +63,15 @@ installed. Step 22 measured invalid-output rates of 100% for the Japanese probe,
 Step 23 measured `qwen2.5:7b` on 60 bounded groups: 20/20 Japanese,
 20/20 Korean, and 20/20 Mandarin groups passed both the target-only output contract
 and reviewed semantic terms. The required `cute`, `Seoul`, and Treaty of
-Shimonoseki references passed. Median latency was 1.11-1.13 seconds per group and
-worst latency was 5.21 seconds. Ollama reported a 5.06 GB loaded model allocation
-in RAM and zero VRAM under the production adapter's CPU setting. The model ran
+Shimonoseki references passed. The initial CPU qualification measured median
+latency of 1.11-1.13 seconds per group and a 5.21-second worst case. With automatic
+GPU offload enabled on Workstation B, Qwen used 4.75 GB VRAM, retained 60/60 probe
+quality, and measured about 0.20-second warmed median latency. Ollama runs
 headlessly from the local cache after download.
+
+`--ollama-device auto` offloads when the installed Torch profile supports CUDA and
+the GPU has at least 8 GiB VRAM. `cuda` explicitly permits offload below that
+threshold; `cpu` forces `num_gpu=0`. This keeps both workstation profiles usable.
 
 ## Conditional alignment models
 

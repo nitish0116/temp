@@ -136,8 +136,9 @@ strong-word fallback cues. No recovered text is accepted without decoder evidenc
   text, and complete context window, preventing reuse across incompatible runs.
 - The CLI requires an explicit instruction-following seq2seq model. It is fully
   headless; identical completed requests can resume from the optional cache.
-- `OllamaContextTranslator` provides a deterministic local-model backend without
-  sharing the Python process's limited GPU allocation.
+- `OllamaContextTranslator` provides a deterministic local-model backend with
+  hardware-aware Ollama GPU offload without sharing the Python process's model
+  allocation.
 
 ## `commands/qa_translation_agreement.py`
 

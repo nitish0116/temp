@@ -156,6 +156,11 @@ is intentionally opt-in. Step 23 qualified `qwen2.5:7b` on bounded Japanese,
 Korean, and Mandarin probes. Repeat the three-sample release review before enabling
 agreement for unattended release use.
 
+Ollama offload defaults to `--ollama-device auto`: a supported CUDA GPU with at
+least 8 GiB VRAM is used automatically, while smaller or unsupported GPUs stay on
+CPU. Use `--ollama-device cuda` to override the memory threshold or
+`--ollama-device cpu` to disable offload explicitly.
+
 Contextual translation is the default and uses `Qwen/Qwen2.5-0.5B-Instruct`, a
 small multilingual causal instruction model, unless `--translation-model` selects
 another model. Set `--translation-backend seq2seq` for encoder-decoder instruction

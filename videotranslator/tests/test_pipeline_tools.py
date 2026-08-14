@@ -805,6 +805,18 @@ def test_compute_device_prefers_cuda_and_falls_back_to_cpu(monkeypatch):
         runtime_device.resolve_device("cuda")
 
 
+def test_ollama_auto_uses_only_a_supported_gpu_with_reasonable_vram(monkeypatch):
+    """Ollama auto-offload protects small GPUs while using capable hardware."""
+    properties = type("Properties", (), {"total_memory": 16 * 1024**3})()
+    monkeypatch.setattr(runtime_device, "resolve_device", lambda requested: "cuda")
+    monkeypatch.setattr(runtime_device.torch.cuda, "get_device_properties", lambda index: properties)
+    assert runtime_device.ollama_gpu_available("auto") is True
+    properties.total_memory = 6 * 1024**3
+    assert runtime_device.ollama_gpu_available("auto") is False
+    assert runtime_device.ollama_gpu_available("cuda") is True
+    assert runtime_device.ollama_gpu_available("cpu") is False
+
+
 def test_compute_device_rejects_an_unsupported_torch_architecture(monkeypatch):
     """CUDA availability alone cannot select a wheel lacking the installed GPU."""
     monkeypatch.setattr(runtime_device.torch.cuda, "is_available", lambda: True)

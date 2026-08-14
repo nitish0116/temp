@@ -319,6 +319,7 @@ def test_main_subtitle_command_defaults_to_contextual_translation():
     assert args.translation_model == "Qwen/Qwen2.5-0.5B-Instruct"
     assert args.translation_backend == "causal"
     assert args.translation_context_size == 3
+    assert args.ollama_device == "auto"
     assert args.translation_fallback_model == "facebook/nllb-200-distilled-600M"
     assert args.legacy_cue_translation is False
 
