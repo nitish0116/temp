@@ -110,7 +110,7 @@ def valid_translation_response(text: str, request: TranslationRequest) -> bool:
         "if you need any more", "no translation needed",
         "next part of the conversation", "for translation into english",
     )
-    if any(marker in lowered for marker in forbidden):
+    if any(re.search(r"(?<![a-z])" + re.escape(marker), lowered) for marker in forbidden):
         return False
     if any(context.strip() and context.strip() in cleaned for context in (*request.previous, *request.following)):
         return False
@@ -500,7 +500,7 @@ class OllamaContextTranslator:
     ) -> None:
         """Configure a deterministic local model without loading it in-process.
 
-        Example:: ``OllamaContextTranslator("qwen3:1.7b")`` uses the local Ollama
+        Example:: ``OllamaContextTranslator("qwen2.5:7b")`` uses the local Ollama
         API and leaves the Python process's limited GPU memory untouched.
         """
         self.model_name = model_name

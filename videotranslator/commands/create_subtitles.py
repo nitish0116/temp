@@ -117,7 +117,16 @@ def prepare_runtime_environment(
     """Use shared model caches so downloaded models never live in run outputs."""
     env = dict(os.environ if source is None else source)
     fallbacks: list[dict[str, str]] = []
-    shared_root = Path(env.get("PYTHON_CACHE_HOME", r"D:\PythonCaches"))
+    configured_root = env.get("PYTHON_CACHE_HOME")
+    if configured_root:
+        shared_root = Path(configured_root).expanduser()
+    else:
+        platform_cache = env.get("LOCALAPPDATA")
+        shared_root = (
+            Path(platform_cache) / "videotranslator" / "models"
+            if platform_cache else Path.home() / ".cache" / "videotranslator" / "models"
+        )
+        env["PYTHON_CACHE_HOME"] = str(shared_root)
     cache_defaults = {
         "HF_HOME": shared_root / "huggingface",
         "TORCH_HOME": shared_root / "torch",
@@ -371,7 +380,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--translation-agreement", action=argparse.BooleanOptionalAction, default=False,
         help="Compare every semantic group with an independent local Ollama translation",
     )
-    parser.add_argument("--independent-translation-model", default="qwen3:1.7b")
+    parser.add_argument("--independent-translation-model", default="qwen2.5:7b")
     parser.add_argument("--stronger-translation-model", default="llama3.1:8b")
     parser.add_argument(
         "--semantic-similarity-model",

@@ -392,7 +392,16 @@ Exit: one independent model passes all three language probes, stays within the
 documented workstation resource budget, runs headlessly from shared caches, and
 allows Step 22 to be repeated without weakening any QA threshold.
 
-Status: planned; this is the next release-blocking improvement step.
+Status: probe qualification completed on 2026-08-14. `llama3.1:8b` passed the
+three mandatory semantic references but failed two routine semantic probes
+(`station` in Korean and Mandarin). `qwen2.5:7b` passed 20/20 Japanese, 20/20
+Korean, and 20/20 Mandarin output-contract and reviewed-term checks. Median group
+latency was 1.11-1.13 seconds and worst latency was 5.21 seconds on the target
+workstation. Ollama reported 5.06 GB loaded in RAM and 0 bytes in VRAM because the
+production adapter uses CPU inference. The Apache-2.0 model runs headlessly from
+the workspace cache, and the CLI default now selects it. The next action is to
+restore the three cached sample outputs, rerun Step 22, and repeat the 72-cue
+review; those artifacts are not all present in this checkout.
 
 ## Current usability assessment
 

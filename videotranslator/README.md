@@ -142,7 +142,7 @@ writes a per-attempt semantic QA report:
 The sidecar contract and example are documented in [docs/schemas.md](docs/schemas.md).
 
 For general semantic QA without a reviewed sidecar, enable independent agreement.
-The pipeline compares each primary semantic group with local Qwen3 through Ollama,
+The pipeline compares each primary semantic group with local Qwen2.5 7B through Ollama,
 uses multilingual MiniLM source similarity plus deterministic number/polarity
 checks, caches the evidence, and rejects unresolved disagreement:
 
@@ -152,9 +152,9 @@ checks, caches the evidence, and rejects unresolved disagreement:
 ```
 
 This mode requires the local Ollama service and configured independent model. It
-is intentionally opt-in. Step 22 rejected the current `qwen3:1.7b` backend; follow
-Step 23 and the [model inventory](docs/model-inventory.md) before enabling it for
-release use.
+is intentionally opt-in. Step 23 qualified `qwen2.5:7b` on bounded Japanese,
+Korean, and Mandarin probes. Repeat the three-sample release review before enabling
+agreement for unattended release use.
 
 Contextual translation is the default and uses `Qwen/Qwen2.5-0.5B-Instruct`, a
 small multilingual causal instruction model, unless `--translation-model` selects

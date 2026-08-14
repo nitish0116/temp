@@ -17,7 +17,11 @@ def production_python_files() -> list[Path]:
     """
     return sorted(
         path for path in PROJECT.rglob("*.py")
-        if "tests" not in path.parts and "outputs" not in path.parts
+        if (
+            "tests" not in path.parts
+            and "outputs" not in path.parts
+            and ".venv" not in path.parts
+        )
     )
 
 

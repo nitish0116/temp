@@ -68,15 +68,18 @@ in `schemas/pipeline-config.schema.json`.
 ## Environment
 
 ```powershell
-$env:PYTHON_CACHE_HOME = "D:\PythonCaches"
-$env:HF_HOME = "D:\PythonCaches\huggingface"
-$env:TORCH_HOME = "D:\PythonCaches\torch"
-$env:PIPER_MODELS_DIR = "D:\PythonCaches\piper\voices"
+$cacheRoot = [Environment]::GetEnvironmentVariable("PYTHON_CACHE_HOME", "User")
+$env:PYTHON_CACHE_HOME = $cacheRoot
+$env:HF_HOME = [Environment]::GetEnvironmentVariable("HF_HOME", "User")
+$env:TORCH_HOME = [Environment]::GetEnvironmentVariable("TORCH_HOME", "User")
+$env:PIPER_MODELS_DIR = [Environment]::GetEnvironmentVariable("PIPER_MODELS_DIR", "User")
 $env:HF_TOKEN = "<read-token>"
 ```
 
 The Hugging Face token is needed for gated Pyannote models. Cache directories must
-be writable. Generated artifacts remain under `output_root`.
+be writable. Select the appropriate workstation profile in
+[model-inventory.md](model-inventory.md) first. Generated artifacts remain under
+`output_root`.
 
 ## Validate and run
 

@@ -6,21 +6,41 @@ new workstation and the source of truth for models referenced by project code.
 
 ## Shared model storage
 
-Keep downloaded weights outside repositories and run outputs. Configure these
-user-level environment variables before downloading models:
+Keep downloaded weights in a cache directory rather than tracked files or run
+outputs. Runtime code reads the environment variables, so each workstation can
+use its own paths without changing code. Configure the matching profile once.
+
+### Workstation A: shared `D:` caches
 
 ```powershell
-[Environment]::SetEnvironmentVariable("PYTHON_CACHE_HOME", "D:\PythonCaches", "User")
-[Environment]::SetEnvironmentVariable("HF_HOME", "D:\PythonCaches\huggingface", "User")
-[Environment]::SetEnvironmentVariable("TORCH_HOME", "D:\PythonCaches\torch", "User")
-[Environment]::SetEnvironmentVariable("PIPER_MODELS_DIR", "D:\PythonCaches\piper\voices", "User")
-[Environment]::SetEnvironmentVariable("TTS_HOME", "D:\PythonCaches\coqui-tts", "User")
+$cacheRoot = "D:\PythonCaches"
+[Environment]::SetEnvironmentVariable("PYTHON_CACHE_HOME", $cacheRoot, "User")
+[Environment]::SetEnvironmentVariable("HF_HOME", "$cacheRoot\huggingface", "User")
+[Environment]::SetEnvironmentVariable("TORCH_HOME", "$cacheRoot\torch", "User")
+[Environment]::SetEnvironmentVariable("PIPER_MODELS_DIR", "$cacheRoot\piper\voices", "User")
+[Environment]::SetEnvironmentVariable("TTS_HOME", "$cacheRoot\coqui-tts", "User")
 [Environment]::SetEnvironmentVariable("OLLAMA_MODELS", "D:\Ollama\Models", "User")
+```
+
+### Workstation B: repository-workspace caches
+
+The `.model-cache` directory is ignored by Git.
+
+```powershell
+$cacheRoot = "C:\Users\z005537p\NitishWork\HM\temp\.model-cache"
+[Environment]::SetEnvironmentVariable("PYTHON_CACHE_HOME", $cacheRoot, "User")
+[Environment]::SetEnvironmentVariable("HF_HOME", "$cacheRoot\huggingface", "User")
+[Environment]::SetEnvironmentVariable("TORCH_HOME", "$cacheRoot\torch", "User")
+[Environment]::SetEnvironmentVariable("PIPER_MODELS_DIR", "$cacheRoot\piper\voices", "User")
+[Environment]::SetEnvironmentVariable("TTS_HOME", "$cacheRoot\coqui-tts", "User")
+[Environment]::SetEnvironmentVariable("OLLAMA_MODELS", "$cacheRoot\ollama", "User")
 ```
 
 Restart the terminal after setting persistent variables. `--offline` is valid only
 after every model needed by the selected route has been downloaded and gated-model
-access has been verified.
+access has been verified. If `PYTHON_CACHE_HOME` is unset, Windows falls back to
+`%LOCALAPPDATA%\videotranslator\models`; other systems fall back to
+`~/.cache/videotranslator/models`. Explicit workstation profiles are preferred.
 
 ## Subtitle creation models
 
@@ -32,13 +52,21 @@ access has been verified.
 | `Qwen/Qwen2.5-0.5B-Instruct` | Current contextual primary translator | Required by the current canonical translation route | Hugging Face Transformers cache |
 | `facebook/nllb-200-distilled-600M` | Direct multilingual fallback and legacy/constrained translation | Required for translation fallback and dubbing translation | Hugging Face Transformers cache |
 | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Cross-language semantic similarity for translation agreement | Required when `--translation-agreement` is enabled | Hugging Face Transformers cache |
-| `qwen3:1.7b` | Current Ollama independent translator | Diagnostic only: Step 22 rejected it for Japanese, Korean, and Mandarin | `ollama pull qwen3:1.7b` |
-| `llama3.1:8b` | Stronger Ollama disagreement retry; Step 23 baseline candidate | Required only when configured for agreement/retry | `ollama pull llama3.1:8b` |
-| Replacement independent translator | Release-quality independent evidence | Required before translation agreement can be enabled by default | Model ID is deliberately TBD until Step 23 qualification passes |
+| `qwen3:1.7b` | Former Ollama independent translator | Diagnostic only: Step 22 rejected it for Japanese, Korean, and Mandarin | `ollama pull qwen3:1.7b` |
+| `llama3.1:8b` | Stronger-model retry and rejected Step 23 baseline | Failed two reviewed station probes; do not use as release evidence | `ollama pull llama3.1:8b` |
+| `qwen2.5:7b` | Qualified Ollama independent translator | Selected by Step 23; Apache 2.0 | `ollama pull qwen2.5:7b` |
 
 `qwen3:1.7b` must not be treated as release-qualified merely because its files are
 installed. Step 22 measured invalid-output rates of 100% for the Japanese probe,
 75% for the Korean probe, and 35.09% for the complete Mandarin run.
+
+Step 23 measured `qwen2.5:7b` on 60 bounded groups: 20/20 Japanese,
+20/20 Korean, and 20/20 Mandarin groups passed both the target-only output contract
+and reviewed semantic terms. The required `cute`, `Seoul`, and Treaty of
+Shimonoseki references passed. Median latency was 1.11-1.13 seconds per group and
+worst latency was 5.21 seconds. Ollama reported a 5.06 GB loaded model allocation
+in RAM and zero VRAM under the production adapter's CPU setting. The model ran
+headlessly from the local cache after download.
 
 ## Conditional alignment models
 
@@ -108,7 +136,7 @@ sizes. Hugging Face directories can retain multiple formats or revisions.
 | Multilingual MiniLM | about 0.45 GiB |
 | Installed Japanese, Mandarin, and Korean CTC aligners | about 5.93 GiB total |
 | `microsoft/wavlm-base-plus-sv` | about 0.38 GiB |
-| Ollama `qwen3:1.7b` plus `llama3.1:8b` | about 6.30 GB total |
+| Ollama `qwen2.5:7b` plus `llama3.1:8b` | 8.94 GiB total in the current cache |
 
 Allow additional headroom for pyannote component models, Demucs, selected Piper
 voices, optional XTTS-v2, temporary downloads, and future Step 23 candidates.

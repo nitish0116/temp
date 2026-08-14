@@ -32,33 +32,35 @@ subtitles.
 
 ## Current blocker and next action
 
-`qwen3:1.7b` is not a release-qualified independent translator. The next planned
-work is Step 23 in `docs/subtitle-improvement-plan.md`:
+Step 23 probe qualification completed on 2026-08-14. `llama3.1:8b` failed two
+routine semantic probes. The selected `qwen2.5:7b` replacement passed 20/20
+Japanese, 20/20 Korean, and 20/20 Mandarin output-contract and semantic-term
+checks, including `cute`, `Seoul`, and Treaty of Shimonoseki. The CLI default now
+uses it. Model-specific agreement cache keys invalidate only agreement evidence.
 
-1. probe `llama3.1:8b` as the first already-installed baseline;
-2. require at least 95% target-language-only valid output across bounded Japanese,
-   Korean, and Mandarin probes;
-3. require the `cute`, `Seoul`, and Treaty of Shimonoseki references to pass;
-4. record latency, RAM/VRAM, disk, offline behavior, license, and cache location;
-5. select a replacement only if it passes without weakening QA;
-6. rerun Step 22 and the deterministic 72-cue review.
+The next action is to restore or regenerate the three Step 22 cached sample
+outputs, rerun their episode-wide agreement stage with `qwen2.5:7b`, and repeat
+the deterministic 72-cue review. Those three canonical artifacts are not all
+present on this workstation, so the release rerun has not started.
 
-Do not start another episode-wide agreement run until the three probes pass.
 Targeted ASR recovery remains necessary where the source transcript itself is
 wrong, especially the Mandarin Treaty of Shimonoseki group.
 
 ## Environment and model setup
 
-The paths below describe the current workstation; they are not required paths for
-another system. On a new system, choose local equivalents and activate that
-system's Python environment before running project commands.
+Two workstation profiles are supported through user-level environment variables:
 
-- Shared virtual environment: `D:\Git\Projects\.venv`
-- Shared cache root: `D:\PythonCaches`
-- Hugging Face cache: `D:\PythonCaches\huggingface`
-- Ollama models: `D:\Ollama\Models`
-- Current workstation profile: NVIDIA Pascal/GTX, Torch CUDA 12.6 profile
-- `transformers==4.57.6` was reinstalled after one corrupted package file was found
+- Workstation A uses `D:\Git\Projects\.venv`, `D:\PythonCaches`, and
+  `D:\Ollama\Models`; it has the NVIDIA Pascal/GTX, Torch CUDA 12.6 profile.
+- Workstation B uses `videotranslator\.venv` and the ignored
+  `C:\Users\z005537p\NitishWork\HM\temp\.model-cache`; it has an RTX PRO 4000
+  Blackwell Laptop GPU, 16 GB VRAM, about 65 GB RAM, and Torch CUDA 12.8.
+- Workstation B has Ollama `0.32.11`; `qwen2.5:7b` and `llama3.1:8b` occupy
+  8.94 GiB total.
+
+Do not replace one profile's paths with the other's. Runtime code prefers the
+active workstation's environment and uses an OS-local fallback only when no cache
+root is configured.
 
 Read `docs/model-inventory.md` before configuring another workstation. Tokens and
 credentials are intentionally not committed; configure Hugging Face access again
@@ -66,10 +68,10 @@ on the destination system.
 
 ## Verification baseline
 
-The last complete repository suite reported `170 passed, 3 skipped`. The skips are
-the cached release smoke checks that require promoted `final.srt` files; rejected
-runs deliberately do not have those files. Documentation maintainability checks
-also passed after the model inventory was added.
+The current workstation suite reports `172 passed, 5 skipped`. The five skips
+require cached release artifacts absent from this checkout. The maintainability
+scan now excludes the ignored workspace-local `.venv`; targeted translation and
+agreement tests also pass (`48 passed`).
 
 Before changing code, run:
 

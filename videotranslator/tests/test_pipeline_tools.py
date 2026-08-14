@@ -844,6 +844,19 @@ def test_headless_runtime_uses_one_shared_cache_root(tmp_path: Path):
     assert not (tmp_path / "output" / "model-cache").exists()
 
 
+def test_headless_runtime_default_cache_is_portable(tmp_path: Path):
+    """An unconfigured Windows host uses its profile cache, not another drive."""
+    local_app_data = tmp_path / "local-app-data"
+    env, events = prepare_runtime_environment(
+        tmp_path / "output", {"LOCALAPPDATA": str(local_app_data)}
+    )
+    expected = local_app_data / "videotranslator" / "models"
+    assert env["PYTHON_CACHE_HOME"] == str(expected)
+    assert env["HF_HOME"] == str(expected / "huggingface")
+    assert env["TORCH_HOME"] == str(expected / "torch")
+    assert events == []
+
+
 def test_headless_runtime_prefers_shared_ffmpeg_for_torchcodec(tmp_path: Path):
     binary = tmp_path / "shared" / "bin"
     binary.mkdir(parents=True)

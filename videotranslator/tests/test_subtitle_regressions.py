@@ -492,6 +492,7 @@ def test_verbose_or_context_leaking_translation_uses_fallback():
     })
     request = translation_request(clean["segments"], 0, "ja", "en")
     assert not valid_translation_response("Here's the translation:\nTarget", request)
+    assert valid_translation_response("Where is the station?", request)
     assert not valid_translation_response("Target source two", request)
     backend = FallbackContextTranslator(
         lambda item: "Here's the translation:\nTarget", lambda item: "Clean target"
