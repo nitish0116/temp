@@ -76,3 +76,25 @@ def test_unresolved_disagreement_blocks_promotion():
     assert report["passed"] is False
     assert report["failed_group_count"] == 1
     assert output["segments"][0]["translated_text"].startswith("Seattle")
+
+
+def test_unresolved_disagreement_retries_with_stronger_model():
+    scores = {
+        ("서울에 그런 곳도 있었니?", "Seattle also had such a place?"): 0.08,
+        ("서울에 그런 곳도 있었니?", "Some unrelated answer."): 0.06,
+        ("Seattle also had such a place?", "Some unrelated answer."): 0.10,
+        ("서울에 그런 곳도 있었니?", "Was there a place like that in Seoul?"): 0.14,
+    }
+    output, report = enforce_translation_agreement(
+        translated_document(), lambda request: "Some unrelated answer.",
+        lambda left, right: scores[(left, right)],
+        independent_model="independent",
+        retry_translate=lambda request: "Was there a place like that in Seoul?",
+        retry_model="stronger",
+    )
+    check = report["checks"][0]
+    assert report["passed"] is True
+    assert check["selected"] == "retry"
+    assert check["source_retry_similarity"] == 0.14
+    assert output["segments"][0]["translated_text"].endswith("Seoul?")
+    assert output["segments"][0]["provenance"][-1]["method"] == "stronger-model-retry"

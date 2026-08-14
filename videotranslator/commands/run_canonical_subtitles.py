@@ -153,6 +153,8 @@ def run_canonical_attempt(
     independent_translate: Callable[[TranslationRequest], str] | None = None,
     semantic_similarity: Callable[[str, str], float] | None = None,
     independent_model: str | None = None,
+    stronger_translate: Callable[[TranslationRequest], str] | None = None,
+    stronger_model: str | None = None,
 ) -> dict:
     """Execute Steps 4–15 for one recovered-source candidate."""
     turns = stable_diarization_turns(diarization_report)
@@ -202,6 +204,8 @@ def run_canonical_attempt(
         integrity, agreement_report = enforce_translation_agreement(
             integrity, independent_translate, semantic_similarity,
             independent_model=independent_model or "independent-translator",
+            retry_translate=stronger_translate,
+            retry_model=stronger_model,
             cache_directory=output / "agreement-cache",
         )
         agreement_report["evaluated"] = True

@@ -146,6 +146,8 @@ def enforce_translation_agreement(
     similarity: Callable[[str, str], float],
     *,
     independent_model: str,
+    retry_translate: Callable[[TranslationRequest], str] | None = None,
+    retry_model: str | None = None,
     cache_directory: Path | None = None,
     minimum_candidate_similarity: float = 0.72,
     minimum_consensus_source_similarity: float = 0.20,
@@ -188,6 +190,8 @@ def enforce_translation_agreement(
             minimum_consensus_source_similarity=minimum_consensus_source_similarity,
         )
         selected = "primary"
+        retry = None
+        source_retry = None
         passed = not issues
         if issues and not integrity_issues(source, independent):
             if source_independent >= source_primary + promotion_margin:
@@ -199,13 +203,43 @@ def enforce_translation_agreement(
                     source_independent_similarity=round(source_independent, 4),
                 )
                 selected, passed = "independent", True
+        if issues and not passed and retry_translate is not None:
+            retry_request = TranslationRequest(
+                group_id=f"agreement-retry-{segment['semantic_group_id']}",
+                source_language=request.source_language,
+                target_language=request.target_language,
+                current_text=request.current_text,
+                previous=request.previous,
+                following=request.following,
+                required_numbers=request.required_numbers,
+            )
+            retry, _retry_cache_hit = cached_candidate(
+                retry_request, retry_translate, retry_model or "stronger-retry",
+                cache_directory,
+            )
+            source_retry = similarity(source, retry)
+            if (
+                not integrity_issues(source, retry)
+                and source_retry >= max(source_primary, source_independent) + promotion_margin
+            ):
+                segment["translated_text"] = retry
+                segment["provenance"] = append_provenance(
+                    segment, "translation-agreement", "stronger-model-retry",
+                    model=retry_model or "stronger-retry", issues=issues,
+                    source_primary_similarity=round(source_primary, 4),
+                    source_independent_similarity=round(source_independent, 4),
+                    source_retry_similarity=round(source_retry, 4),
+                )
+                selected, passed = "retry", True
         checks.append({
             "semantic_group_id": segment["semantic_group_id"],
             "primary": primary, "independent": independent,
+            "retry": retry,
             "selected": selected, "passed": passed, "issues": issues,
             "cache_hit": cache_hit,
             "source_primary_similarity": round(source_primary, 4),
             "source_independent_similarity": round(source_independent, 4),
+            "source_retry_similarity": None if source_retry is None else round(source_retry, 4),
             "candidate_similarity": round(candidates, 4),
         })
     report = {
@@ -214,6 +248,7 @@ def enforce_translation_agreement(
         "group_count": len(checks),
         "failed_group_count": sum(not check["passed"] for check in checks),
         "independent_model": independent_model,
+        "retry_model": retry_model,
         "checks": checks,
     }
     output["metadata"] = {**output.get("metadata", {}), "translation_agreement": report}

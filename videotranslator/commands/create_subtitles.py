@@ -234,6 +234,7 @@ def create_subtitles(args: argparse.Namespace) -> dict:
     python = sys.executable
     contextual_backend = None
     independent_backend = None
+    stronger_backend = None
     semantic_similarity = None
     if not args.legacy_cue_translation:
         primary_class = CausalContextTranslator if args.translation_backend == "causal" else TransformersContextTranslator
@@ -244,6 +245,9 @@ def create_subtitles(args: argparse.Namespace) -> dict:
         if args.translation_agreement:
             independent_backend = OllamaContextTranslator(
                 args.independent_translation_model, args.ollama_endpoint,
+            )
+            stronger_backend = OllamaContextTranslator(
+                args.stronger_translation_model, args.ollama_endpoint,
             )
             semantic_similarity = MultilingualSimilarity(
                 args.semantic_similarity_model, args.device,
@@ -296,6 +300,8 @@ def create_subtitles(args: argparse.Namespace) -> dict:
                 independent_translate=independent_backend,
                 semantic_similarity=semantic_similarity,
                 independent_model=args.independent_translation_model,
+                stronger_translate=stronger_backend,
+                stronger_model=args.stronger_translation_model,
             )
             canonical_report["translation_fallbacks"] = list(contextual_backend.events)
             report = canonical_report["qa"]
@@ -355,6 +361,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Compare every semantic group with an independent local Ollama translation",
     )
     parser.add_argument("--independent-translation-model", default="qwen3:1.7b")
+    parser.add_argument("--stronger-translation-model", default="llama3.1:8b")
     parser.add_argument(
         "--semantic-similarity-model",
         default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
