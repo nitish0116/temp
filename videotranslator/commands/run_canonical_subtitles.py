@@ -62,6 +62,9 @@ def assign_missing_speakers(segments: list[dict], turns: list[dict]) -> list[dic
 def align_recovered_envelopes(recovered: dict, strong: dict, maximum_gap: float = 0.5) -> dict:
     """Expand recovered cues to nearby strong-ASR words without adding duplicate text."""
     output = json.loads(json.dumps(recovered))
+    segments = output.get("segments", [])
+    core_starts = [float(cue["start"]) for cue in segments]
+    core_ends = [float(cue["end"]) for cue in segments]
     words = [
         word for segment in strong.get("segments", []) for word in segment.get("words", [])
         if word.get("start") is not None and word.get("end") is not None
@@ -70,16 +73,18 @@ def align_recovered_envelopes(recovered: dict, strong: dict, maximum_gap: float 
         start, end = float(word["start"]), float(word["end"])
         midpoint = (start + end) / 2
         candidates = []
-        for index, cue in enumerate(output.get("segments", [])):
+        for index, cue in enumerate(segments):
             left, right = float(cue["start"]), float(cue["end"])
             distance = 0.0 if left <= midpoint <= right else min(abs(midpoint - left), abs(midpoint - right))
             if distance <= maximum_gap:
                 candidates.append((distance, index))
         if candidates:
             _distance, index = min(candidates)
-            cue = output["segments"][index]
-            cue["start"] = round(min(float(cue["start"]), start), 3)
-            cue["end"] = round(max(float(cue["end"]), end), 3)
+            cue = segments[index]
+            lower = core_ends[index - 1] if index else float("-inf")
+            upper = core_starts[index + 1] if index + 1 < len(segments) else float("inf")
+            cue["start"] = round(max(lower, min(float(cue["start"]), start)), 3)
+            cue["end"] = round(min(upper, max(float(cue["end"]), end)), 3)
     return output
 
 

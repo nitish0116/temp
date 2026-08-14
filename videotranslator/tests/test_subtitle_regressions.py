@@ -376,6 +376,33 @@ def test_recovered_envelopes_align_to_nearby_strong_words():
     assert aligned["segments"][0]["end"] == 2.0
 
 
+def test_strong_word_alignment_never_crosses_adjacent_cue_cores():
+    recovered = {"segments": [
+        {"start": 1.0, "end": 1.4, "text": "one"},
+        {"start": 1.6, "end": 2.0, "text": "two"},
+    ]}
+    strong = {"segments": [{"words": [
+        {"start": 1.2, "end": 1.8, "word": "boundary"},
+    ]}]}
+    aligned = align_recovered_envelopes(recovered, strong)
+    assert aligned["segments"][0]["end"] <= recovered["segments"][1]["start"]
+    assert aligned["segments"][0]["end"] > aligned["segments"][0]["start"]
+
+
+def test_nested_wordless_recovery_cue_merges_into_aligned_group():
+    source = {
+        "language": "zh", "task": "transcribe", "output_language": "zh",
+        "segments": [
+            {"start": 0.0, "end": 2.0, "text": "aligned", "words": [{"start": 0.0, "end": 2.0, "word": "aligned"}]},
+            {"start": 0.8, "end": 1.2, "text": "nested", "words": []},
+        ],
+    }
+    clean = build_clean_transcript(source)
+    assert len(clean["segments"]) == 1
+    assert clean["segments"][0]["start"] == 0.0
+    assert clean["segments"][0]["end"] == 2.0
+
+
 def test_empty_contextual_output_uses_direct_translation_fallback():
     backend = FallbackContextTranslator(lambda request: "", lambda request: "fallback target")
     clean = build_clean_transcript({

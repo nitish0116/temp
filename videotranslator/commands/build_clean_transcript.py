@@ -102,6 +102,12 @@ def _merge_continuations(units: list[dict], maximum_gap: float, maximum_duration
             same_speaker = previous["speaker"] == unit["speaker"]
             gap = unit["start"] - previous["end"]
             duration = unit["end"] - groups[-1][0]["start"]
+            if gap < 0 and duration <= maximum_duration:
+                # Recovery can produce a wordless cue nested inside a longer
+                # word-aligned unit. It must share the semantic envelope rather
+                # than becoming an impossible overlapping display group.
+                groups[-1].append(unit)
+                continue
             if (
                 same_speaker
                 and 0 <= gap <= maximum_gap
