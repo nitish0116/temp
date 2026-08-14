@@ -77,6 +77,7 @@ manifests, and other run artifacts remain inside the selected output directory.
 
 Detailed operations and project state:
 
+- [Cross-assistant project handoff](docs/project-handoff.md)
 - [Stage-by-stage CLI runbook](docs/cli.md)
 - [Subtitle quality improvement plan](docs/subtitle-improvement-plan.md)
 - [Three-sample release review](docs/three-sample-release-review.md)
@@ -91,6 +92,17 @@ Copy `config/pipeline.example.json` for each video and adjust its paths, models,
 and quality thresholds. Relative paths resolve from the configuration file.
 `compute.device` defaults to `auto`: CUDA is selected when CUDA-enabled PyTorch
 can access an NVIDIA GPU, otherwise every supported stage falls back to CPU.
+
+On a new system or in a new coding-assistant session, load the durable handoff and
+live Git evidence with:
+
+```powershell
+D:\Git\Projects\.venv\Scripts\python.exe -m videotranslator history
+```
+
+`/history` is also defined as a repository assistant convention in `AGENTS.md`.
+It summarizes committed project context; it cannot retrieve private, unexported
+conversation transcripts from another assistant product.
 
 ## Run
 

@@ -68,6 +68,7 @@ from videotranslator.commands.qa_translation_integrity import (
     integrity_issues,
     semantic_pieces,
 )
+from videotranslator.commands.project_history import render_history
 from videotranslator.commands.map_translation_cues import (
     allocate_boundaries,
     map_translated_groups,
@@ -91,6 +92,30 @@ from videotranslator.commands.repair_subtitles import repair, split_cue, text_ch
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_project_history_combines_handoff_and_live_git_evidence(
+    tmp_path: Path, monkeypatch,
+):
+    """A new assistant receives durable prose plus current repository evidence."""
+    handoff = tmp_path / "handoff.md"
+    handoff.write_text("# Durable handoff\n\nNext: qualify the model.\n", encoding="utf-8")
+    responses = {
+        ("status", "-sb"): "## main...origin/main [ahead 1]\n",
+        ("log", "-3", "--date=short", "--format=%h %ad %s"): "abc 2026-08-14 update\n",
+        ("log", "--oneline", "@{upstream}..HEAD"): "abc update\n",
+    }
+
+    def run(command, cwd, check, capture_output, text):
+        key = tuple(command[1:])
+        return subprocess.CompletedProcess(command, 0, stdout=responses[key])
+
+    monkeypatch.setattr(subprocess, "run", run)
+    rendered = render_history(tmp_path, handoff, commit_count=3)
+    assert "Next: qualify the model." in rendered
+    assert "main...origin/main [ahead 1]" in rendered
+    assert "abc 2026-08-14 update" in rendered
+    assert "Commits not in upstream" in rendered
 
 
 def test_lazy_translator_does_not_construct_backend_until_called():

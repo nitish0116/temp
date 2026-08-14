@@ -243,7 +243,12 @@ def show_status(config_path: Path) -> None:
 
 
 def main() -> None:
-    """Dispatch the pipeline ``run`` or ``status`` command."""
+    """Dispatch pipeline, subtitle, or project-history commands."""
+    if len(sys.argv) > 1 and sys.argv[1] == "history":
+        from .commands.project_history import main as history_main
+
+        history_main(sys.argv[2:])
+        return
     if len(sys.argv) > 1 and sys.argv[1] == "subtitles":
         from .commands.create_subtitles import main as subtitle_main
 

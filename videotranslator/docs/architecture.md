@@ -76,6 +76,7 @@ documentation, tests, and orchestrator command are migrated together.
 
 - [cli.md](cli.md) is the stage-by-stage command runbook.
 - [configuration.md](configuration.md) documents user settings and environment variables.
+- [project-handoff.md](project-handoff.md) is the durable cross-assistant resume point.
 - [schemas.md](schemas.md) defines serialized artifact ownership and evolution.
 - [dependencies.md](dependencies.md) maps imports to installable requirements.
 - [model-inventory.md](model-inventory.md) inventories runtime model weights and setup status.

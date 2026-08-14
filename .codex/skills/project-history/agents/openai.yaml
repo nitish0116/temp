@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project History"
+  short_description: "Resume work from the committed project handoff"
+  default_prompt: "Use $project-history to load the project handoff and continue from the last verified state."
