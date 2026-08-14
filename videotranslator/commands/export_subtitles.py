@@ -16,6 +16,11 @@ except ImportError:
 
 
 def display_text(cue: dict) -> str:
+    """Select translated text, falling back to source text for display.
+
+    Example:: ``display_text({"translated_text": " Hello "})`` returns
+    ``"Hello"``.
+    """
     return str(cue.get("translated_text") or cue.get("source_text") or "").strip()
 
 
@@ -32,6 +37,10 @@ def validate_export_source(document: dict) -> None:
 
 
 def ass_timestamp(seconds: float) -> str:
+    """Format seconds as an ASS centisecond timestamp.
+
+    Example:: ``ass_timestamp(65.25)`` returns ``"0:01:05.25"``.
+    """
     centiseconds = round(float(seconds) * 100)
     hours, remainder = divmod(centiseconds, 360000)
     minutes, remainder = divmod(remainder, 6000)
@@ -40,10 +49,19 @@ def ass_timestamp(seconds: float) -> str:
 
 
 def ass_escape(text: str) -> str:
+    """Escape ASS control characters and convert newlines to ``\\N``.
+
+    Example:: ``ass_escape("one\ntwo")`` returns ``"one\\Ntwo"``.
+    """
     return text.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}").replace("\n", "\\N")
 
 
 def srt_content(document: dict) -> str:
+    """Render a validated canonical document as UTF-8 SRT text.
+
+    Example:: a one-cue document produces cue number ``1``, an SRT timestamp
+    line, and the selected display text followed by a newline.
+    """
     validate_export_source(document)
     return "\n\n".join(
         f"{index}\n{srt_timestamp(cue['start'])} --> {srt_timestamp(cue['end'])}\n{display_text(cue)}"
@@ -52,6 +70,11 @@ def srt_content(document: dict) -> str:
 
 
 def ass_content(document: dict) -> str:
+    """Render canonical cues as ASS with one safe style per speaker.
+
+    Example:: speaker ``speaker-01`` becomes both an ASS style and cue name,
+    preserving speaker identity for downstream styling.
+    """
     validate_export_source(document)
     speakers = sorted({cue["speaker"] for cue in document["segments"]})
     styles = [
@@ -92,6 +115,11 @@ def export_subtitles(document: dict, srt_path: Path | None, ass_path: Path | Non
 
 
 def main() -> None:
+    """Run the SRT/ASS exporter CLI.
+
+    Example:: ``python -m videotranslator.commands.export_subtitles final.en.json
+    --srt final.srt`` writes a validated SRT export.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path)
     parser.add_argument("--srt", type=Path)

@@ -60,6 +60,10 @@ non-commercial project. Transformers is pinned below 5 for XTTS compatibility.
 Runtime selection checks both CUDA availability and whether the installed Torch
 wheel supports the detected GPU architecture before choosing CUDA.
 
+For test development, install `requirements/dev.txt` after the hardware-aware
+installer. Direct runtime imports are pinned instead of relying on transitive
+installs; see [docs/dependencies.md](docs/dependencies.md).
+
 Piper voice models default to each run's `<output-dir>\models` directory. To reuse
 downloaded voices across projects, set `PIPER_MODELS_DIR` to a shared cache before
 starting the process, for example:
@@ -74,10 +78,11 @@ manifests, and other run artifacts remain inside the selected output directory.
 Detailed operations and project state:
 
 - [Stage-by-stage CLI runbook](docs/cli.md)
-- [Implementation history and known limitations](docs/implementation-history.md)
-- [Future automatic quality approach](docs/future-approach.md)
 - [Subtitle quality improvement plan](docs/subtitle-improvement-plan.md)
 - [Three-sample release review](docs/three-sample-release-review.md)
+- [Configuration guide](docs/configuration.md)
+- [JSON schemas and artifact contracts](docs/schemas.md)
+- [Dependency reference](docs/dependencies.md)
 - [Architecture](docs/architecture.md)
 - [Code reference](docs/code-reference.md)
 

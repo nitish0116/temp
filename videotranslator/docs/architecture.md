@@ -75,7 +75,23 @@ documentation, tests, and orchestrator command are migrated together.
 ## Operational documentation
 
 - [cli.md](cli.md) is the stage-by-stage command runbook.
-- [implementation-history.md](implementation-history.md) records completed work,
-  current artifacts, and known limitations.
-- [future-approach.md](future-approach.md) defines the automatic correction and
-  promotion design required before the next final render.
+- [configuration.md](configuration.md) documents user settings and environment variables.
+- [schemas.md](schemas.md) defines serialized artifact ownership and evolution.
+- [dependencies.md](dependencies.md) maps imports to installable requirements.
+- [subtitle-improvement-plan.md](subtitle-improvement-plan.md) is the authoritative
+  implementation plan and design history.
+- [three-sample-release-review.md](three-sample-release-review.md) records the
+  current semantic release blocker.
+
+## Current implementation status
+
+The pipeline has versioned canonical timed text, resumable stages, multilingual
+ASR/alignment routing, diarization, semantic grouping, contextual translation,
+timing repair, subtitle export, TTS, assembly, and independent QA. Structural QA
+passes the three cached multilingual samples. Semantic review still blocks release:
+the current 0.5B contextual model can produce fluent but incorrect names, places,
+and meanings, and damaged ASR source text propagates downstream.
+
+The authoritative remaining work is stronger ASR/translation quality and
+reference-aware semantic evaluation, followed by rerunning translation onward.
+This replaces the stale split between implementation-history and future-approach.

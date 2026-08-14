@@ -53,6 +53,11 @@ def install(profile: str, dry_run: bool = False) -> list[list[str]]:
 
 
 def main() -> None:
+    """Detect hardware and install, or print, the matching dependency profile.
+
+    Example:: ``python videotranslator/install_dependencies.py --dry-run``
+    prints the two pip commands without modifying the environment.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", choices=["auto", *sorted(PROFILES)], default="auto")
     parser.add_argument("--dry-run", action="store_true")

@@ -137,6 +137,10 @@ def cache_key(request: TranslationRequest, model: str) -> str:
 
 
 def _read_cached(cache_directory: Path | None, key: str) -> str | None:
+    """Read a nonempty cached translation, or return ``None`` on a cache miss.
+
+    Example:: passing ``None`` as the cache directory always returns ``None``.
+    """
     if cache_directory is None:
         return None
     path = cache_directory / f"{key}.json"
@@ -148,6 +152,11 @@ def _read_cached(cache_directory: Path | None, key: str) -> str | None:
 
 
 def _write_cached(cache_directory: Path | None, key: str, text: str) -> None:
+    """Atomically cache translated text under its deterministic request key.
+
+    Example:: key ``abc`` is stored as ``abc.json`` via a temporary file so an
+    interrupted write cannot leave a partial cache entry.
+    """
     if cache_directory is None:
         return
     cache_directory.mkdir(parents=True, exist_ok=True)
@@ -233,6 +242,11 @@ class TransformersContextTranslator:
     """Local instruction-model backend for the contextual request protocol."""
 
     def __init__(self, model_name: str, device: str = "auto") -> None:
+        """Load a sequence-to-sequence instruction model on the resolved device.
+
+        Example:: ``TransformersContextTranslator("model", "cpu")`` keeps both
+        tokenizer inputs and generated tensors on CPU.
+        """
         from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
         self.model_name = model_name
@@ -241,6 +255,11 @@ class TransformersContextTranslator:
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(self.device)
 
     def __call__(self, request: TranslationRequest) -> str:
+        """Translate one contextual request with deterministic generation.
+
+        Example:: calling the backend with a Japanese-to-English request returns
+        only the decoded current-group translation.
+        """
         inputs = self.tokenizer(
             translation_prompt(request), return_tensors="pt", truncation=True,
             max_length=1024,
@@ -257,6 +276,10 @@ class CausalContextTranslator:
     """Chat-template backend for small multilingual causal instruction models."""
 
     def __init__(self, model_name: str, device: str = "auto") -> None:
+        """Load a causal chat model using a device-appropriate floating type.
+
+        Example:: ``device="cuda"`` loads float16 weights; CPU uses float32.
+        """
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -269,6 +292,11 @@ class CausalContextTranslator:
         ).to(self.device)
 
     def __call__(self, request: TranslationRequest) -> str:
+        """Translate one request through the model's chat template.
+
+        Example:: only tokens generated after the input prompt are decoded, so
+        prompt text cannot be mistaken for translated dialogue.
+        """
         messages = [
             {
                 "role": "system",
@@ -296,6 +324,11 @@ class NLLBFallbackTranslator:
     """GPU-first direct translation with automatic CUDA-memory recovery."""
 
     def __init__(self, model_name: str, device: str = "cpu") -> None:
+        """Create a lazily loaded NLLB fallback for direct language pairs.
+
+        Example:: construction does not load model weights; the first request
+        selects its NLLB source code and loads them.
+        """
         from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
         self.model_name = model_name
@@ -308,6 +341,11 @@ class NLLBFallbackTranslator:
         self.runtime_events: list[dict] = []
 
     def _load(self, source_code: str) -> None:
+        """Load or reload NLLB for a particular source-language code.
+
+        Example:: switching from ``jpn_Jpan`` to ``kor_Hang`` refreshes the
+        tokenizer's ``src_lang`` before generation.
+        """
         import torch
 
         self.tokenizer = self.AutoTokenizer.from_pretrained(
@@ -318,6 +356,11 @@ class NLLBFallbackTranslator:
         self.source_code = source_code
 
     def _generate(self, request: TranslationRequest, target_code: str) -> str:
+        """Generate one direct translation using the forced target-language token.
+
+        Example:: ``eng_Latn`` forces an English decoder start token even when
+        the surrounding pipeline previously handled another target language.
+        """
         inputs = self.tokenizer(
             request.current_text, return_tensors="pt", truncation=True, max_length=512
         )
@@ -330,6 +373,11 @@ class NLLBFallbackTranslator:
         return self.tokenizer.decode(generated[0], skip_special_tokens=True).strip()
 
     def __call__(self, request: TranslationRequest) -> str:
+        """Translate directly and recover CUDA out-of-memory failures on CPU.
+
+        Example:: a CUDA OOM records a runtime event, moves the model to CPU,
+        clears the CUDA cache, and retries the same group once.
+        """
         try:
             from .auto_prepare_script import nllb_code
         except ImportError:
@@ -363,11 +411,21 @@ class FallbackContextTranslator:
     """Use contextual translation first and record deterministic direct fallbacks."""
 
     def __init__(self, primary: Callable[[TranslationRequest], str], fallback: Callable[[TranslationRequest], str]) -> None:
+        """Compose a preferred translator with a deterministic fallback.
+
+        Example:: an instruction model can be primary while NLLB handles invalid
+        or failed responses.
+        """
         self.primary = primary
         self.fallback = fallback
         self.events: list[dict] = []
 
     def __call__(self, request: TranslationRequest) -> str:
+        """Return a valid primary response or record and use the fallback.
+
+        Example:: assistant commentary fails the response contract and produces
+        an ``invalid-primary-output-contract`` event before fallback translation.
+        """
         try:
             result = normalize_translation_response(self.primary(request))
         except Exception as error:

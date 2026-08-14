@@ -4,7 +4,7 @@
 
 This is the authoritative, ordered plan for improving subtitle creation and
 translation. It combines the findings from the first complete episode run with
-the principles in `video_translator_subtitle_translation_architecture.docx`.
+the principles from the original architecture proposal, now consolidated here.
 
 The central architectural decision is that structured source-language timed text
 is the canonical hand-off between ASR, translation, subtitle export, TTS, and
@@ -317,4 +317,3 @@ The fixture suite and episode run must satisfy all applicable requirements:
 - Preserve prior artifacts until replacements pass QA.
 - Keep credentials in environment variables and out of source, logs, and reports.
 - Keep model/device fallbacks bounded and record the selected configuration.
-

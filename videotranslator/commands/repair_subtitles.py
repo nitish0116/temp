@@ -85,6 +85,11 @@ def _bounded_timing_points(cue: dict, count: int, maximum_duration: float) -> li
 
 
 def _display_field(cue: dict) -> str:
+    """Return the canonical field that currently owns a cue's display text.
+
+    Example:: a translated cue selects ``translated_text``; a source-only cue
+    selects ``source_text``.
+    """
     return "translated_text" if cue.get("translated_text") is not None else "source_text" if cue.get("source_text") is not None else "text"
 
 
@@ -92,6 +97,11 @@ def _merge_compatible(
     left: dict, right: dict, maximum_gap: float, maximum_duration: float,
     maximum_characters: int, maximum_characters_per_second: float,
 ) -> bool:
+    """Return whether adjacent cues may be merged without breaking constraints.
+
+    Example:: contiguous cues from the same speaker and semantic group can merge
+    when their combined duration, length, and reading speed remain valid.
+    """
     gap = float(right["start"]) - float(left["end"])
     field = _display_field(left)
     if _display_field(right) != field:
@@ -242,6 +252,11 @@ def rebalance_neighbor_timing(
     output = [dict(cue) for cue in cues]
 
     def required(cue: dict) -> float:
+        """Calculate the minimum readable duration for one neighboring cue.
+
+        Example:: at 20 characters per second, a 20-character cue requires at
+        least one second, subject to ``minimum_duration``.
+        """
         text = str(cue.get(_display_field(cue), ""))
         return max(minimum_duration, len(re.sub(r"\s+", "", text)) / maximum_characters_per_second)
 

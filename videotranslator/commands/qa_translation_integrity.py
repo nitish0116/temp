@@ -46,6 +46,11 @@ def english_number(value: int) -> str | None:
 
 
 def number_is_preserved(number: str, target_numbers: list[str], source: str, target: str) -> bool:
+    """Accept a numeral when its digit or supported English form is retained.
+
+    Example:: ``number_is_preserved("2", [], "2 people", "two people")`` is
+    true, while replacing it with ``three`` is false.
+    """
     if number in target_numbers:
         return True
     if not number.isdigit():

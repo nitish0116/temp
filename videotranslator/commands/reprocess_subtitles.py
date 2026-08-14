@@ -138,6 +138,11 @@ def reprocess_existing(
 
 
 def main() -> None:
+    """Run incremental canonical reprocessing from existing JSON artifacts.
+
+    Example:: ``python -m videotranslator reprocess-subtitles source.json
+    translated.json -o outputs/reprocessed`` avoids rerunning ASR and models.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path)
     parser.add_argument("translated", type=Path)

@@ -476,12 +476,16 @@ decoder loops without source-language-specific rules.
 
 ## Configuration and schemas
 
-`config/pipeline.example.json` documents a complete project configuration. JSON Schema
-files under `schemas/` define boundaries between stages:
+See [configuration.md](configuration.md) for a minimal configuration, every
+user-facing section, environment variables, and runnable examples. See
+[schemas.md](schemas.md) for ownership, lifecycle, compatibility, and extension
+rules. JSON Schema files under `schemas/` define boundaries between stages:
 
 - `pipeline-config.schema.json`: source, output, translation, quality, and dubbing
   settings.
 - `transcript.schema.json`: detected language and timed English cues.
+- `canonical-timed-text.schema.json`: canonical source/target text, timing,
+  speakers, words, confidence, and provenance.
 - `approved-script.schema.json`: automatically approved text and decision state.
 - `dub-manifest.schema.json`: generated voice clips and alignment metadata.
 - `manifest.schema.json`: stage lifecycle, commands, errors, and artifact paths.
@@ -502,10 +506,10 @@ model download or full media encode:
 - automatic gate and approval behavior;
 - configuration-relative artifact paths.
 
-Run from `videotranslator`:
+Run from the repository root with the shared environment:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest videotranslator\tests -q
+..\..\.venv\Scripts\python.exe -m pytest videotranslator\tests -q
 ```
 
 ## Extension points

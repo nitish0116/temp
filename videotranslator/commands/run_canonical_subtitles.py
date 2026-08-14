@@ -169,6 +169,11 @@ def run_canonical_attempt(
     )
 
     def retry(text: str, context: dict) -> str:
+        """Adapt integrity-retry context into the contextual translator protocol.
+
+        Example:: a number-mismatch retry adds the source numerals to
+        ``required_numbers`` before invoking ``translate_one``.
+        """
         request = TranslationRequest(
             group_id=f"integrity-{context.get('route', 'retry')}-{context.get('attempt', context.get('piece', 1))}",
             source_language=clean["source_language"], target_language=target_language,

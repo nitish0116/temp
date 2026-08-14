@@ -1,0 +1,4 @@
+-r common.txt
+
+# Test-only dependency; runtime installations do not need pytest.
+pytest==9.1.1
