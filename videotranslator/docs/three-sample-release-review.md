@@ -7,6 +7,11 @@ timing, layout, coverage, lineage, integrity, and export checks. They do not yet
 pass a human semantic spot-check, so these SRT files must be treated as diagnostic
 outputs rather than publishable subtitles.
 
+The Step 22 rerun preserved that blocked status. Structural QA still passes for
+all three samples, while translation agreement rejected every sample because the
+independent model returned too many source-language echoes, prompt fragments, or
+otherwise invalid responses.
+
 ## Review performed
 
 On 2026-08-14, 24 evenly distributed cues were inspected from each final canonical
@@ -23,6 +28,20 @@ Structural results:
 | Duty First, Kiss Later | 290 | passed | 100% / 99.84% | 99.71% / 99.01% |
 | Korean Episode 1 | 149 | passed | 100% / 98.30% | 100% / 98.29% |
 | Linglong's Ferry Episode 24 | 169 | passed | 100% / 100% | 99.49% / 99.34% |
+
+Step 22 agreement qualification:
+
+| Sample | Invalid independent candidates | Result |
+| --- | ---: | --- |
+| Duty First, Kiss Later | 100% of 8-group probe | rejected; 269 groups blocked |
+| Korean Episode 1 | 75% of 8-group probe | rejected; 130 groups blocked |
+| Linglong's Ferry Episode 24 | 35.09% of 114 groups | rejected; 114 groups blocked |
+
+Agreement is transactional: backend-health failure rolls back tentative
+independent promotions and retains the trusted primary draft only in diagnostic
+`rejected.srt`. No `final.srt` is retained. Since no output reached promotion
+eligibility, the existing 72-cue review remains controlling evidence; the next
+review occurs after a replacement backend passes multilingual health probes.
 
 Verified semantic defects are stored in
 `tests/fixtures/three_sample_release_review.json`. Examples include `cute` becoming
@@ -59,9 +78,10 @@ The final workflow is: run the headless pipeline, require structural QA to pass,
 run the cached three-sample smoke test, perform a deterministic semantic sample,
 record confirmed discrepancies in the fixture, and publish only when both
 structural and semantic gates are clean. The next corrective action is to replace
-the 0.5B translation model (or add a reference-aware semantic judge), refresh the
-translation caches, rerun translation onward, and repeat this review. ASR must also
-be revisited for samples whose source-language text is already corrupt.
+and qualify the independent translation backend, refresh only agreement and
+downstream caches, rerun, and repeat this review. The 0.5B primary translator and
+corrupt source-language ASR remain separate risks; targeted ASR recovery is still
+required wherever the source evidence is already wrong.
 
 No push should be made for the current subtitle outputs because this review is not
 clean. Code and documentation may be committed locally for review.

@@ -54,9 +54,11 @@ from videotranslator.commands.create_subtitles import (
 )
 from videotranslator.commands.translate_subtitles import write_srt as write_translated_srt
 from videotranslator.commands.translate_contextual import (
+    LazyContextTranslator,
     TranslationRequest,
     cache_key,
     normalize_translation_response,
+    translate_cached_request,
     translate_contextual,
     translation_prompt,
     translation_request,
@@ -89,6 +91,33 @@ from videotranslator.commands.repair_subtitles import repair, split_cue, text_ch
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_lazy_translator_does_not_construct_backend_until_called():
+    constructed = []
+    lazy = LazyContextTranslator(
+        lambda: constructed.append("loaded") or (lambda request: "translated")
+    )
+    assert constructed == []
+    request = TranslationRequest("g1", "ko", "en", "source", (), ())
+    assert lazy(request) == "translated"
+    assert lazy(request) == "translated"
+    assert constructed == ["loaded"]
+
+
+def test_auxiliary_translation_uses_versioned_cache(tmp_path: Path):
+    calls = []
+    request = TranslationRequest(
+        "compression-g1", "ko", "en", "source", (), (), maximum_characters=20,
+    )
+
+    def translate(_request):
+        calls.append("called")
+        return " concise output "
+
+    assert translate_cached_request(request, translate, "model", tmp_path) == "concise output"
+    assert translate_cached_request(request, translate, "model", tmp_path) == "concise output"
+    assert calls == ["called"]
 
 
 def test_diarization_coverage_filters_unsupported_music_labels_but_keeps_speech():

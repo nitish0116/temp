@@ -171,6 +171,26 @@ def _write_cached(cache_directory: Path | None, key: str, text: str) -> None:
     temporary.replace(destination)
 
 
+def translate_cached_request(
+    request: TranslationRequest,
+    translator: Callable[[TranslationRequest], str],
+    model: str,
+    cache_directory: Path | None,
+) -> str:
+    """Translate one auxiliary request with the normal versioned disk cache.
+
+    Example:: readability compression retries are reused on a later headless run
+    instead of loading the primary model and regenerating identical candidates.
+    """
+    key = cache_key(request, model)
+    cached = _read_cached(cache_directory, key)
+    if cached is not None:
+        return cached
+    translated = normalize_translation_response(translator(request))
+    _write_cached(cache_directory, key, translated)
+    return translated
+
+
 def translate_contextual(
     document: dict,
     target_language: str,
@@ -268,7 +288,7 @@ class TransformersContextTranslator:
         )
         inputs = {key: value.to(self.device) for key, value in inputs.items()}
         generated = self.model.generate(
-            **inputs, max_new_tokens=256, no_repeat_ngram_size=3,
+            **inputs, max_new_tokens=96, no_repeat_ngram_size=3,
             repetition_penalty=1.1,
         )
         return self.tokenizer.decode(generated[0], skip_special_tokens=True).strip()
@@ -314,7 +334,7 @@ class CausalContextTranslator:
         )
         inputs = {key: value.to(self.device) for key, value in inputs.items()}
         generated = self.model.generate(
-            **inputs, max_new_tokens=256, do_sample=False,
+            **inputs, max_new_tokens=96, do_sample=False,
             no_repeat_ngram_size=3, repetition_penalty=1.1,
             pad_token_id=self.tokenizer.eos_token_id,
         )
@@ -331,12 +351,10 @@ class NLLBFallbackTranslator:
         Example:: construction does not load model weights; the first request
         selects its NLLB source code and loads them.
         """
-        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-
         self.model_name = model_name
         self.device = resolve_device(device)
-        self.AutoTokenizer = AutoTokenizer
-        self.model_class = AutoModelForSeq2SeqLM
+        self.AutoTokenizer = None
+        self.model_class = None
         self.tokenizer = None
         self.model = None
         self.source_code = None
@@ -349,6 +367,11 @@ class NLLBFallbackTranslator:
         tokenizer's ``src_lang`` before generation.
         """
         import torch
+        if self.AutoTokenizer is None or self.model_class is None:
+            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+            self.AutoTokenizer = AutoTokenizer
+            self.model_class = AutoModelForSeq2SeqLM
 
         self.tokenizer = self.AutoTokenizer.from_pretrained(
             self.model_name, src_lang=source_code
@@ -446,12 +469,34 @@ class FallbackContextTranslator:
         return normalize_translation_response(self.fallback(request))
 
 
+class LazyContextTranslator:
+    """Construct an expensive local translator only on the first cache miss."""
+
+    def __init__(self, factory: Callable[[], Callable[[TranslationRequest], str]]) -> None:
+        """Store a backend factory without loading model weights.
+
+        Example:: cached subtitle reruns can construct this wrapper without loading
+        the primary Qwen checkpoint into RAM.
+        """
+        self.factory = factory
+        self.backend: Callable[[TranslationRequest], str] | None = None
+
+    def __call__(self, request: TranslationRequest) -> str:
+        """Initialize once on demand and translate the requested semantic group.
+
+        Example:: the first uncached group loads the backend; later groups reuse it.
+        """
+        if self.backend is None:
+            self.backend = self.factory()
+        return self.backend(request)
+
+
 class OllamaContextTranslator:
     """Headless contextual translator backed by a local Ollama model service."""
 
     def __init__(
         self, model_name: str, endpoint: str = "http://127.0.0.1:11434",
-        timeout_seconds: int = 600,
+        timeout_seconds: int = 180,
     ) -> None:
         """Configure a deterministic local model without loading it in-process.
 
@@ -474,7 +519,13 @@ class OllamaContextTranslator:
             "prompt": prompt,
             "stream": False,
             "think": False,
-            "options": {"temperature": 0},
+            "options": {
+                "temperature": 0,
+                "num_predict": 256,
+                "repeat_penalty": 1.1,
+                "repeat_last_n": 128,
+                "num_gpu": 0,
+            },
         }).encode("utf-8")
         http_request = urllib.request.Request(
             f"{self.endpoint}/api/generate", data=payload,

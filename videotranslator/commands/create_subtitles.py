@@ -17,13 +17,13 @@ try:
     from .run_canonical_subtitles import run_canonical_attempt
     from .qa_semantic_reference import evaluate_manifest, references_from_manifest
     from .qa_translation_agreement import MultilingualSimilarity
-    from .translate_contextual import CausalContextTranslator, FallbackContextTranslator, NLLBFallbackTranslator, OllamaContextTranslator, TransformersContextTranslator
+    from .translate_contextual import CausalContextTranslator, FallbackContextTranslator, LazyContextTranslator, NLLBFallbackTranslator, OllamaContextTranslator, TransformersContextTranslator
 except ImportError:
     from runtime_device import resolve_device
     from run_canonical_subtitles import run_canonical_attempt
     from qa_semantic_reference import evaluate_manifest, references_from_manifest
     from qa_translation_agreement import MultilingualSimilarity
-    from translate_contextual import CausalContextTranslator, FallbackContextTranslator, NLLBFallbackTranslator, OllamaContextTranslator, TransformersContextTranslator
+    from translate_contextual import CausalContextTranslator, FallbackContextTranslator, LazyContextTranslator, NLLBFallbackTranslator, OllamaContextTranslator, TransformersContextTranslator
 
 
 HERE = Path(__file__).resolve().parent
@@ -84,6 +84,8 @@ def run_command(
 def _is_writable_directory(path: Path) -> bool:
     """Test a cache directory without leaving a probe file behind."""
     try:
+        if path.is_dir():
+            return os.access(path, os.W_OK)
         path.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(dir=path, prefix=".write-test-", delete=True):
             pass
@@ -124,12 +126,14 @@ def prepare_runtime_environment(
     for variable, default_path in cache_defaults.items():
         configured = env.get(variable)
         candidate = Path(configured).expanduser() if configured else default_path
+        print(f"Checking shared cache {variable}: {candidate}", flush=True)
         if not _is_writable_directory(candidate):
             raise RuntimeError(
                 f"Shared cache {variable} is not writable: {candidate}. "
                 "Grant write access or set PYTHON_CACHE_HOME to a writable common directory."
             )
         env[variable] = str(candidate)
+    print("Locating shared FFmpeg runtime", flush=True)
     ffmpeg_bin = shared_ffmpeg_bin(env)
     if ffmpeg_bin is not None:
         env["PATH"] = str(ffmpeg_bin) + os.pathsep + env.get("PATH", "")
@@ -201,6 +205,7 @@ def run_recovery_with_fallbacks(
 
 def create_subtitles(args: argparse.Namespace) -> dict:
     """Run transcription, alignment, diarization, recovery, translation, and QA."""
+    print("Initializing subtitle pipeline", flush=True)
     video = args.video.resolve()
     if not video.is_file():
         raise FileNotFoundError(f"Input video not found: {video}")
@@ -220,6 +225,7 @@ def create_subtitles(args: argparse.Namespace) -> dict:
     paths = artifact_paths(video, output, args.target_language)
     output.mkdir(parents=True, exist_ok=True)
     env, fallback_events = prepare_runtime_environment(output)
+    print("Shared runtime caches ready", flush=True)
     if args.offline:
         env.update({"HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"})
     if (
@@ -237,12 +243,16 @@ def create_subtitles(args: argparse.Namespace) -> dict:
     stronger_backend = None
     semantic_similarity = None
     if not args.legacy_cue_translation:
+        print("Initializing lazy translation backends", flush=True)
         primary_class = CausalContextTranslator if args.translation_backend == "causal" else TransformersContextTranslator
         contextual_backend = FallbackContextTranslator(
-            primary_class(args.translation_model, args.device),
+            LazyContextTranslator(
+                lambda: primary_class(args.translation_model, args.device),
+            ),
             NLLBFallbackTranslator(args.translation_fallback_model, args.device),
         )
         if args.translation_agreement:
+            print("Initializing translation agreement backends", flush=True)
             independent_backend = OllamaContextTranslator(
                 args.independent_translation_model, args.ollama_endpoint,
             )
@@ -251,6 +261,7 @@ def create_subtitles(args: argparse.Namespace) -> dict:
             )
             semantic_similarity = MultilingualSimilarity(
                 args.semantic_similarity_model, args.device,
+                local_files_only=args.offline,
             )
 
     run_command([python, str(HERE / "extract_audio.py"), str(video), "-o", str(paths["audio"])], [paths["audio"]], force=args.force, env=env)

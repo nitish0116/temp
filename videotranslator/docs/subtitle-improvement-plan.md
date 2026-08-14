@@ -321,6 +321,11 @@ without hard-coded episode logic.
 Exit: the three verified semantic failures are detected without supplying their
 manual reference sidecar, while valid paraphrases remain accepted.
 
+Status: implemented, but the configured `qwen3:1.7b` independent backend did not
+qualify. Output-contract checks reject source-language echoes, prompt leakage, and
+model chatter before promotion. A bounded health probe stops an unhealthy backend
+without generating an entire episode.
+
 ### 21. Retry semantic disagreements with a stronger model
 
 - Retry only failed semantic groups with a stronger translation-capable model and
@@ -334,6 +339,10 @@ manual reference sidecar, while valid paraphrases remain accepted.
 
 Exit: every promoted semantic group either passes the first independent agreement
 check or has a recorded stronger-model retry that passes the same gate.
+
+Status: implemented. Stronger-model retries are cached and bounded. They are not
+launched when the independent backend itself fails health checks, because that
+would turn a backend failure into an episode-sized retry job.
 
 ### 22. Rerun and qualify all three sample videos
 
@@ -350,6 +359,19 @@ Exit: structural QA passes, no verified semantic-reference defect remains, the
 independent agreement report passes every group, and the 72-cue review finds no
 material error. Only then are the sample subtitles considered reasonably usable.
 
+Status: executed on 2026-08-14; exit criteria not met. Structural QA passes, but
+all three subtitle artifacts are rejected by independent-backend health checks:
+
+| Sample | Independent evidence | Agreement result |
+| --- | --- | --- |
+| Duty First, Kiss Later | 8/8 probe candidates invalid (100%) | 269/269 groups blocked |
+| Korean Episode 1 | 6/8 probe candidates invalid (75%) | 130/130 groups blocked |
+| Linglong's Ferry Episode 24 | 40/114 candidates invalid (35.09%) | 114/114 groups blocked |
+
+No rejected run retains `final.srt`. The prior 72-cue findings and semantic
+reference defects remain controlling evidence. A new promotion review is deferred
+until a replacement independent backend passes the three language probes.
+
 ## Current usability assessment
 
 The pipeline currently creates **structurally usable draft subtitles**: timing,
@@ -357,8 +379,10 @@ coverage, cue layout, provenance, deterministic caching, headless operation, and
 export are working. It does **not yet create reliably usable final subtitles**.
 The three-sample review found material meaning, place-name, and ASR errors despite
 all structural checks passing. Step 19 prevents known reviewed errors from being
-promoted, but it cannot detect unknown errors in new dialogue. Steps 20 through 22
-are therefore release blockers for unattended, reasonably usable subtitles.
+promoted, but it cannot detect unknown errors in new dialogue. Steps 20 and 21 now
+fail closed on invalid evidence; Step 22 confirms that the current independent
+model is unsuitable. Replacing and qualifying that backend remains the release
+blocker for unattended, reasonably usable subtitles.
 
 ## Definition of done
 

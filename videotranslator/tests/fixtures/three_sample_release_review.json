@@ -5,7 +5,7 @@
     {
       "id": "duty-first-japanese",
       "output_directory": "duty-first-kiss-later-episode-1-subtitles",
-      "expected_status": "passed",
+      "expected_status": "rejected",
       "expected_minimum_cues": 250,
       "manual_review": {
         "sampled_cues": 24,
@@ -15,7 +15,7 @@
     {
       "id": "episode-one-korean",
       "output_directory": "ep-1-v0-1639315485-720p-subtitles",
-      "expected_status": "passed",
+      "expected_status": "rejected",
       "expected_minimum_cues": 125,
       "manual_review": {
         "sampled_cues": 24,
@@ -42,7 +42,7 @@
     {
       "id": "linglong-ferry-mandarin",
       "output_directory": "linglongs-ferry-episode-24-subtitles",
-      "expected_status": "passed",
+      "expected_status": "rejected",
       "expected_minimum_cues": 150,
       "manual_review": {
         "sampled_cues": 24,

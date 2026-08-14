@@ -18,7 +18,7 @@ try:
     from .qa_translation_integrity import enforce_translation_integrity, integrity_issues
     from .qa_translation_agreement import enforce_translation_agreement
     from .repair_subtitles import iterative_repair
-    from .translate_contextual import TranslationRequest, translate_contextual
+    from .translate_contextual import TranslationRequest, translate_cached_request, translate_contextual
 except ImportError:
     from build_clean_transcript import build_clean_transcript
     from canonical_timed_text import append_provenance
@@ -29,7 +29,7 @@ except ImportError:
     from qa_translation_integrity import enforce_translation_integrity, integrity_issues
     from qa_translation_agreement import enforce_translation_agreement
     from repair_subtitles import iterative_repair
-    from translate_contextual import TranslationRequest, translate_contextual
+    from translate_contextual import TranslationRequest, translate_cached_request, translate_contextual
 
 
 def stable_diarization_turns(report: dict) -> list[dict]:
@@ -174,6 +174,13 @@ def run_canonical_attempt(
         context_size=context_size, cache_directory=output / "translation-cache",
         refresh_group_ids=refresh_group_ids,
     )
+    auxiliary_cache = output / "translation-cache"
+
+    def translate_auxiliary(request: TranslationRequest) -> str:
+        """Cache integrity and readability requests using their full contracts."""
+        return translate_cached_request(
+            request, translate_one, model_name, auxiliary_cache,
+        )
 
     def retry(text: str, context: dict) -> str:
         """Adapt integrity-retry context into the contextual translator protocol.
@@ -187,12 +194,12 @@ def run_canonical_attempt(
             current_text=text, previous=(), following=(),
             required_numbers=tuple(re.findall(r"\d+(?:[.,]\d+)*", text)),
         )
-        return translate_one(request)
+        return translate_auxiliary(request)
 
     integrity, integrity_report = enforce_translation_integrity(
         translated, retry, maximum_retries=maximum_retries,
     )
-    integrity, compression = compress_dense_translations(integrity, translate_one)
+    integrity, compression = compress_dense_translations(integrity, translate_auxiliary)
     integrity, integrity_report = enforce_translation_integrity(
         integrity, retry, maximum_retries=0,
     )
