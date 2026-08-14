@@ -6,6 +6,8 @@ import argparse
 import hashlib
 import json
 import re
+import urllib.error
+import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
@@ -442,6 +444,56 @@ class FallbackContextTranslator:
             "resolution": "direct-translation-fallback",
         })
         return normalize_translation_response(self.fallback(request))
+
+
+class OllamaContextTranslator:
+    """Headless contextual translator backed by a local Ollama model service."""
+
+    def __init__(
+        self, model_name: str, endpoint: str = "http://127.0.0.1:11434",
+        timeout_seconds: int = 600,
+    ) -> None:
+        """Configure a deterministic local model without loading it in-process.
+
+        Example:: ``OllamaContextTranslator("qwen3:1.7b")`` uses the local Ollama
+        API and leaves the Python process's limited GPU memory untouched.
+        """
+        self.model_name = model_name
+        self.endpoint = endpoint.rstrip("/")
+        self.timeout_seconds = timeout_seconds
+
+    def __call__(self, request: TranslationRequest) -> str:
+        """Translate one semantic group and enforce the response-only contract.
+
+        Example:: Qwen3 receives ``/no_think`` and returns dialogue without its
+        internal reasoning or Markdown wrappers.
+        """
+        prompt = translation_prompt(request) + "\n\n/no_think"
+        payload = json.dumps({
+            "model": self.model_name,
+            "prompt": prompt,
+            "stream": False,
+            "think": False,
+            "options": {"temperature": 0},
+        }).encode("utf-8")
+        http_request = urllib.request.Request(
+            f"{self.endpoint}/api/generate", data=payload,
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        try:
+            with urllib.request.urlopen(
+                http_request, timeout=self.timeout_seconds
+            ) as response:
+                result = json.load(response)
+        except (OSError, urllib.error.URLError, json.JSONDecodeError) as error:
+            raise RuntimeError(
+                f"Ollama translation failed for {request.group_id}: {error}"
+            ) from error
+        text = re.sub(
+            r"<think>.*?</think>", "", str(result.get("response") or ""),
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+        return normalize_translation_response(text)
 
 
 def main() -> None:

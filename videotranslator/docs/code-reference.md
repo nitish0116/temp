@@ -136,6 +136,20 @@ strong-word fallback cues. No recovered text is accepted without decoder evidenc
   text, and complete context window, preventing reuse across incompatible runs.
 - The CLI requires an explicit instruction-following seq2seq model. It is fully
   headless; identical completed requests can resume from the optional cache.
+- `OllamaContextTranslator` provides a deterministic local-model backend without
+  sharing the Python process's limited GPU allocation.
+
+## `commands/qa_translation_agreement.py`
+
+- `MultilingualSimilarity` embeds source and target sentences with attention-mask
+  mean pooling and compares normalized vectors.
+- `agreement_issues(...)` records semantic, number, polarity, integrity, and
+  low-evidence-consensus disagreements.
+- `cached_candidate(...)` versions independent translations by source, language
+  pair, model, and agreement protocol.
+- `enforce_translation_agreement(...)` promotes an independently better candidate
+  only when it passes integrity and improves source similarity by a bounded margin;
+  unresolved groups remain blocking failures.
 
 ## `commands/prepare_canonical_tts.py`
 

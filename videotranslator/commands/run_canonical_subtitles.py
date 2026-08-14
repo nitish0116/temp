@@ -16,6 +16,7 @@ try:
     from .map_translation_cues import map_translated_groups
     from .qa_transcript import analyze
     from .qa_translation_integrity import enforce_translation_integrity, integrity_issues
+    from .qa_translation_agreement import enforce_translation_agreement
     from .repair_subtitles import iterative_repair
     from .translate_contextual import TranslationRequest, translate_contextual
 except ImportError:
@@ -26,6 +27,7 @@ except ImportError:
     from map_translation_cues import map_translated_groups
     from qa_transcript import analyze
     from qa_translation_integrity import enforce_translation_integrity, integrity_issues
+    from qa_translation_agreement import enforce_translation_agreement
     from repair_subtitles import iterative_repair
     from translate_contextual import TranslationRequest, translate_contextual
 
@@ -148,6 +150,9 @@ def run_canonical_attempt(
     maximum_retries: int = 1,
     minimum_diarized_turn_coverage: float = 0.90,
     minimum_diarized_time_coverage: float = 0.90,
+    independent_translate: Callable[[TranslationRequest], str] | None = None,
+    semantic_similarity: Callable[[str, str], float] | None = None,
+    independent_model: str | None = None,
 ) -> dict:
     """Execute Steps 4–15 for one recovered-source candidate."""
     turns = stable_diarization_turns(diarization_report)
@@ -189,6 +194,17 @@ def run_canonical_attempt(
     integrity, integrity_report = enforce_translation_integrity(
         integrity, retry, maximum_retries=0,
     )
+    agreement_report = {
+        "schema_version": 1, "passed": True, "evaluated": False,
+        "group_count": len(integrity["segments"]), "failed_group_count": 0,
+    }
+    if independent_translate is not None and semantic_similarity is not None:
+        integrity, agreement_report = enforce_translation_agreement(
+            integrity, independent_translate, semantic_similarity,
+            independent_model=independent_model or "independent-translator",
+            cache_directory=output / "agreement-cache",
+        )
+        agreement_report["evaluated"] = True
     mapped = map_translated_groups(integrity, maximum_characters=64)
     speech_evidence = [
         word for segment in strong_source.get("segments", []) for word in segment.get("words", [])
@@ -208,23 +224,27 @@ def run_canonical_attempt(
         minimum_diarized_turn_coverage=minimum_diarized_turn_coverage,
         minimum_diarized_time_coverage=minimum_diarized_time_coverage,
     )
-    status = "passed" if qa["passed"] and integrity_report["passed"] else "rejected"
+    status = "passed" if (
+        qa["passed"] and integrity_report["passed"] and agreement_report["passed"]
+    ) else "rejected"
     output.mkdir(parents=True, exist_ok=True)
     artifacts = {
         "clean": output / "clean-transcript.json",
         "translated": output / "contextual-translation.json",
         "integrity": output / "translation-integrity.json",
+        "agreement": output / "translation-agreement.json",
         "canonical": output / "canonical-subtitles.json",
         "qa": output / "qa.json",
         "report": output / "canonical-pipeline-report.json",
     }
-    for key, value in (("clean", clean), ("translated", translated), ("integrity", integrity_report), ("canonical", repaired), ("qa", qa)):
+    for key, value in (("clean", clean), ("translated", translated), ("integrity", integrity_report), ("agreement", agreement_report), ("canonical", repaired), ("qa", qa)):
         artifacts[key].write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     export = export_subtitles(repaired, output / f"{status}.srt", output / f"{status}.ass")
     result = {
         "schema_version": 1, "status": status,
         "translation_model": model_name, "context_size": context_size,
         "translation_integrity": integrity_report,
+        "translation_agreement": agreement_report,
         "diarization_reconciliation": reconciliation,
         "optimization": optimization, "qa": qa, "export": export,
         "readability_compression": compression,

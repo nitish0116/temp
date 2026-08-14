@@ -122,6 +122,19 @@ writes a per-attempt semantic QA report:
 
 The sidecar contract and example are documented in [docs/schemas.md](docs/schemas.md).
 
+For general semantic QA without a reviewed sidecar, enable independent agreement.
+The pipeline compares each primary semantic group with local Qwen3 through Ollama,
+uses multilingual MiniLM source similarity plus deterministic number/polarity
+checks, caches the evidence, and rejects unresolved disagreement:
+
+```powershell
+..\..\.venv\Scripts\python.exe -m videotranslator subtitles `
+  "videotranslator\sample Data\episode.mp4" --translation-agreement
+```
+
+This mode requires the local Ollama service and configured independent model. It
+is intentionally opt-in until the three-sample Step 22 qualification passes.
+
 Contextual translation is the default and uses `Qwen/Qwen2.5-0.5B-Instruct`, a
 small multilingual causal instruction model, unless `--translation-model` selects
 another model. Set `--translation-backend seq2seq` for encoder-decoder instruction

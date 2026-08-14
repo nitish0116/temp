@@ -16,12 +16,14 @@ try:
     from .runtime_device import resolve_device
     from .run_canonical_subtitles import run_canonical_attempt
     from .qa_semantic_reference import evaluate_manifest, references_from_manifest
-    from .translate_contextual import CausalContextTranslator, FallbackContextTranslator, NLLBFallbackTranslator, TransformersContextTranslator
+    from .qa_translation_agreement import MultilingualSimilarity
+    from .translate_contextual import CausalContextTranslator, FallbackContextTranslator, NLLBFallbackTranslator, OllamaContextTranslator, TransformersContextTranslator
 except ImportError:
     from runtime_device import resolve_device
     from run_canonical_subtitles import run_canonical_attempt
     from qa_semantic_reference import evaluate_manifest, references_from_manifest
-    from translate_contextual import CausalContextTranslator, FallbackContextTranslator, NLLBFallbackTranslator, TransformersContextTranslator
+    from qa_translation_agreement import MultilingualSimilarity
+    from translate_contextual import CausalContextTranslator, FallbackContextTranslator, NLLBFallbackTranslator, OllamaContextTranslator, TransformersContextTranslator
 
 
 HERE = Path(__file__).resolve().parent
@@ -231,12 +233,21 @@ def create_subtitles(args: argparse.Namespace) -> dict:
         )
     python = sys.executable
     contextual_backend = None
+    independent_backend = None
+    semantic_similarity = None
     if not args.legacy_cue_translation:
         primary_class = CausalContextTranslator if args.translation_backend == "causal" else TransformersContextTranslator
         contextual_backend = FallbackContextTranslator(
             primary_class(args.translation_model, args.device),
             NLLBFallbackTranslator(args.translation_fallback_model, args.device),
         )
+        if args.translation_agreement:
+            independent_backend = OllamaContextTranslator(
+                args.independent_translation_model, args.ollama_endpoint,
+            )
+            semantic_similarity = MultilingualSimilarity(
+                args.semantic_similarity_model, args.device,
+            )
 
     run_command([python, str(HERE / "extract_audio.py"), str(video), "-o", str(paths["audio"])], [paths["audio"]], force=args.force, env=env)
     transcribe = [python, str(HERE / "transcribe.py"), str(paths["audio"]), "--model", args.whisper_model, "--device", args.device, "-o", str(paths["transcription_dir"]), "--vad-threshold", "0.35", "--minimum-speech-ms", "100", "--minimum-silence-ms", "300", "--speech-padding-ms", "350", "--no-speech-threshold", "0.8"]
@@ -282,6 +293,9 @@ def create_subtitles(args: argparse.Namespace) -> dict:
                 maximum_retries=args.translation_retries,
                 minimum_diarized_turn_coverage=args.minimum_diarized_turn_coverage,
                 minimum_diarized_time_coverage=args.minimum_diarized_time_coverage,
+                independent_translate=independent_backend,
+                semantic_similarity=semantic_similarity,
+                independent_model=args.independent_translation_model,
             )
             canonical_report["translation_fallbacks"] = list(contextual_backend.events)
             report = canonical_report["qa"]
@@ -336,6 +350,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--translation-fallback-model", default="facebook/nllb-200-distilled-600M")
     parser.add_argument("--translation-context-size", type=int, default=3)
     parser.add_argument("--translation-retries", type=int, default=1)
+    parser.add_argument(
+        "--translation-agreement", action=argparse.BooleanOptionalAction, default=False,
+        help="Compare every semantic group with an independent local Ollama translation",
+    )
+    parser.add_argument("--independent-translation-model", default="qwen3:1.7b")
+    parser.add_argument(
+        "--semantic-similarity-model",
+        default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    )
+    parser.add_argument("--ollama-endpoint", default="http://127.0.0.1:11434")
     parser.add_argument(
         "--semantic-reference", type=Path,
         help="Optional reviewed reference JSON; any failed reference blocks final.srt promotion",
