@@ -77,6 +77,7 @@ Detailed operations and project state:
 - [Implementation history and known limitations](docs/implementation-history.md)
 - [Future automatic quality approach](docs/future-approach.md)
 - [Subtitle quality improvement plan](docs/subtitle-improvement-plan.md)
+- [Three-sample release review](docs/three-sample-release-review.md)
 - [Architecture](docs/architecture.md)
 - [Code reference](docs/code-reference.md)
 
@@ -112,8 +113,8 @@ The former independent NLLB cue route is available only through the explicit
 `--legacy-cue-translation` compatibility flag.
 
 The command is safe to run from a headless scheduler. It checks for the Hugging Face
-credential before expensive stages, replaces missing or unwritable model caches with
-run-local caches, and bounds each missing-speech recovery attempt to 30 minutes. A
+credential before expensive stages, requires writable shared model caches, and
+bounds each missing-speech recovery attempt to 30 minutes. A
 failed or oversized recovery configuration is retried with progressively smaller GPU
 models and finally a small CPU model. Every substitution is written to
 `automatic_fallbacks` in `subtitle-pipeline-report.json`. Set

@@ -1,0 +1,62 @@
+{
+  "fixture_version": 1,
+  "description": "Short, manually verified burned-subtitle references and cached-output locations for the three-sample release smoke test.",
+  "samples": [
+    {
+      "id": "duty-first-japanese",
+      "output_directory": "duty-first-kiss-later-episode-1-subtitles",
+      "expected_status": "passed",
+      "expected_minimum_cues": 250,
+      "manual_review": {
+        "sampled_cues": 24,
+        "reference_comparison": "No usable English dialogue was visible in the sampled opening frame; text-only review found material ASR and translation defects."
+      }
+    },
+    {
+      "id": "episode-one-korean",
+      "output_directory": "ep-1-v0-1639315485-720p-subtitles",
+      "expected_status": "passed",
+      "expected_minimum_cues": 125,
+      "manual_review": {
+        "sampled_cues": 24,
+        "verified_defects": [
+          {
+            "timestamp_seconds": 9.3,
+            "source": "참귀엽죠?",
+            "burned_reference": "Isn't he cute?",
+            "generated": "You're a little bit of a freak, aren't you?",
+            "required_terms": ["cute"],
+            "forbidden_terms": ["freak"]
+          },
+          {
+            "timestamp_seconds": 508.8,
+            "source": "서울에그런곳도있었니?",
+            "burned_reference": "There was a place like that in Seoul?",
+            "generated": "Seattle also had such a place?",
+            "required_terms": ["Seoul"],
+            "forbidden_terms": ["Seattle"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "linglong-ferry-mandarin",
+      "output_directory": "linglongs-ferry-episode-24-subtitles",
+      "expected_status": "passed",
+      "expected_minimum_cues": 150,
+      "manual_review": {
+        "sampled_cues": 24,
+        "verified_defects": [
+          {
+            "timestamp_seconds": 88.8,
+            "source": "台湾澎湖辽东赔款两万无万两无耻无能签订这丧权国的条约",
+            "burned_reference": "Qing and Japan signed the Treaty of Shimonoseki,",
+            "generated": "Taiwan's Yangtze Province claims 22,000 and is unable to sign",
+            "required_terms": ["Japan", "Treaty", "Shimonoseki"],
+            "forbidden_terms": ["Yangtze Province", "22,000"]
+          }
+        ]
+      }
+    }
+  ]
+}
