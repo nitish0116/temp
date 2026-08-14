@@ -221,8 +221,6 @@ def redistribute_group_timing(cues: list[dict], maximum_characters_per_second: f
         start, end = float(output[indexes[0]]["start"]), float(output[indexes[-1]]["end"])
         weights = [max(1, len(re.sub(r"\s+", "", str(output[index].get(_display_field(output[index]), ""))))) for index in indexes]
         total = sum(weights)
-        if (end - start) * maximum_characters_per_second + 1e-9 < total:
-            continue
         cursor, cumulative = start, 0
         for position, (index, weight) in enumerate(zip(indexes, weights)):
             cumulative += weight
@@ -233,6 +231,60 @@ def redistribute_group_timing(cues: list[dict], maximum_characters_per_second: f
                 semantic_group_id=group_id,
             )
             cursor = cue_end
+    return output
+
+
+def rebalance_neighbor_timing(
+    cues: list[dict], minimum_duration: float, maximum_characters_per_second: float,
+    maximum_neighbors: int = 20,
+) -> list[dict]:
+    """Borrow donor slack across nearby contiguous cues without overlaps."""
+    output = [dict(cue) for cue in cues]
+
+    def required(cue: dict) -> float:
+        text = str(cue.get(_display_field(cue), ""))
+        return max(minimum_duration, len(re.sub(r"\s+", "", text)) / maximum_characters_per_second)
+
+    for _pass in range(2):
+        for index, cue in enumerate(output):
+            deficit = required(cue) - (float(cue["end"]) - float(cue["start"]))
+            if deficit <= 1e-6:
+                continue
+            for direction in (-1, 1):
+                for distance in range(1, maximum_neighbors + 1):
+                    donor_index = index + direction * distance
+                    if not 0 <= donor_index < len(output):
+                        break
+                    left = min(index, donor_index)
+                    right = max(index, donor_index)
+                    if any(float(output[pos + 1]["start"]) - float(output[pos]["end"]) > 0.35 for pos in range(left, right)):
+                        break
+                    donor = output[donor_index]
+                    slack = (float(donor["end"]) - float(donor["start"])) - required(donor)
+                    amount = min(deficit, max(0.0, slack))
+                    if amount <= 1e-6:
+                        continue
+                    if direction < 0:
+                        donor["end"] = round(float(donor["end"]) - amount, 3)
+                        for pos in range(donor_index + 1, index):
+                            output[pos]["start"] = round(float(output[pos]["start"]) - amount, 3)
+                            output[pos]["end"] = round(float(output[pos]["end"]) - amount, 3)
+                        cue["start"] = round(float(cue["start"]) - amount, 3)
+                    else:
+                        cue["end"] = round(float(cue["end"]) + amount, 3)
+                        for pos in range(index + 1, donor_index):
+                            output[pos]["start"] = round(float(output[pos]["start"]) + amount, 3)
+                            output[pos]["end"] = round(float(output[pos]["end"]) + amount, 3)
+                        donor["start"] = round(float(donor["start"]) + amount, 3)
+                    deficit -= amount
+                    cue["provenance"] = append_provenance(
+                        cue, "subtitle-repair", "borrow-neighbor-display-slack",
+                        donor_id=donor.get("id"), seconds=round(amount, 3),
+                    )
+                    if deficit <= 1e-6:
+                        break
+                if deficit <= 1e-6:
+                    break
     return output
 
 
@@ -302,6 +354,7 @@ def repair(
         cue["start"], cue["end"] = round(start, 3), round(end, 3)
         field = _display_field(cue)
         cue[field] = subtitle_lines(str(cue[field]), maximum_line_characters)
+    cues = rebalance_neighbor_timing(cues, minimum_duration, maximum_characters_per_second)
     if transcript.get("artifact_type") == "canonical_timed_text":
         return {
             **transcript,

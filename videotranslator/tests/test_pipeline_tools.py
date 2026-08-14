@@ -50,6 +50,7 @@ from videotranslator.commands.create_subtitles import (
     quality_score,
     recovery_candidates,
     run_recovery_with_fallbacks,
+    shared_ffmpeg_bin,
 )
 from videotranslator.commands.translate_subtitles import write_srt as write_translated_srt
 from videotranslator.commands.translate_contextual import (
@@ -532,6 +533,21 @@ def test_contextual_translation_cache_avoids_repeat_model_calls(tmp_path: Path):
     assert second["metadata"]["contextual_translation"]["cache_hits"] == len(clean["segments"])
 
 
+def test_contextual_translation_replaces_cached_assistant_chatter(tmp_path: Path):
+    clean = _clean_context_fixture()
+    translate_contextual(
+        clean, "en", "model", lambda request: "Please provide the current dialogue.",
+        cache_directory=tmp_path,
+    )
+    calls = []
+    refreshed = translate_contextual(
+        clean, "en", "model", lambda request: calls.append(request.group_id) or "Valid subtitle.",
+        cache_directory=tmp_path,
+    )
+    assert len(calls) == len(clean["segments"])
+    assert all(item["translated_text"] == "Valid subtitle." for item in refreshed["segments"])
+
+
 def test_contextual_translation_selectively_refreshes_failed_groups(tmp_path: Path):
     clean = _clean_context_fixture()
     translate_contextual(clean, "en", "model", lambda request: "old", cache_directory=tmp_path)
@@ -586,6 +602,8 @@ def test_translation_integrity_detects_numbers_density_and_repetition():
     assert integrity_issues("Age 27", "Age 28")[0]["type"] == "number_mismatch"
     assert integrity_issues("Henry 3세, 5대 조부", "Henry III, fifth-generation ancestor") == []
     assert integrity_issues("100만 돌파", "surpassed one million") == []
+    assert integrity_issues("な、な、な、な。", "No, no, no.") == []
+    assert integrity_issues("沈州各处高挂桑番但", "The Chinese government has also been trying to move the country forward.") == []
 
 
 def test_translation_integrity_retries_and_preserves_lineage():
@@ -743,6 +761,15 @@ def test_headless_runtime_uses_one_shared_cache_root(tmp_path: Path):
     assert env["MPLCONFIGDIR"] == str(shared / "matplotlib")
     assert events == []
     assert not (tmp_path / "output" / "model-cache").exists()
+
+
+def test_headless_runtime_prefers_shared_ffmpeg_for_torchcodec(tmp_path: Path):
+    binary = tmp_path / "shared" / "bin"
+    binary.mkdir(parents=True)
+    (binary / "ffmpeg.exe").write_bytes(b"")
+    (binary / "avcodec-62.dll").write_bytes(b"")
+    env = {"FFMPEG_SHARED_HOME": str(binary)}
+    assert shared_ffmpeg_bin(env) == binary
 
 
 def test_headless_token_check_accepts_supported_environment_names():

@@ -88,6 +88,23 @@ def _is_writable_directory(path: Path) -> bool:
         return False
 
 
+def shared_ffmpeg_bin(env: dict[str, str]) -> Path | None:
+    """Locate a Windows shared FFmpeg build whose DLLs TorchCodec can load."""
+    configured = env.get("FFMPEG_SHARED_HOME")
+    candidates = [Path(configured)] if configured else []
+    local_app_data = env.get("LOCALAPPDATA")
+    if local_app_data:
+        package_root = Path(local_app_data) / "Microsoft" / "WinGet" / "Packages"
+        candidates.extend(
+            path.parent for path in package_root.glob("Gyan.FFmpeg.Shared*/*/bin/ffmpeg.exe")
+        )
+    valid = [
+        path for path in candidates
+        if (path / "ffmpeg.exe").is_file() and any(path.glob("avcodec-*.dll"))
+    ]
+    return sorted(valid, key=lambda path: str(path), reverse=True)[0] if valid else None
+
+
 def prepare_runtime_environment(
     output: Path, source: dict[str, str] | None = None,
 ) -> tuple[dict[str, str], list[dict[str, str]]]:
@@ -109,6 +126,9 @@ def prepare_runtime_environment(
                 "Grant write access or set PYTHON_CACHE_HOME to a writable common directory."
             )
         env[variable] = str(candidate)
+    ffmpeg_bin = shared_ffmpeg_bin(env)
+    if ffmpeg_bin is not None:
+        env["PATH"] = str(ffmpeg_bin) + os.pathsep + env.get("PATH", "")
     env.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
     return env, fallbacks
 

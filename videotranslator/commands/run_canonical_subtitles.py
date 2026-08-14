@@ -3,26 +3,29 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from pathlib import Path
 from typing import Callable
 
 try:
     from .build_clean_transcript import build_clean_transcript
+    from .canonical_timed_text import append_provenance
     from .diarize_pyannote import reconcile_unmatched_turns
     from .export_subtitles import export_subtitles
     from .map_translation_cues import map_translated_groups
     from .qa_transcript import analyze
-    from .qa_translation_integrity import enforce_translation_integrity
+    from .qa_translation_integrity import enforce_translation_integrity, integrity_issues
     from .repair_subtitles import iterative_repair
     from .translate_contextual import TranslationRequest, translate_contextual
 except ImportError:
     from build_clean_transcript import build_clean_transcript
+    from canonical_timed_text import append_provenance
     from diarize_pyannote import reconcile_unmatched_turns
     from export_subtitles import export_subtitles
     from map_translation_cues import map_translated_groups
     from qa_transcript import analyze
-    from qa_translation_integrity import enforce_translation_integrity
+    from qa_translation_integrity import enforce_translation_integrity, integrity_issues
     from repair_subtitles import iterative_repair
     from translate_contextual import TranslationRequest, translate_contextual
 
@@ -92,6 +95,46 @@ def align_recovered_envelopes(recovered: dict, strong: dict, maximum_gap: float 
     return output
 
 
+def compress_dense_translations(
+    document: dict, translate_one: Callable[[TranslationRequest], str],
+    maximum_characters_per_second: float = 20.0, minimum_duration: float = 0.5,
+) -> tuple[dict, list[dict]]:
+    """Shorten only over-budget groups while retaining semantic integrity."""
+    output = json.loads(json.dumps(document))
+    events = []
+    for segment in output["segments"]:
+        current = str(segment.get("translated_text") or "").strip()
+        duration = float(segment["end"]) - float(segment["start"])
+        budget = max(
+            4, math.floor(minimum_duration * maximum_characters_per_second),
+            math.floor(duration * maximum_characters_per_second),
+        )
+        if len(current) <= budget:
+            continue
+        source = str(segment.get("source_text") or "")
+        request = TranslationRequest(
+            group_id=f"compression-{segment['semantic_group_id']}",
+            source_language=output["source_language"], target_language=output["output_language"],
+            current_text=source, previous=(), following=(),
+            required_numbers=tuple(re.findall(r"\d+(?:[.,]\d+)*", source)),
+            maximum_characters=budget,
+        )
+        candidate = translate_one(request).strip()
+        accepted = bool(candidate and len(candidate) <= budget and not integrity_issues(source, candidate))
+        if accepted:
+            segment["translated_text"] = candidate
+            segment["provenance"] = append_provenance(
+                segment, "readability-compression", "duration-aware-retranslation",
+                previous_characters=len(current), new_characters=len(candidate), budget=budget,
+            )
+        events.append({
+            "semantic_group_id": segment["semantic_group_id"], "budget": budget,
+            "previous_characters": len(current), "candidate_characters": len(candidate),
+            "accepted": accepted,
+        })
+    return output, events
+
+
 def run_canonical_attempt(
     recovered_source: dict,
     strong_source: dict,
@@ -137,6 +180,10 @@ def run_canonical_attempt(
     integrity, integrity_report = enforce_translation_integrity(
         translated, retry, maximum_retries=maximum_retries,
     )
+    integrity, compression = compress_dense_translations(integrity, translate_one)
+    integrity, integrity_report = enforce_translation_integrity(
+        integrity, retry, maximum_retries=0,
+    )
     mapped = map_translated_groups(integrity, maximum_characters=64)
     speech_evidence = [
         word for segment in strong_source.get("segments", []) for word in segment.get("words", [])
@@ -175,6 +222,7 @@ def run_canonical_attempt(
         "translation_integrity": integrity_report,
         "diarization_reconciliation": reconciliation,
         "optimization": optimization, "qa": qa, "export": export,
+        "readability_compression": compression,
         "artifacts": {key: str(path.resolve()) for key, path in artifacts.items()},
     }
     artifacts["report"].write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

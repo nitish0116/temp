@@ -14,6 +14,7 @@ except ImportError:
 
 NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 REPEATED_CLAUSE = re.compile(r"(.{2,}?)(?:\s*[,;.!?]\s*\1){2,}", re.IGNORECASE)
+REPEATED_SOURCE_CLAUSE = re.compile(r"(.{1,}?)(?:\s*[,;.!?、，]\s*\1){2,}", re.IGNORECASE)
 BOUNDARY = re.compile(r"(?<=[.!?\u3002\uff01\uff1f\u061f\u0964\u2026])\s+|\s*(?=[,;:\u060c\u061b\uff0c\uff1b\uff1a])")
 SMALL_NUMBERS = (
     "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
@@ -76,12 +77,18 @@ def integrity_issues(
     source_length = len(re.sub(r"\s+", "", source))
     ratio = len(re.sub(r"\s+", "", target)) / max(1, source_length)
     # A single CJK glyph can legitimately expand into a multiword English subtitle.
-    effective_maximum = 30.0 if source_length <= 4 else 15.0 if source_length <= 8 else maximum_length_ratio
+    contains_cjk = bool(re.search(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]", source))
+    effective_maximum = (
+        30.0 if source_length <= 4 else
+        15.0 if source_length <= 8 else
+        12.0 if contains_cjk and source_length <= 12 else
+        maximum_length_ratio
+    )
     if ratio < minimum_length_ratio:
         issues.append({"type": "translation_too_short", "ratio": round(ratio, 4)})
     if ratio > effective_maximum:
         issues.append({"type": "translation_too_long", "ratio": round(ratio, 4)})
-    if REPEATED_CLAUSE.search(target):
+    if REPEATED_CLAUSE.search(target) and not REPEATED_SOURCE_CLAUSE.search(source):
         issues.append({"type": "repeated_translation_clause"})
     return issues
 

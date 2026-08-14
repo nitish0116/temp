@@ -47,6 +47,7 @@ class TranslationRequest:
     previous: tuple[str, ...]
     following: tuple[str, ...]
     required_numbers: tuple[str, ...] = ()
+    maximum_characters: int | None = None
 
 
 def translation_request(
@@ -77,11 +78,15 @@ def translation_prompt(request: TranslationRequest) -> str:
         + ", ".join(request.required_numbers) + "."
         if request.required_numbers else ""
     )
+    length_contract = (
+        f" The translation must be at most {request.maximum_characters} characters including spaces."
+        if request.maximum_characters is not None else ""
+    )
     return (
         f"Translate the CURRENT dialogue directly from {request.source_language} "
         f"to {request.target_language}. Use the surrounding dialogue only to resolve "
         "meaning, names, pronouns, tone, and omitted subjects. Return only the "
-        f"translation of CURRENT, without labels or commentary.{number_contract}\n\n"
+        f"translation of CURRENT, without labels or commentary.{number_contract}{length_contract}\n\n"
         f"PREVIOUS CONTEXT:\n{previous}\n\n"
         f"CURRENT:\n{request.current_text}\n\n"
         f"FOLLOWING CONTEXT:\n{following}"
@@ -99,6 +104,9 @@ def valid_translation_response(text: str, request: TranslationRequest) -> bool:
         "here's the", "here is the", "this translation", "source text",
         "i can't provide", "i cannot provide", "could you please provide",
         "if you have any other questions", "need assistance with another topic",
+        "please provide", "current dialogue", "how can i assist",
+        "if you need any more", "no translation needed",
+        "next part of the conversation", "for translation into english",
     )
     if any(marker in lowered for marker in forbidden):
         return False
@@ -117,6 +125,8 @@ def cache_key(request: TranslationRequest, model: str) -> str:
     request_payload = asdict(request)
     if not request.required_numbers:
         request_payload.pop("required_numbers")
+    if request.maximum_characters is None:
+        request_payload.pop("maximum_characters")
     payload = {
         "protocol_version": CONTEXT_PROTOCOL_VERSION,
         "model": model,
@@ -176,6 +186,8 @@ def translate_contextual(
         key = cache_key(request, model)
         refresh = request.group_id in (refresh_group_ids or set())
         translated_text = None if refresh else _read_cached(cache_directory, key)
+        if translated_text is not None and not valid_translation_response(translated_text, request):
+            translated_text = None
         cache_hit = translated_text is not None
         if not cache_hit:
             translated_text = normalize_translation_response(translate_one(request))

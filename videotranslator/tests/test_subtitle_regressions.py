@@ -14,9 +14,9 @@ from videotranslator.commands.translate_contextual import FallbackContextTransla
 from videotranslator.commands.export_subtitles import ass_content, export_subtitles, srt_content
 from videotranslator.commands.reprocess_subtitles import metric_comparison, reprocess_existing, upstream_recommendations
 from videotranslator.commands.headless_preflight import PreflightError, preflight_reprocess
-from videotranslator.commands.run_canonical_subtitles import align_recovered_envelopes, run_canonical_attempt, stable_diarization_turns
+from videotranslator.commands.run_canonical_subtitles import align_recovered_envelopes, compress_dense_translations, run_canonical_attempt, stable_diarization_turns
 from videotranslator.commands.create_subtitles import parse_args as parse_subtitle_args
-from videotranslator.commands.repair_subtitles import iterative_repair, repair, repair_short_cues, redistribute_group_timing, subtitle_lines
+from videotranslator.commands.repair_subtitles import iterative_repair, rebalance_neighbor_timing, repair, repair_short_cues, redistribute_group_timing, subtitle_lines
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "subtitle_quality_baseline.json"
@@ -167,6 +167,27 @@ def test_semantic_group_timing_is_redistributed_by_target_density():
     assert result[0]["end"] == 1.0
     assert result[1]["start"] == 1.0
     assert all(len(re.sub(r"\s+", "", cue["text"])) / (cue["end"] - cue["start"]) <= 20 for cue in result)
+
+
+def test_overfull_semantic_group_still_distributes_excess_speed_evenly():
+    cues = [
+        {"id": "a", "semantic_group_id": "g", "start": 0.0, "end": 0.1, "text": "a" * 40},
+        {"id": "b", "semantic_group_id": "g", "start": 0.1, "end": 2.0, "text": "b" * 40},
+    ]
+    result = redistribute_group_timing(cues, 20.0)
+    speeds = [len(cue["text"]) / (cue["end"] - cue["start"]) for cue in result]
+    assert max(speeds) - min(speeds) < 0.1
+
+
+def test_short_cue_borrows_slack_across_contiguous_neighbor():
+    cues = [
+        {"id": "donor", "start": 0.0, "end": 1.5, "text": "Hi"},
+        {"id": "short", "start": 1.5, "end": 1.7, "text": "What?"},
+    ]
+    result = rebalance_neighbor_timing(cues, 0.5, 20.0)
+    assert result[1]["end"] - result[1]["start"] >= 0.5
+    assert result[0]["end"] == result[1]["start"]
+    assert result[0]["end"] - result[0]["start"] >= 0.5
 
 
 def test_subtitle_layout_balances_words_and_preserves_text():
@@ -366,6 +387,42 @@ def test_raw_diarization_labels_map_to_stable_first_appearance_ids():
     ]})
     by_source = {item["source_label"]: item["speaker"] for item in turns}
     assert by_source == {"A": "speaker-01", "B": "speaker-02"}
+
+
+def test_dense_translation_is_replaced_only_by_integrity_safe_budgeted_candidate():
+    clean = build_clean_transcript({
+        "language": "ko", "task": "transcribe", "output_language": "ko",
+        "segments": [{"start": 0.0, "end": 1.0, "text": "항목 3", "speaker": "one"}],
+    })
+    translated = translate_contextual(clean, "en", "model", lambda request: "A very long translation containing item 3")
+    requests = []
+
+    def shorten(request):
+        requests.append(request)
+        return "Item 3"
+
+    compressed, events = compress_dense_translations(translated, shorten, 20.0)
+    assert compressed["segments"][0]["translated_text"] == "Item 3"
+    assert requests[0].maximum_characters == 20
+    assert requests[0].required_numbers == ("3",)
+    assert events[0]["accepted"]
+
+
+def test_canonical_attempt_reports_integrity_after_readability_compression(tmp_path: Path):
+    source = {
+        "language": "zh", "task": "transcribe", "output_language": "zh",
+        "segments": [{
+            "start": 0.0, "end": 1.0, "text": "短句文本内容很多了",
+            "words": [{"start": 0.0, "end": 1.0, "word": "短句文本内容很多了"}],
+        }],
+    }
+    diarization = {"turns": [{"start": 0.0, "end": 1.0, "speaker": "RAW"}]}
+
+    def backend(request):
+        return "Short line." if request.maximum_characters else "This response is deliberately far too long for the compact source dialogue text."
+
+    result = run_canonical_attempt(source, source, diarization, "en", "model", backend, tmp_path)
+    assert result["translation_integrity"]["passed"]
 
 
 def test_recovered_envelopes_align_to_nearby_strong_words():
