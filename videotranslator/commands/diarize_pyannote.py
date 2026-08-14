@@ -9,6 +9,14 @@ import os
 from pathlib import Path
 from typing import Any
 
+try:
+    import truststore
+
+    truststore.inject_into_ssl()
+except ImportError:
+    # Corporate CAs may be available only through the operating-system store.
+    pass
+
 import librosa
 import torch
 

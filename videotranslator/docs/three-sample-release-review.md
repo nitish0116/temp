@@ -37,6 +37,12 @@ Step 22 agreement qualification:
 | Korean Episode 1 | 75% of 8-group probe | rejected; 130 groups blocked |
 | Linglong's Ferry Episode 24 | 35.09% of 114 groups | rejected; 114 groups blocked |
 
+The first replacement-backend rerun completed on 2026-08-15 for Duty First,
+Kiss Later. `qwen2.5:7b` stayed healthy at only 1.4-2.8% invalid candidates, but
+the conservative, balanced, and maximum-coverage profiles retained 55, 55, and
+60 unresolved agreement groups. The Japanese sample therefore remains rejected;
+Korean and Mandarin replacement-backend reruns are still pending.
+
 Agreement is transactional: backend-health failure rolls back tentative
 independent promotions and retains the trusted primary draft only in diagnostic
 `rejected.srt`. No `final.srt` is retained. Since no output reached promotion

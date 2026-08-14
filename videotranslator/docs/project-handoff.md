@@ -1,6 +1,6 @@
 # Video Translator project handoff
 
-Last durable update: 2026-08-14. Run `python -m videotranslator history` for the
+Last durable update: 2026-08-15. Run `python -m videotranslator history` for the
 current branch, working tree, and recent commit IDs rather than copying a possibly
 stale commit hash from this document.
 
@@ -38,10 +38,29 @@ Japanese, 20/20 Korean, and 20/20 Mandarin output-contract and semantic-term
 checks, including `cute`, `Seoul`, and Treaty of Shimonoseki. The CLI default now
 uses it. Model-specific agreement cache keys invalidate only agreement evidence.
 
-The next action is to restore or regenerate the three Step 22 cached sample
-outputs, rerun their episode-wide agreement stage with `qwen2.5:7b`, and repeat
-the deterministic 72-cue review. Those three canonical artifacts are not all
-present on this workstation, so the release rerun has not started.
+The Japanese Step 22 rerun completed on Workstation B with `qwen2.5:7b`. Audio,
+274/274 aligned ASR segments, 7-speaker diarization, and all three recovery
+profiles completed. Qwen remained healthy (1.4-2.8% invalid candidates), but the
+profiles retained 55, 55, and 60 unresolved agreement groups. The run correctly
+produced `rejected.srt` and retained no `final.srt`.
+
+The next action is to regenerate and rerun the Korean sample with its reviewed
+`cute` and `Seoul` references, then Mandarin with the Treaty of Shimonoseki
+reference. Repeat the deterministic 72-cue review only if all three pass. Secure
+downloads on Windows corporate networks now use the OS trust store in both
+Pyannote diarization and missing-speech recovery.
+
+The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
+are excluded as required, optional, and fallback evidence paths. Step 24 adds
+independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining
+Whisper `large-v3` for source transcription and timing. Step 25 benchmarks a
+dedicated primary text translator, beginning with MADLAD-400 3B and NLLB-200 3.3B,
+and removes Qwen2.5 0.5B from release-qualified translation. Step 26 combines the
+speech, text-MT, and contextual-Qwen routes in source-grounded adjudication, with
+Qwen3 14B as the first stronger retry candidate to qualify. Step 27 adds durable,
+bounded human approval for only the remaining unresolved groups. `final.srt` is
+permitted only after all groups are resolved and structural QA passes. Step 28
+then benchmarks and validates dubbing from that approved subtitle artifact.
 
 Targeted ASR recovery remains necessary where the source transcript itself is
 wrong, especially the Mandarin Treaty of Shimonoseki group.
