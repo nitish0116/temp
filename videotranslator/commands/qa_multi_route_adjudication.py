@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Callable
 
 from .canonical_timed_text import append_provenance, validate_canonical_timed_text
-from .qa_translation_integrity import integrity_issues
+from .qa_translation_integrity import adjudication_coverage_issues, integrity_issues
 from .runtime_device import ollama_gpu_available
 
 
@@ -136,8 +136,12 @@ def adjudicate_multi_route(
         try:
             raw = path.read_text(encoding="utf-8") if cache_hit else adjudicate(request)
             result = parse_adjudication_response(raw)
-            if result["status"] == "verified" and integrity_issues(request.source_text, result["translation"]):
-                raise ValueError("verified translation failed integrity checks")
+            if result["status"] == "verified":
+                issues = integrity_issues(request.source_text, result["translation"])
+                issues.extend(adjudication_coverage_issues(request.source_text, result["translation"]))
+                if issues:
+                    issue_types = ", ".join(str(item["type"]) for item in issues)
+                    raise ValueError(f"verified translation failed integrity checks: {issue_types}")
             if path and not cache_hit:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(json.dumps(result, ensure_ascii=False) + "\n", encoding="utf-8")
