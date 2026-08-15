@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+from copy import deepcopy
+from pathlib import Path
+from typing import Callable
+
 import torch
+
+from .canonical_timed_text import validate_canonical_timed_text
 
 from .auto_prepare_script import nllb_code
 from .runtime_device import resolve_device
@@ -10,6 +18,46 @@ from .runtime_device import resolve_device
 
 MADLAD_MODEL = "google/madlad400-3b-mt"
 NLLB_MODEL = "facebook/nllb-200-3.3B"
+
+
+def dedicated_cache_key(model: str, source_language: str, target_language: str, text: str) -> str:
+    """Hash every input that can change a dedicated translation candidate."""
+    payload = [model, source_language, target_language, text]
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+def collect_dedicated_mt_evidence(
+    document: dict, translate: Callable[[str, str, str], str], *, model: str,
+    cache_directory: Path | None = None,
+) -> tuple[dict, dict[str, str], dict]:
+    """Attach cached dedicated-MT evidence without replacing canonical text."""
+    validate_canonical_timed_text(document)
+    output = deepcopy(document)
+    candidates: dict[str, str] = {}
+    checks = []
+    for segment in output["segments"]:
+        group_id = str(segment["semantic_group_id"])
+        key = dedicated_cache_key(model, output["source_language"], output["output_language"], segment["source_text"])
+        path = None if cache_directory is None else cache_directory / f"{key}.json"
+        cache_hit = bool(path and path.is_file())
+        try:
+            if cache_hit:
+                text = str(json.loads(path.read_text(encoding="utf-8"))["translated_text"]).strip()
+            else:
+                text = str(translate(segment["source_text"], output["source_language"], output["output_language"])).strip()
+            if not text:
+                raise ValueError("dedicated MT returned empty text")
+            if path and not cache_hit:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps({"translated_text": text}, ensure_ascii=False) + "\n", encoding="utf-8")
+            candidates[group_id] = text
+            status, error = "ok", None
+        except (OSError, RuntimeError, ValueError, KeyError) as exc:
+            text, status, error = None, "failed", f"{type(exc).__name__}: {exc}"
+        segment["metadata"] = {**segment.get("metadata", {}), "dedicated_mt": {"status": status, "text": text, "model": model}}
+        checks.append({"semantic_group_id": group_id, "status": status, "translated_text": text, "cache_hit": cache_hit, "error": error})
+    report = {"schema_version": 1, "model": model, "passed": len(candidates) == len(output["segments"]), "group_count": len(output["segments"]), "failed_count": len(output["segments"]) - len(candidates), "checks": checks}
+    return output, candidates, report
 
 
 class DedicatedMTTranslator:

@@ -17,7 +17,7 @@ from .qa_translation_integrity import integrity_issues
 from .runtime_device import ollama_gpu_available
 
 
-ADJUDICATION_PROTOCOL_VERSION = 1
+ADJUDICATION_PROTOCOL_VERSION = 3
 
 
 class OllamaAdjudicator:
@@ -70,7 +70,11 @@ def adjudication_prompt(request: AdjudicationRequest) -> str:
     return (
         f"Verify the English translation of CURRENT {request.source_language} dialogue. "
         "Use source text as authority and candidates only as evidence. Preserve names, "
-        "numbers, polarity, and meaning. Return JSON only: either "
+        "numbers, polarity, and meaning. If the source meaning is clear but every candidate "
+        "is imperfect, synthesize a corrected translation and mark it verified. Use unresolved "
+        "only when the CURRENT source itself is genuinely insufficient or ambiguous. Translate "
+        "CURRENT only, preserve every clause in CURRENT, and use surrounding source solely to "
+        "disambiguate it; unrelated context must not cause omission or refusal. Return JSON only: either "
         '{"status":"verified","translation":"...","reason":"..."} or '
         '{"status":"unresolved","translation":null,"reason":"..."}.\n'
         f"PREVIOUS SOURCE: {list(request.previous_source)}\n"

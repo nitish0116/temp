@@ -8,6 +8,7 @@ from videotranslator.commands.qa_multi_route_adjudication import (
     adjudication_prompt,
     parse_adjudication_response,
 )
+from videotranslator.commands.create_subtitles import parse_args
 from videotranslator.tests.test_translation_agreement import translated_document
 
 
@@ -50,5 +51,13 @@ def test_prompt_requires_source_authority_and_explicit_unresolved():
     request = AdjudicationRequest("g", "zh", "en", "source", (), (), (("primary", "candidate"),))
     prompt = adjudication_prompt(request)
     assert "source text as authority" in prompt
+    assert "synthesize a corrected translation" in prompt
     assert '"status":"unresolved"' in prompt
     assert parse_adjudication_response('{"status":"unresolved","translation":null}') ["status"] == "unresolved"
+
+
+def test_multi_route_adjudication_is_opt_in_with_qualified_defaults():
+    args = parse_args(["video.mp4"])
+    assert args.multi_route_adjudication is False
+    assert args.dedicated_translation_model == "google/madlad400-3b-mt"
+    assert args.adjudication_model == "qwen2.5:7b"

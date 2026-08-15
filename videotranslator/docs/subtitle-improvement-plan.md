@@ -481,7 +481,14 @@ candidates remain rejected, so the exit criterion is not met. See
 Exit: every automatically accepted group has source-grounded support from
 independent audio and text routes; disputed groups remain explicitly unresolved.
 
-Status: planned.
+Status: in progress. The opt-in pipeline now collects Seamless speech evidence,
+MADLAD text-MT evidence, and the primary translation sequentially, unloads the
+large in-process models, and submits a strict source-grounded JSON request to
+`qwen2.5:7b`. Invalid or unresolved responses retain the original and block
+promotion. Protocol-3 probes verify `cute` but leave the compound Dalsan-ri/Seoul
+line and Shimonoseki unresolved, even when the model's reason identifies the
+correct treaty. The next action is to qualify the planned stronger adjudicator;
+do not tune fixture-specific answers into the prompt.
 
 ### 27. Add durable bounded human resolution
 

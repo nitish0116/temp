@@ -66,6 +66,16 @@ The next action is to qualify a stronger source-grounded dedicated MT candidate
 or a general terminology-aware mechanism, then run full three-sample coverage
 only after all bounded reviewed fixtures pass.
 
+Step 26 is now wired behind `--multi-route-adjudication`. It runs Seamless,
+MADLAD, and Ollama sequentially, writes dedicated-MT and adjudication evidence,
+and adds unresolved adjudication to the final promotion gate. A bounded
+`qwen2.5:7b` protocol-3 probe verified `cute` but left the compound
+Dalsan-ri/Seoul line and Shimonoseki unresolved; notably, its reason named the
+correct Treaty of Shimonoseki while its status remained unresolved. This is a
+safe rejection and evidence that the 7B adjudicator is not stable enough. Next,
+qualify the planned stronger adjudicator without adding fixture-specific prompt
+logic.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining

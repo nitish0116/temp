@@ -17,6 +17,8 @@ try:
     from .qa_transcript import analyze
     from .qa_translation_integrity import enforce_translation_integrity, integrity_issues
     from .qa_translation_agreement import enforce_translation_agreement
+    from .qa_multi_route_adjudication import adjudicate_multi_route
+    from .dedicated_mt import collect_dedicated_mt_evidence
     from .repair_subtitles import iterative_repair
     from .speech_translate import collect_speech_translation_evidence
     from .translate_contextual import TranslationRequest, translate_cached_request, translate_contextual
@@ -29,6 +31,8 @@ except ImportError:
     from qa_transcript import analyze
     from qa_translation_integrity import enforce_translation_integrity, integrity_issues
     from qa_translation_agreement import enforce_translation_agreement
+    from qa_multi_route_adjudication import adjudicate_multi_route
+    from dedicated_mt import collect_dedicated_mt_evidence
     from repair_subtitles import iterative_repair
     from speech_translate import collect_speech_translation_evidence
     from translate_contextual import TranslationRequest, translate_cached_request, translate_contextual
@@ -160,6 +164,10 @@ def run_canonical_attempt(
     audio_path: Path | None = None,
     speech_translate: Callable[..., str] | None = None,
     speech_model: str | None = None,
+    dedicated_translate: Callable[[str, str, str], str] | None = None,
+    dedicated_model: str | None = None,
+    adjudicate: Callable[..., str] | None = None,
+    adjudication_model: str | None = None,
 ) -> dict:
     """Execute Steps 4–15 for one recovered-source candidate."""
     turns = stable_diarization_turns(diarization_report)
@@ -224,6 +232,30 @@ def run_canonical_attempt(
         unload = getattr(speech_translate, "unload", None)
         if callable(unload):
             unload()
+    dedicated_report = {
+        "schema_version": 1, "passed": True, "evaluated": False,
+        "group_count": len(integrity["segments"]), "failed_count": 0,
+    }
+    adjudication_report = {
+        "schema_version": 1, "passed": True, "evaluated": False,
+        "group_count": len(integrity["segments"]), "unresolved_count": 0,
+    }
+    if dedicated_translate is not None:
+        integrity, dedicated_candidates, dedicated_report = collect_dedicated_mt_evidence(
+            integrity, dedicated_translate, model=dedicated_model or "dedicated-mt",
+            cache_directory=output / "dedicated-mt-cache",
+        )
+        dedicated_report["evaluated"] = True
+        unload = getattr(getattr(dedicated_translate, "__self__", None), "unload", None)
+        if callable(unload):
+            unload()
+        if adjudicate is not None:
+            integrity, adjudication_report = adjudicate_multi_route(
+                integrity, dedicated_candidates, adjudicate,
+                model=adjudication_model or "adjudicator",
+                cache_directory=output / "adjudication-cache",
+            )
+            adjudication_report["evaluated"] = True
     agreement_report = {
         "schema_version": 1, "passed": True, "evaluated": False,
         "group_count": len(integrity["segments"]), "failed_group_count": 0,
@@ -259,6 +291,7 @@ def run_canonical_attempt(
     status = "passed" if (
         qa["passed"] and integrity_report["passed"]
         and agreement_report["passed"] and speech_report["passed"]
+        and dedicated_report["passed"] and adjudication_report["passed"]
     ) else "rejected"
     output.mkdir(parents=True, exist_ok=True)
     artifacts = {
@@ -267,11 +300,13 @@ def run_canonical_attempt(
         "integrity": output / "translation-integrity.json",
         "speech": output / "speech-translation.json",
         "agreement": output / "translation-agreement.json",
+        "dedicated": output / "dedicated-mt.json",
+        "adjudication": output / "multi-route-adjudication.json",
         "canonical": output / "canonical-subtitles.json",
         "qa": output / "qa.json",
         "report": output / "canonical-pipeline-report.json",
     }
-    for key, value in (("clean", clean), ("translated", translated), ("integrity", integrity_report), ("speech", speech_report), ("agreement", agreement_report), ("canonical", repaired), ("qa", qa)):
+    for key, value in (("clean", clean), ("translated", translated), ("integrity", integrity_report), ("speech", speech_report), ("agreement", agreement_report), ("dedicated", dedicated_report), ("adjudication", adjudication_report), ("canonical", repaired), ("qa", qa)):
         artifacts[key].write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     export = export_subtitles(repaired, output / f"{status}.srt", output / f"{status}.ass")
     result = {
@@ -280,6 +315,8 @@ def run_canonical_attempt(
         "translation_integrity": integrity_report,
         "speech_translation": speech_report,
         "translation_agreement": agreement_report,
+        "dedicated_mt": dedicated_report,
+        "multi_route_adjudication": adjudication_report,
         "diarization_reconciliation": reconciliation,
         "optimization": optimization, "qa": qa, "export": export,
         "readability_compression": compression,
