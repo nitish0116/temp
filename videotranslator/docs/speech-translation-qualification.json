@@ -2,13 +2,13 @@
   "schema_version": 1,
   "model": "facebook/seamless-m4t-v2-large",
   "license": "CC-BY-NC-4.0",
-  "cache_root": "D:\\PythonCaches",
-  "hf_home": "D:\\PythonCaches\\huggingface",
+  "cache_root": ".model-cache",
+  "hf_home": ".model-cache/huggingface",
   "device_requested": "auto",
   "device_resolved": "cuda",
-  "offline": false,
-  "probe": true,
-  "coverage_complete": false,
+  "offline": true,
+  "probe": false,
+  "coverage_complete": true,
   "enable_by_default": false,
   "enable_by_default_reason": "Keep opt-in until every sample is coverage-complete and the reviewed Shimonoseki, Seoul, and cute groups are diagnosable from audio.",
   "samples": [
@@ -16,25 +16,25 @@
       "id": "duty-first-japanese",
       "language": "Japanese",
       "output_directory": "duty-first-kiss-later-episode-1-subtitles",
-      "audio": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\duty-first-kiss-later-episode-1-subtitles\\audio\\Duty First, Kiss Later (2026) Episode 1 English Subbed - MyAsiantv.wav",
-      "translated": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\duty-first-kiss-later-episode-1-subtitles\\attempts\\01-conservative\\canonical\\contextual-translation.json",
-      "report": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\duty-first-kiss-later-episode-1-subtitles\\attempts\\01-conservative\\canonical\\speech-translation.json",
+      "audio": "videotranslator/outputs/duty-first-kiss-later-episode-1-subtitles/audio/Duty First, Kiss Later (2026) Episode 1 English Subbed - MyAsiantv.wav",
+      "translated": "videotranslator/outputs/duty-first-kiss-later-episode-1-subtitles/attempts/01-conservative/canonical/contextual-translation.json",
+      "report": "videotranslator/outputs/duty-first-kiss-later-episode-1-subtitles/attempts/01-conservative/canonical/speech-translation.json",
       "device_requested": "cuda",
       "device_used": null,
-      "offline": false,
+      "offline": true,
       "fallback_events": [],
-      "elapsed_seconds": 0.84,
+      "elapsed_seconds": 5.05,
       "working_set_bytes_before": null,
       "working_set_bytes_after": null,
-      "group_count": 2,
-      "ok_count": 2,
+      "group_count": 196,
+      "ok_count": 196,
       "unsupported_count": 0,
       "failed_count": 0,
-      "source_asr_suspect_count": 0,
-      "disagreement_count": 2,
+      "source_asr_suspect_count": 27,
+      "disagreement_count": 186,
       "latency_ms": {
-        "median": 97.75,
-        "worst": 130.2
+        "median": 24.55,
+        "worst": 83.9
       },
       "coverage_complete": true,
       "fixture_checks": [],
@@ -45,31 +45,25 @@
       "id": "episode-one-korean",
       "language": "Korean",
       "output_directory": "ep-1-v0-1639315485-720p-subtitles",
-      "audio": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\ep-1-v0-1639315485-720p-subtitles\\audio\\EP.1.v0.1639315485.720p.wav",
-      "translated": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\ep-1-v0-1639315485-720p-subtitles\\attempts\\01-conservative\\canonical\\contextual-translation.json",
-      "report": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\ep-1-v0-1639315485-720p-subtitles\\attempts\\01-conservative\\canonical\\speech-translation.json",
+      "audio": "videotranslator/outputs/ep-1-v0-1639315485-720p-subtitles/audio/EP.1.v0.1639315485.720p.wav",
+      "translated": "videotranslator/outputs/ep-1-v0-1639315485-720p-subtitles/attempts/01-conservative/canonical/contextual-translation.json",
+      "report": "videotranslator/outputs/ep-1-v0-1639315485-720p-subtitles/attempts/01-conservative/canonical/speech-translation.json",
       "device_requested": "cuda",
-      "device_used": "cpu",
-      "offline": false,
-      "fallback_events": [
-        {
-          "stage": "speech-translation",
-          "reason": "insufficient-vram-for-seamless-m4t-v2",
-          "resolution": "loaded model on cpu"
-        }
-      ],
-      "elapsed_seconds": 104.66,
+      "device_used": "cuda",
+      "offline": true,
+      "fallback_events": [],
+      "elapsed_seconds": 59.94,
       "working_set_bytes_before": null,
       "working_set_bytes_after": null,
-      "group_count": 2,
-      "ok_count": 2,
+      "group_count": 99,
+      "ok_count": 99,
       "unsupported_count": 0,
       "failed_count": 0,
-      "source_asr_suspect_count": 0,
-      "disagreement_count": 2,
+      "source_asr_suspect_count": 19,
+      "disagreement_count": 97,
       "latency_ms": {
-        "median": 52174.05,
-        "worst": 97408.6
+        "median": 438.6,
+        "worst": 7104.7
       },
       "coverage_complete": true,
       "fixture_checks": [
@@ -81,25 +75,25 @@
           "forbidden_terms": [
             "freak"
           ],
-          "speech_text": "I'm going to take a look at it.",
+          "speech_text": "I'm going to put a little bit of salt in it.",
           "status": "ok",
           "required_present": [],
           "forbidden_present": [],
-            "diagnosable": false
-          },
-          {
-            "timestamp_seconds": 508.8,
-            "required_terms": [
-              "Seoul"
-            ],
-            "forbidden_terms": [
-              "Seattle"
-            ],
-            "speech_text": "[The first time I saw it, I was like, \"Oh, my God!\"]",
-            "status": "ok",
-            "required_present": [],
-            "forbidden_present": [],
-            "diagnosable": false
+          "diagnosable": false
+        },
+        {
+          "timestamp_seconds": 508.8,
+          "required_terms": [
+            "Seoul"
+          ],
+          "forbidden_terms": [
+            "Seattle"
+          ],
+          "speech_text": "I'm going to tell you a little bit about the weather.",
+          "status": "ok",
+          "required_present": [],
+          "forbidden_present": [],
+          "diagnosable": false
         }
       ],
       "license": "CC-BY-NC-4.0",
@@ -109,31 +103,25 @@
       "id": "linglong-ferry-mandarin",
       "language": "Mandarin",
       "output_directory": "linglongs-ferry-episode-24-subtitles",
-      "audio": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\linglongs-ferry-episode-24-subtitles\\audio\\Linglong's Ferry (2026) Episode 24 English Subbed - MyAsiantv.wav",
-      "translated": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\linglongs-ferry-episode-24-subtitles\\attempts\\01-conservative\\canonical\\contextual-translation.json",
-      "report": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\linglongs-ferry-episode-24-subtitles\\attempts\\01-conservative\\canonical\\speech-translation.json",
+      "audio": "videotranslator/outputs/linglongs-ferry-episode-24-subtitles/audio/Linglong's Ferry (2026) Episode 24 English Subbed - MyAsiantv.wav",
+      "translated": "videotranslator/outputs/linglongs-ferry-episode-24-subtitles/attempts/01-conservative/canonical/contextual-translation.json",
+      "report": "videotranslator/outputs/linglongs-ferry-episode-24-subtitles/attempts/01-conservative/canonical/speech-translation.json",
       "device_requested": "cuda",
-      "device_used": "cpu",
-      "offline": false,
-      "fallback_events": [
-        {
-          "stage": "speech-translation",
-          "reason": "insufficient-vram-for-seamless-m4t-v2",
-          "resolution": "loaded model on cpu"
-        }
-      ],
-      "elapsed_seconds": 56.9,
+      "device_used": "cuda",
+      "offline": true,
+      "fallback_events": [],
+      "elapsed_seconds": 53.56,
       "working_set_bytes_before": null,
       "working_set_bytes_after": null,
-      "group_count": 1,
-      "ok_count": 1,
+      "group_count": 72,
+      "ok_count": 72,
       "unsupported_count": 0,
       "failed_count": 0,
-      "source_asr_suspect_count": 0,
-      "disagreement_count": 1,
+      "source_asr_suspect_count": 15,
+      "disagreement_count": 52,
       "latency_ms": {
-        "median": 56613.1,
-        "worst": 56613.1
+        "median": 512.8,
+        "worst": 3067.4
       },
       "coverage_complete": true,
       "fixture_checks": [
@@ -148,9 +136,11 @@
             "Yangtze Province",
             "22,000"
           ],
-          "speech_text": "Taiwan's Yang Huangdong compensated for the disgrace of the two-thousand-two-thousand-thousand-two-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand",
+          "speech_text": "The signing of the Treaty of Versailles",
           "status": "ok",
-          "required_present": [],
+          "required_present": [
+            "Treaty"
+          ],
           "forbidden_present": [],
           "diagnosable": false
         }

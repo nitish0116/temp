@@ -21,6 +21,7 @@ except ImportError:
 
 
 PROJECT = Path(__file__).resolve().parents[1]
+WORKSPACE = PROJECT.parent
 MANIFEST = PROJECT / "tests" / "fixtures" / "three_sample_release_review.json"
 SAMPLES = (
     {
@@ -39,6 +40,17 @@ SAMPLES = (
         "language": "Mandarin",
     },
 )
+
+
+def workspace_path(value: str | Path | None) -> str | None:
+    """Serialize a local path relative to the shared workspace root."""
+    if value is None:
+        return None
+    path = Path(value)
+    try:
+        return path.resolve().relative_to(WORKSPACE.resolve()).as_posix()
+    except ValueError as error:
+        raise ValueError(f"Path must remain inside workspace {WORKSPACE}: {path}") from error
 
 
 def working_set_bytes() -> int | None:
@@ -189,9 +201,9 @@ def qualify_sample(
         "id": sample["id"],
         "language": sample["language"],
         "output_directory": sample["output_directory"],
-        "audio": str(audio),
-        "translated": str(translated),
-        "report": str(report_path),
+        "audio": workspace_path(audio),
+        "translated": workspace_path(translated),
+        "report": workspace_path(report_path),
         "device_requested": device,
         "device_used": translator.device,
         "offline": offline,
@@ -261,8 +273,8 @@ def main(argv: list[str] | None = None) -> None:
         "schema_version": 1,
         "model": args.model,
         "license": "CC-BY-NC-4.0",
-        "cache_root": env.get("PYTHON_CACHE_HOME"),
-        "hf_home": env.get("HF_HOME"),
+        "cache_root": workspace_path(env.get("PYTHON_CACHE_HOME")),
+        "hf_home": workspace_path(env.get("HF_HOME")),
         "device_requested": args.device,
         "device_resolved": requested,
         "offline": args.offline,
@@ -294,7 +306,7 @@ def main(argv: list[str] | None = None) -> None:
     print(json.dumps({
         "coverage_complete": summary["coverage_complete"],
         "enable_by_default": summary["enable_by_default"],
-        "report": str(args.output_report),
+        "report": workspace_path(args.output_report),
     }, indent=2))
     if not summary["coverage_complete"]:
         raise SystemExit(2)

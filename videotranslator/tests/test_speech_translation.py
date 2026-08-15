@@ -4,9 +4,12 @@ import json
 import wave
 from pathlib import Path
 
+import pytest
+
 from videotranslator.commands.create_subtitles import parse_args, prepare_runtime_environment
 from videotranslator.commands.runtime_device import run_preferring_cuda
 from videotranslator.commands.run_canonical_subtitles import run_canonical_attempt
+from videotranslator.commands.qualify_speech_translation import WORKSPACE, workspace_path
 from videotranslator.commands.speech_translate import (
     SeamlessSpeechTranslator,
     collect_speech_translation_evidence,
@@ -25,6 +28,15 @@ def write_silence(path: Path, seconds: float = 3.0, sample_rate: int = 16_000) -
         handle.setsampwidth(2)
         handle.setframerate(sample_rate)
         handle.writeframes(frames)
+
+
+def test_qualification_paths_are_workspace_relative():
+    assert workspace_path(WORKSPACE / ".model-cache" / "huggingface") == ".model-cache/huggingface"
+    assert workspace_path(WORKSPACE / "videotranslator" / "outputs" / "sample.wav") == (
+        "videotranslator/outputs/sample.wav"
+    )
+    with pytest.raises(ValueError, match="Path must remain inside workspace"):
+        workspace_path(WORKSPACE.parent / "outside-cache")
 
 
 def translated_document() -> dict:
