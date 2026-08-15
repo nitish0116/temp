@@ -36,7 +36,8 @@ subtitles.
 
 Step 24 speech-to-English evidence is implemented and opt-in via
 `--speech-translation`. Workstation A prefetched `facebook/seamless-m4t-v2-large`
-into `D:\PythonCaches`. The GTX 1050 (4 GiB) cannot hold the checkpoint; automatic
+into its workspace-relative `.model-cache`. The GTX 1050 (4 GiB) cannot hold the
+checkpoint; automatic
 mode loads it on CPU. A reviewed-defect probe produced independent English for
 every probed group, but did not recover `cute`, `Seoul`, or Treaty of Shimonoseki.
 Do not enable the route by default. Full coverage needs a ≥10 GiB GPU (Workstation
@@ -54,10 +55,16 @@ profiles completed. Qwen remained healthy (1.4-2.8% invalid candidates), but the
 profiles retained 55, 55, and 60 unresolved agreement groups. The run correctly
 produced `rejected.srt` and retained no `final.srt`.
 
-The next action is to prefetch SeamlessM4T-v2 on Workstation B and run
-`python -m videotranslator qualify-speech-translation --device auto` there for
-full three-sample coverage. On Workstation A, keep `--speech-translation` opt-in.
-Then continue Korean/Mandarin Qwen agreement reruns as previously planned.
+Step 24 full coverage completed on the 16 GiB GPU: 367/367 groups returned audio
+English, but `cute`, `Seoul`, and Shimonoseki remained non-diagnosable. Step 25
+now has a repeatable native-protocol dedicated-MT benchmark. MADLAD-400 3B passed
+`cute` and `Seoul` but rendered Shimonoseki as “Treaty of Macau”; NLLB-200 3.3B
+preserved `Seoul` but rendered the other fixtures as “lovely” and “Customs
+Treaty.” Both remain rejected and the production default is unchanged.
+
+The next action is to qualify a stronger source-grounded dedicated MT candidate
+or a general terminology-aware mechanism, then run full three-sample coverage
+only after all bounded reviewed fixtures pass.
 
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
@@ -78,10 +85,10 @@ wrong, especially the Mandarin Treaty of Shimonoseki group.
 
 Two workstation profiles are supported through user-level environment variables:
 
-- Workstation A uses `D:\Git\Projects\.venv`, `D:\PythonCaches`, and
-  `D:\Ollama\Models`; it has the NVIDIA Pascal/GTX, Torch CUDA 12.6 profile.
-- Workstation B uses `videotranslator\.venv` and the ignored
-  `C:\Users\z005537p\NitishWork\HM\temp\.model-cache`; it has an RTX PRO 4000
+- Each workstation resolves `.venv` and `.model-cache` relative to its own
+  repository workspace root; tracked files must not store absolute host paths.
+- Workstation A has the NVIDIA Pascal/GTX, Torch CUDA 12.6 profile.
+- Workstation B has an RTX PRO 4000
   Blackwell Laptop GPU, 16 GB VRAM, about 65 GB RAM, and Torch CUDA 12.8.
 - Workstation B has Ollama `0.32.11`; `qwen2.5:7b` and `llama3.1:8b` occupy
   8.94 GiB total.

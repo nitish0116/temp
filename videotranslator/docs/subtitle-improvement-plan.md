@@ -434,7 +434,7 @@ Status: implemented as an opt-in route and probe-qualified on Workstation A.
 semantic-group audio window, caches it by audio-region hash, and compares it with
 the text-derived translation. It does not replace Whisper source text or primary
 translations. Workstation A (GTX 1050 4 GiB) prefetched the CC-BY-NC checkpoint
-into `D:\PythonCaches` and falls back to CPU. A reviewed-defect probe produced
+into its workspace-relative `.model-cache` and falls back to CPU. A reviewed-defect probe produced
 independent English for `cute`, `Seoul`, and Treaty of Shimonoseki groups, but
 did not recover the required terms. Full three-sample coverage and default
 enablement remain blocked until a ≥10 GiB GPU run recovers those terms or Step 26
@@ -457,7 +457,11 @@ adjudicates this evidence. See `docs/speech-translation-qualification.md`.
 Exit: one dedicated text MT model passes all reviewed language fixtures and
 outperforms the 0.5B primary without weakening integrity or provenance gates.
 
-Status: planned; begin after Step 24 produces comparable audio-derived evidence.
+Status: in progress. The native-protocol benchmark command is implemented.
+MADLAD-400 3B passed `cute` and `Seoul` but produced “Treaty of Macau”;
+NLLB-200 3.3B preserved `Seoul` but produced “lovely” and “Customs Treaty.” Both
+candidates remain rejected, so the exit criterion is not met. See
+`docs/text-translation-qualification.md`.
 
 ### 26. Replace pairwise agreement with multi-route adjudication
 
