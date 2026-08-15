@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "speech-translation.schema.json",
+  "title": "Video Translator speech-to-English evidence report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_type",
+    "protocol_version",
+    "model",
+    "evaluated",
+    "passed",
+    "group_count",
+    "checks"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "artifact_type": {"const": "speech_translation"},
+    "protocol_version": {"type": "integer", "minimum": 1},
+    "model": {"type": "string", "minLength": 1},
+    "audio": {"type": "string"},
+    "target_language": {"type": "string"},
+    "evaluated": {"type": "boolean"},
+    "passed": {"type": "boolean"},
+    "group_count": {"type": "integer", "minimum": 0},
+    "ok_count": {"type": "integer", "minimum": 0},
+    "unsupported_count": {"type": "integer", "minimum": 0},
+    "failed_count": {"type": "integer", "minimum": 0},
+    "source_asr_suspect_count": {"type": "integer", "minimum": 0},
+    "disagreement_count": {"type": "integer", "minimum": 0},
+    "generate_config": {"type": "object"},
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "semantic_group_id",
+          "start",
+          "end",
+          "status",
+          "translated_text",
+          "issues"
+        ],
+        "properties": {
+          "semantic_group_id": {"type": "string"},
+          "start": {"type": "number"},
+          "end": {"type": "number"},
+          "audio_hash": {"type": "string"},
+          "cache_key": {"type": "string"},
+          "cache_hit": {"type": "boolean"},
+          "status": {"enum": ["ok", "unsupported", "failed"]},
+          "translated_text": {"type": ["string", "null"]},
+          "issues": {"type": "array", "items": {"type": "string"}},
+          "scores": {"type": "object"}
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

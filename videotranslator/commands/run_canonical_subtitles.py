@@ -18,6 +18,7 @@ try:
     from .qa_translation_integrity import enforce_translation_integrity, integrity_issues
     from .qa_translation_agreement import enforce_translation_agreement
     from .repair_subtitles import iterative_repair
+    from .speech_translate import collect_speech_translation_evidence
     from .translate_contextual import TranslationRequest, translate_cached_request, translate_contextual
 except ImportError:
     from build_clean_transcript import build_clean_transcript
@@ -29,6 +30,7 @@ except ImportError:
     from qa_translation_integrity import enforce_translation_integrity, integrity_issues
     from qa_translation_agreement import enforce_translation_agreement
     from repair_subtitles import iterative_repair
+    from speech_translate import collect_speech_translation_evidence
     from translate_contextual import TranslationRequest, translate_cached_request, translate_contextual
 
 
@@ -155,6 +157,9 @@ def run_canonical_attempt(
     independent_model: str | None = None,
     stronger_translate: Callable[[TranslationRequest], str] | None = None,
     stronger_model: str | None = None,
+    audio_path: Path | None = None,
+    speech_translate: Callable[..., str] | None = None,
+    speech_model: str | None = None,
 ) -> dict:
     """Execute Steps 4–15 for one recovered-source candidate."""
     turns = stable_diarization_turns(diarization_report)
@@ -203,6 +208,22 @@ def run_canonical_attempt(
     integrity, integrity_report = enforce_translation_integrity(
         integrity, retry, maximum_retries=0,
     )
+    speech_report = {
+        "schema_version": 1, "passed": True, "evaluated": False,
+        "group_count": len(integrity["segments"]), "failed_count": 0,
+    }
+    if speech_translate is not None:
+        if audio_path is None:
+            raise ValueError("Speech translation requires the canonical ASR audio path")
+        integrity, speech_report = collect_speech_translation_evidence(
+            integrity, audio_path, speech_translate,
+            model_name=speech_model or "speech-translator",
+            cache_directory=output / "speech-translation-cache",
+            similarity=semantic_similarity,
+        )
+        unload = getattr(speech_translate, "unload", None)
+        if callable(unload):
+            unload()
     agreement_report = {
         "schema_version": 1, "passed": True, "evaluated": False,
         "group_count": len(integrity["segments"]), "failed_group_count": 0,
@@ -236,25 +257,28 @@ def run_canonical_attempt(
         minimum_diarized_time_coverage=minimum_diarized_time_coverage,
     )
     status = "passed" if (
-        qa["passed"] and integrity_report["passed"] and agreement_report["passed"]
+        qa["passed"] and integrity_report["passed"]
+        and agreement_report["passed"] and speech_report["passed"]
     ) else "rejected"
     output.mkdir(parents=True, exist_ok=True)
     artifacts = {
         "clean": output / "clean-transcript.json",
         "translated": output / "contextual-translation.json",
         "integrity": output / "translation-integrity.json",
+        "speech": output / "speech-translation.json",
         "agreement": output / "translation-agreement.json",
         "canonical": output / "canonical-subtitles.json",
         "qa": output / "qa.json",
         "report": output / "canonical-pipeline-report.json",
     }
-    for key, value in (("clean", clean), ("translated", translated), ("integrity", integrity_report), ("agreement", agreement_report), ("canonical", repaired), ("qa", qa)):
+    for key, value in (("clean", clean), ("translated", translated), ("integrity", integrity_report), ("speech", speech_report), ("agreement", agreement_report), ("canonical", repaired), ("qa", qa)):
         artifacts[key].write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     export = export_subtitles(repaired, output / f"{status}.srt", output / f"{status}.ass")
     result = {
         "schema_version": 1, "status": status,
         "translation_model": model_name, "context_size": context_size,
         "translation_integrity": integrity_report,
+        "speech_translation": speech_report,
         "translation_agreement": agreement_report,
         "diarization_reconciliation": reconciliation,
         "optimization": optimization, "qa": qa, "export": export,

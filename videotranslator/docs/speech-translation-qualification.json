@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "model": "facebook/seamless-m4t-v2-large",
+  "license": "CC-BY-NC-4.0",
+  "cache_root": "D:\\PythonCaches",
+  "hf_home": "D:\\PythonCaches\\huggingface",
+  "device_requested": "auto",
+  "device_resolved": "cuda",
+  "offline": false,
+  "probe": true,
+  "coverage_complete": false,
+  "enable_by_default": false,
+  "enable_by_default_reason": "Keep opt-in until every sample is coverage-complete and the reviewed Shimonoseki, Seoul, and cute groups are diagnosable from audio.",
+  "samples": [
+    {
+      "id": "duty-first-japanese",
+      "language": "Japanese",
+      "output_directory": "duty-first-kiss-later-episode-1-subtitles",
+      "audio": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\duty-first-kiss-later-episode-1-subtitles\\audio\\Duty First, Kiss Later (2026) Episode 1 English Subbed - MyAsiantv.wav",
+      "translated": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\duty-first-kiss-later-episode-1-subtitles\\attempts\\01-conservative\\canonical\\contextual-translation.json",
+      "report": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\duty-first-kiss-later-episode-1-subtitles\\attempts\\01-conservative\\canonical\\speech-translation.json",
+      "device_requested": "cuda",
+      "device_used": null,
+      "offline": false,
+      "fallback_events": [],
+      "elapsed_seconds": 0.84,
+      "working_set_bytes_before": null,
+      "working_set_bytes_after": null,
+      "group_count": 2,
+      "ok_count": 2,
+      "unsupported_count": 0,
+      "failed_count": 0,
+      "source_asr_suspect_count": 0,
+      "disagreement_count": 2,
+      "latency_ms": {
+        "median": 97.75,
+        "worst": 130.2
+      },
+      "coverage_complete": true,
+      "fixture_checks": [],
+      "license": "CC-BY-NC-4.0",
+      "model": "facebook/seamless-m4t-v2-large"
+    },
+    {
+      "id": "episode-one-korean",
+      "language": "Korean",
+      "output_directory": "ep-1-v0-1639315485-720p-subtitles",
+      "audio": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\ep-1-v0-1639315485-720p-subtitles\\audio\\EP.1.v0.1639315485.720p.wav",
+      "translated": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\ep-1-v0-1639315485-720p-subtitles\\attempts\\01-conservative\\canonical\\contextual-translation.json",
+      "report": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\ep-1-v0-1639315485-720p-subtitles\\attempts\\01-conservative\\canonical\\speech-translation.json",
+      "device_requested": "cuda",
+      "device_used": "cpu",
+      "offline": false,
+      "fallback_events": [
+        {
+          "stage": "speech-translation",
+          "reason": "insufficient-vram-for-seamless-m4t-v2",
+          "resolution": "loaded model on cpu"
+        }
+      ],
+      "elapsed_seconds": 104.66,
+      "working_set_bytes_before": null,
+      "working_set_bytes_after": null,
+      "group_count": 2,
+      "ok_count": 2,
+      "unsupported_count": 0,
+      "failed_count": 0,
+      "source_asr_suspect_count": 0,
+      "disagreement_count": 2,
+      "latency_ms": {
+        "median": 52174.05,
+        "worst": 97408.6
+      },
+      "coverage_complete": true,
+      "fixture_checks": [
+        {
+          "timestamp_seconds": 9.3,
+          "required_terms": [
+            "cute"
+          ],
+          "forbidden_terms": [
+            "freak"
+          ],
+          "speech_text": "I'm going to take a look at it.",
+          "status": "ok",
+          "required_present": [],
+          "forbidden_present": [],
+            "diagnosable": false
+          },
+          {
+            "timestamp_seconds": 508.8,
+            "required_terms": [
+              "Seoul"
+            ],
+            "forbidden_terms": [
+              "Seattle"
+            ],
+            "speech_text": "[The first time I saw it, I was like, \"Oh, my God!\"]",
+            "status": "ok",
+            "required_present": [],
+            "forbidden_present": [],
+            "diagnosable": false
+        }
+      ],
+      "license": "CC-BY-NC-4.0",
+      "model": "facebook/seamless-m4t-v2-large"
+    },
+    {
+      "id": "linglong-ferry-mandarin",
+      "language": "Mandarin",
+      "output_directory": "linglongs-ferry-episode-24-subtitles",
+      "audio": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\linglongs-ferry-episode-24-subtitles\\audio\\Linglong's Ferry (2026) Episode 24 English Subbed - MyAsiantv.wav",
+      "translated": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\linglongs-ferry-episode-24-subtitles\\attempts\\01-conservative\\canonical\\contextual-translation.json",
+      "report": "D:\\Git\\Projects\\nitish0116\\temp\\videotranslator\\outputs\\linglongs-ferry-episode-24-subtitles\\attempts\\01-conservative\\canonical\\speech-translation.json",
+      "device_requested": "cuda",
+      "device_used": "cpu",
+      "offline": false,
+      "fallback_events": [
+        {
+          "stage": "speech-translation",
+          "reason": "insufficient-vram-for-seamless-m4t-v2",
+          "resolution": "loaded model on cpu"
+        }
+      ],
+      "elapsed_seconds": 56.9,
+      "working_set_bytes_before": null,
+      "working_set_bytes_after": null,
+      "group_count": 1,
+      "ok_count": 1,
+      "unsupported_count": 0,
+      "failed_count": 0,
+      "source_asr_suspect_count": 0,
+      "disagreement_count": 1,
+      "latency_ms": {
+        "median": 56613.1,
+        "worst": 56613.1
+      },
+      "coverage_complete": true,
+      "fixture_checks": [
+        {
+          "timestamp_seconds": 88.8,
+          "required_terms": [
+            "Japan",
+            "Treaty",
+            "Shimonoseki"
+          ],
+          "forbidden_terms": [
+            "Yangtze Province",
+            "22,000"
+          ],
+          "speech_text": "Taiwan's Yang Huangdong compensated for the disgrace of the two-thousand-two-thousand-thousand-two-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand-thousand",
+          "status": "ok",
+          "required_present": [],
+          "forbidden_present": [],
+          "diagnosable": false
+        }
+      ],
+      "license": "CC-BY-NC-4.0",
+      "model": "facebook/seamless-m4t-v2-large"
+    }
+  ]
+}

@@ -429,7 +429,16 @@ Exit: every sample group has independent audio-derived English evidence or an
 explicit unsupported/failed status; source-ASR defects no longer force every
 translation candidate to share the same wrong input.
 
-Status: planned; this is the next architectural implementation step.
+Status: implemented as an opt-in route and probe-qualified on Workstation A.
+`--speech-translation` collects SeamlessM4T-v2 English evidence for every
+semantic-group audio window, caches it by audio-region hash, and compares it with
+the text-derived translation. It does not replace Whisper source text or primary
+translations. Workstation A (GTX 1050 4 GiB) prefetched the CC-BY-NC checkpoint
+into `D:\PythonCaches` and falls back to CPU. A reviewed-defect probe produced
+independent English for `cute`, `Seoul`, and Treaty of Shimonoseki groups, but
+did not recover the required terms. Full three-sample coverage and default
+enablement remain blocked until a ≥10 GiB GPU run recovers those terms or Step 26
+adjudicates this evidence. See `docs/speech-translation-qualification.md`.
 
 ### 25. Replace the release primary text translator
 
@@ -517,9 +526,11 @@ The three-sample review found material meaning, place-name, and ASR errors despi
 all structural checks passing. Step 19 prevents known reviewed errors from being
 promoted, but it cannot detect unknown errors in new dialogue. Steps 20 and 21
 fail closed, and Step 23 fixed independent-backend health, but the 2026-08-15
-Japanese rerun still left 55-60 unresolved groups. The release blocker is now the
-shared dependence on source ASR, weak primary text translation, and lack of a
-durable bounded resolution workflow. Steps 24-27 address those gaps without OCR.
+Japanese rerun still left 55-60 unresolved groups. Step 24 adds independent
+speech-to-English evidence so a corrupt Whisper transcript is no longer the only
+English source. The remaining release blocker is weak primary text translation
+and the lack of multi-route adjudication plus bounded human resolution.
+Steps 25-27 address those gaps without OCR.
 
 ## Definition of done
 

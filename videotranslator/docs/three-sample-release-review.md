@@ -86,8 +86,12 @@ record confirmed discrepancies in the fixture, and publish only when both
 structural and semantic gates are clean. The next corrective action is to replace
 and qualify the independent translation backend, refresh only agreement and
 downstream caches, rerun, and repeat this review. The 0.5B primary translator and
-corrupt source-language ASR remain separate risks; targeted ASR recovery is still
-required wherever the source evidence is already wrong.
+corrupt source-language ASR remain separate risks. Step 24 probe evidence on
+Workstation A produced independent audio English for the `cute`, `Seoul`, and
+Treaty of Shimonoseki groups but did not recover the required terms; see
+[speech-translation-qualification.md](speech-translation-qualification.md).
+Targeted ASR recovery is still required wherever the source evidence is already
+wrong.
 
 No push should be made for the current subtitle outputs because this review is not
 clean. Code and documentation may be committed locally for review.

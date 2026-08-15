@@ -18,6 +18,7 @@ field or its meaning changes.
 | `dub-manifest.schema.json` | TTS / assembly | Voices and generated clip inventory. |
 | `dubbing-pipeline-qa.schema.json` | cross-stage QA | Pre-assembly promotion decision. |
 | `final-qa.schema.json` | final-media QA | Encoded-media status, checks, issues, warnings. |
+| `speech-translation.schema.json` | speech-to-English evidence | Per-group audio-derived English, cache keys, and ASR-suspicion flags. |
 
 ## Canonical timed text
 

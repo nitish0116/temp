@@ -857,7 +857,7 @@ def test_headless_runtime_uses_one_shared_cache_root(tmp_path: Path):
 
 
 def test_headless_runtime_default_cache_is_portable(tmp_path: Path):
-    """An unconfigured Windows host uses its profile cache, not another drive."""
+    """An unconfigured host uses its profile cache, not another workstation's drive."""
     local_app_data = tmp_path / "local-app-data"
     env, events = prepare_runtime_environment(
         tmp_path / "output", {"LOCALAPPDATA": str(local_app_data)}

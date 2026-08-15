@@ -40,7 +40,10 @@ Restart the terminal after setting persistent variables. `--offline` is valid on
 after every model needed by the selected route has been downloaded and gated-model
 access has been verified. If `PYTHON_CACHE_HOME` is unset, Windows falls back to
 `%LOCALAPPDATA%\videotranslator\models`; other systems fall back to
-`~/.cache/videotranslator/models`. Explicit workstation profiles are preferred.
+`~/.cache/videotranslator/models`. Hugging Face hub files, Torch weights, and
+temporary download staging are created under the active cache root (or an already
+configured `HF_HOME` / `TORCH_HOME`). Do not hardcode one workstation's path in
+source; set the user-level variables for that machine.
 
 ## Subtitle creation models
 
@@ -55,6 +58,7 @@ access has been verified. If `PYTHON_CACHE_HOME` is unset, Windows falls back to
 | `qwen3:1.7b` | Former Ollama independent translator | Diagnostic only: Step 22 rejected it for Japanese, Korean, and Mandarin | `ollama pull qwen3:1.7b` |
 | `llama3.1:8b` | Stronger-model retry and rejected Step 23 baseline | Failed two reviewed station probes; do not use as release evidence | `ollama pull llama3.1:8b` |
 | `qwen2.5:7b` | Qualified Ollama independent translator | Selected by Step 23; Apache 2.0 | `ollama pull qwen2.5:7b` |
+| `facebook/seamless-m4t-v2-large` | Direct speech-to-English evidence (Step 24) | Required when `--speech-translation` is enabled; CC-BY-NC 4.0 | Hugging Face Transformers cache under `HF_HOME` |
 
 `qwen3:1.7b` must not be treated as release-qualified merely because its files are
 installed. Step 22 measured invalid-output rates of 100% for the Japanese probe,
@@ -111,7 +115,8 @@ configuration and prefetch them before an offline run.
 3. Configure the shared cache variables above and confirm every directory is writable.
 4. Authenticate Hugging Face, accept pyannote terms, and download the gated model.
 5. Prefetch `large-v3`, `medium`, and `small` for unattended ASR fallback.
-6. Prefetch the primary, NLLB, semantic-similarity, and expected alignment models.
+6. Prefetch the primary, NLLB, semantic-similarity, expected alignment, and
+   SeamlessM4T-v2 speech-translation models into that workstation's `PYTHON_CACHE_HOME`.
 7. Install Ollama, set `OLLAMA_MODELS`, and pull only the agreement models selected by Step 23.
 8. Prefetch Demucs and the selected Piper/XTTS assets when dubbing is required.
 9. Run one offline smoke test; missing weights must fail before processing a full video.
