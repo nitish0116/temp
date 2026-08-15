@@ -487,8 +487,14 @@ large in-process models, and submits a strict source-grounded JSON request to
 `qwen2.5:7b`. Invalid or unresolved responses retain the original and block
 promotion. Protocol-3 probes verify `cute` but leave the compound Dalsan-ri/Seoul
 line and Shimonoseki unresolved, even when the model's reason identifies the
-correct treaty. The next action is to qualify the planned stronger adjudicator;
-do not tune fixture-specific answers into the prompt.
+correct treaty. Qwen3 14B was then run through five uncached trials per reviewed
+fixture with full GPU offload. It passed `cute` and Shimonoseki in all ten trials,
+but in all five compound-line trials it marked a translation verified after
+omitting the opening Dalsan-ri clause. It is therefore not release-qualified.
+The next action is a model-independent source-clause and named-entity coverage
+gate that rejects such false verification before broader qualification; do not
+tune fixture-specific answers into the prompt. See
+`docs/multi-route-adjudication-qwen3-14b-qualification.json`.
 
 ### 27. Add durable bounded human resolution
 

@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "protocol_version": 3,
+  "adjudication_model": "qwen3:14b",
+  "quantization": "Q4_K_M",
+  "model_size_bytes": 9646353939,
+  "gpu_offload_bytes": 9646353939,
+  "dedicated_model": "google/madlad400-3b-mt",
+  "speech_model": "facebook/seamless-m4t-v2-large",
+  "trial_count": 5,
+  "probe": true,
+  "passed": false,
+  "release_qualified": false,
+  "acceptance_rule": "Every trial must return verified English that preserves every source clause and required proper noun.",
+  "samples": [
+    {
+      "id": "episode-one-korean-cute",
+      "source": "videotranslator/outputs/ep-1-v0-1639315485-720p-subtitles/attempts/01-conservative/canonical/speech-translation.document.json",
+      "semantic_group_id": "semantic-0001",
+      "required_terms": ["cute"],
+      "passed_trials": 5,
+      "failed_trials": 0,
+      "stable_translation": "It's cute, isn't it?",
+      "passed": true
+    },
+    {
+      "id": "episode-one-korean-dalsan-ri-seoul",
+      "source": "videotranslator/outputs/ep-1-v0-1639315485-720p-subtitles/attempts/01-conservative/canonical/speech-translation.document.json",
+      "semantic_group_id": "semantic-0068",
+      "required_terms": ["Dalsan-ri", "Seoul"],
+      "passed_trials": 0,
+      "failed_trials": 5,
+      "stable_translation": "Did you know there was a place like that in Seoul?",
+      "failure": "The adjudicator marked the result verified while omitting the opening Dalsan-ri clause in every trial.",
+      "passed": false
+    },
+    {
+      "id": "linglong-ferry-mandarin-shimonoseki",
+      "source": "videotranslator/outputs/linglongs-ferry-episode-24-subtitles/attempts/01-conservative/canonical/speech-translation.document.json",
+      "semantic_group_id": "semantic-0002",
+      "required_terms": ["Shimonoseki"],
+      "passed_trials": 5,
+      "failed_trials": 0,
+      "stable_translation": "Sign the Treaty of Shimonoseki",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "passed_trials": 10,
+    "failed_trials": 5,
+    "total_trials": 15,
+    "decision": "Reject qwen3:14b for unattended automatic promotion under protocol 3.",
+    "next_action": "Add a model-independent source-clause and named-entity coverage gate before accepting an adjudicator verified result."
+  }
+}

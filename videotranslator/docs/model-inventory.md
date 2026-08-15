@@ -58,6 +58,7 @@ source; set the user-level variables for that machine.
 | `qwen3:1.7b` | Former Ollama independent translator | Diagnostic only: Step 22 rejected it for Japanese, Korean, and Mandarin | `ollama pull qwen3:1.7b` |
 | `llama3.1:8b` | Stronger-model retry and rejected Step 23 baseline | Failed two reviewed station probes; do not use as release evidence | `ollama pull llama3.1:8b` |
 | `qwen2.5:7b` | Qualified Ollama independent translator | Selected by Step 23; Apache 2.0 | `ollama pull qwen2.5:7b` |
+| `qwen3:14b` | Rejected Step 26 adjudicator candidate | Passed `cute` and Shimonoseki but omitted the Dalsan-ri clause in 5/5 stability trials; do not use for automatic promotion | `ollama pull qwen3:14b` |
 | `facebook/seamless-m4t-v2-large` | Direct speech-to-English evidence (Step 24) | Required when `--speech-translation` is enabled; CC-BY-NC 4.0 | Hugging Face Transformers cache under `HF_HOME` |
 
 `qwen3:1.7b` must not be treated as release-qualified merely because its files are

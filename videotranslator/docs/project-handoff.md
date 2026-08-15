@@ -1,6 +1,6 @@
 # Video Translator project handoff
 
-Last durable update: 2026-08-15. Run `python -m videotranslator history` for the
+Last durable update: 2026-08-16. Run `python -m videotranslator history` for the
 current branch, working tree, and recent commit IDs rather than copying a possibly
 stale commit hash from this document.
 
@@ -72,9 +72,17 @@ and adds unresolved adjudication to the final promotion gate. A bounded
 `qwen2.5:7b` protocol-3 probe verified `cute` but left the compound
 Dalsan-ri/Seoul line and Shimonoseki unresolved; notably, its reason named the
 correct Treaty of Shimonoseki while its status remained unresolved. This is a
-safe rejection and evidence that the 7B adjudicator is not stable enough. Next,
-qualify the planned stronger adjudicator without adding fixture-specific prompt
-logic.
+safe rejection and evidence that the 7B adjudicator is not stable enough.
+
+Qwen3 14B Q4_K_M was downloaded into the workspace-relative Ollama cache and
+fully offloaded its 9,646,353,939-byte runtime allocation to the 16 GiB GPU. Five
+uncached protocol-3 trials per reviewed fixture passed `cute` and Shimonoseki
+10/10, but failed the compound Dalsan-ri/Seoul line 5/5: the model consistently
+marked a translation verified while omitting the opening Dalsan-ri clause. It is
+not release-qualified and the production default remains unchanged. Next, add a
+model-independent source-clause and named-entity coverage gate, then repeat the
+bounded qualification before any full-episode run. Evidence:
+`docs/multi-route-adjudication-qwen3-14b-qualification.json`.
 
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
