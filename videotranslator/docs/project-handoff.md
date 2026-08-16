@@ -109,6 +109,15 @@ discarded. No human decision has been applied, so promotion remains blocked.
 Next, implement approval-key-validated decision ingestion and generate the
 stratified audit sample from the 348 automatically accepted groups.
 
+Decision ingestion now validates approval keys against the current document and
+evidence, requires reviewer identity plus a timezone-qualified timestamp, and
+re-runs deterministic integrity checks before recording `human_verified`
+provenance. A separate accepted audit under
+`videotranslator/outputs/step27-accepted-audit` contains 24 deterministic
+early/middle/late groups (eight per sample) and 24 verified-readable hashed WAV
+clips. The 19 unresolved items and 24 accepted audit items are both pending real
+human decisions; no generated subtitle has been promoted.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining

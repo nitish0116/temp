@@ -246,3 +246,35 @@ def stratified_accepted_group_ids(adjudication_report: dict, sample_size: int = 
             chosen = []
         selected.extend(chosen)
     return selected
+
+
+def build_accepted_audit(
+    document: dict, adjudication_report: dict, *, sample_id: str,
+    source_media: str, media_sha256: str, adjudication_model: str,
+    sample_size: int = 8, context_size: int = 3,
+) -> dict:
+    """Build a hashed human-audit artifact from stratified accepted groups."""
+    selected = set(stratified_accepted_group_ids(adjudication_report, sample_size))
+    audit_report = deepcopy(adjudication_report)
+    for check in audit_report["checks"]:
+        group_id = str(check["semantic_group_id"])
+        check["passed"] = group_id not in selected
+        if group_id in selected:
+            check["proposed_translation"] = check.get("selected_translation")
+            check["error"] = None
+            check["reason"] = "selected for stratified accepted-group audit"
+    audit = build_bounded_review(
+        document, audit_report, sample_id=sample_id, source_media=source_media,
+        media_sha256=media_sha256, adjudication_model=adjudication_model,
+        context_size=context_size,
+    )
+    audit["artifact_type"] = "accepted_subtitle_audit"
+    audit["selection"] = {
+        "method": "deterministic_early_middle_late",
+        "requested_size": sample_size,
+        "selected_size": len(audit["items"]),
+    }
+    for item in audit["items"]:
+        item["terminal_state"] = "adjudicator_verified"
+        item["review"]["status"] = "audit_pending"
+    return audit

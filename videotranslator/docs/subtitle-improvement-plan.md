@@ -541,6 +541,15 @@ audio clip, media and clip hashes, and a versioned approval key. No review
 decision has been applied. Next, implement validated decision ingestion and draw
 the stratified semantic audit sample from accepted groups.
 
+Approval-key-validated decision ingestion is now implemented: it rejects stale
+evidence, mismatched keys, unsupported states, missing reviewer identity or
+timezone, and corrected translations that fail deterministic integrity checks.
+The accepted-group audit is also generated under
+`videotranslator/outputs/step27-accepted-audit`: eight deterministic
+early/middle/late groups per sample, 24 total, each with the same portable hashed
+evidence and a verified-readable audio clip. Both the 19-item correction set and
+24-item semantic audit remain pending human decisions.
+
 ### 28. Produce and validate dubbing only from approved subtitles
 
 - Freeze approved canonical text and speaker assignments before TTS begins.

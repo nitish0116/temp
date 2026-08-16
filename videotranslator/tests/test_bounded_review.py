@@ -3,7 +3,7 @@
 import pytest
 
 from videotranslator.commands.bounded_review import (
-    apply_review_decisions, attach_audio_clips, build_bounded_review,
+    apply_review_decisions, attach_audio_clips, build_accepted_audit, build_bounded_review,
     stratified_accepted_group_ids,
 )
 from videotranslator.tests.test_translation_agreement import translated_document
@@ -130,3 +130,21 @@ def test_accepted_audit_selection_is_deterministic_and_stratified():
     numeric = [int(value.rsplit("-", 1)[1]) for value in selected]
     assert len(selected) == 6 and min(numeric) < 6 and max(numeric) >= 12
     assert not {"group-04", "group-14"} & set(selected)
+
+
+def test_accepted_audit_contains_only_selected_verified_groups():
+    document = translated_document()
+    report = {"protocol_version": 3, "checks": [{
+        "semantic_group_id": "group-1", "passed": True,
+        "selected_translation": "Was there such a place in Seoul?",
+        "proposed_translation": "Was there such a place in Seoul?",
+        "error": None, "reason": "verified",
+    }]}
+    audit = build_accepted_audit(
+        document, report, sample_id="sample", source_media="sample-data/source.mp4",
+        media_sha256="e" * 64, adjudication_model="fixture", sample_size=8,
+    )
+    assert audit["artifact_type"] == "accepted_subtitle_audit"
+    assert audit["selection"]["selected_size"] == 1
+    assert audit["items"][0]["terminal_state"] == "adjudicator_verified"
+    assert audit["items"][0]["review"]["status"] == "audit_pending"
