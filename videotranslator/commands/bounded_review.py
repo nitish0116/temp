@@ -5,8 +5,13 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 from typing import Callable
+
+from .canonical_timed_text import append_provenance, validate_canonical_timed_text
+from .qa_translation_integrity import adjudication_coverage_issues, integrity_issues
 
 
 NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
@@ -116,3 +121,128 @@ def attach_audio_clips(
         item["audio_clip"] = f"{reference_root}/{path.name}"
         item["audio_clip_sha256"] = sha256_file(path)
     return review
+
+
+def _reviewed_at(value: object) -> str:
+    """Require an ISO-8601 reviewer timestamp with an explicit timezone."""
+    if not isinstance(value, str):
+        raise ValueError("reviewed_at must be an ISO-8601 string")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError("reviewed_at must be an ISO-8601 string") from error
+    if parsed.tzinfo is None:
+        raise ValueError("reviewed_at must include a timezone")
+    return value
+
+
+def apply_review_decisions(document: dict, review: dict, decisions: dict) -> tuple[dict, dict]:
+    """Apply exact-key human decisions while retaining every unsafe item unresolved."""
+    validate_canonical_timed_text(document)
+    if decisions.get("sample_id") != review.get("sample_id"):
+        raise ValueError("decision sample_id does not match review artifact")
+    supplied = decisions.get("decisions")
+    if not isinstance(supplied, list):
+        raise ValueError("decisions must be a list")
+    by_id = {}
+    for decision in supplied:
+        group_id = str(decision.get("semantic_group_id") or "")
+        if not group_id or group_id in by_id:
+            raise ValueError("decision semantic_group_id values must be unique and nonempty")
+        by_id[group_id] = decision
+    output = deepcopy(document)
+    segments = {str(item["semantic_group_id"]): item for item in output["segments"]}
+    results = []
+    for item in review["items"]:
+        group_id = str(item["semantic_group_id"])
+        segment = segments.get(group_id)
+        if segment is None:
+            raise ValueError(f"review group is missing from document: {group_id}")
+        metadata = segment.get("metadata", {})
+        current_candidates = {
+            "primary": str(segment.get("translated_text") or ""),
+            "dedicated_mt": str(metadata.get("dedicated_mt", {}).get("text") or ""),
+            "speech_translation": str(metadata.get("speech_translation", {}).get("text") or ""),
+        }
+        if (
+            item["start"] != segment["start"] or item["end"] != segment["end"]
+            or item["source_text"] != str(segment.get("source_text") or "")
+            or item["candidates"] != current_candidates
+        ):
+            raise ValueError(f"review evidence is stale for {group_id}")
+        expected_key = approval_key(
+            item, media_sha256=review["source_media_sha256"],
+            model=review["adjudication_model"],
+            protocol_version=int(review["adjudication_protocol_version"]),
+        )
+        if item.get("approval_key") != expected_key:
+            raise ValueError(f"review approval key is stale for {group_id}")
+        decision = by_id.get(group_id)
+        if decision is None:
+            results.append({"semantic_group_id": group_id, "status": "unresolved", "reason": "no decision supplied"})
+            continue
+        if decision.get("approval_key") != expected_key:
+            raise ValueError(f"decision approval key does not match {group_id}")
+        status = decision.get("status")
+        if status not in {"human_verified", "unresolved"}:
+            raise ValueError(f"unsupported review status for {group_id}: {status}")
+        reviewer = str(decision.get("reviewer") or "").strip()
+        if not reviewer:
+            raise ValueError(f"reviewer is required for {group_id}")
+        reviewed_at = _reviewed_at(decision.get("reviewed_at"))
+        if status == "human_verified":
+            translation = str(decision.get("translation") or "").strip()
+            issues = integrity_issues(item["source_text"], translation)
+            issues.extend(adjudication_coverage_issues(item["source_text"], translation))
+            if issues:
+                kinds = ", ".join(str(issue["type"]) for issue in issues)
+                raise ValueError(f"human translation failed integrity checks for {group_id}: {kinds}")
+            segment["translated_text"] = translation
+            segment["provenance"] = append_provenance(
+                segment, "bounded-human-review", "approval-key-verified",
+                reviewer=reviewer, reviewed_at=reviewed_at, approval_key=expected_key,
+            )
+        results.append({
+            "semantic_group_id": group_id, "status": status,
+            "reviewer": reviewer, "reviewed_at": reviewed_at,
+        })
+    unknown = sorted(set(by_id) - {str(item["semantic_group_id"]) for item in review["items"]})
+    if unknown:
+        raise ValueError(f"decisions contain groups outside the bounded review: {unknown}")
+    report = {
+        "schema_version": REVIEW_SCHEMA_VERSION,
+        "sample_id": review["sample_id"],
+        "passed": bool(results) and all(item["status"] == "human_verified" for item in results),
+        "review_item_count": len(results),
+        "human_verified_count": sum(item["status"] == "human_verified" for item in results),
+        "unresolved_count": sum(item["status"] != "human_verified" for item in results),
+        "results": results,
+    }
+    output["metadata"] = {**output.get("metadata", {}), "bounded_human_review": report}
+    validate_canonical_timed_text(output)
+    return output, report
+
+
+def stratified_accepted_group_ids(adjudication_report: dict, sample_size: int = 8) -> list[str]:
+    """Select reproducible accepted groups across early, middle, and late strata."""
+    if sample_size < 1:
+        raise ValueError("sample_size must be positive")
+    accepted = [
+        str(item["semantic_group_id"]) for item in adjudication_report["checks"]
+        if item["passed"]
+    ]
+    if len(accepted) <= sample_size:
+        return accepted
+    strata = [accepted[:len(accepted)//3], accepted[len(accepted)//3:2*len(accepted)//3], accepted[2*len(accepted)//3:]]
+    base, remainder = divmod(sample_size, 3)
+    selected = []
+    for index, values in enumerate(strata):
+        count = min(len(values), base + (1 if index < remainder else 0))
+        if count == 1:
+            chosen = [values[len(values)//2]]
+        elif count > 1:
+            chosen = [values[round(position * (len(values)-1) / (count-1))] for position in range(count)]
+        else:
+            chosen = []
+        selected.extend(chosen)
+    return selected

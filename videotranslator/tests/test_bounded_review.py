@@ -1,6 +1,11 @@
 """Tests for durable, bounded human subtitle review artifacts."""
 
-from videotranslator.commands.bounded_review import attach_audio_clips, build_bounded_review
+import pytest
+
+from videotranslator.commands.bounded_review import (
+    apply_review_decisions, attach_audio_clips, build_bounded_review,
+    stratified_accepted_group_ids,
+)
 from videotranslator.tests.test_translation_agreement import translated_document
 
 
@@ -60,3 +65,68 @@ def test_review_audio_clips_are_relative_and_hashed(tmp_path):
     assert calls == [(0.5, 3.5)]
     assert item["audio_clip"] == "outputs/review/clips/group-1.wav"
     assert len(item["audio_clip_sha256"]) == 64
+
+
+def unresolved_review():
+    document = translated_document()
+    report = {"protocol_version": 3, "checks": [{
+        "semantic_group_id": "group-1", "passed": False,
+        "proposed_translation": None, "error": None, "reason": "ambiguous",
+    }]}
+    review = build_bounded_review(
+        document, report, sample_id="sample", source_media="sample-data/source.mp4",
+        media_sha256="d" * 64, adjudication_model="fixture",
+    )
+    return document, review
+
+
+def test_matching_human_decision_updates_text_and_provenance():
+    document, review = unresolved_review()
+    item = review["items"][0]
+    decisions = {"sample_id": "sample", "decisions": [{
+        "semantic_group_id": "group-1", "approval_key": item["approval_key"],
+        "status": "human_verified", "translation": "Was there such a place in Seoul?",
+        "reviewer": "reviewer@example", "reviewed_at": "2026-08-16T02:00:00+05:30",
+    }]}
+    output, report = apply_review_decisions(document, review, decisions)
+    assert report["passed"] is True and report["human_verified_count"] == 1
+    assert output["segments"][0]["translated_text"].endswith("Seoul?")
+    assert output["segments"][0]["provenance"][-1]["stage"] == "bounded-human-review"
+
+
+def test_review_decision_rejects_wrong_key_or_stale_evidence():
+    document, review = unresolved_review()
+    decisions = {"sample_id": "sample", "decisions": [{
+        "semantic_group_id": "group-1", "approval_key": "wrong",
+        "status": "unresolved", "reviewer": "reviewer@example",
+        "reviewed_at": "2026-08-16T02:00:00Z",
+    }]}
+    with pytest.raises(ValueError, match="approval key"):
+        apply_review_decisions(document, review, decisions)
+    document["segments"][0]["source_text"] = "changed source"
+    with pytest.raises(ValueError, match="stale"):
+        apply_review_decisions(document, review, {"sample_id": "sample", "decisions": []})
+
+
+def test_review_decision_rejects_invalid_human_translation():
+    document, review = unresolved_review()
+    item = review["items"][0]
+    decisions = {"sample_id": "sample", "decisions": [{
+        "semantic_group_id": "group-1", "approval_key": item["approval_key"],
+        "status": "human_verified", "translation": "x", "reviewer": "reviewer@example",
+        "reviewed_at": "2026-08-16T02:00:00Z",
+    }]}
+    with pytest.raises(ValueError, match="integrity checks"):
+        apply_review_decisions(document, review, decisions)
+
+
+def test_accepted_audit_selection_is_deterministic_and_stratified():
+    report = {"checks": [
+        {"semantic_group_id": f"group-{index:02d}", "passed": index not in {4, 14}}
+        for index in range(18)
+    ]}
+    selected = stratified_accepted_group_ids(report, sample_size=6)
+    assert selected == stratified_accepted_group_ids(report, sample_size=6)
+    numeric = [int(value.rsplit("-", 1)[1]) for value in selected]
+    assert len(selected) == 6 and min(numeric) < 6 and max(numeric) >= 12
+    assert not {"group-04", "group-14"} & set(selected)
