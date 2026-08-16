@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "protocol_version": 3,
+  "adjudication_model": "qwen2.5:7b",
+  "dedicated_model": "google/madlad400-3b-mt",
+  "speech_model": "facebook/seamless-m4t-v2-large",
+  "probe": true,
+  "passed": false,
+  "samples": [
+    {
+      "id": "episode-one-korean",
+      "source": "videotranslator/outputs/ep-1-v0-1639315485-720p-subtitles/attempts/01-conservative/canonical/speech-translation.document.json",
+      "passed": false,
+      "unresolved_count": 1,
+      "checks": [
+        {
+          "semantic_group_id": "semantic-0001",
+          "status": "verified",
+          "passed": true,
+          "selected_translation": "It's cute, isn't it?",
+          "reason": "The surrounding context '달산리? 서울에 그런 곳도 있었니?' (Dalsanli? Seoul has such a place too?) suggests a positive and affectionate tone, which aligns with the translation 'It's cute, isn't it?' among the given candidates.",
+          "error": null,
+          "cache_hit": false,
+          "evidence_routes": [
+            "primary",
+            "dedicated_mt",
+            "speech_translation"
+          ]
+        },
+        {
+          "semantic_group_id": "semantic-0068",
+          "status": "unresolved",
+          "passed": false,
+          "selected_translation": null,
+          "reason": "The CURRENT source '달산리?서울에그런곳도있었니?' is unclear and potentially ambiguous. It does not directly translate to any of the provided candidates, and without more context, it is difficult to determine the exact meaning or intent.",
+          "error": null,
+          "cache_hit": false,
+          "evidence_routes": [
+            "primary",
+            "dedicated_mt",
+            "speech_translation"
+          ]
+        }
+      ],
+      "translations": [
+        {
+          "semantic_group_id": "semantic-0001",
+          "source_text": "참귀엽죠?",
+          "translated_text": "It's cute, isn't it?"
+        },
+        {
+          "semantic_group_id": "semantic-0068",
+          "source_text": "달산리?서울에그런곳도있었니?",
+          "translated_text": "Did you ever find a place like that in the bathroom?"
+        }
+      ]
+    },
+    {
+      "id": "linglong-ferry-mandarin",
+      "source": "videotranslator/outputs/linglongs-ferry-episode-24-subtitles/attempts/01-conservative/canonical/speech-translation.document.json",
+      "passed": false,
+      "unresolved_count": 1,
+      "checks": [
+        {
+          "semantic_group_id": "semantic-0002",
+          "status": "unresolved",
+          "passed": false,
+          "selected_translation": null,
+          "reason": "The source text '签订马关条约' specifically refers to the signing of the Treaty of Shimonoseki, not the Treaty of Manchang, Macau, or Versailles. None of the provided candidates accurately reflect the correct treaty name and should be corrected.",
+          "error": null,
+          "cache_hit": false,
+          "evidence_routes": [
+            "primary",
+            "dedicated_mt",
+            "speech_translation"
+          ]
+        }
+      ],
+      "translations": [
+        {
+          "semantic_group_id": "semantic-0002",
+          "source_text": "签订马关条约",
+          "translated_text": "Sign the Treaty of Manchang"
+        }
+      ]
+    }
+  ]
+}

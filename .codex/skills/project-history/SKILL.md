@@ -15,6 +15,17 @@ python -m videotranslator history
 Use `python3` instead when that is the active environment's Python command. Do
 not assume a drive letter, username, shell, or virtual-environment location.
 
+Treat the repository workspace root (the directory containing `.git`, currently
+named `temp`) as the root for every path created or recorded during a session.
+Create project outputs, model caches, temporary staging, reports, and generated
+configuration only beneath that root, using workspace-relative paths wherever a
+file or document stores the path. Never write a workstation-specific absolute
+path into tracked files. Before finishing each session, inspect changed tracked
+files for drive-letter, username, home-directory, or other machine-specific
+paths. An absolute path may be used only when the user explicitly requests an
+external location; record that exception as workstation-local, not portable
+project history.
+
 Use the printed handoff, Git status, and recent commits to summarize:
 
 1. the last verified outcome;

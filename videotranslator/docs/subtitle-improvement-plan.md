@@ -83,22 +83,29 @@ together or retain a compatibility adapter.
 ```text
 Video/audio
   -> speech detection
-  -> raw word-level ASR
-  -> forced alignment and recovery
+  -> raw word-level source-language ASR
+  -> direct speech-to-target translation (independent audio evidence)
+  -> forced alignment and targeted ASR recovery
   -> speaker diarization and reconciliation
   -> clean semantic transcript
   -> canonical source-language timed text
-  -> context-aware, direct source-to-target translation
-  -> translated semantic groups
+  -> dedicated source-text machine translation
+  -> multi-route, source-grounded contextual adjudication
+  -> verified or explicitly unresolved semantic groups
+  -> bounded human approval for unresolved groups
   -> mapping into display subtitle cues
   -> timing and readability optimization
   -> independent QA and promotion gate
   -> SRT/ASS export
-  -> optional TTS and dubbing from the same canonical data
+  -> optional TTS, audio validation, and dubbing from approved canonical data
 ```
 
 ASR segments are timing evidence, not final subtitle boundaries. Subtitle cues
 are display units, not necessarily translation units.
+
+The general pipeline is audio-only. Burned-subtitle detection and OCR are
+explicitly out of scope and must not become required, optional, or fallback
+evidence paths.
 
 ## Ordered implementation steps
 
@@ -404,6 +411,165 @@ the workspace cache, and the CLI default now selects it. The next action is to
 restore the three cached sample outputs, rerun Step 22, and repeat the 72-cue
 review; those artifacts are not all present in this checkout.
 
+### 24. Add independent direct speech-to-English evidence
+
+- Add SeamlessM4T-v2 as a bounded audio-to-English route operating on the same
+  speech regions used by canonical ASR.
+- Preserve Whisper `large-v3` as the source-language transcript and timing route;
+  do not replace aligned source evidence with translated speech output.
+- Cache direct speech translations by audio-region hash, language pair, model,
+  decoding configuration, and protocol version.
+- Compare direct speech translation with text-derived translation at semantic-group
+  granularity. A corrupt source transcript must be diagnosable because the audio
+  route does not consume Whisper text.
+- Measure language coverage, VRAM/RAM, latency, offline behavior, license, and
+  Japanese/Korean/Mandarin performance before enabling the route by default.
+
+Exit: every sample group has independent audio-derived English evidence or an
+explicit unsupported/failed status; source-ASR defects no longer force every
+translation candidate to share the same wrong input.
+
+Status: implemented as an opt-in route and probe-qualified on Workstation A.
+`--speech-translation` collects SeamlessM4T-v2 English evidence for every
+semantic-group audio window, caches it by audio-region hash, and compares it with
+the text-derived translation. It does not replace Whisper source text or primary
+translations. Workstation A (GTX 1050 4 GiB) prefetched the CC-BY-NC checkpoint
+into its workspace-relative `.model-cache` and falls back to CPU. A reviewed-defect probe produced
+independent English for `cute`, `Seoul`, and Treaty of Shimonoseki groups, but
+did not recover the required terms. Full three-sample coverage and default
+enablement remain blocked until a ≥10 GiB GPU run recovers those terms or Step 26
+adjudicates this evidence. See `docs/speech-translation-qualification.md`.
+
+### 25. Replace the release primary text translator
+
+- Remove `Qwen/Qwen2.5-0.5B-Instruct` from release-qualified translation; retain it
+  only as a diagnostic or constrained fallback until removal is safe.
+- Benchmark dedicated MT candidates, starting with MADLAD-400 3B and NLLB-200
+  3.3B, on the reviewed Japanese, Korean, and Mandarin fixtures.
+- Require names, numbers, polarity, information density, and the `cute`, `Seoul`,
+  and Treaty of Shimonoseki references to pass without prompt-specific episode
+  logic.
+- Run large models sequentially and unload inactive models so the 16 GiB GPU is
+  not occupied by ASR, direct speech translation, MT, and Ollama simultaneously.
+- Select by fixture quality first, then resource use and latency. Do not promote a
+  model merely because it improves aggregate similarity.
+
+Exit: one dedicated text MT model passes all reviewed language fixtures and
+outperforms the 0.5B primary without weakening integrity or provenance gates.
+
+Status: in progress. The native-protocol benchmark command is implemented.
+MADLAD-400 3B passed `cute` and `Seoul` but produced “Treaty of Macau”;
+NLLB-200 3.3B preserved `Seoul` but produced “lovely” and “Customs Treaty.” Both
+candidates remain rejected, so the exit criterion is not met. See
+`docs/text-translation-qualification.md`.
+
+### 26. Replace pairwise agreement with multi-route adjudication
+
+- Compare three independent evidence routes: direct speech-to-English, dedicated
+  translation of source ASR, and contextual Qwen translation/adjudication.
+- Give the adjudicator bounded source context, candidate translations, detected
+  names/numbers, speaker information, and disagreement reasons. It may return a
+  corrected candidate or `unresolved`; it must never be forced to choose.
+- Reposition `qwen2.5:7b` as contextual verification rather than the sole
+  independent translator.
+- Retire `llama3.1:8b` as the stronger retry because it failed Step 23 semantic
+  qualification. Qualify a stronger replacement, beginning with a quantized
+  Qwen3 14B if it fits the workstation budget.
+- Accept lexical paraphrases while continuing to block material differences in
+  meaning, names, numbers, and polarity.
+
+Exit: every automatically accepted group has source-grounded support from
+independent audio and text routes; disputed groups remain explicitly unresolved.
+
+Status: in progress. The opt-in pipeline now collects Seamless speech evidence,
+MADLAD text-MT evidence, and the primary translation sequentially, unloads the
+large in-process models, and submits a strict source-grounded JSON request to
+`qwen2.5:7b`. Invalid or unresolved responses retain the original and block
+promotion. Protocol-3 probes verify `cute` but leave the compound Dalsan-ri/Seoul
+line and Shimonoseki unresolved, even when the model's reason identifies the
+correct treaty. Qwen3 14B was then run through five uncached trials per reviewed
+fixture with full GPU offload. It passed `cute` and Shimonoseki in all ten trials,
+but in all five compound-line trials it marked a translation verified after
+omitting the opening Dalsan-ri clause. It is therefore not release-qualified.
+The next action is a model-independent source-clause and named-entity coverage
+gate that rejects such false verification before broader qualification; do not
+tune fixture-specific answers into the prompt. See
+`docs/multi-route-adjudication-qwen3-14b-qualification.json`.
+
+The coverage gate is now implemented. A fresh five-trial rerun accepted all ten
+correct `cute` and Shimonoseki responses and blocked all five incomplete
+Dalsan-ri/Seoul responses as `source_clause_omission`; it accepted no known-bad
+response. Qwen3 14B remains unable to resolve every reviewed fixture, but its
+observed false verification now fails closed. Next, run broader cached sample
+coverage and measure accepted, unresolved, and falsely accepted groups before
+closing Step 26.
+
+Three-sample coverage is complete with valid three-route evidence. MADLAD
+produced 367/367 dedicated candidates; Qwen3 14B plus deterministic integrity
+gates accepted 348 groups and retained 19 as unresolved. Those 19 comprise ten
+model-declared ambiguities, eight integrity-gate blocks, and one invalid JSON
+response. The reviewed `cute` and Shimonoseki regressions were correctly
+accepted, while the incomplete Dalsan-ri/Seoul result was correctly blocked.
+Zero false accepts applies only to those reviewed regressions: the other accepted
+groups do not all have human semantic labels. Every sample therefore remains
+non-promotable. Next, create the Step 27 bounded review artifact for the 19
+unresolved groups and draw a stratified audit sample from accepted groups before
+changing defaults.
+
+### 27. Add durable bounded human resolution
+
+- Emit a compact review artifact for unresolved groups containing the audio clip,
+  source ASR, all English candidates, surrounding dialogue, speaker, names,
+  numbers, confidence, and proposed correction.
+- Store approvals as versioned provenance tied to the source/audio hash and model
+  protocol; never encode approval as an untracked conversation or blanket bypass.
+- Support terminal states `multi_route_consensus`, `adjudicator_verified`,
+  `reviewed_reference_verified`, `human_verified`, and `unresolved`.
+- Permit `final.srt` only when structural QA passes and no group is unresolved.
+- Invalidate only affected approvals when source text, audio regions, translation
+  models, or QA protocol changes.
+
+Exit: a reviewer can resolve only the bounded disagreement set, rerun promotion,
+and produce an auditable `final.srt` without weakening unattended QA.
+
+Status: in progress. Portable pending-review manifests now exist for all 19
+unresolved groups (10 Japanese, 3 Korean, and 6 Mandarin) under
+`videotranslator/outputs/step27-bounded-review`. Each item contains source and
+context, all evidence candidates, the rejected proposal when available,
+timestamps, speaker/confidence fields, observable names/numbers, a padded mono
+audio clip, media and clip hashes, and a versioned approval key. No review
+decision has been applied. Next, implement validated decision ingestion and draw
+the stratified semantic audit sample from accepted groups.
+
+Approval-key-validated decision ingestion is now implemented: it rejects stale
+evidence, mismatched keys, unsupported states, missing reviewer identity or
+timezone, and corrected translations that fail deterministic integrity checks.
+The accepted-group audit is also generated under
+`videotranslator/outputs/step27-accepted-audit`: eight deterministic
+early/middle/late groups per sample, 24 total, each with the same portable hashed
+evidence and a verified-readable audio clip. Both the 19-item correction set and
+24-item semantic audit remain pending human decisions.
+
+### 28. Produce and validate dubbing only from approved subtitles
+
+- Freeze approved canonical text and speaker assignments before TTS begins.
+- Benchmark CosyVoice 3 and Chatterbox Multilingual against the existing Piper and
+  XTTS routes for content accuracy, cross-lingual speaker similarity, licensing,
+  resource use, and duration control.
+- Synthesize one speaker-consistent clip per approved semantic/display unit, fit
+  delivery through bounded rate and text adjustments, and preserve pauses rather
+  than applying excessive time stretching.
+- Back-transcribe every synthesized clip and compare it with the approved English
+  text; block omissions, repetitions, hallucinations, names, and number errors.
+- Mix speech with the separated accompaniment, validate loudness and clipping,
+  then mux the final video. Treat visual lip synchronization as a later optional
+  post-process, never as evidence that audio content is correct.
+
+Exit: the dubbed video preserves approved meaning, speakers, timing, intelligible
+audio, and auditable lineage from source speech through `final.srt` to each clip.
+
+Status: planned; blocked until Step 27 produces an approved `final.srt`.
+
 ## Current usability assessment
 
 The pipeline currently creates **structurally usable draft subtitles**: timing,
@@ -411,10 +577,13 @@ coverage, cue layout, provenance, deterministic caching, headless operation, and
 export are working. It does **not yet create reliably usable final subtitles**.
 The three-sample review found material meaning, place-name, and ASR errors despite
 all structural checks passing. Step 19 prevents known reviewed errors from being
-promoted, but it cannot detect unknown errors in new dialogue. Steps 20 and 21 now
-fail closed on invalid evidence; Step 22 confirms that the current independent
-model is unsuitable. Replacing and qualifying that backend remains the release
-blocker for unattended, reasonably usable subtitles.
+promoted, but it cannot detect unknown errors in new dialogue. Steps 20 and 21
+fail closed, and Step 23 fixed independent-backend health, but the 2026-08-15
+Japanese rerun still left 55-60 unresolved groups. Step 24 adds independent
+speech-to-English evidence so a corrupt Whisper transcript is no longer the only
+English source. The remaining release blocker is weak primary text translation
+and the lack of multi-route adjudication plus bounded human resolution.
+Steps 25-27 address those gaps without OCR.
 
 ## Definition of done
 

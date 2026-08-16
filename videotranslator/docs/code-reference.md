@@ -43,7 +43,8 @@ auto-detected unless explicitly configured.
 Centralizes `auto`, `cuda`, and `cpu` selection. `resolve_device("auto")` selects
 CUDA only when PyTorch can access it and its compiled architecture list supports
 the installed GPU. Pascal Whisper uses CTranslate2's `int8_float32` path; newer
-CUDA devices use float16 and CPU uses int8.
+CUDA devices use float16 and CPU uses int8. `run_preferring_cuda(...)` retries a
+GPU operation once on CPU after CUDA out-of-memory.
 
 ## `install_dependencies.py`
 
@@ -151,6 +152,23 @@ strong-word fallback cues. No recovered text is accepted without decoder evidenc
 - `enforce_translation_agreement(...)` promotes an independently better candidate
   only when it passes integrity and improves source similarity by a bounded margin;
   unresolved groups remain blocking failures.
+
+## `commands/speech_translate.py`
+
+- `SeamlessSpeechTranslator` loads `facebook/seamless-m4t-v2-large` on CUDA when
+  at least 10 GiB VRAM is available; smaller GPUs load on CPU immediately.
+- `collect_speech_translation_evidence(...)` slices each semantic group's audio
+  window, caches the English decode by audio-region hash, and compares it with
+  the text-derived translation. Whisper source text and primary translations are
+  never replaced.
+- Groups that are too short are `unsupported`; decoder errors are `failed` and
+  block that attempt. Semantic disagreement is diagnostic, including
+  `source_asr_suspect` when audio English is closer to the source than the text route.
+
+## `commands/qualify_speech_translation.py`
+
+- Runs the three cached samples and writes `docs/speech-translation-qualification.json`.
+- `--probe` limits decoding to reviewed defect timestamps.
 
 ## `commands/prepare_canonical_tts.py`
 

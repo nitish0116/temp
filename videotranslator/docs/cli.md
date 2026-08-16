@@ -246,8 +246,9 @@ decision is required.
 
 For unattended execution, export `HF_TOKEN` in the scheduler's environment. The
 workflow fails immediately with an actionable message if diarization needs the token
-and none is available. Unwritable Hugging Face, Torch, and Matplotlib caches are
-replaced with directories below the output folder. Speech recovery automatically
+and none is available. Hugging Face, Torch, temp, and related caches must live
+under `PYTHON_CACHE_HOME` for the active workstation. Speech
+recovery automatically
 steps down through bounded model/device combinations after an error or timeout, and
 records those decisions under `automatic_fallbacks` in the pipeline report.
 
@@ -260,6 +261,7 @@ Useful options:
 - `--translation-backend causal|seq2seq` selects the matching Transformers architecture.
 - `--translation-context-size 3` controls preceding/following semantic context.
 - `--translation-retries 1` bounds translation-integrity regeneration.
+- `--speech-translation` collects independent SeamlessM4T-v2 speech-to-English evidence.
 - `--legacy-cue-translation` explicitly selects the former independent-cue route.
 - `--recovery-timeout-seconds 1800` limits each recovery model/device attempt.
 - `--offline` prevents model metadata network checks when weights are cached.
@@ -283,3 +285,22 @@ Exit codes:
 - `1`: unexpected runtime failure.
 - `2`: QA rejected the result; `rejected.srt`/`rejected.ass` and reports remain.
 - `3`: preflight prerequisite failure; expensive processing did not start.
+
+## 16. Step 24 speech-translation qualification
+
+Reuse cached ASR/translation artifacts. Prefetch happens into the active
+`PYTHON_CACHE_HOME`. This workstation uses `D:\PythonCaches`; Workstation B uses
+its `.model-cache` user variable.
+
+```powershell
+$env:PYTHON_CACHE_HOME = "D:\PythonCaches"
+$env:HF_HOME = "D:\PythonCaches\huggingface"
+$env:TEMP = "D:\PythonCaches\tmp"
+$env:TMP = $env:TEMP
+..\.venv\Scripts\python.exe -m videotranslator qualify-speech-translation --device auto
+```
+
+The command writes `docs/speech-translation-qualification.json` plus per-sample
+`speech-translation.json` reports. `--speech-translation` stays opt-in until that
+report shows complete coverage and diagnosable reviewed defects.
+

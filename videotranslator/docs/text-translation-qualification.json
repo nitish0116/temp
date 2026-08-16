@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "model": "google/madlad400-3b-mt",
+  "device": "cuda",
+  "offline": true,
+  "probe": true,
+  "fixture_passed": false,
+  "release_qualified": false,
+  "samples": [
+    {
+      "id": "duty-first-japanese",
+      "source": "videotranslator/outputs/duty-first-kiss-later-episode-1-subtitles/attempts/01-conservative/canonical/contextual-translation.json",
+      "group_count": 2,
+      "checks": [
+        {
+          "id": "semantic-0001",
+          "start": 9.12,
+          "end": 11.26,
+          "source_text": "こちら H 店 そ ちら の 状 況 は",
+          "translated_text": "What's the situation?",
+          "cached": false,
+          "latency_ms": 8702.4
+        },
+        {
+          "id": "semantic-0002",
+          "start": 13.49,
+          "end": 15.71,
+          "source_text": "相当な興奮状態と思われます",
+          "translated_text": "I think he's pretty excited.",
+          "cached": false,
+          "latency_ms": 410.2
+        }
+      ],
+      "fixture_checks": []
+    },
+    {
+      "id": "episode-one-korean",
+      "source": "videotranslator/outputs/ep-1-v0-1639315485-720p-subtitles/attempts/01-conservative/canonical/contextual-translation.json",
+      "group_count": 2,
+      "checks": [
+        {
+          "id": "semantic-0001",
+          "start": 8.42,
+          "end": 9.34,
+          "source_text": "참귀엽죠?",
+          "translated_text": "It's cute, isn't it?",
+          "cached": false,
+          "latency_ms": 551.0
+        },
+        {
+          "id": "semantic-0068",
+          "start": 507.37,
+          "end": 509.74,
+          "source_text": "달산리?서울에그런곳도있었니?",
+          "translated_text": "Did you know there was a place like that in Seoul?",
+          "cached": false,
+          "latency_ms": 567.2
+        }
+      ],
+      "fixture_checks": [
+        {
+          "timestamp_seconds": 9.3,
+          "source_text": "참귀엽죠?",
+          "translated_text": "It's cute, isn't it?",
+          "required_present": [
+            "cute"
+          ],
+          "forbidden_present": [],
+          "passed": true
+        },
+        {
+          "timestamp_seconds": 508.8,
+          "source_text": "달산리?서울에그런곳도있었니?",
+          "translated_text": "Did you know there was a place like that in Seoul?",
+          "required_present": [
+            "Seoul"
+          ],
+          "forbidden_present": [],
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "linglong-ferry-mandarin",
+      "source": "videotranslator/outputs/linglongs-ferry-episode-24-subtitles/attempts/01-conservative/canonical/contextual-translation.json",
+      "group_count": 1,
+      "checks": [
+        {
+          "id": "semantic-0002",
+          "start": 87.289,
+          "end": 89.049,
+          "source_text": "签订马关条约",
+          "translated_text": "Signing of the Treaty of Macau",
+          "cached": false,
+          "latency_ms": 616.3
+        }
+      ],
+      "fixture_checks": [
+        {
+          "timestamp_seconds": 88.8,
+          "source_text": "签订马关条约",
+          "translated_text": "Signing of the Treaty of Macau",
+          "required_present": [
+            "Treaty"
+          ],
+          "forbidden_present": [],
+          "passed": false
+        }
+      ]
+    }
+  ]
+}
