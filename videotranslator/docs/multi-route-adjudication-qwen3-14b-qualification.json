@@ -51,5 +51,70 @@
     "total_trials": 15,
     "decision": "Reject qwen3:14b for unattended automatic promotion under protocol 3.",
     "next_action": "Add a model-independent source-clause and named-entity coverage gate before accepting an adjudicator verified result."
+  },
+  "post_coverage_gate_qualification": {
+    "trial_count": 5,
+    "total_model_responses": 15,
+    "accepted_correct_responses": 10,
+    "blocked_incomplete_responses": 5,
+    "incorrectly_accepted_responses": 0,
+    "cute": {
+      "accepted": 5,
+      "blocked": 0
+    },
+    "dalsan_ri_seoul": {
+      "accepted": 0,
+      "blocked": 5,
+      "blocking_issue": "source_clause_omission"
+    },
+    "shimonoseki": {
+      "accepted": 5,
+      "blocked": 0
+    },
+    "passed": true,
+    "decision": "The coverage gate prevents the observed false verification, but qwen3:14b still cannot resolve every reviewed fixture automatically.",
+    "next_action": "Run broader cached sample coverage and measure accepted, unresolved, and falsely accepted groups before completing Step 26."
+  },
+  "three_sample_coverage": {
+    "dedicated_mt_groups": 367,
+    "dedicated_mt_succeeded": 367,
+    "adjudication_groups": 367,
+    "accepted": 348,
+    "unresolved": 19,
+    "model_declared_unresolved": 10,
+    "integrity_gate_blocks": 8,
+    "invalid_json_blocks": 1,
+    "samples": [
+      {
+        "id": "duty-first-kiss-later-episode-1",
+        "report": "videotranslator/outputs/duty-first-kiss-later-episode-1-subtitles/attempts/01-conservative/canonical/multi-route-adjudication-qwen3-14b.json",
+        "groups": 196,
+        "accepted": 186,
+        "unresolved": 10
+      },
+      {
+        "id": "episode-one-korean",
+        "report": "videotranslator/outputs/ep-1-v0-1639315485-720p-subtitles/attempts/01-conservative/canonical/multi-route-adjudication-qwen3-14b.json",
+        "groups": 99,
+        "accepted": 96,
+        "unresolved": 3
+      },
+      {
+        "id": "linglong-ferry-mandarin",
+        "report": "videotranslator/outputs/linglongs-ferry-episode-24-subtitles/attempts/01-conservative/canonical/multi-route-adjudication-qwen3-14b.json",
+        "groups": 72,
+        "accepted": 66,
+        "unresolved": 6
+      }
+    ],
+    "reviewed_regressions": {
+      "correctly_accepted": ["cute", "Treaty of Shimonoseki"],
+      "correctly_blocked": ["Dalsan-ri and Seoul compound clause"],
+      "known_defect_false_accepts": 0
+    },
+    "passed": false,
+    "limitation": "The 348 accepted groups have not all received human semantic labels; zero false accepts applies only to the reviewed regression set.",
+    "decision": "All three samples remain non-promotable because each contains unresolved groups.",
+    "next_action": "Create the bounded Step 27 review artifact for the 19 unresolved groups and draw a stratified semantic audit sample from accepted groups before changing defaults."
   }
 }

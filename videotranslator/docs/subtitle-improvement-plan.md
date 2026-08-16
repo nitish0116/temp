@@ -496,6 +496,26 @@ gate that rejects such false verification before broader qualification; do not
 tune fixture-specific answers into the prompt. See
 `docs/multi-route-adjudication-qwen3-14b-qualification.json`.
 
+The coverage gate is now implemented. A fresh five-trial rerun accepted all ten
+correct `cute` and Shimonoseki responses and blocked all five incomplete
+Dalsan-ri/Seoul responses as `source_clause_omission`; it accepted no known-bad
+response. Qwen3 14B remains unable to resolve every reviewed fixture, but its
+observed false verification now fails closed. Next, run broader cached sample
+coverage and measure accepted, unresolved, and falsely accepted groups before
+closing Step 26.
+
+Three-sample coverage is complete with valid three-route evidence. MADLAD
+produced 367/367 dedicated candidates; Qwen3 14B plus deterministic integrity
+gates accepted 348 groups and retained 19 as unresolved. Those 19 comprise ten
+model-declared ambiguities, eight integrity-gate blocks, and one invalid JSON
+response. The reviewed `cute` and Shimonoseki regressions were correctly
+accepted, while the incomplete Dalsan-ri/Seoul result was correctly blocked.
+Zero false accepts applies only to those reviewed regressions: the other accepted
+groups do not all have human semantic labels. Every sample therefore remains
+non-promotable. Next, create the Step 27 bounded review artifact for the 19
+unresolved groups and draw a stratified audit sample from accepted groups before
+changing defaults.
+
 ### 27. Add durable bounded human resolution
 
 - Emit a compact review artifact for unresolved groups containing the audio clip,

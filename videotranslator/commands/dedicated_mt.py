@@ -42,7 +42,8 @@ def collect_dedicated_mt_evidence(
         cache_hit = bool(path and path.is_file())
         try:
             if cache_hit:
-                text = str(json.loads(path.read_text(encoding="utf-8"))["translated_text"]).strip()
+                cached = json.loads(path.read_text(encoding="utf-8"))
+                text = str(cached.get("translated_text") or cached.get("text") or "").strip()
             else:
                 text = str(translate(segment["source_text"], output["source_language"], output["output_language"])).strip()
             if not text:

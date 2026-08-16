@@ -1,5 +1,7 @@
 """Tests for Step 25 dedicated text-MT qualification."""
 
+import json
+
 from videotranslator.commands.dedicated_mt import DedicatedMTTranslator, MADLAD_MODEL, NLLB_MODEL, collect_dedicated_mt_evidence
 from videotranslator.commands.qualify_text_translation import cache_file
 from videotranslator.tests.test_translation_agreement import translated_document
@@ -28,3 +30,21 @@ def test_dedicated_evidence_is_cached_without_replacing_primary(tmp_path):
     assert output["segments"][0]["translated_text"].startswith("Seattle")
     collect_dedicated_mt_evidence(translated_document(), translate, model="fixture", cache_directory=tmp_path)
     assert len(calls) == 1
+
+
+def test_dedicated_evidence_accepts_legacy_text_cache(tmp_path):
+    document = translated_document()
+    collect_dedicated_mt_evidence(
+        document, lambda text, source, target: "Legacy cached translation",
+        model="fixture", cache_directory=tmp_path,
+    )
+    cache = next(tmp_path.glob("*.json"))
+    cache.write_text(json.dumps({"text": "Legacy cached translation"}), encoding="utf-8")
+    output, candidates, report = collect_dedicated_mt_evidence(
+        document, lambda *args: (_ for _ in ()).throw(AssertionError("cache miss")),
+        model="fixture", cache_directory=tmp_path,
+    )
+    assert report["passed"] is True
+    assert report["checks"][0]["cache_hit"] is True
+    assert candidates["group-1"] == "Legacy cached translation"
+    assert output["segments"][0]["metadata"]["dedicated_mt"]["text"] == "Legacy cached translation"

@@ -84,6 +84,21 @@ model-independent source-clause and named-entity coverage gate, then repeat the
 bounded qualification before any full-episode run. Evidence:
 `docs/multi-route-adjudication-qwen3-14b-qualification.json`.
 
+That gate is now implemented and requalified. Across five fresh trials per
+fixture, it accepted the ten correct `cute` and Shimonoseki responses, blocked
+all five incomplete Dalsan-ri/Seoul responses as `source_clause_omission`, and
+accepted no reviewed defect. The next Step 26 action is broader cached sample
+coverage with counts for accepted, unresolved, and falsely accepted groups.
+
+Valid three-route coverage is now complete across 367 cached sample groups.
+MADLAD returned 367/367 candidates; Qwen3 14B plus the coverage gates accepted
+348 and retained 19 unresolved: ten model-declared ambiguities, eight integrity
+blocks, and one invalid JSON response. The reviewed `cute` and Shimonoseki cases
+were accepted correctly, and Dalsan-ri/Seoul was blocked correctly. The accepted
+population is not fully human-labelled, so no broader zero-error claim is made.
+All three samples remain non-promotable. Proceed to the Step 27 bounded review
+artifact for the 19 unresolved groups and a stratified audit of accepted groups.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining
