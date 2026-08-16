@@ -532,7 +532,14 @@ changing defaults.
 Exit: a reviewer can resolve only the bounded disagreement set, rerun promotion,
 and produce an auditable `final.srt` without weakening unattended QA.
 
-Status: planned.
+Status: in progress. Portable pending-review manifests now exist for all 19
+unresolved groups (10 Japanese, 3 Korean, and 6 Mandarin) under
+`videotranslator/outputs/step27-bounded-review`. Each item contains source and
+context, all evidence candidates, the rejected proposal when available,
+timestamps, speaker/confidence fields, observable names/numbers, a padded mono
+audio clip, media and clip hashes, and a versioned approval key. No review
+decision has been applied. Next, implement validated decision ingestion and draw
+the stratified semantic audit sample from accepted groups.
 
 ### 28. Produce and validate dubbing only from approved subtitles
 

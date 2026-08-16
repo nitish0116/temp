@@ -99,6 +99,16 @@ population is not fully human-labelled, so no broader zero-error claim is made.
 All three samples remain non-promotable. Proceed to the Step 27 bounded review
 artifact for the 19 unresolved groups and a stratified audit of accepted groups.
 
+Step 27 has started. Three portable manifests under
+`videotranslator/outputs/step27-bounded-review` contain all 19 unresolved groups
+and 19 verified-readable padded mono WAV clips. Every item binds pending review
+to the source media hash, clip hash, time region, source text, evidence package,
+adjudication model, and protocol through a versioned approval key. Integrity-
+rejected model proposals are retained as review evidence rather than silently
+discarded. No human decision has been applied, so promotion remains blocked.
+Next, implement approval-key-validated decision ingestion and generate the
+stratified audit sample from the 348 automatically accepted groups.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining

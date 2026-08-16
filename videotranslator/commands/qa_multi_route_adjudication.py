@@ -133,9 +133,11 @@ def adjudicate_multi_route(
         )
         path = None if cache_directory is None else cache_directory / f"{cache_key(request, model)}.json"
         cache_hit = bool(path and path.is_file())
+        proposed_translation = None
         try:
             raw = path.read_text(encoding="utf-8") if cache_hit else adjudicate(request)
             result = parse_adjudication_response(raw)
+            proposed_translation = result["translation"]
             if result["status"] == "verified":
                 issues = integrity_issues(request.source_text, result["translation"])
                 issues.extend(adjudication_coverage_issues(request.source_text, result["translation"]))
@@ -156,7 +158,7 @@ def adjudicate_multi_route(
                 segment, "multi-route-adjudication", "source-grounded-verification",
                 model=model, evidence_routes=[route for route, _ in routes], reason=result["reason"],
             )
-        checks.append({"semantic_group_id": group_id, "status": result["status"], "passed": passed, "selected_translation": result["translation"], "reason": result["reason"], "error": error, "cache_hit": cache_hit, "evidence_routes": [route for route, _ in routes]})
+        checks.append({"semantic_group_id": group_id, "status": result["status"], "passed": passed, "selected_translation": result["translation"], "proposed_translation": proposed_translation, "reason": result["reason"], "error": error, "cache_hit": cache_hit, "evidence_routes": [route for route, _ in routes]})
     report = {"schema_version": 1, "protocol_version": ADJUDICATION_PROTOCOL_VERSION, "model": model, "passed": all(item["passed"] for item in checks), "group_count": len(checks), "unresolved_count": sum(not item["passed"] for item in checks), "checks": checks}
     output["metadata"] = {**output.get("metadata", {}), "multi_route_adjudication": report}
     validate_canonical_timed_text(output)
