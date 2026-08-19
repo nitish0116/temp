@@ -1,0 +1,13 @@
+FILE "The Beginning After the End - V 05 Ch 98-100.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Fellow Captive"
+    INDEX 01 13:11:16
+  TRACK 03 AUDIO
+    TITLE "Intentions"
+    INDEX 01 28:23:71
+  TRACK 04 AUDIO
+    TITLE "BLAINE GLAYDER"
+    INDEX 01 34:14:26

@@ -1,0 +1,13 @@
+FILE "The Beginning After the End - V 05 Ch 110-112.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "The Lost Art"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Good Night"
+    INDEX 01 15:51:44
+  TRACK 03 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 22:51:59
+  TRACK 04 AUDIO
+    TITLE "Newfound Goal"
+    INDEX 01 30:17:65

@@ -1,0 +1,13 @@
+FILE "The Beginning After the End - V 05 Ch 116-118.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "What Lay Within"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "WINDSOM"
+    INDEX 01 09:01:26
+  TRACK 03 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 12:24:61
+  TRACK 04 AUDIO
+    TITLE "The Glass of Water"
+    INDEX 01 24:51:63

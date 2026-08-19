@@ -1,0 +1,13 @@
+FILE "The Beginning After the End - V 05 Ch 113-115.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "To Hunt a Prey"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "WINDSOM"
+    INDEX 01 15:48:45
+  TRACK 03 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 18:35:28
+  TRACK 04 AUDIO
+    TITLE "Predator’s Domain"
+    INDEX 01 32:28:30
