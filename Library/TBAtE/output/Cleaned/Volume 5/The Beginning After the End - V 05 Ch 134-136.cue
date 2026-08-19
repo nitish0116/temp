@@ -1,0 +1,10 @@
+FILE "The Beginning After the End - V 05 Ch 134-136.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "His Return"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "TESSIA ERALITH"
+    INDEX 01 14:56:10
+  TRACK 03 AUDIO
+    TITLE "As Quickly as He had Appeared STANNARD BERWICK"
+    INDEX 01 28:00:71

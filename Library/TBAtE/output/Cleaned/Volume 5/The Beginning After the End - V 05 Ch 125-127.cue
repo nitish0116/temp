@@ -1,0 +1,10 @@
+FILE "The Beginning After the End - V 05 Ch 125-127.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "TESSIA ERALITH"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Calm of War II"
+    INDEX 01 12:26:62
+  TRACK 03 AUDIO
+    TITLE "Washed Up Omen"
+    INDEX 01 26:23:13
