@@ -9,6 +9,14 @@ import re
 from pathlib import Path
 from typing import Iterable
 
+try:
+    import truststore
+
+    truststore.inject_into_ssl()
+except ImportError:
+    # Corporate CAs may be available only through the operating-system store.
+    pass
+
 import librosa
 import numpy as np
 from faster_whisper import WhisperModel

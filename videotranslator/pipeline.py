@@ -260,6 +260,16 @@ def main() -> None:
         sys.argv = [sys.argv[0], *sys.argv[2:]]
         reprocess_main()
         return
+    if len(sys.argv) > 1 and sys.argv[1] == "qualify-speech-translation":
+        from .commands.qualify_speech_translation import main as qualify_main
+
+        qualify_main(sys.argv[2:])
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "qualify-text-translation":
+        from .commands.qualify_text_translation import main as qualify_text_main
+
+        qualify_text_main(sys.argv[2:])
+        return
     parser = argparse.ArgumentParser(description="Structured video translation pipeline")
     parser.add_argument("config", type=Path, help="Pipeline configuration JSON")
     subparsers = parser.add_subparsers(dest="command", required=True)

@@ -358,7 +358,9 @@ def convert(
         cmd += ["-metadata", f"artist={artist}"]
     if album:
         cmd += ["-metadata", f"album={album}"]
-    cmd += ["-t", str(duration_s)]
+    # End when the shortest mapped stream ends (the audio), avoiding
+    # probe-duration rounding that can cut trailing words.
+    cmd += ["-shortest"]
     cmd += ["-movflags", "+faststart"]
     cmd += [str(pass1_path)]
 

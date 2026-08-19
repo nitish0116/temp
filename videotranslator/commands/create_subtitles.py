@@ -17,12 +17,18 @@ try:
     from .run_canonical_subtitles import run_canonical_attempt
     from .qa_semantic_reference import evaluate_manifest, references_from_manifest
     from .qa_translation_agreement import MultilingualSimilarity
+    from .speech_translate import DEFAULT_SPEECH_MODEL, SeamlessSpeechTranslator
+    from .dedicated_mt import DedicatedMTTranslator, MADLAD_MODEL
+    from .qa_multi_route_adjudication import OllamaAdjudicator
     from .translate_contextual import CausalContextTranslator, FallbackContextTranslator, LazyContextTranslator, NLLBFallbackTranslator, OllamaContextTranslator, TransformersContextTranslator
 except ImportError:
     from runtime_device import resolve_device
     from run_canonical_subtitles import run_canonical_attempt
     from qa_semantic_reference import evaluate_manifest, references_from_manifest
     from qa_translation_agreement import MultilingualSimilarity
+    from speech_translate import DEFAULT_SPEECH_MODEL, SeamlessSpeechTranslator
+    from dedicated_mt import DedicatedMTTranslator, MADLAD_MODEL
+    from qa_multi_route_adjudication import OllamaAdjudicator
     from translate_contextual import CausalContextTranslator, FallbackContextTranslator, LazyContextTranslator, NLLBFallbackTranslator, OllamaContextTranslator, TransformersContextTranslator
 
 
@@ -111,29 +117,66 @@ def shared_ffmpeg_bin(env: dict[str, str]) -> Path | None:
     return sorted(valid, key=lambda path: str(path), reverse=True)[0] if valid else None
 
 
+def resolve_shared_cache_root(env: dict[str, str]) -> Path:
+    """Use the active workstation's ``PYTHON_CACHE_HOME``, not a hardcoded drive.
+
+    Example:: Workstation A can set ``D:\\PythonCaches`` while Workstation B sets
+    ``C:\\Users\\z005537p\\NitishWork\\HM\\temp\\.model-cache``; the same code
+    follows whichever user-level variable is present.
+    """
+    configured_root = env.get("PYTHON_CACHE_HOME")
+    if configured_root:
+        return Path(configured_root).expanduser()
+    platform_cache = env.get("LOCALAPPDATA")
+    if platform_cache:
+        return Path(platform_cache) / "videotranslator" / "models"
+    return Path.home() / ".cache" / "videotranslator" / "models"
+
+
 def prepare_runtime_environment(
     output: Path, source: dict[str, str] | None = None,
 ) -> tuple[dict[str, str], list[dict[str, str]]]:
-    """Use shared model caches so downloaded models never live in run outputs."""
+    """Keep hub, Torch, and temp downloads under the workstation cache root.
+
+    Example:: if ``PYTHON_CACHE_HOME`` is the Workstation B ``.model-cache``,
+    Hugging Face staging uses that tree's ``tmp`` folder instead of a second
+    implicit download location.
+    """
+    apply_to_process = source is None
     env = dict(os.environ if source is None else source)
     fallbacks: list[dict[str, str]] = []
-    configured_root = env.get("PYTHON_CACHE_HOME")
-    if configured_root:
-        shared_root = Path(configured_root).expanduser()
-    else:
-        platform_cache = env.get("LOCALAPPDATA")
-        shared_root = (
-            Path(platform_cache) / "videotranslator" / "models"
-            if platform_cache else Path.home() / ".cache" / "videotranslator" / "models"
-        )
-        env["PYTHON_CACHE_HOME"] = str(shared_root)
+    shared_root = resolve_shared_cache_root(env)
+    env["PYTHON_CACHE_HOME"] = str(shared_root)
+    huggingface = (
+        Path(env["HF_HOME"]).expanduser()
+        if env.get("HF_HOME")
+        else shared_root / "huggingface"
+    )
+    torch_home = (
+        Path(env["TORCH_HOME"]).expanduser()
+        if env.get("TORCH_HOME")
+        else shared_root / "torch"
+    )
     cache_defaults = {
-        "HF_HOME": shared_root / "huggingface",
-        "TORCH_HOME": shared_root / "torch",
+        "HF_HOME": huggingface,
+        "HUGGINGFACE_HUB_CACHE": huggingface / "hub",
+        "HF_HUB_CACHE": huggingface / "hub",
+        "HF_DATASETS_CACHE": huggingface / "datasets",
+        "TORCH_HOME": torch_home,
+        "TORCHINDUCTOR_CACHE_DIR": torch_home / "inductor",
+        "TRITON_CACHE_DIR": shared_root / "triton",
+        "NUMBA_CACHE_DIR": shared_root / "numba",
         "MPLCONFIGDIR": shared_root / "matplotlib",
+        "XDG_CACHE_HOME": shared_root / "xdg",
+        "PIPER_MODELS_DIR": shared_root / "piper" / "voices",
+        "TTS_HOME": shared_root / "coqui-tts",
+        "TMPDIR": shared_root / "tmp",
+        "TEMP": shared_root / "tmp",
+        "TMP": shared_root / "tmp",
     }
+    force_under_root = {"TMPDIR", "TEMP", "TMP"}
     for variable, default_path in cache_defaults.items():
-        configured = env.get(variable)
+        configured = None if variable in force_under_root else env.get(variable)
         candidate = Path(configured).expanduser() if configured else default_path
         print(f"Checking shared cache {variable}: {candidate}", flush=True)
         if not _is_writable_directory(candidate):
@@ -147,6 +190,12 @@ def prepare_runtime_environment(
     if ffmpeg_bin is not None:
         env["PATH"] = str(ffmpeg_bin) + os.pathsep + env.get("PATH", "")
     env.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+    env.setdefault("HF_HUB_DISABLE_XET", "1")
+    if apply_to_process:
+        for variable in cache_defaults:
+            os.environ[variable] = env[variable]
+        os.environ["PYTHON_CACHE_HOME"] = env["PYTHON_CACHE_HOME"]
+        tempfile.tempdir = env["TEMP"]
     return env, fallbacks
 
 
@@ -251,6 +300,9 @@ def create_subtitles(args: argparse.Namespace) -> dict:
     independent_backend = None
     stronger_backend = None
     semantic_similarity = None
+    speech_backend = None
+    dedicated_backend = None
+    adjudication_backend = None
     if not args.legacy_cue_translation:
         print("Initializing lazy translation backends", flush=True)
         primary_class = CausalContextTranslator if args.translation_backend == "causal" else TransformersContextTranslator
@@ -260,6 +312,12 @@ def create_subtitles(args: argparse.Namespace) -> dict:
             ),
             NLLBFallbackTranslator(args.translation_fallback_model, args.device),
         )
+        if args.translation_agreement or args.speech_translation or args.multi_route_adjudication:
+            print("Initializing semantic similarity encoder", flush=True)
+            semantic_similarity = MultilingualSimilarity(
+                args.semantic_similarity_model, args.device,
+                local_files_only=args.offline,
+            )
         if args.translation_agreement:
             print("Initializing translation agreement backends", flush=True)
             independent_backend = OllamaContextTranslator(
@@ -270,9 +328,21 @@ def create_subtitles(args: argparse.Namespace) -> dict:
                 args.stronger_translation_model, args.ollama_endpoint,
                 device=args.ollama_device,
             )
-            semantic_similarity = MultilingualSimilarity(
-                args.semantic_similarity_model, args.device,
+        if args.speech_translation or args.multi_route_adjudication:
+            print("Initializing SeamlessM4T speech-to-English backend", flush=True)
+            speech_backend = SeamlessSpeechTranslator(
+                args.speech_translation_model, args.device,
                 local_files_only=args.offline,
+            )
+        if args.multi_route_adjudication:
+            print("Initializing opt-in multi-route adjudication backends", flush=True)
+            dedicated_backend = DedicatedMTTranslator(
+                args.dedicated_translation_model, args.device,
+                local_files_only=args.offline,
+            )
+            adjudication_backend = OllamaAdjudicator(
+                args.adjudication_model, args.ollama_endpoint,
+                device=args.ollama_device,
             )
 
     run_command([python, str(HERE / "extract_audio.py"), str(video), "-o", str(paths["audio"])], [paths["audio"]], force=args.force, env=env)
@@ -324,6 +394,13 @@ def create_subtitles(args: argparse.Namespace) -> dict:
                 independent_model=args.independent_translation_model,
                 stronger_translate=stronger_backend,
                 stronger_model=args.stronger_translation_model,
+                audio_path=paths["audio"],
+                speech_translate=speech_backend,
+                speech_model=args.speech_translation_model,
+                dedicated_translate=None if dedicated_backend is None else dedicated_backend.translate,
+                dedicated_model=args.dedicated_translation_model,
+                adjudicate=adjudication_backend,
+                adjudication_model=args.adjudication_model,
             )
             canonical_report["translation_fallbacks"] = list(contextual_backend.events)
             report = canonical_report["qa"]
@@ -382,6 +459,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--translation-agreement", action=argparse.BooleanOptionalAction, default=False,
         help="Compare every semantic group with an independent local Ollama translation",
     )
+    parser.add_argument(
+        "--speech-translation", action=argparse.BooleanOptionalAction, default=False,
+        help="Collect independent SeamlessM4T-v2 speech-to-English evidence (opt-in until qualified)",
+    )
+    parser.add_argument("--speech-translation-model", default=DEFAULT_SPEECH_MODEL)
+    parser.add_argument(
+        "--multi-route-adjudication", action=argparse.BooleanOptionalAction, default=False,
+        help="Verify primary, dedicated-MT, and speech candidates with a fail-closed Ollama adjudicator",
+    )
+    parser.add_argument("--dedicated-translation-model", default=MADLAD_MODEL)
+    parser.add_argument("--adjudication-model", default="qwen2.5:7b")
     parser.add_argument("--independent-translation-model", default="qwen2.5:7b")
     parser.add_argument("--stronger-translation-model", default="llama3.1:8b")
     parser.add_argument(

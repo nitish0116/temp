@@ -81,6 +81,7 @@ Detailed operations and project state:
 - [Stage-by-stage CLI runbook](docs/cli.md)
 - [Subtitle quality improvement plan](docs/subtitle-improvement-plan.md)
 - [Three-sample release review](docs/three-sample-release-review.md)
+- [Step 24 speech-translation qualification](docs/speech-translation-qualification.md)
 - [Configuration guide](docs/configuration.md)
 - [JSON schemas and artifact contracts](docs/schemas.md)
 - [Dependency reference](docs/dependencies.md)
@@ -155,6 +156,21 @@ This mode requires the local Ollama service and configured independent model. It
 is intentionally opt-in. Step 23 qualified `qwen2.5:7b` on bounded Japanese,
 Korean, and Mandarin probes. Repeat the three-sample release review before enabling
 agreement for unattended release use.
+
+Collect independent speech-to-English evidence with SeamlessM4T-v2. The audio
+route uses the same timed regions as canonical ASR and never overwrites Whisper
+source text. It remains opt-in until Japanese, Korean, and Mandarin qualification
+measurements are recorded:
+
+```powershell
+..\..\.venv\Scripts\python.exe -m videotranslator subtitles `
+  "videotranslator\sample Data\episode.mp4" --speech-translation
+```
+
+Weights download into the active `PYTHON_CACHE_HOME` (Workstation A:
+`D:\PythonCaches`; Workstation B: the ignored `.model-cache` directory),
+including Hugging Face hub files and temporary staging. `--device auto` prefers
+CUDA and continues on CPU only after a CUDA out-of-memory failure.
 
 Ollama offload defaults to `--ollama-device auto`: a supported CUDA GPU with at
 least 8 GiB VRAM is used automatically, while smaller or unsupported GPUs stay on

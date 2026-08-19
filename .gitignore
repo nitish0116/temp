@@ -23,6 +23,7 @@ mp3ToYT/**/*.txt
 !media-manifest.json
 !classifier/data/broken_word_training.json
 !videotranslator/tests/fixtures/*.json
+!videotranslator/docs/*.json
 !md-audio/library-hyphen-review.json
 !md-audio/library-hyphen-review-ambiguous.json
 !md-audio/library-hyphen-review-cross-evidence.json

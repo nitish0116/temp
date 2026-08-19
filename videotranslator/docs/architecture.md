@@ -15,7 +15,7 @@ videotranslator/
 |   |-- *_audio.py, transcribe.py
 |   |-- force_align.py, segment_utterances.py
 |   |-- diarize_*.py, match_speaker_voices.py
-|   |-- translate_*.py, synthesize_*.py
+|   |-- translate_*.py, speech_translate.py, synthesize_*.py
 |   |-- qa_*.py, assemble_dub.py
 |   `-- burn_subtitles.py, mux_subtitles.py
 |-- config/                     # example runtime configuration
@@ -37,6 +37,9 @@ video
   -> strong multilingual transcription
   -> word-level forced alignment and cue reconciliation
   -> utterance segmentation by pause, punctuation, readability, and speaker turn
+  -> clean semantic transcript
+  -> contextual text translation
+  -> independent speech-to-English evidence
   -> blocking subtitle readability, integrity, timing, and source-coverage QA
   -> targeted recovery of uncovered speech evidence
   -> persistent speaker diarization
@@ -84,16 +87,18 @@ documentation, tests, and orchestrator command are migrated together.
   implementation plan and design history.
 - [three-sample-release-review.md](three-sample-release-review.md) records the
   current semantic release blocker.
+- [speech-translation-qualification.md](speech-translation-qualification.md)
+  records Step 24 prefetch, VRAM, latency, and probe evidence.
 
 ## Current implementation status
 
 The pipeline has versioned canonical timed text, resumable stages, multilingual
 ASR/alignment routing, diarization, semantic grouping, contextual translation,
-timing repair, subtitle export, TTS, assembly, and independent QA. Structural QA
-passes the three cached multilingual samples. Semantic review still blocks release:
-the current 0.5B contextual model can produce fluent but incorrect names, places,
-and meanings, and damaged ASR source text propagates downstream.
+optional SeamlessM4T speech-to-English evidence, timing repair, subtitle export,
+TTS, assembly, and independent QA. Structural QA passes the three cached
+multilingual samples. Semantic review still blocks release: the current 0.5B
+contextual model can produce fluent but incorrect names, places, and meanings,
+and damaged ASR source text still needs the new audio evidence plus stronger MT.
 
-The authoritative remaining work is stronger ASR/translation quality and
-reference-aware semantic evaluation, followed by rerunning translation onward.
-This replaces the stale split between implementation-history and future-approach.
+The authoritative remaining work is a GPU full-sample Step 24 run on Workstation
+B, then stronger text MT and multi-route adjudication.

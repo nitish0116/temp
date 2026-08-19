@@ -322,6 +322,7 @@ def test_main_subtitle_command_defaults_to_contextual_translation():
     assert args.ollama_device == "auto"
     assert args.translation_fallback_model == "facebook/nllb-200-distilled-600M"
     assert args.legacy_cue_translation is False
+    assert args.speech_translation is False
 
 
 def test_canonical_attempt_runs_semantic_translation_through_validated_export(tmp_path: Path):

@@ -16,6 +16,8 @@ NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 REPEATED_CLAUSE = re.compile(r"(.{2,}?)(?:\s*[,;.!?]\s*\1){2,}", re.IGNORECASE)
 REPEATED_SOURCE_CLAUSE = re.compile(r"(.{1,}?)(?:\s*[,;.!?、，]\s*\1){2,}", re.IGNORECASE)
 BOUNDARY = re.compile(r"(?<=[.!?\u3002\uff01\uff1f\u061f\u0964\u2026])\s+|\s*(?=[,;:\u060c\u061b\uff0c\uff1b\uff1a])")
+CLAUSE_SEPARATOR = re.compile(r"[.!?\u3002\uff01\uff1f\u061f\u0964\u2026,;:\u060c\u061b\uff0c\uff1b\uff1a]+")
+LATIN_IDENTIFIER = re.compile(r"(?<![\w])(?:[A-Za-z][A-Za-z0-9]*(?:[-'][A-Za-z0-9]+)*)(?![\w])")
 SMALL_NUMBERS = (
     "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
     "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
@@ -95,6 +97,33 @@ def integrity_issues(
         issues.append({"type": "translation_too_long", "ratio": round(ratio, 4)})
     if REPEATED_CLAUSE.search(target) and not REPEATED_SOURCE_CLAUSE.search(source):
         issues.append({"type": "repeated_translation_clause"})
+    return issues
+
+
+def adjudication_coverage_issues(source: str, target: str) -> list[dict]:
+    """Return deterministic clause and source-identifier omissions.
+
+    This deliberately does not attempt cross-language named-entity recognition.
+    It enforces observable structure and Latin-script identifiers, leaving
+    semantic entity verification to independent evidence and reviewed references.
+    """
+    source_clauses = [part.strip() for part in CLAUSE_SEPARATOR.split(source) if part.strip()]
+    target_clauses = [part.strip() for part in CLAUSE_SEPARATOR.split(target) if part.strip()]
+    issues = []
+    if len(source_clauses) > 1 and len(target_clauses) < len(source_clauses):
+        issues.append({
+            "type": "source_clause_omission",
+            "source_clause_count": len(source_clauses),
+            "target_clause_count": len(target_clauses),
+        })
+    source_identifiers = sorted({item.casefold() for item in LATIN_IDENTIFIER.findall(source)})
+    target_folded = target.casefold()
+    missing = [
+        item for item in source_identifiers
+        if not re.search(rf"(?<![a-z0-9]){re.escape(item)}(?![a-z0-9])", target_folded)
+    ]
+    if missing:
+        issues.append({"type": "source_identifier_omission", "missing": missing})
     return issues
 
 
