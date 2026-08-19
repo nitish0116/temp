@@ -1,0 +1,53 @@
+name: Feature request
+description: Propose a focused improvement to the toolkit.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - pdf-md
+        - cleanup/markdownCleaner
+        - md-audio
+        - md_python
+        - mp3ToYT
+        - videotranslator
+        - stats or repository tooling
+        - Cross-component
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: Explain the user need independently of a preferred implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the interface, output, or workflow you would like.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: impact
+    attributes:
+      label: Compatibility and resource impact
+      description: Mention new dependencies, network services, model downloads, GPU needs, large files, or breaking changes.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for a similar request.
+          required: true
+        - label: The proposal does not require committing copyrighted input, generated media, credentials, or model caches.
+          required: true
+
