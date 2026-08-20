@@ -244,10 +244,13 @@ def enrich_project_scenes(
     scenes = read_json(root / scene_stage["artifact"])
     narration = read_json(root / manifest["stages"]["narration"]["artifact"])
     analysis = read_json(root / manifest["stages"]["analysis"]["artifact"])
+    previous_path = root / "storyboard" / "scenes.enriched.json"
+    previous = read_json(previous_path) if previous_path.is_file() else None
     result = enrich_scenes(
         scenes, narration, provider,
         acceptance_threshold=acceptance_threshold,
         maximum_attempts=maximum_attempts,
+        previous_scenes=previous,
     )
     issues = validate_enriched_scenes(result, narration, analysis)
     if issues:

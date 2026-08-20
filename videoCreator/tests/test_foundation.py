@@ -17,7 +17,8 @@ from video_creator.narration import (
     validate_narration_plan,
 )
 from video_creator.scenes import (
-    enrich_scenes, segment_scenes, validate_enriched_scenes, validate_scenes,
+    DeterministicSceneEnrichmentProvider, enrich_scenes, segment_scenes,
+    validate_enriched_scenes, validate_scenes,
 )
 from video_creator.source import ingest_markdown, validate_source
 
@@ -290,6 +291,43 @@ def test_automatic_scene_enrichment_reports_exhausted_fallback(tmp_path):
         "missing story_event for scene-0001",
         "missing visual_intent for scene-0001",
     ]
+
+
+def test_scene_enrichment_selectively_regenerates_changed_dependencies(tmp_path):
+    class CountingProvider:
+        name = "counting-fixture-v1"
+
+        def __init__(self):
+            self.calls = []
+            self.delegate = DeterministicSceneEnrichmentProvider()
+
+        def enrich(self, scene, narration_blocks):
+            self.calls.append(scene["scene_id"])
+            return self.delegate.enrich(scene, narration_blocks)
+
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    second = json.loads(json.dumps(narration["blocks"][0]))
+    second["narration_id"] = "narration-0002"
+    second["source_start"] = second["source_end"] + 1
+    second["source_end"] = second["source_start"] + 20
+    narration["blocks"].append(second)
+    draft = segment_scenes(narration, analysis, maximum_blocks=1)
+    provider = CountingProvider()
+    first = enrich_scenes(draft, narration, provider)
+    assert provider.calls == ["scene-0001", "scene-0002"]
+
+    provider.calls.clear()
+    narration["blocks"][0]["adapted_text"] += " A supported revision."
+    revised_draft = segment_scenes(narration, analysis, maximum_blocks=1)
+    second_result = enrich_scenes(
+        revised_draft, narration, provider, previous_scenes=first,
+    )
+    assert provider.calls == ["scene-0001"]
+    assert second_result["regeneration"] == {
+        "reused_scene_ids": ["scene-0002"],
+        "regenerated_scene_ids": ["scene-0001"],
+    }
+    assert second_result["scenes"][1] == first["scenes"][1]
 
 
 def test_adaptation_blocks_invented_numbers_and_entities(tmp_path):

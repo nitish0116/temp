@@ -390,3 +390,18 @@ regenerated downstream narration and scenes, and automatically accepted all
 eight corrected scenes. The workspace validator now passes and the 18-test suite
 passes. Next, prove dependency-aware selective regeneration so a corrected unit
 invalidates and rebuilds only its downstream scenes and audit decisions.
+
+Dependency-aware scene regeneration is now implemented. Every enriched scene
+records a stable fingerprint of its scene contract, adapted narration, canonical
+references, timing estimate, and enrichment-provider version. A rerun reuses a
+previously accepted scene only when that complete fingerprint still matches;
+changed dependencies regenerate only the affected scene. The artifact records
+the exact reused and regenerated scene IDs for auditing.
+
+The focused test changes one narration dependency and confirms that only its
+scene calls the provider while the unaffected scene is preserved exactly. The
+local workspace was upgraded once, regenerating all eight legacy scenes that
+lacked fingerprints; its next unchanged run reused all eight and regenerated
+none. Validation passes and the 19-test suite passes. Next, define the autonomous
+storyboard shot-planning contract and carry these fingerprints into shot-level
+selective regeneration.

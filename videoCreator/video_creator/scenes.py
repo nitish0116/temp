@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Protocol
+
+from .artifacts import sha256_text
 
 
 class SceneEnrichmentProvider(Protocol):
@@ -37,6 +40,35 @@ class DeterministicSceneEnrichmentProvider:
             ),
             "canonical_entity_ids": list(subjects),
         }
+
+
+def scene_dependency_sha256(
+    scene: dict, narration_blocks: list[dict], provider_name: str, *,
+    acceptance_threshold: float, maximum_attempts: int, fallback_provider_name: str,
+) -> str:
+    """Fingerprint every input that can change an enriched scene decision."""
+    payload = {
+        "scene": {
+            key: scene.get(key) for key in (
+                "scene_id", "narration_ids", "source_start", "source_end",
+                "setting_id", "canonical_entity_ids",
+                "estimated_narration_seconds",
+            )
+        },
+        "narration": [{
+            key: block.get(key) for key in (
+                "narration_id", "source_sha256", "adapted_text", "tone",
+                "canonical_entity_ids",
+            )
+        } for block in narration_blocks],
+        "provider": provider_name,
+        "automatic_qa_policy": {
+            "acceptance_threshold": acceptance_threshold,
+            "maximum_attempts": maximum_attempts,
+            "fallback_provider": fallback_provider_name,
+        },
+    }
+    return sha256_text(json.dumps(payload, sort_keys=True, ensure_ascii=False))
 
 
 def segment_scenes(narration: dict, analysis: dict, *, maximum_blocks: int = 2) -> dict:
@@ -142,6 +174,7 @@ def enrich_scenes(
     scenes: dict, narration: dict, provider: SceneEnrichmentProvider | None = None,
     *, acceptance_threshold: float = 0.8, maximum_attempts: int = 2,
     fallback_provider: SceneEnrichmentProvider | None = None,
+    previous_scenes: dict | None = None,
 ) -> dict:
     """Enrich and automatically promote scenes using bounded QA decisions."""
     if scenes.get("status") != "draft":
@@ -153,9 +186,30 @@ def enrich_scenes(
     selected = provider or DeterministicSceneEnrichmentProvider()
     fallback = fallback_provider or DeterministicSceneEnrichmentProvider()
     blocks = {item["narration_id"]: item for item in narration["blocks"]}
+    previous = {
+        item.get("scene_id"): item for item in (previous_scenes or {}).get("scenes", [])
+    }
     enriched = []
+    reused_ids = []
+    regenerated_ids = []
     for scene in scenes["scenes"]:
         scene_blocks = [blocks[identifier] for identifier in scene["narration_ids"]]
+        dependency_sha256 = scene_dependency_sha256(
+            scene, scene_blocks, selected.name,
+            acceptance_threshold=acceptance_threshold,
+            maximum_attempts=maximum_attempts,
+            fallback_provider_name=fallback.name,
+        )
+        prior = previous.get(scene["scene_id"])
+        if (
+            prior
+            and prior.get("dependency_sha256") == dependency_sha256
+            and prior.get("status") == "auto_accepted"
+        ):
+            enriched.append(prior)
+            reused_ids.append(scene["scene_id"])
+            continue
+        regenerated_ids.append(scene["scene_id"])
         narration_text = " ".join(block["adapted_text"] for block in scene_blocks).casefold()
         narration_terms = set(re.findall(r"[a-z]{4,}", narration_text))
         attempts = []
@@ -201,6 +255,7 @@ def enrich_scenes(
                 break
         item = dict(scene)
         item.update({
+            "dependency_sha256": dependency_sha256,
             "story_event": str(decision.get("story_event") or "").strip(),
             "mood": str(decision.get("mood") or "").strip(),
             "visual_intent": str(decision.get("visual_intent") or "").strip(),
@@ -233,6 +288,10 @@ def enrich_scenes(
             }
             for item in enriched if item["status"] == "retry_required"
         ],
+        "regeneration": {
+            "reused_scene_ids": reused_ids,
+            "regenerated_scene_ids": regenerated_ids,
+        },
     }
 
 
@@ -251,6 +310,8 @@ def validate_enriched_scenes(scenes: dict, narration: dict, analysis: dict) -> l
             if not str(scene.get(field) or "").strip():
                 issues.append(f"missing {field} for {identifier}")
         qa = scene.get("automatic_qa", {})
+        if not re.fullmatch(r"[0-9a-f]{64}", str(scene.get("dependency_sha256") or "")):
+            issues.append(f"invalid dependency fingerprint for {identifier}")
         checks = qa.get("checks", {})
         if not checks or not all(checks.values()):
             if scene.get("status") != "retry_required":
