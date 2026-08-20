@@ -559,6 +559,22 @@ key. Only a reviewer attesting capability in both languages may submit
 `bilingual_verified`; target-language-only review and `unable_to_verify` are
 durable, explicitly non-promoting decisions.
 
+#### 27A. Add calibrated automatic review
+
+- Score source/translation pairs with a reference-free quality estimator.
+- Require agreement from at least two independent translation routes, semantic
+  round-trip preservation, and all deterministic integrity gates.
+- Calibrate thresholds against reviewed correct fixtures and adversarial
+  corruptions; any known critical defect that passes blocks activation.
+- Record successful results as `machine_verified`, never as human or bilingual
+  approval, and retain `unresolved` whenever any gate fails.
+
+Status: in progress. The model-independent policy, candidate-review contract,
+and fail-closed adversarial calibration are implemented. They are not connected
+to subtitle promotion. Next, add a COMETKiwi adapter and qualify it against the
+reviewed multilingual fixtures plus omission, entity, number, polarity, and
+plausible-mistranslation mutations.
+
 ### 28. Produce and validate dubbing only from approved subtitles
 
 - Freeze approved canonical text and speaker assignments before TTS begins.

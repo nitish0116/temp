@@ -125,6 +125,14 @@ project owner does not speak the sample source languages. It replaces ambiguous
 can resolve semantic disagreements; English-only review remains useful evidence
 but cannot promote a subtitle.
 
+Step 27A automatic review has started. A model-independent fail-closed gate now
+requires reference-free quality, agreement from at least two independent routes,
+round-trip semantic preservation, deterministic integrity checks, and a named
+passing adversarial calibration. Successful output is `machine_verified`, not
+human verification. It is not yet wired to promotion. Next, implement and
+qualify the COMETKiwi adapter against reviewed and deliberately corrupted
+multilingual fixtures before running it over the 19 unresolved groups.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining
