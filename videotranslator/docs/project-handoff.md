@@ -200,6 +200,16 @@ subject/object role-swap mutations; calibration blocks both even at a synthetic
 route-backed protocol-3 qualification artifact and broaden relation paraphrases
 without weakening the adversarial cases.
 
+At the owner's direction, automatic-review tolerance is loosened through a
+bounded grounded-quality override rather than a lower global COMET threshold.
+Low COMET scores may now be overridden only for an active reviewed source rule
+when deterministic integrity, terminology/entity consensus, relation/polarity,
+two-route semantic agreement, and round-trip preservation all pass. Results
+explicitly retain the score and set `quality_overridden: true`. Ungrounded text
+and any failed companion gate remain unresolved. This policy is implemented and
+tested but is not yet connected to `final.srt` promotion. Next, qualify it with
+route-backed paraphrases, then wire only qualified `machine_verified` results.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining

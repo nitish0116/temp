@@ -642,6 +642,16 @@ for the 19 unresolved groups. Next, add route evidence to a protocol-3
 qualification artifact and test the complete gate against paraphrased relations
 before considering integration.
 
+The automatic-review tolerance is now deliberately asymmetric. COMET remains a
+blocking gate for unknown or weakly grounded text, but a low score may be
+overridden when an active reviewed source rule exists and every deterministic
+integrity, terminology, entity, relation/polarity, two-route agreement, and
+round-trip gate passes. The review result records `quality_overridden: true` and
+retains the original score. This avoids a permanent veto from an estimator that
+failed calibration without lowering its global threshold. The policy is not yet
+wired to `final.srt`; next, qualify route-backed paraphrases and then integrate
+only this bounded `machine_verified` state into the promotion decision.
+
 ### 28. Produce and validate dubbing only from approved subtitles
 
 - Freeze approved canonical text and speaker assignments before TTS begins.

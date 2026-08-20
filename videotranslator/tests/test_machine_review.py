@@ -71,6 +71,49 @@ def test_machine_review_requires_two_independent_routes_and_round_trip():
     assert failures == {"insufficient_independent_agreement", "round_trip_score"}
 
 
+def test_grounded_evidence_can_override_low_quality_score():
+    source = "条约来源"
+    translation = "The Treaty of Shimonoseki was signed with Japan."
+    routes = {
+        "primary": translation,
+        "dedicated_mt": "Japan signed the Treaty of Shimonoseki.",
+    }
+    result = review_candidate(
+        source, translation, routes,
+        source_language="zh", target_language="en",
+        estimate_quality=lambda source, target: 0.28,
+        semantic_similarity=lambda left, right: 0.95,
+        back_translate=lambda text, source, target: "条约来源",
+        policy=POLICY, calibration_id="grounded-v1",
+        terminology_rules=(TerminologyRule(
+            "treaty", (source,), ("Japan", "Treaty", "Shimonoseki"),
+        ),),
+        grounding_rules=(SourceGroundingRule(
+            "treaty", (source,), (GroundingClaim(
+                "signing", ("signed with Japan", "Japan signed"),
+            ),),
+        ),),
+    )
+    assert result["status"] == "machine_verified"
+    assert result["quality_overridden"] is True
+    assert result["quality_score"] == 0.28
+
+
+def test_low_quality_remains_blocking_without_source_grounding():
+    result = review_candidate(
+        "未知来源", "A plausible translation.",
+        {"primary": "A plausible translation.", "dedicated_mt": "A plausible translation."},
+        source_language="zh", target_language="en",
+        estimate_quality=lambda source, target: 0.28,
+        semantic_similarity=lambda left, right: 0.95,
+        back_translate=lambda text, source, target: "未知来源",
+        policy=POLICY, calibration_id="grounded-v1",
+    )
+    assert result["status"] == "unresolved"
+    assert result["quality_overridden"] is False
+    assert {failure["type"] for failure in result["failures"]} == {"quality_score"}
+
+
 def test_source_triggered_terminology_blocks_plausible_wrong_synonym():
     rules = (TerminologyRule("cute", ("かわいい",), ("cute",), ("lovely",)),)
     assert terminology_issues("かわいい", "It is cute.", rules) == []

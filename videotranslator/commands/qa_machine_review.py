@@ -23,6 +23,7 @@ class MachineReviewPolicy:
     minimum_semantic_similarity: float = 0.90
     minimum_round_trip_score: float = 0.85
     minimum_agreeing_routes: int = 2
+    allow_grounded_quality_override: bool = True
 
     def __post_init__(self) -> None:
         """Reject unsafe thresholds and single-route machine approval."""
@@ -264,12 +265,6 @@ def review_candidate(
     if issues:
         failures.append({"type": "deterministic_integrity", "issues": issues})
 
-    quality_score = _bounded_score(
-        estimate_quality(source_text, translation), "quality estimator"
-    )
-    if quality_score < policy.minimum_quality_score:
-        failures.append({"type": "quality_score", "score": quality_score})
-
     agreeing_routes = []
     for route, candidate in route_candidates.items():
         if not candidate.strip():
@@ -292,6 +287,26 @@ def review_candidate(
     if round_trip_score < policy.minimum_round_trip_score:
         failures.append({"type": "round_trip_score", "score": round_trip_score})
 
+    quality_score = _bounded_score(
+        estimate_quality(source_text, translation), "quality estimator"
+    )
+    normalized_source = _normalized(source_text)
+    active_grounding = any(
+        not rule.source_terms
+        or any(_normalized(term) in normalized_source for term in rule.source_terms)
+        for rule in (*terminology_rules, *grounding_rules)
+    )
+    quality_overridden = (
+        quality_score < policy.minimum_quality_score
+        and policy.allow_grounded_quality_override
+        and active_grounding
+        and not issues
+        and len(agreeing_routes) >= policy.minimum_agreeing_routes
+        and round_trip_score >= policy.minimum_round_trip_score
+    )
+    if quality_score < policy.minimum_quality_score and not quality_overridden:
+        failures.append({"type": "quality_score", "score": quality_score})
+
     passed = not failures
     return {
         "schema_version": 1,
@@ -299,6 +314,7 @@ def review_candidate(
         "status": "machine_verified" if passed else "unresolved",
         "passed": passed,
         "quality_score": quality_score,
+        "quality_overridden": quality_overridden,
         "round_trip_score": round_trip_score,
         "agreeing_routes": agreeing_routes,
         "back_translation": round_trip,
