@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from copy import deepcopy
 from datetime import datetime
@@ -16,7 +17,7 @@ from .qa_translation_integrity import adjudication_coverage_issues, integrity_is
 
 NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 LATIN_IDENTIFIER = re.compile(r"(?<![\w])(?:[A-Za-z][A-Za-z0-9]*(?:[-'][A-Za-z0-9]+)*)(?![\w])")
-REVIEW_SCHEMA_VERSION = 1
+REVIEW_SCHEMA_VERSION = 2
 
 
 def sha256_file(path: Path) -> str:
@@ -38,6 +39,8 @@ def approval_key(item: dict, *, media_sha256: str, model: str, protocol_version:
         "start": item["start"],
         "end": item["end"],
         "source_text": item["source_text"],
+        "source_language": item["source_language"],
+        "output_language": item["output_language"],
         "candidates": item["candidates"],
     }
     return hashlib.sha256(
@@ -72,6 +75,8 @@ def build_bounded_review(
             "speaker": segment.get("speaker"),
             "confidence": segment.get("confidence"),
             "source_text": str(segment.get("source_text") or ""),
+            "source_language": document["source_language"],
+            "output_language": document["output_language"],
             "previous_source": [str(value.get("source_text") or "") for value in segments[max(0, index-context_size):index]],
             "following_source": [str(value.get("source_text") or "") for value in segments[index+1:index+context_size+1]],
             "candidates": candidates,
@@ -83,7 +88,10 @@ def build_bounded_review(
             "audio_clip": None,
             "audio_clip_sha256": None,
             "terminal_state": "unresolved",
-            "review": {"status": "pending", "translation": None, "reviewer": None, "reviewed_at": None},
+            "review": {
+                "status": "pending", "translation": None, "reviewer": None,
+                "reviewed_at": None, "reviewer_languages": [],
+            },
         }
         item["approval_key"] = approval_key(
             item, media_sha256=media_sha256, model=adjudication_model,
@@ -98,6 +106,11 @@ def build_bounded_review(
         "source_media_sha256": media_sha256,
         "adjudication_model": adjudication_model,
         "adjudication_protocol_version": adjudication_report["protocol_version"],
+        "review_policy": {
+            "semantic_resolution_status": "bilingual_verified",
+            "non_promoting_statuses": ["target_language_reviewed", "unable_to_verify"],
+            "language_capability_required": True,
+        },
         "review_item_count": len(items),
         "status": "pending" if items else "resolved",
         "items": items,
@@ -136,9 +149,35 @@ def _reviewed_at(value: object) -> str:
     return value
 
 
+def _reviewer_languages(value: object, group_id: str) -> list[str]:
+    """Normalize the reviewer's explicitly attested language capabilities."""
+    if not isinstance(value, list) or not value:
+        raise ValueError(f"reviewer_languages is required for {group_id}")
+    languages = []
+    for language in value:
+        normalized = str(language).strip().lower().replace("_", "-")
+        if not normalized:
+            raise ValueError(f"reviewer_languages contains an empty value for {group_id}")
+        if normalized not in languages:
+            languages.append(normalized)
+    return languages
+
+
+def _supports_language(languages: list[str], required: str) -> bool:
+    """Treat a base language and one of its locale variants as equivalent."""
+    required = required.lower().replace("_", "-")
+    required_base = required.split("-", 1)[0]
+    return any(language == required or language.split("-", 1)[0] == required_base for language in languages)
+
+
 def apply_review_decisions(document: dict, review: dict, decisions: dict) -> tuple[dict, dict]:
     """Apply exact-key human decisions while retaining every unsafe item unresolved."""
     validate_canonical_timed_text(document)
+    if review.get("schema_version") != REVIEW_SCHEMA_VERSION:
+        raise ValueError(
+            f"review schema version {review.get('schema_version')!r} is stale; "
+            f"regenerate it with version {REVIEW_SCHEMA_VERSION}"
+        )
     if decisions.get("sample_id") != review.get("sample_id"):
         raise ValueError("decision sample_id does not match review artifact")
     supplied = decisions.get("decisions")
@@ -184,13 +223,31 @@ def apply_review_decisions(document: dict, review: dict, decisions: dict) -> tup
         if decision.get("approval_key") != expected_key:
             raise ValueError(f"decision approval key does not match {group_id}")
         status = decision.get("status")
-        if status not in {"human_verified", "unresolved"}:
+        if status not in {"bilingual_verified", "target_language_reviewed", "unable_to_verify"}:
             raise ValueError(f"unsupported review status for {group_id}: {status}")
         reviewer = str(decision.get("reviewer") or "").strip()
         if not reviewer:
             raise ValueError(f"reviewer is required for {group_id}")
         reviewed_at = _reviewed_at(decision.get("reviewed_at"))
-        if status == "human_verified":
+        reviewer_languages = _reviewer_languages(decision.get("reviewer_languages"), group_id)
+        if status == "target_language_reviewed" and not _supports_language(
+            reviewer_languages, item["output_language"]
+        ):
+            raise ValueError(
+                f"target-language review for {group_id} requires capability in output language "
+                f"{item['output_language']}"
+            )
+        if status == "bilingual_verified":
+            if not _supports_language(reviewer_languages, item["source_language"]):
+                raise ValueError(
+                    f"bilingual review for {group_id} requires capability in source language "
+                    f"{item['source_language']}"
+                )
+            if not _supports_language(reviewer_languages, item["output_language"]):
+                raise ValueError(
+                    f"bilingual review for {group_id} requires capability in output language "
+                    f"{item['output_language']}"
+                )
             translation = str(decision.get("translation") or "").strip()
             issues = integrity_issues(item["source_text"], translation)
             issues.extend(adjudication_coverage_issues(item["source_text"], translation))
@@ -199,12 +256,14 @@ def apply_review_decisions(document: dict, review: dict, decisions: dict) -> tup
                 raise ValueError(f"human translation failed integrity checks for {group_id}: {kinds}")
             segment["translated_text"] = translation
             segment["provenance"] = append_provenance(
-                segment, "bounded-human-review", "approval-key-verified",
+                segment, "bounded-bilingual-review", "approval-key-and-language-capability-verified",
                 reviewer=reviewer, reviewed_at=reviewed_at, approval_key=expected_key,
+                reviewer_languages=reviewer_languages,
             )
         results.append({
             "semantic_group_id": group_id, "status": status,
             "reviewer": reviewer, "reviewed_at": reviewed_at,
+            "reviewer_languages": reviewer_languages,
         })
     unknown = sorted(set(by_id) - {str(item["semantic_group_id"]) for item in review["items"]})
     if unknown:
@@ -212,10 +271,12 @@ def apply_review_decisions(document: dict, review: dict, decisions: dict) -> tup
     report = {
         "schema_version": REVIEW_SCHEMA_VERSION,
         "sample_id": review["sample_id"],
-        "passed": bool(results) and all(item["status"] == "human_verified" for item in results),
+        "passed": bool(results) and all(item["status"] == "bilingual_verified" for item in results),
         "review_item_count": len(results),
-        "human_verified_count": sum(item["status"] == "human_verified" for item in results),
-        "unresolved_count": sum(item["status"] != "human_verified" for item in results),
+        "bilingual_verified_count": sum(item["status"] == "bilingual_verified" for item in results),
+        "target_language_reviewed_count": sum(item["status"] == "target_language_reviewed" for item in results),
+        "unable_to_verify_count": sum(item["status"] == "unable_to_verify" for item in results),
+        "unresolved_count": sum(item["status"] != "bilingual_verified" for item in results),
         "results": results,
     }
     output["metadata"] = {**output.get("metadata", {}), "bounded_human_review": report}
@@ -248,13 +309,55 @@ def stratified_accepted_group_ids(adjudication_report: dict, sample_size: int = 
     return selected
 
 
+def zero_error_sample_size(
+    minimum_accuracy: float = 0.95, confidence: float = 0.95,
+) -> int:
+    """Return the conservative sample needed to support a zero-error lower bound."""
+    if not 0.0 < minimum_accuracy < 1.0:
+        raise ValueError("minimum_accuracy must be between 0 and 1")
+    if not 0.0 < confidence < 1.0:
+        raise ValueError("confidence must be between 0 and 1")
+    return math.ceil(math.log(1.0 - confidence) / math.log(minimum_accuracy))
+
+
+def random_accepted_group_ids(
+    adjudication_report: dict, sample_size: int, *, seed: str,
+) -> list[str]:
+    """Select an auditable pseudorandom sample without mutable RNG state."""
+    if sample_size < 1:
+        raise ValueError("sample_size must be positive")
+    if not seed.strip():
+        raise ValueError("seed must be nonempty")
+    accepted = [
+        str(item["semantic_group_id"]) for item in adjudication_report["checks"]
+        if item["passed"]
+    ]
+    ranked = sorted(
+        accepted,
+        key=lambda group_id: hashlib.sha256(
+            f"{seed}\0{group_id}".encode("utf-8")
+        ).digest(),
+    )
+    return ranked[:sample_size]
+
+
 def build_accepted_audit(
     document: dict, adjudication_report: dict, *, sample_id: str,
     source_media: str, media_sha256: str, adjudication_model: str,
     sample_size: int = 8, context_size: int = 3,
+    selection_method: str = "deterministic_early_middle_late",
+    selection_seed: str | None = None,
 ) -> dict:
     """Build a hashed human-audit artifact from stratified accepted groups."""
-    selected = set(stratified_accepted_group_ids(adjudication_report, sample_size))
+    if selection_method == "deterministic_early_middle_late":
+        selected_ids = stratified_accepted_group_ids(adjudication_report, sample_size)
+    elif selection_method == "seeded_random":
+        selected_ids = random_accepted_group_ids(
+            adjudication_report, sample_size, seed=selection_seed or "",
+        )
+    else:
+        raise ValueError(f"unsupported accepted-audit selection method: {selection_method}")
+    selected = set(selected_ids)
     audit_report = deepcopy(adjudication_report)
     for check in audit_report["checks"]:
         group_id = str(check["semantic_group_id"])
@@ -270,11 +373,40 @@ def build_accepted_audit(
     )
     audit["artifact_type"] = "accepted_subtitle_audit"
     audit["selection"] = {
-        "method": "deterministic_early_middle_late",
+        "method": selection_method,
         "requested_size": sample_size,
         "selected_size": len(audit["items"]),
     }
+    if selection_seed is not None:
+        audit["selection"]["seed"] = selection_seed
     for item in audit["items"]:
         item["terminal_state"] = "adjudicator_verified"
         item["review"]["status"] = "audit_pending"
+    return audit
+
+
+def build_reliability_audit(
+    document: dict, adjudication_report: dict, *, sample_id: str,
+    source_media: str, media_sha256: str, adjudication_model: str,
+    sample_size: int, selection_seed: str, context_size: int = 3,
+    minimum_accuracy: float = 0.95, confidence: float = 0.95,
+) -> dict:
+    """Build one episode stratum for a precommitted accuracy audit."""
+    audit = build_accepted_audit(
+        document, adjudication_report, sample_id=sample_id,
+        source_media=source_media, media_sha256=media_sha256,
+        adjudication_model=adjudication_model, sample_size=sample_size,
+        context_size=context_size, selection_method="seeded_random",
+        selection_seed=selection_seed,
+    )
+    audit["artifact_type"] = "accepted_subtitle_reliability_audit"
+    audit["statistical_target"] = {
+        "method": "zero_error_one_sided_binomial_bound",
+        "minimum_accuracy": minimum_accuracy,
+        "confidence": confidence,
+        "required_total_sample_size": zero_error_sample_size(
+            minimum_accuracy, confidence,
+        ),
+        "claim_requires_zero_material_errors": True,
+    }
     return audit

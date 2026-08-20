@@ -524,7 +524,10 @@ changing defaults.
 - Store approvals as versioned provenance tied to the source/audio hash and model
   protocol; never encode approval as an untracked conversation or blanket bypass.
 - Support terminal states `multi_route_consensus`, `adjudicator_verified`,
-  `reviewed_reference_verified`, `human_verified`, and `unresolved`.
+  `reviewed_reference_verified`, `bilingual_verified`, and `unresolved`.
+- Record reviewer language capabilities. An English-only reviewer may submit
+  `target_language_reviewed` or `unable_to_verify`, but neither state resolves a
+  semantic disagreement or permits promotion.
 - Permit `final.srt` only when structural QA passes and no group is unresolved.
 - Invalidate only affected approvals when source text, audio regions, translation
   models, or QA protocol changes.
@@ -549,6 +552,114 @@ The accepted-group audit is also generated under
 early/middle/late groups per sample, 24 total, each with the same portable hashed
 evidence and a verified-readable audio clip. Both the 19-item correction set and
 24-item semantic audit remain pending human decisions.
+
+Reviewer-capability enforcement is now in development on the `videoTranslator`
+branch. Review schema v2 binds source and output languages into each approval
+key. Only a reviewer attesting capability in both languages may submit
+`bilingual_verified`; target-language-only review and `unable_to_verify` are
+durable, explicitly non-promoting decisions.
+
+#### 27A. Add calibrated automatic review
+
+- Score source/translation pairs with a reference-free quality estimator.
+- Require agreement from at least two independent translation routes, semantic
+  round-trip preservation, and all deterministic integrity gates.
+- Calibrate thresholds against reviewed correct fixtures and adversarial
+  corruptions; any known critical defect that passes blocks activation.
+- Record successful results as `machine_verified`, never as human or bilingual
+  approval, and retain `unresolved` whenever any gate fails.
+
+Status: in progress. The model-independent policy, candidate-review contract,
+fail-closed adversarial calibration, and lazy COMETKiwi adapter are implemented.
+The adapter uses the shared model cache, supports offline lookup, rejects
+reference-based models and malformed scores, and remains optional. It is not
+connected to subtitle promotion. Next, install and prefetch the gated model,
+then qualify it against the reviewed multilingual fixtures plus omission,
+entity, number, polarity, and plausible-mistranslation mutations.
+
+The repeatable `qualify-machine-review` command is now implemented with four
+reviewed Korean/Mandarin fixtures and thirteen critical-error mutations. It
+writes auditable evidence, exits nonzero when any accepted translation scores
+below threshold or any corruption escapes both deterministic and learned gates,
+and remains disconnected from promotion. Next, install the optional COMET
+runtime, accept and prefetch the gated weights, and record the first real-score
+report; threshold tuning must use those results rather than assumptions.
+
+The first real setup attempt on 2026-08-20 confirmed that the account is
+authenticated but does not have access to the gated
+`Unbabel/wmt22-cometkiwi-da` repository. COMET 2.2.7 also requests dependency
+downgrades incompatible with the main pipeline, so qualification must run in a
+dedicated environment. The primary environment was restored and its full suite
+passes. No real score or qualification claim was produced.
+
+After gated access was granted, the managed `cometEnv` downloaded the checkpoint
+and completed CPU qualification. The model is rejected at the 0.85 threshold:
+it scored the reviewed Mandarin treaty translation 0.3946 and failed to block
+`lovely` for Korean `cute` (0.8632) and `Seattle` for `Seoul` (0.8587). The
+versioned report is `docs/machine-review-qualification.json`. Do not lower the
+threshold: no single threshold separates all reviewed good and bad cases. Next,
+add explicit terminology/entity gates or qualify a stronger estimator before
+running the 19 unresolved groups.
+
+Step 27B terminology and entity consensus gates are now implemented under
+machine-review protocol 2. Source-triggered reviewed rules block required-term
+omissions and forbidden substitutions, while proper names independently present
+in at least two routes must survive the selected translation. The cached offline
+rerun now passes all three Korean fixtures and blocks the previous `lovely` and
+`Seattle` escapes. Overall qualification remains rejected because the reviewed
+Mandarin treaty translation still scores 0.3946. Next, qualify a stronger
+reference-free estimator with the same protocol-2 fixture set.
+
+The stronger `Unbabel/wmt23-cometkiwi-da-xl` estimator has now been downloaded
+and qualified with that unchanged fixture set. Its Tanh head produced a small
+negative tail for severe corruptions, so the adapter floors negative values to
+the model card's documented random-quality floor of zero while continuing to
+reject values outside `-1..1`. The model is rejected: correct-fixture scores are
+0.7845, 0.8027, 0.6575, and 0.2779, all below 0.85, and the `Seattle`
+substitution scored 0.8062 versus 0.8027 for correct `Seoul`. No scalar threshold
+can safely separate those cases. Evidence:
+`docs/machine-review-wmt23-cometkiwi-xl-qualification.json`. Keep machine review
+non-promoting. Next, develop source/terminology-grounded verification for the
+Mandarin treaty case instead of lowering or model-tuning the scalar threshold.
+
+Machine-review protocol 3 has started that verifier. When a reviewed source
+rule is active, every required target term must now appear in the selected
+translation and be independently present in at least two route candidates.
+Failures retain the unsupported term and its supporting route names. This
+prevents one route from introducing an uncorroborated `Japan`, `Treaty`, or
+`Shimonoseki` assertion. The verifier remains disconnected from promotion and
+does not override the failed COMET quality gate. Next, add source-grounded
+polarity and relation claims, then adversarially qualify the complete verifier.
+
+Protocol 3 now also supports reviewed polarity and relation claims. A claim is
+activated only by its bound source evidence, requires one accepted relation
+phrase in the selected translation and at least two supporting routes, and
+blocks reviewed contradictory phrases. The Mandarin fixture now requires the
+Japan/treaty signing relation and includes both negation and subject/object
+role-swap corruptions. Both remain blocked even when a synthetic quality
+estimator assigns 0.99. This is still bounded calibration evidence, not approval
+for the 19 unresolved groups. Next, add route evidence to a protocol-3
+qualification artifact and test the complete gate against paraphrased relations
+before considering integration.
+
+The automatic-review tolerance is now deliberately asymmetric. COMET remains a
+blocking gate for unknown or weakly grounded text, but a low score may be
+overridden when an active reviewed source rule exists and every deterministic
+integrity, terminology, entity, relation/polarity, two-route agreement, and
+round-trip gate passes. The review result records `quality_overridden: true` and
+retains the original score. This avoids a permanent veto from an estimator that
+failed calibration without lowering its global threshold. The policy is not yet
+wired to `final.srt`; next, qualify route-backed paraphrases and then integrate
+only this bounded `machine_verified` state into the promotion decision.
+
+A credibility audit is now precommitted before promotion. The 348 accepted
+groups are sampled proportionally by episode using a published seeded SHA-256
+ranking: 32 Japanese, 16 Korean, and 11 Mandarin groups, for 59 total. With zero
+material errors, 59 reviews support a conservative one-sided 95%-accuracy claim
+at 95% confidence. All generated clips are readable and hash-valid. Semantic
+decisions remain pending, so no episode-accuracy claim exists yet. Record:
+`docs/episode-accuracy-audit.md`. Next, obtain independent bilingual labels or
+report any automated labels explicitly as model-estimated rather than proven.
 
 ### 28. Produce and validate dubbing only from approved subtitles
 

@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "protocol_version": 2,
+  "passed": false,
+  "fixture_count": 4,
+  "results": [
+    {
+      "fixture_id": "korean-cute",
+      "passed": false,
+      "accepted_score": 0.7845208644866943,
+      "accepted_issues": [],
+      "rejected": [
+        {
+          "translation": "You're a little bit of a freak, aren't you?",
+          "score": 0.1476300060749054,
+          "blocked": true,
+          "deterministic_issues": [
+            {
+              "type": "terminology_mismatch",
+              "rule_id": "korean-cute",
+              "missing": [
+                "cute"
+              ],
+              "forbidden": [
+                "freak"
+              ]
+            }
+          ]
+        },
+        {
+          "translation": "Isn't he cruel?",
+          "score": 0.19631099700927734,
+          "blocked": true,
+          "deterministic_issues": [
+            {
+              "type": "terminology_mismatch",
+              "rule_id": "korean-cute",
+              "missing": [
+                "cute"
+              ],
+              "forbidden": [
+                "cruel"
+              ]
+            }
+          ]
+        },
+        {
+          "translation": "Isn't he lovely?",
+          "score": 0.7663924694061279,
+          "blocked": true,
+          "deterministic_issues": [
+            {
+              "type": "terminology_mismatch",
+              "rule_id": "korean-cute",
+              "missing": [
+                "cute"
+              ],
+              "forbidden": [
+                "lovely"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "fixture_id": "korean-seoul",
+      "passed": false,
+      "accepted_score": 0.8026852607727051,
+      "accepted_issues": [],
+      "rejected": [
+        {
+          "translation": "Seattle also had such a place?",
+          "score": 0.8061971664428711,
+          "blocked": true,
+          "deterministic_issues": [
+            {
+              "type": "terminology_mismatch",
+              "rule_id": "korean-seoul",
+              "missing": [
+                "Seoul"
+              ],
+              "forbidden": [
+                "Seattle"
+              ]
+            }
+          ]
+        },
+        {
+          "translation": "There was a place like that?",
+          "score": 0.49835240840911865,
+          "blocked": true,
+          "deterministic_issues": [
+            {
+              "type": "terminology_mismatch",
+              "rule_id": "korean-seoul",
+              "missing": [
+                "Seoul"
+              ],
+              "forbidden": []
+            }
+          ]
+        },
+        {
+          "translation": "There was no place like that in Seoul?",
+          "score": 0.5528404712677002,
+          "blocked": true,
+          "deterministic_issues": []
+        }
+      ]
+    },
+    {
+      "fixture_id": "korean-dalsan-ri-seoul",
+      "passed": false,
+      "accepted_score": 0.6575125455856323,
+      "accepted_issues": [],
+      "rejected": [
+        {
+          "translation": "Was there such a place in Seoul?",
+          "score": 0.567664384841919,
+          "blocked": true,
+          "deterministic_issues": [
+            {
+              "type": "source_clause_omission",
+              "source_clause_count": 2,
+              "target_clause_count": 1
+            },
+            {
+              "type": "source_identifier_omission",
+              "missing": [
+                "dalsan-ri"
+              ]
+            },
+            {
+              "type": "terminology_mismatch",
+              "rule_id": "korean-dalsan-ri-seoul",
+              "missing": [
+                "Dalsan-ri"
+              ],
+              "forbidden": []
+            }
+          ]
+        },
+        {
+          "translation": "Dalsan-ri? Was there no such place in Seoul?",
+          "score": 0.43915629386901855,
+          "blocked": true,
+          "deterministic_issues": []
+        },
+        {
+          "translation": "Dalsan-ri? Was there such a place in Seattle?",
+          "score": 0.6575297117233276,
+          "blocked": true,
+          "deterministic_issues": [
+            {
+              "type": "terminology_mismatch",
+              "rule_id": "korean-dalsan-ri-seoul",
+              "missing": [
+                "Seoul"
+              ],
+              "forbidden": [
+                "Seattle"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "fixture_id": "mandarin-shimonoseki",
+      "passed": false,
+      "accepted_score": 0.277864933013916,
+      "accepted_issues": [],
+      "rejected": [
+        {
+          "translation": "Taiwan's Yangtze Province claims 22,000 and is unable to sign.",
+          "score": 0.11369244754314423,
+          "blocked": true,
+          "deterministic_issues": [
+            {
+              "type": "terminology_mismatch",
+              "rule_id": "mandarin-shimonoseki",
+              "missing": [
+                "Japan",
+                "Treaty",
+                "Shimonoseki"
+              ],
+              "forbidden": [
+                "Yangtze Province"
+              ]
+            }
+          ]
+        },
+        {
+          "translation": "Sign the Treaty of Macau.",
+          "score": 0.0,
+          "blocked": true,
+          "deterministic_issues": [
+            {
+              "type": "terminology_mismatch",
+              "rule_id": "mandarin-shimonoseki",
+              "missing": [
+                "Japan",
+                "Shimonoseki"
+              ],
+              "forbidden": [
+                "Macau"
+              ]
+            }
+          ]
+        },
+        {
+          "translation": "Sign the Customs Treaty.",
+          "score": 0.0,
+          "blocked": true,
+          "deterministic_issues": [
+            {
+              "type": "terminology_mismatch",
+              "rule_id": "mandarin-shimonoseki",
+              "missing": [
+                "Japan",
+                "Shimonoseki"
+              ],
+              "forbidden": [
+                "Customs Treaty"
+              ]
+            }
+          ]
+        },
+        {
+          "translation": "Japan did not sign the Treaty of Shimonoseki.",
+          "score": 0.083550363779068,
+          "blocked": true,
+          "deterministic_issues": []
+        }
+      ]
+    }
+  ],
+  "fixture_set": "reviewed-multilingual-adversarial-v1",
+  "model": "Unbabel/wmt23-cometkiwi-da-xl",
+  "minimum_quality_score": 0.85,
+  "release_qualified": false,
+  "acceptance_rule": "Every reviewed translation must meet the threshold and every critical corruption must be blocked by deterministic checks or score below it."
+}

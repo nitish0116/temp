@@ -34,6 +34,9 @@ md-audio/.hyphen-review-cache.json
 .pytest-tmp/
 .model-cache/
 
+# Managed COMET runtime; created locally by `setup-comet-env`.
+/cometEnv/
+
 # Always keep project documentation and dependency manifests visible.
 !**/README.md
 !**/ARCHITECTURE.md

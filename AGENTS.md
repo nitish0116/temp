@@ -29,3 +29,9 @@ A human can install a prepared complete handoff with:
 ```text
 python -m videotranslator history --update-from path/to/handoff-next.md
 ```
+
+## Commit messages
+
+Every commit must use a concise subject line followed by a blank line and a
+bulleted body describing the material changes. Do not create subject-only
+commits.

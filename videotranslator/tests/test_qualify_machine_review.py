@@ -1,0 +1,92 @@
+"""Tests for the repeatable COMETKiwi adversarial qualification command."""
+
+import json
+from pathlib import Path
+
+from videotranslator.commands.qualify_machine_review import (
+    load_fixtures, prepare_machine_review_environment, run_qualification,
+)
+from videotranslator.commands.qa_machine_review import (
+    MachineReviewPolicy, calibrate_machine_reviewer,
+)
+from videotranslator.pipeline import main
+
+
+def fixture_file(tmp_path):
+    """Write one compact reviewed fixture set for offline qualification."""
+    path = tmp_path / "fixtures.json"
+    path.write_text(json.dumps({
+        "schema_version": 1,
+        "fixture_set": "test-v1",
+        "fixtures": [{
+            "id": "cute", "source_language": "ko", "source_text": "참귀엽죠?",
+            "accepted_translation": "Isn't he cute?",
+            "rejected_translations": ["Isn't he cruel?"],
+        }],
+    }), encoding="utf-8")
+    return path
+
+
+def test_qualification_passes_only_when_good_and_bad_scores_separate(tmp_path):
+    path = fixture_file(tmp_path)
+    report = run_qualification(
+        path, lambda source, target: 0.95 if "cute" in target else 0.2,
+        model="fixture", threshold=0.85,
+    )
+    assert report["passed"] is True
+    assert report["release_qualified"] is True
+    assert report["fixture_set"] == "test-v1"
+
+
+def test_machine_review_environment_uses_workspace_cache(tmp_path):
+    env = prepare_machine_review_environment({"PYTHON_CACHE_HOME": str(tmp_path)})
+    assert env["HF_HOME"] == str(tmp_path / "huggingface")
+    assert env["TORCH_HOME"] == str(tmp_path / "torch")
+
+
+def test_qualification_fails_when_plausible_corruption_scores_high(tmp_path):
+    report = run_qualification(
+        fixture_file(tmp_path), lambda source, target: 0.95,
+        model="fixture", threshold=0.85,
+    )
+    assert report["passed"] is False
+    assert report["release_qualified"] is False
+
+
+def test_fixture_loader_rejects_empty_set(tmp_path):
+    path = tmp_path / "empty.json"
+    path.write_text(json.dumps({"schema_version": 1, "fixture_set": "empty", "fixtures": []}))
+    try:
+        load_fixtures(path)
+    except ValueError as error:
+        assert "must not be empty" in str(error)
+    else:
+        raise AssertionError("empty fixture set was accepted")
+
+
+def test_mandarin_grounding_blocks_negation_and_role_swap_at_high_score():
+    fixture_path = Path(__file__).parent / "fixtures" / "machine_review_calibration.json"
+    _fixture_set, fixtures = load_fixtures(fixture_path)
+    treaty = next(item for item in fixtures if item.fixture_id == "mandarin-shimonoseki")
+    report = calibrate_machine_reviewer(
+        (treaty,), lambda source, target: 0.99, MachineReviewPolicy(),
+    )
+    assert report["passed"] is True
+    rejected = {item["translation"]: item for item in report["results"][0]["rejected"]}
+    for translation in (
+        "Japan did not sign the Treaty of Shimonoseki.",
+        "The Treaty of Shimonoseki signed Japan.",
+    ):
+        assert rejected[translation]["blocked"] is True
+        assert any(
+            issue["type"] == "source_grounding_mismatch"
+            for issue in rejected[translation]["deterministic_issues"]
+        )
+
+
+def test_pipeline_dispatches_machine_review_help(monkeypatch):
+    monkeypatch.setattr("sys.argv", ["videotranslator", "qualify-machine-review", "--help"])
+    try:
+        main()
+    except SystemExit as error:
+        assert error.code == 0

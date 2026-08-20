@@ -1,6 +1,6 @@
 # Video Translator project handoff
 
-Last durable update: 2026-08-16. Run `python -m videotranslator history` for the
+Last durable update: 2026-08-20. Run `python -m videotranslator history` for the
 current branch, working tree, and recent commit IDs rather than copying a possibly
 stale commit hash from this document.
 
@@ -33,6 +33,22 @@ Rejected runs retain diagnostic `rejected.srt` files and do not retain
 subtitles.
 
 ## Current blocker and next action
+
+Current active state: three-route adjudication accepted 348 of 367 groups and
+left 19 unresolved. Protocol-3 machine review now has terminology consensus,
+polarity/relation grounding, and an explicitly recorded low-COMET override that
+is allowed only when every stronger companion gate passes. It remains
+disconnected from `final.srt` promotion.
+
+The immediate blocker is credible semantic labeling of the accepted population.
+A precommitted 59-item reliability audit (32 Japanese, 16 Korean, 11 Mandarin)
+has been generated under the ignored workspace-local
+`outputs/step27-reliability-audit`; all clips are readable and hash-valid. No
+semantic decisions exist yet. The next action is to obtain independent bilingual
+labels, or run an independent-model audit while clearly reporting it as
+machine-estimated reliability. Do not claim episode accuracy or enable automatic
+promotion before evaluating those decisions. See
+`docs/episode-accuracy-audit.md`.
 
 Step 24 speech-to-English evidence is implemented and opt-in via
 `--speech-translation`. Workstation A prefetched `facebook/seamless-m4t-v2-large`
@@ -118,6 +134,108 @@ early/middle/late groups (eight per sample) and 24 verified-readable hashed WAV
 clips. The 19 unresolved items and 24 accepted audit items are both pending real
 human decisions; no generated subtitle has been promoted.
 
+Step 27 review schema v2 is being developed on `videoTranslator` because the
+project owner does not speak the sample source languages. It replaces ambiguous
+`human_verified` decisions with capability-aware `bilingual_verified`,
+`target_language_reviewed`, and `unable_to_verify` states. Only bilingual review
+can resolve semantic disagreements; English-only review remains useful evidence
+but cannot promote a subtitle.
+
+Step 27A automatic review has started. A model-independent fail-closed gate now
+requires reference-free quality, agreement from at least two independent routes,
+round-trip semantic preservation, deterministic integrity checks, and a named
+passing adversarial calibration. Successful output is `machine_verified`, not
+human verification. It is not yet wired to promotion. Next, implement and
+qualify the COMETKiwi adapter against reviewed and deliberately corrupted
+multilingual fixtures before running it over the 19 unresolved groups. The lazy
+adapter is now implemented with shared-cache, offline, batch, device, and
+reference-free contract enforcement; model installation, gated-weight prefetch,
+and real-score qualification remain pending.
+
+The `qualify-machine-review` CLI now evaluates four reviewed Korean/Mandarin
+fixtures and thirteen adversarial corruptions, writes a versioned report, and
+fails closed. Offline contract tests pass, but no real COMET score has been
+recorded. Next, install `requirements/machine-review.txt`, accept the gated model
+terms, prefetch into the configured cache, and run qualification before choosing
+or changing any score threshold.
+
+The first real setup attempt on 2026-08-20 installed COMET, then restored the
+primary environment after its legacy constraints downgraded NumPy, Protobuf, and
+TorchMetrics below pipeline requirements. The full suite still passes. Hugging
+Face authentication is valid, but model download returned 403 because this
+account has not been granted access to `Unbabel/wmt22-cometkiwi-da`. Run COMET in
+a dedicated environment after accepting the model terms. No real qualification
+report was produced and machine review remains non-promoting.
+
+Gated access was subsequently granted. The pipeline now manages an ignored
+workspace-local `cometEnv`: `setup-comet-env` creates it once, a requirements
+fingerprint refreshes it when necessary, and `qualify-machine-review`
+automatically delegates to its interpreter without changing the caller's shell.
+The first CPU qualification completed and correctly rejected COMETKiwi at the
+0.85 threshold. It allowed `lovely` for `cute` (0.8632) and `Seattle` for `Seoul`
+(0.8587), while the reviewed Mandarin treaty translation scored only 0.3946.
+Evidence: `docs/machine-review-qualification.json`. No threshold can separate
+these reviewed good and bad cases; keep promotion disabled. Next, add explicit
+terminology/entity gates or qualify a stronger estimator.
+
+Machine-review protocol 2 now adds source-triggered terminology rules and
+cross-route proper-name consensus. A genuinely offline cached rerun succeeded
+after setting both Hugging Face and Transformers offline flags. All three Korean
+fixtures now pass and the prior `lovely`/`cute` and `Seattle`/`Seoul` escapes are
+blocked. Overall qualification remains rejected because the reviewed Mandarin
+treaty translation scores 0.3946. Evidence was refreshed in
+`docs/machine-review-qualification.json`. Next, qualify a stronger estimator;
+do not lower the threshold or run the 19 unresolved groups yet.
+
+The stronger `Unbabel/wmt23-cometkiwi-da-xl` qualification is complete and
+rejected. Correct Korean/Mandarin fixtures scored 0.7845, 0.8027, 0.6575, and
+0.2779 at the unchanged 0.85 threshold. It also ranked the `Seattle` corruption
+(0.8062) above correct `Seoul` (0.8027), so no scalar threshold makes it safe.
+Its documented Tanh negative tail is model-specifically floored to zero, with
+out-of-range values still rejected. Evidence:
+`docs/machine-review-wmt23-cometkiwi-xl-qualification.json`. Machine review stays
+non-promoting and the 19 unresolved groups remain untouched. Next, develop a
+source/terminology-grounded verifier for the Mandarin treaty case; do not lower
+the quality threshold.
+
+Machine-review protocol 3 now begins that source-grounded verifier. Required
+terms from an active reviewed source rule must appear in the selected candidate
+and be corroborated by at least two independent translation routes; failure
+evidence identifies each unsupported term and its supporting routes. This is
+tested for the Mandarin `Japan`, `Treaty`, and `Shimonoseki` claims, remains
+non-promoting, and does not bypass COMET. Next, add polarity and relation-claim
+grounding and qualify those gates against negation and role-swap corruptions.
+
+Polarity and relation grounding is now implemented within protocol 3. Reviewed
+claims are source-triggered, require an allowed relation phrase in the selected
+translation, require two-route corroboration during review, and record matched
+required/forbidden phrases plus supporting routes when blocked. The Mandarin
+fixture binds the Japan/treaty signing relation and now includes negation and
+subject/object role-swap mutations; calibration blocks both even at a synthetic
+0.99 quality score. Machine review remains non-promoting. Next, create a
+route-backed protocol-3 qualification artifact and broaden relation paraphrases
+without weakening the adversarial cases.
+
+At the owner's direction, automatic-review tolerance is loosened through a
+bounded grounded-quality override rather than a lower global COMET threshold.
+Low COMET scores may now be overridden only for an active reviewed source rule
+when deterministic integrity, terminology/entity consensus, relation/polarity,
+two-route semantic agreement, and round-trip preservation all pass. Results
+explicitly retain the score and set `quality_overridden: true`. Ungrounded text
+and any failed companion gate remain unresolved. This policy is implemented and
+tested but is not yet connected to `final.srt` promotion. Next, qualify it with
+route-backed paraphrases, then wire only qualified `machine_verified` results.
+
+Before promotion, a statistically precommitted episode audit has been prepared
+for the 348 accepted groups. A published seeded SHA-256 ranking selected 59
+groups proportionally: 32 Japanese, 16 Korean, and 11 Mandarin. This supports a
+one-sided “at least 95% accuracy at 95% confidence” statement only if all 59
+receive independent semantic review with zero material errors. The ignored
+workspace artifact contains 59 hash-valid, FFprobe-readable audio clips under
+`outputs/step27-reliability-audit`; no decisions are present yet. Evidence and
+method: `docs/episode-accuracy-audit.md`. Next, obtain bilingual labels, or keep
+an automated result explicitly categorized as model-estimated reliability.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining
@@ -158,7 +276,7 @@ on the destination system.
 
 ## Verification baseline
 
-The current workstation suite reports `189 passed, 3 skipped`. The three skips
+The current workstation suite reports `257 passed, 3 skipped`. The three skips
 require cached release artifacts absent from this checkout. The maintainability
 scan now excludes the ignored workspace-local `.venv`; targeted translation,
 agreement, and speech-translation tests also pass.
