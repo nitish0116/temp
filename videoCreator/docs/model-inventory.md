@@ -32,5 +32,13 @@ it does not silently replace production output with fixture blobs.
 - Environment and cache: shared `imageEnv` and `.model-cache/huggingface`
 
 The setup command prefetches both Sana and SmolVLM2. Offline setup succeeds only
-when both exact revisions are present, ensuring the automatic reviewer cannot be
+when all exact revisions are present, ensuring the automatic reviewer cannot be
 silently skipped when internet access is unavailable.
+
+## Sana ControlNet reference conditioning
+
+- Model: `ishan24/Sana_600M_1024px_ControlNetPlus_diffusers`
+- Revision: `c2c790efb0285f3d42dc6d7e73e58c80577cf447`
+- Runtime: shared `imageEnv`; weights: shared ignored `.model-cache/huggingface`
+- Purpose: condition shot generation on edge maps derived from promoted canonical
+  character references. The manifest records conditioning as a hard expansion gate.

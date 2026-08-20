@@ -19,6 +19,8 @@ MARKER = ENVIRONMENT / ".video-creator-environment.json"
 ACTIVE_FLAG = "VIDEO_CREATOR_IMAGE_ENV"
 MODEL_ID = "Efficient-Large-Model/Sana_1600M_1024px_diffusers"
 MODEL_REVISION = "ac0da2ff55fbe434795be0dce883042e4d49e2fc"
+CONTROLNET_MODEL_ID = "ishan24/Sana_600M_1024px_ControlNetPlus_diffusers"
+CONTROLNET_MODEL_REVISION = "c2c790efb0285f3d42dc6d7e73e58c80577cf447"
 REVIEW_MODEL_ID = "HuggingFaceTB/SmolVLM2-2.2B-Instruct"
 REVIEW_MODEL_REVISION = "482adb537c021c86670beed01cd58990d01e72e4"
 TORCH_REQUIREMENTS = ("torch==2.11.0+cu128", "torchvision==0.26.0+cu128")
@@ -107,7 +109,8 @@ def ensure_image_environment(
 def prefetch_models(*, python: Path, offline: bool, runner: Runner = subprocess.run) -> None:
     """Cache every pinned visual model once or verify all snapshots offline."""
     for model_id, revision in (
-        (MODEL_ID, MODEL_REVISION), (REVIEW_MODEL_ID, REVIEW_MODEL_REVISION),
+        (MODEL_ID, MODEL_REVISION), (CONTROLNET_MODEL_ID, CONTROLNET_MODEL_REVISION),
+        (REVIEW_MODEL_ID, REVIEW_MODEL_REVISION),
     ):
         command = [
             str(python), "-c",

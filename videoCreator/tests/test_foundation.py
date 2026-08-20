@@ -8,6 +8,7 @@ from video_creator.analysis import (
     ExtractiveAnalysisProvider, apply_analysis_decisions,
     build_analysis_review_template, validate_analysis,
 )
+from video_creator.artifacts import sha256_file
 from video_creator.images import (
     DeterministicFixtureImageProvider, SanaImageProvider, generate_assets,
     validate_assets,
@@ -427,6 +428,23 @@ def test_default_prompts_enforce_anime_illustration_style(tmp_path):
         DEFAULT_VISUAL_STYLE in item["reference_prompt"]
         for item in prompts["reference_requirements"]
     )
+
+
+def test_shot_generation_consumes_canonical_reference_images(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    prompts = compile_prompts(plan_storyboard(scenes, target_shot_seconds=30), analysis)
+    reference = tmp_path / "references" / "mira.png"
+    DeterministicFixtureImageProvider().generate("Mira", reference, seed=7)
+    assets = generate_assets(
+        prompts, tmp_path, candidates_per_item=1, asset_kinds=frozenset({"shot"}),
+        canonical_references={
+            "character-mira": {"path": "references/mira.png", "sha256": sha256_file(reference)},
+        },
+        reference_conditioning=True,
+    )
+    assert assets["reference_conditioning"] is True
+    assert validate_assets(assets, prompts, tmp_path) == []
 
 
 def test_fixture_images_are_ranked_selected_and_hash_validated(tmp_path):

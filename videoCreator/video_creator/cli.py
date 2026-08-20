@@ -9,9 +9,10 @@ import sys
 from pathlib import Path
 
 from .artifacts import read_json
-from .images import SanaImageProvider
+from .images import SanaControlNetImageProvider, SanaImageProvider
 from .local_image_environment import (
     ACTIVE_FLAG, MODEL_ID, MODEL_REVISION, cache_root, run_local_images,
+    CONTROLNET_MODEL_ID, CONTROLNET_MODEL_REVISION,
     REVIEW_MODEL_ID, REVIEW_MODEL_REVISION, setup_local_images,
 )
 from .project import (
@@ -88,7 +89,7 @@ def parser() -> argparse.ArgumentParser:
     images.add_argument("workspace", type=Path)
     images.add_argument("--candidates-per-item", type=int, default=2)
     images.add_argument("--maximum-attempts", type=int, default=2)
-    images.add_argument("--provider", choices=("fixture", "sana"), default="fixture")
+    images.add_argument("--provider", choices=("fixture", "sana", "sana-controlnet"), default="fixture")
     images.add_argument("--model-id", default=MODEL_ID)
     images.add_argument("--model-revision", default=MODEL_REVISION)
     images.add_argument("--inference-steps", type=int, default=20)
@@ -118,7 +119,7 @@ def parser() -> argparse.ArgumentParser:
     pilot.add_argument("--shot-limit", type=int, default=4)
     pilot.add_argument("--candidates-per-item", type=int, default=1)
     pilot.add_argument("--maximum-attempts", type=int, default=2)
-    pilot.add_argument("--provider", choices=("fixture", "sana"), default="fixture")
+    pilot.add_argument("--provider", choices=("fixture", "sana", "sana-controlnet"), default="fixture")
     pilot.add_argument("--model-id", default=MODEL_ID)
     pilot.add_argument("--model-revision", default=MODEL_REVISION)
     pilot.add_argument("--inference-steps", type=int, default=20)
@@ -184,14 +185,21 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "compile-prompts":
         result = compile_project_prompts(args.workspace, style=args.style)
     elif args.command in {"generate-images", "generate-character-references", "generate-shot-pilot"}:
-        if args.provider == "sana" and os.environ.get(ACTIVE_FLAG) != "1":
+        if args.provider in {"sana", "sana-controlnet"} and os.environ.get(ACTIVE_FLAG) != "1":
             raw_arguments = list(argv) if argv is not None else sys.argv[1:]
             raise SystemExit(run_local_images(raw_arguments))
-        provider = None if args.provider == "fixture" else SanaImageProvider(
-            args.model_id, model_revision=args.model_revision,
-            inference_steps=args.inference_steps,
-            guidance_scale=args.guidance_scale,
-        )
+        if args.provider == "fixture":
+            provider = None
+        elif args.provider == "sana-controlnet":
+            provider = SanaControlNetImageProvider(
+                CONTROLNET_MODEL_ID, model_revision=CONTROLNET_MODEL_REVISION,
+                inference_steps=args.inference_steps, guidance_scale=args.guidance_scale,
+            )
+        else:
+            provider = SanaImageProvider(
+                args.model_id, model_revision=args.model_revision,
+                inference_steps=args.inference_steps, guidance_scale=args.guidance_scale,
+            )
         if args.command == "generate-shot-pilot":
             result = generate_project_shot_pilot(
                 args.workspace, provider, shot_limit=args.shot_limit,

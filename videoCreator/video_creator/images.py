@@ -18,6 +18,11 @@ class ImageProvider(Protocol):
     def generate(self, prompt: str, output: Path, *, seed: int) -> None:
         """Generate one image candidate at output."""
 
+    def generate_conditioned(
+        self, prompt: str, output: Path, *, seed: int, reference_images: list[Path],
+    ) -> None:
+        """Generate using canonical images as model inputs."""
+
 
 class DeterministicFixtureImageProvider:
     """Create tiny valid PNG fixtures without network or model dependencies."""
@@ -45,6 +50,14 @@ class DeterministicFixtureImageProvider:
         ) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_bytes(png)
+
+    def generate_conditioned(
+        self, prompt: str, output: Path, *, seed: int, reference_images: list[Path],
+    ) -> None:
+        if not reference_images or not all(path.is_file() for path in reference_images):
+            raise ValueError("conditioned generation requires existing reference images")
+        reference_key = ":".join(sha256_file(path) for path in reference_images)
+        self.generate(f"{prompt}:references={reference_key}", output, seed=seed)
 
 
 class SanaImageProvider:
@@ -119,6 +132,93 @@ class SanaImageProvider:
         result.images[0].save(output, format="PNG")
 
 
+class SanaControlNetImageProvider:
+    """Offline Sana ControlNet adapter using canonical images as edge conditions."""
+
+    def __init__(
+        self, model_id: str = "ishan24/Sana_600M_1024px_ControlNetPlus_diffusers", *,
+        model_revision: str = "c2c790efb0285f3d42dc6d7e73e58c80577cf447",
+        cache_directory: Path | None = None, inference_steps: int = 20,
+        guidance_scale: float = 4.5, conditioning_scale: float = 0.65,
+        device: str = "cuda",
+    ) -> None:
+        self.model_id = model_id
+        self.model_revision = model_revision
+        self.cache_directory = cache_directory
+        self.inference_steps = inference_steps
+        self.guidance_scale = guidance_scale
+        self.conditioning_scale = conditioning_scale
+        self.device = device
+        self._pipeline = None
+
+    @property
+    def name(self) -> str:
+        return (
+            f"sana-controlnet-local:{self.model_id}@{self.model_revision[:12]}:"
+            f"steps={self.inference_steps}:guidance={self.guidance_scale}:"
+            f"conditioning={self.conditioning_scale}"
+        )
+
+    def _load(self):
+        if self._pipeline is not None:
+            return self._pipeline
+        if self.cache_directory is not None and not self.cache_directory.is_dir():
+            raise RuntimeError("local Sana ControlNet cache is missing; run setup-local-images")
+        try:
+            import torch
+            from diffusers import SanaControlNetPipeline
+        except ImportError as error:
+            raise RuntimeError("Sana ControlNet dependencies are missing from imageEnv") from error
+        if self.device == "cuda" and not torch.cuda.is_available():
+            raise RuntimeError("CUDA is required for Sana ControlNet")
+        try:
+            pipeline = SanaControlNetPipeline.from_pretrained(
+                self.model_id, revision=self.model_revision, variant="fp16",
+                torch_dtype={"default": torch.float16}, local_files_only=True,
+                cache_dir=str(self.cache_directory) if self.cache_directory else None,
+            )
+        except OSError as error:
+            raise RuntimeError("local Sana ControlNet cache is missing; run setup-local-images") from error
+        pipeline.to(self.device)
+        self._pipeline = pipeline
+        return pipeline
+
+    @staticmethod
+    def _control_image(reference_images: list[Path]):
+        from PIL import Image, ImageFilter, ImageOps
+        if not reference_images:
+            raise ValueError("Sana ControlNet requires at least one canonical reference")
+        images = [Image.open(path).convert("RGB").resize((1024, 1024)) for path in reference_images]
+        if len(images) == 1:
+            source = images[0]
+        else:
+            tile_width = 1024 // len(images)
+            source = Image.new("RGB", (1024, 1024), "white")
+            for index, image in enumerate(images):
+                source.paste(ImageOps.fit(image, (tile_width, 1024)), (index * tile_width, 0))
+        return ImageOps.autocontrast(source.convert("L").filter(ImageFilter.FIND_EDGES)).convert("RGB")
+
+    def generate_conditioned(
+        self, prompt: str, output: Path, *, seed: int, reference_images: list[Path],
+    ) -> None:
+        pipeline = self._load()
+        import torch
+        result = pipeline(
+            prompt=prompt, negative_prompt="photorealism, live action, 3D render",
+            control_image=self._control_image(reference_images), width=1024, height=1024,
+            num_inference_steps=self.inference_steps, guidance_scale=self.guidance_scale,
+            controlnet_conditioning_scale=self.conditioning_scale,
+            generator=torch.Generator(device=self.device).manual_seed(seed),
+        )
+        if not result.images:
+            raise RuntimeError("local Sana ControlNet returned no image")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        result.images[0].save(output, format="PNG")
+
+    def generate(self, prompt: str, output: Path, *, seed: int) -> None:
+        raise ValueError("Sana ControlNet provider requires canonical reference images")
+
+
 def _score(seed: int, prompt: str) -> dict:
     digest = hashlib.sha256(f"score:{seed}:{prompt}".encode("utf-8")).digest()
     values = [round(0.75 + byte / 1020, 4) for byte in digest[:3]]
@@ -133,7 +233,7 @@ def generate_assets(
     *, candidates_per_item: int = 2, maximum_attempts: int = 2,
     fallback_provider: ImageProvider | None = None, previous: dict | None = None,
     asset_kinds: frozenset[str] | None = None, asset_namespace: str | None = None,
-    canonical_references: dict[str, str] | None = None,
+    canonical_references: dict[str, dict[str, str] | str] | None = None,
     asset_ids: frozenset[str] | None = None,
     reference_conditioning: bool = False,
 ) -> dict:
@@ -155,7 +255,11 @@ def generate_assets(
     items = []
     reused = []
     regenerated = []
-    reference_hashes = canonical_references or {}
+    reference_records = canonical_references or {}
+    reference_hashes = {
+        identifier: value if isinstance(value, str) else value["sha256"]
+        for identifier, value in reference_records.items()
+    }
     all_work = [
         (
             item["shot_id"], "shot", item["prompt"],
@@ -213,7 +317,21 @@ def generate_assets(
             for attempt in range(1, maximum_attempts + 2):
                 generated_by = selected if attempt <= maximum_attempts else fallback
                 try:
-                    generated_by.generate(prompt, output, seed=seed)
+                    referenced = [
+                        root / reference_records[reference_id]["path"]
+                        for reference_id in next(
+                            (candidate.get("reference_ids", []) for candidate in prompts["prompts"]
+                             if candidate["shot_id"] == identifier), []
+                        )
+                        if isinstance(reference_records.get(reference_id), dict)
+                    ]
+                    if referenced:
+                        generate_conditioned = getattr(generated_by, "generate_conditioned", None)
+                        if generate_conditioned is None:
+                            raise ValueError("selected provider does not support reference conditioning")
+                        generate_conditioned(prompt, output, seed=seed, reference_images=referenced)
+                    else:
+                        generated_by.generate(prompt, output, seed=seed)
                     attempts.append({
                         "attempt": attempt, "provider": generated_by.name,
                         "status": "generated", "error": None,
@@ -248,7 +366,7 @@ def generate_assets(
         "asset_namespace": asset_namespace,
         "canonical_reference_sha256": reference_hashes,
         "asset_ids": sorted(asset_ids) if asset_ids is not None else None,
-        "reference_conditioning": reference_conditioning,
+        "reference_conditioning": bool(reference_records) and reference_conditioning,
         "assets": items,
         "regeneration": {
             "reused_asset_ids": reused, "regenerated_asset_ids": regenerated,

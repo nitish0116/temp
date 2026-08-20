@@ -360,12 +360,13 @@ def generate_project_images(
     if canonical_stage.get("status") == "auto_accepted":
         canonical = read_json(root / canonical_stage["artifact"])
         canonical_hashes = {
-            item["reference_id"]: item["sha256"] for item in canonical["references"]
+            item["reference_id"]: {"sha256": item["sha256"], "path": item["path"]}
+            for item in canonical["references"]
         }
     assets = generate_assets(
         prompts, root, provider, candidates_per_item=candidates_per_item,
         maximum_attempts=maximum_attempts, previous=previous,
-        canonical_references=canonical_hashes,
+        canonical_references=canonical_hashes, reference_conditioning=bool(canonical_hashes),
     )
     issues = validate_assets(assets, prompts, root)
     if issues:
@@ -430,7 +431,10 @@ def generate_project_shot_pilot(
     if canonical_stage.get("status") != "auto_accepted":
         raise ValueError("shot pilot requires accepted canonical references")
     canonical = read_json(root / canonical_stage["artifact"])
-    hashes = {item["reference_id"]: item["sha256"] for item in canonical["references"]}
+    hashes = {
+        item["reference_id"]: {"sha256": item["sha256"], "path": item["path"]}
+        for item in canonical["references"]
+    }
     identifiers = frozenset(item["shot_id"] for item in prompts["prompts"][:shot_limit])
     output = root / "images" / "shot-pilot.json"
     previous = read_json(output) if output.is_file() else None
@@ -438,7 +442,7 @@ def generate_project_shot_pilot(
         prompts, root, provider, candidates_per_item=candidates_per_item,
         maximum_attempts=maximum_attempts, previous=previous,
         asset_kinds=frozenset({"shot"}), asset_namespace="shot-pilot",
-        canonical_references=hashes, asset_ids=identifiers,
+        canonical_references=hashes, asset_ids=identifiers, reference_conditioning=True,
     )
     issues = validate_assets(assets, prompts, root)
     if issues:
