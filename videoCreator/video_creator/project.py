@@ -15,6 +15,7 @@ from .narration import (
     build_narration_response_template,
     validate_adapted_narration, validate_narration_plan,
 )
+from .prompts import compile_prompts, validate_prompts
 from .scenes import (
     SceneEnrichmentProvider, enrich_scenes, segment_scenes,
     validate_enriched_scenes, validate_scenes,
@@ -57,6 +58,7 @@ def initialize_project(root: Path, project_id: str, title: str, rights_status: s
             "narration": {"status": "pending"},
             "scenes": {"status": "pending"},
             "storyboard": {"status": "pending"},
+            "prompts": {"status": "pending"},
         },
     }
     write_json_atomic(root / "project.json", manifest)
@@ -299,6 +301,34 @@ def plan_project_storyboard(root: Path, *, target_shot_seconds: float = 15.0) ->
     return storyboard
 
 
+def compile_project_prompts(root: Path, *, style: str = "cinematic illustrated realism") -> dict:
+    """Compile image prompts and nonblocking character-reference defaults."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    storyboard_stage = manifest.get("stages", {}).get("storyboard", {})
+    if storyboard_stage.get("status") != "auto_accepted":
+        raise ValueError("prompt compilation requires an accepted storyboard")
+    storyboard = read_json(root / storyboard_stage["artifact"])
+    analysis = read_json(root / manifest["stages"]["analysis"]["artifact"])
+    output = root / "prompts" / "image-prompts.json"
+    previous = read_json(output) if output.is_file() else None
+    compiled = compile_prompts(storyboard, analysis, style=style, previous=previous)
+    issues = validate_prompts(compiled, storyboard, analysis)
+    if issues:
+        raise ValueError("invalid image prompts: " + "; ".join(issues))
+    write_json_atomic(output, compiled)
+    manifest["stages"]["prompts"] = {
+        "status": "auto_accepted", "artifact": "prompts/image-prompts.json",
+        "input_sha256": storyboard["source_sha256"], "compiler": compiled["compiler"],
+        "updated_at": now(), "approval_required": False,
+        "optional_character_choices": len(compiled["reference_requirements"]),
+        "reused_count": len(compiled["regeneration"]["reused_shot_ids"]),
+        "regenerated_count": len(compiled["regeneration"]["regenerated_shot_ids"]),
+    }
+    write_json_atomic(manifest_path, manifest)
+    return compiled
+
+
 def validate_project(root: Path) -> list[str]:
     """Validate the available project and source contracts."""
     issues = []
@@ -373,5 +403,16 @@ def validate_project(root: Path) -> list[str]:
         else:
             issues.extend(validate_storyboard(
                 read_json(storyboard_path), read_json(scene_path),
+            ))
+    prompts_stage = manifest.get("stages", {}).get("prompts", {})
+    if prompts_stage.get("status") == "auto_accepted":
+        prompts_path = root / prompts_stage.get("artifact", "")
+        storyboard_path = root / storyboard_stage.get("artifact", "")
+        analysis_path = root / manifest["stages"]["analysis"].get("artifact", "")
+        if not prompts_path.is_file() or not storyboard_path.is_file() or not analysis_path.is_file():
+            issues.append("image prompt dependencies are missing")
+        else:
+            issues.extend(validate_prompts(
+                read_json(prompts_path), read_json(storyboard_path), read_json(analysis_path),
             ))
     return issues

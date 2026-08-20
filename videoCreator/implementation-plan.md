@@ -419,3 +419,16 @@ regenerated none. Project validation passes and the 20-test suite passes. Next,
 compile generation-ready image prompts and reference requirements from these
 shots, keeping major-character image selection optional and every other visual
 decision automatic.
+
+Generation-ready image prompt compilation is now implemented. Each accepted
+shot receives a positive prompt, bounded negative prompt, style, canonical
+character references, and a dependency fingerprint. Canonical IDs are resolved
+to display names; non-character entities never become character-reference
+requirements. Major characters get a nonblocking `optional_user_override`
+choice whose default action is automatic candidate generation and ranking.
+
+The local storyboard produced 32 validated prompts and optional reference slots
+for Tanya and Being X. Its unchanged rerun reused all 32 prompts and regenerated
+none. Project validation passes and the 21-test suite passes. Next, implement the
+image-provider contract, deterministic fixture images, automatic candidate
+scoring, and default reference selection while preserving the optional override.

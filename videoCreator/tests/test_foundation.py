@@ -16,6 +16,7 @@ from video_creator.narration import (
     build_narration_response_template, validate_adapted_narration,
     validate_narration_plan,
 )
+from video_creator.prompts import compile_prompts, validate_prompts
 from video_creator.scenes import (
     DeterministicSceneEnrichmentProvider, enrich_scenes, segment_scenes,
     validate_enriched_scenes, validate_scenes,
@@ -201,7 +202,7 @@ def adapted_fixture(tmp_path):
         "planning_usable": True,
         "entities": [{
             "review_status": "approved", "canonical_id": "mira", "name": "Mira",
-            "canonical_name": "Mira", "aliases": [],
+            "canonical_name": "Mira", "aliases": [], "kind": "character",
         }],
         "settings": [{
             "review_status": "approved", "canonical_id": "city",
@@ -353,6 +354,28 @@ def test_storyboard_covers_scenes_and_selectively_reuses_shots(tmp_path):
         second["regeneration"]["reused_shot_ids"]
     ))
     assert validate_storyboard(second, scenes) == []
+
+
+def test_prompt_compilation_is_complete_optional_and_selective(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    storyboard = plan_storyboard(scenes)
+    first = compile_prompts(storyboard, analysis)
+    assert validate_prompts(first, storyboard, analysis) == []
+    assert first["reference_requirements"] == [{
+        "reference_id": "character-mira",
+        "canonical_entity_id": "mira",
+        "canonical_name": "Mira",
+        "selection_mode": "optional_user_override",
+        "default_action": "generate_and_auto_rank",
+        "status": "default_ready",
+    }]
+    assert all(item["reference_ids"] == ["character-mira"] for item in first["prompts"])
+    second = compile_prompts(storyboard, analysis, previous=first)
+    assert second["regeneration"]["regenerated_shot_ids"] == []
+    assert second["regeneration"]["reused_shot_ids"] == [
+        shot["shot_id"] for shot in storyboard["shots"]
+    ]
 
 
 def test_adaptation_blocks_invented_numbers_and_entities(tmp_path):
