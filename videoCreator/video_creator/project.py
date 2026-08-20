@@ -10,6 +10,7 @@ from .analysis import (
     build_analysis_review_template, validate_analysis,
 )
 from .artifacts import read_json, write_json_atomic
+from .narration import build_narration_plan, validate_narration_plan
 from .source import ingest_markdown, normalize_markdown, validate_source
 
 
@@ -111,15 +112,46 @@ def approve_project_analysis(root: Path, decisions_path: Path) -> dict:
     issues = validate_analysis(approved, source)
     if issues:
         raise ValueError("invalid approved analysis: " + "; ".join(issues))
-    output = root / "analysis" / "entities.approved.json"
+    suffix = "approved" if approved["status"] == "approved" else "reviewed"
+    output = root / "analysis" / f"entities.{suffix}.json"
     write_json_atomic(output, approved)
     manifest["stages"]["analysis"] = {
-        "status": "approved", "artifact": "analysis/entities.approved.json",
+        "status": approved["status"], "artifact": f"analysis/entities.{suffix}.json",
         "input_sha256": source["sha256"], "provider": draft["provider"],
-        "updated_at": now(), "approval_required": False,
+        "updated_at": now(), "approval_required": not approved["release_usable"],
     }
     write_json_atomic(manifest_path, manifest)
     return approved
+
+
+def plan_project_narration(
+    root: Path, manuscript: Path, *, maximum_source_characters: int = 2400,
+) -> dict:
+    """Create bounded narration work units from reviewed planning identities."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    source = read_json(root / "source" / "source.json")
+    analysis_stage = manifest["stages"]["analysis"]
+    if analysis_stage.get("status") not in {"reviewed_draft", "approved"}:
+        raise ValueError("narration planning requires reviewed analysis")
+    analysis = read_json(root / analysis_stage["artifact"])
+    text = manuscript.read_text(encoding="utf-8-sig")
+    plan = build_narration_plan(
+        text, source, analysis,
+        maximum_source_characters=maximum_source_characters,
+    )
+    issues = validate_narration_plan(plan, source, analysis)
+    if issues:
+        raise ValueError("invalid narration plan: " + "; ".join(issues))
+    output = root / "script" / "narration.plan.json"
+    write_json_atomic(output, plan)
+    manifest["stages"]["narration"] = {
+        "status": "planned", "artifact": "script/narration.plan.json",
+        "input_sha256": source["sha256"], "updated_at": now(),
+        "approval_required": True,
+    }
+    write_json_atomic(manifest_path, manifest)
+    return plan
 
 
 def validate_project(root: Path) -> list[str]:
@@ -140,17 +172,28 @@ def validate_project(root: Path) -> list[str]:
         else:
             issues.extend(validate_source(read_json(source_path)))
     analysis_path = root / "analysis" / "entities.json"
-    if manifest.get("stages", {}).get("analysis", {}).get("status") in {"generated", "approved"}:
+    if manifest.get("stages", {}).get("analysis", {}).get("status") in {
+        "generated", "reviewed_draft", "approved",
+    }:
         if not analysis_path.is_file():
             issues.append("generated analysis artifact is missing")
         elif source_path.is_file():
-            selected = (
-                root / "analysis" / "entities.approved.json"
-                if manifest["stages"]["analysis"]["status"] == "approved"
-                else analysis_path
+            selected = root / manifest["stages"]["analysis"].get(
+                "artifact", "analysis/entities.json",
             )
             if not selected.is_file():
                 issues.append("selected analysis artifact is missing")
             else:
                 issues.extend(validate_analysis(read_json(selected), read_json(source_path)))
+    narration_stage = manifest.get("stages", {}).get("narration", {})
+    if narration_stage.get("status") == "planned":
+        narration_path = root / narration_stage.get("artifact", "")
+        analysis_artifact = manifest["stages"]["analysis"].get("artifact", "")
+        if not narration_path.is_file() or not analysis_artifact:
+            issues.append("planned narration dependencies are missing")
+        else:
+            issues.extend(validate_narration_plan(
+                read_json(narration_path), read_json(source_path),
+                read_json(root / analysis_artifact),
+            ))
     return issues

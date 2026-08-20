@@ -11,6 +11,7 @@ from video_creator.analysis import (
 from video_creator.project import (
     analyze_project_source, ingest_project_source, initialize_project, validate_project,
 )
+from video_creator.narration import build_narration_plan, validate_narration_plan
 from video_creator.source import ingest_markdown, validate_source
 
 
@@ -75,7 +76,10 @@ def test_analysis_approval_requires_complete_source_bound_decisions(tmp_path):
         manuscript.read_text(encoding="utf-8"), source["sha256"],
     )
     decisions = build_analysis_review_template(draft)
-    decisions.update({"reviewer": "editor", "reviewed_at": "2026-08-20T20:00:00Z"})
+    decisions.update({
+        "reviewer": "editor", "reviewer_type": "human",
+        "reviewed_at": "2026-08-20T20:00:00Z",
+    })
     decisions["entities"][0].update({
         "status": "approved", "canonical_id": "mira", "canonical_name": "Mira",
         "kind": "character", "aliases": ["Mira"],
@@ -97,7 +101,63 @@ def test_analysis_approval_rejects_stale_or_pending_decisions(tmp_path):
         manuscript.read_text(encoding="utf-8"), source["sha256"],
     )
     decisions = build_analysis_review_template(draft)
-    decisions.update({"reviewer": "editor", "reviewed_at": "2026-08-20T20:00:00Z"})
+    decisions.update({
+        "reviewer": "editor", "reviewer_type": "human",
+        "reviewed_at": "2026-08-20T20:00:00Z",
+    })
     decisions["analysis_fingerprint"] = "0" * 64
     with pytest.raises(ValueError, match="stale"):
         apply_analysis_decisions(draft, decisions)
+
+
+def test_model_assisted_review_is_planning_only(tmp_path):
+    manuscript = tmp_path / "story.md"
+    manuscript.write_text("# Story\n\nMira met Mira.\n", encoding="utf-8")
+    source = ingest_markdown(manuscript)
+    draft = ExtractiveAnalysisProvider().analyze(
+        manuscript.read_text(encoding="utf-8"), source["sha256"],
+    )
+    decisions = build_analysis_review_template(draft)
+    decisions.update({
+        "reviewer": "fixture-model", "reviewer_type": "model_assisted",
+        "reviewed_at": "2026-08-20T20:00:00Z",
+    })
+    decisions["entities"][0].update({
+        "status": "approved", "canonical_id": "mira", "canonical_name": "Mira",
+        "kind": "character",
+    })
+    decisions["settings"][0]["status"] = "rejected"
+    reviewed = apply_analysis_decisions(draft, decisions)
+    assert reviewed["status"] == "reviewed_draft"
+    assert reviewed["planning_usable"] is True
+    assert reviewed["release_usable"] is False
+
+
+def test_narration_plan_uses_bounded_source_ranges_and_canonical_ids(tmp_path):
+    text = "# Story\n\nMira entered.\n\nMira waited.\n\nNight fell.\n"
+    manuscript = tmp_path / "story.md"
+    manuscript.write_text(text, encoding="utf-8")
+    source = ingest_markdown(manuscript)
+    analysis = {
+        "analysis_id": "analysis-0001", "status": "reviewed_draft",
+        "planning_usable": True,
+        "entities": [{
+            "review_status": "approved", "canonical_id": "mira",
+            "name": "Mira", "canonical_name": "Mira", "aliases": [],
+        }],
+    }
+    plan = build_narration_plan(text, source, analysis, maximum_source_characters=200)
+    assert plan["blocks"][0]["canonical_entity_ids"] == ["mira"]
+    assert all(block["adapted_text"] is None for block in plan["blocks"])
+    assert validate_narration_plan(plan, source, analysis) == []
+
+
+def test_narration_plan_rejects_unreviewed_analysis(tmp_path):
+    manuscript = tmp_path / "story.md"
+    manuscript.write_text("# Story\n\nA synthetic paragraph.\n", encoding="utf-8")
+    source = ingest_markdown(manuscript)
+    with pytest.raises(ValueError, match="reviewed canonical"):
+        build_narration_plan(
+            manuscript.read_text(encoding="utf-8"), source,
+            {"analysis_id": "draft", "planning_usable": False},
+        )

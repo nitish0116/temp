@@ -110,6 +110,7 @@ def build_analysis_review_template(analysis: dict) -> dict:
         "analysis_fingerprint": analysis_fingerprint(analysis),
         "source_sha256": analysis["source_sha256"],
         "reviewer": None,
+        "reviewer_type": None,
         "reviewed_at": None,
         "entities": [{
             "entity_id": item["entity_id"], "status": "pending",
@@ -168,6 +169,9 @@ def apply_analysis_decisions(analysis: dict, decisions: dict) -> dict:
     if not reviewer:
         raise ValueError("analysis reviewer is required")
     reviewed_at = _review_timestamp(decisions.get("reviewed_at"))
+    reviewer_type = decisions.get("reviewer_type")
+    if reviewer_type not in {"human", "model_assisted"}:
+        raise ValueError("reviewer_type must be human or model_assisted")
     entity_decisions = _decision_map(
         decisions.get("entities"), "entity_id",
         {item["entity_id"] for item in analysis["entities"]},
@@ -207,9 +211,13 @@ def apply_analysis_decisions(analysis: dict, decisions: dict) -> dict:
                     if kind not in {"character", "organization", "concept", "event", "other"}:
                         raise ValueError(f"approved entity {item[id_field]} requires a valid kind")
                     item["kind"] = kind
-    output["status"] = "approved"
-    output["release_usable"] = True
-    output["review"] = {"reviewer": reviewer, "reviewed_at": reviewed_at}
+    output["status"] = "approved" if reviewer_type == "human" else "reviewed_draft"
+    output["release_usable"] = reviewer_type == "human"
+    output["planning_usable"] = True
+    output["review"] = {
+        "reviewer": reviewer, "reviewer_type": reviewer_type,
+        "reviewed_at": reviewed_at,
+    }
     return output
 
 
@@ -220,10 +228,12 @@ def validate_analysis(analysis: dict, source: dict) -> list[str]:
         issues.append("unsupported analysis schema_version")
     if analysis.get("source_sha256") != source.get("sha256"):
         issues.append("analysis source hash does not match ingested source")
-    if analysis.get("status") not in {"draft", "approved", "rejected"}:
+    if analysis.get("status") not in {"draft", "reviewed_draft", "approved", "rejected"}:
         issues.append("analysis status is invalid")
     if analysis.get("status") != "approved" and analysis.get("release_usable"):
         issues.append("unapproved analysis cannot be release usable")
+    if analysis.get("status") == "reviewed_draft" and not analysis.get("planning_usable"):
+        issues.append("reviewed draft must be planning usable")
     identifiers = set()
     canonical_ids = set()
     character_count = int(source.get("character_count", 0))

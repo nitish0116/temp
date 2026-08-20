@@ -10,7 +10,7 @@ from .artifacts import read_json
 from .project import (
     RIGHTS_STATES, analyze_project_source, ingest_project_source,
     approve_project_analysis, initialize_project, validate_project,
-    write_analysis_review_template,
+    plan_project_narration, write_analysis_review_template,
 )
 
 
@@ -35,6 +35,10 @@ def parser() -> argparse.ArgumentParser:
     approve = commands.add_parser("approve-analysis", help="Apply complete entity decisions")
     approve.add_argument("workspace", type=Path)
     approve.add_argument("decisions", type=Path)
+    narration = commands.add_parser("plan-narration", help="Create bounded adaptation units")
+    narration.add_argument("workspace", type=Path)
+    narration.add_argument("manuscript", type=Path)
+    narration.add_argument("--maximum-source-characters", type=int, default=2400)
     validate = commands.add_parser("validate", help="Validate project artifacts")
     validate.add_argument("workspace", type=Path)
     status = commands.add_parser("status", help="Show project stage states")
@@ -55,6 +59,11 @@ def main(argv: list[str] | None = None) -> None:
         result = write_analysis_review_template(args.workspace, args.output)
     elif args.command == "approve-analysis":
         result = approve_project_analysis(args.workspace, args.decisions)
+    elif args.command == "plan-narration":
+        result = plan_project_narration(
+            args.workspace, args.manuscript,
+            maximum_source_characters=args.maximum_source_characters,
+        )
     elif args.command == "validate":
         issues = validate_project(args.workspace)
         result = {"passed": not issues, "issues": issues}

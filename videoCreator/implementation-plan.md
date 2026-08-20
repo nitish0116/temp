@@ -297,3 +297,17 @@ Next, resolve that template editorially, then implement narration blocks and
 scene contracts against the approved canonical IDs. Alias choices such as whether
 `God`, `Lord`, and `Creator` represent one canonical entity must not be inferred
 silently by the pipeline.
+
+A model-assisted planning review has now resolved the local draft without
+misrepresenting it as human approval. It treats Tanya and Being X as characters,
+records `God`, `Creator`, and `Lord` as Being X aliases, retains Malthus as a
+historical reference, and classifies the Stanford Prison Experiment as an event.
+The result is `reviewed_draft`, planning-usable, non-release-usable, and still
+requires human approval.
+
+The narration planning contract is also implemented. It verifies the manuscript
+hash, requires reviewed canonical identities, groups the prologue into 14 bounded
+source-range units, records referenced canonical IDs, and leaves all adapted text
+empty with `pending_adaptation` status. Next, add a deterministic narration
+provider fixture, adaptation fidelity checks, and scene segmentation tied to
+these narration IDs.
