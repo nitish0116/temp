@@ -78,7 +78,10 @@ def parser() -> argparse.ArgumentParser:
         "compile-prompts", help="Compile image prompts and reference defaults",
     )
     prompts.add_argument("workspace", type=Path)
-    prompts.add_argument("--style", default="cinematic illustrated realism")
+    prompts.add_argument(
+        "--style", default=None,
+        help="Override the project's persistent visual style",
+    )
     images = commands.add_parser(
         "generate-images", help="Generate and automatically rank image candidates",
     )

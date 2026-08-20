@@ -20,7 +20,9 @@ from video_creator.narration import (
     build_narration_response_template, validate_adapted_narration,
     validate_narration_plan,
 )
-from video_creator.prompts import _visualize_narrative_beat, compile_prompts, validate_prompts
+from video_creator.prompts import (
+    DEFAULT_VISUAL_STYLE, _visualize_narrative_beat, compile_prompts, validate_prompts,
+)
 from video_creator.scenes import (
     DeterministicSceneEnrichmentProvider, enrich_scenes, segment_scenes,
     validate_enriched_scenes, validate_scenes,
@@ -373,9 +375,10 @@ def test_prompt_compilation_is_complete_optional_and_selective(tmp_path):
         "canonical_name": "Mira",
         "aliases": ["Mira"],
         "source_evidence": [],
-        "reference_prompt": (
-            "Isolated full-body character design sheet for Mira, neutral plain background, "
-            "single character, cinematic illustrated realism, no text, no captions, no panels."
+            "reference_prompt": (
+                "Isolated full-body character design sheet for Mira, neutral plain background, "
+                "single character, anime-style illustration, polished cinematic anime key art, "
+                "clean anime linework, cel shading, no text, no captions, no panels."
         ),
         "brief_compiler": "source-visual-brief-v1",
         "visual_constraints": [],
@@ -411,6 +414,19 @@ def test_contrastive_narrative_beat_becomes_visual_exclusion():
     visual = _visualize_narrative_beat(beat)
     assert "Show a stone orphanage" in visual
     assert "train platform" not in visual
+
+
+def test_default_prompts_enforce_anime_illustration_style(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    prompts = compile_prompts(plan_storyboard(scenes, target_shot_seconds=30), analysis)
+    assert all(item["style"] == DEFAULT_VISUAL_STYLE for item in prompts["prompts"])
+    assert all(DEFAULT_VISUAL_STYLE in item["prompt"] for item in prompts["prompts"])
+    assert all("photorealism" in item["negative_prompt"] for item in prompts["prompts"])
+    assert all(
+        DEFAULT_VISUAL_STYLE in item["reference_prompt"]
+        for item in prompts["reference_requirements"]
+    )
 
 
 def test_fixture_images_are_ranked_selected_and_hash_validated(tmp_path):

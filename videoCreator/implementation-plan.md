@@ -532,3 +532,10 @@ The four-shot pilot now passes semantic-core diversity, but development audit
 still shows clothing and facial drift from the canonical Tanya reference. Full
 expansion remains blocked until Sana generation consumes the canonical image as
 visual conditioning rather than using its hash only as an invalidation key.
+
+The project visual contract is now anime-style illustration. New projects store
+this choice in their manifest; prompt compilation inherits it automatically,
+character sheets use anime linework and cel shading, and negative prompts reject
+photorealistic, live-action, and 3D-render drift. The Tanya workspace is pinned
+to polished cinematic anime key art, so subsequent selective regeneration will
+replace the earlier realism-oriented pilot assets.

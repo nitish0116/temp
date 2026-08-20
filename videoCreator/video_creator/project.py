@@ -17,7 +17,7 @@ from .narration import (
     build_narration_response_template,
     validate_adapted_narration, validate_narration_plan,
 )
-from .prompts import compile_prompts, validate_prompts
+from .prompts import DEFAULT_VISUAL_STYLE, compile_prompts, validate_prompts
 from .scenes import (
     SceneEnrichmentProvider, enrich_scenes, segment_scenes,
     validate_enriched_scenes, validate_scenes,
@@ -53,6 +53,7 @@ def initialize_project(root: Path, project_id: str, title: str, rights_status: s
         "schema_version": 1,
         "project_id": project_id,
         "title": title,
+        "visual_style": DEFAULT_VISUAL_STYLE,
         "rights": {"status": rights_status, "release_blocked": rights_status == "unverified"},
         "created_at": now(),
         "stages": {
@@ -308,10 +309,11 @@ def plan_project_storyboard(root: Path, *, target_shot_seconds: float = 15.0) ->
     return storyboard
 
 
-def compile_project_prompts(root: Path, *, style: str = "cinematic illustrated realism") -> dict:
+def compile_project_prompts(root: Path, *, style: str | None = None) -> dict:
     """Compile image prompts and nonblocking character-reference defaults."""
     manifest_path = root / "project.json"
     manifest = read_json(manifest_path)
+    style = style or manifest.get("visual_style", DEFAULT_VISUAL_STYLE)
     storyboard_stage = manifest.get("stages", {}).get("storyboard", {})
     if storyboard_stage.get("status") != "auto_accepted":
         raise ValueError("prompt compilation requires an accepted storyboard")

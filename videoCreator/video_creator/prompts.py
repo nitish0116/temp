@@ -10,9 +10,10 @@ from .artifacts import sha256_text
 
 COMPILER = "deterministic-prompt-compiler-v1"
 REFERENCE_BRIEF_COMPILER = "source-visual-brief-v1"
+DEFAULT_VISUAL_STYLE = "anime-style illustration, polished cinematic anime key art"
 NEGATIVE_PROMPT = (
     "text, watermark, logo, duplicate character, extra limbs, identity drift, "
-    "anachronistic objects, inconsistent costume"
+    "anachronistic objects, inconsistent costume, photorealism, live action, 3D render"
 )
 
 
@@ -38,7 +39,7 @@ def _visualize_narrative_beat(beat: str) -> str:
 
 
 def compile_prompts(
-    storyboard: dict, analysis: dict, *, style: str = "cinematic illustrated realism",
+    storyboard: dict, analysis: dict, *, style: str = DEFAULT_VISUAL_STYLE,
     previous: dict | None = None, source_text: str | None = None,
 ) -> dict:
     """Compile every accepted shot without requiring a visual decision prompt."""
@@ -59,7 +60,7 @@ def compile_prompts(
         name = entity.get("canonical_name") or entity["name"]
         aliases = [name, *entity.get("aliases", [])]
         evidence = _character_evidence(source_text, aliases) if source_text else []
-        brief, visual_constraints = _visual_reference_prompt(name, source_text, aliases)
+        brief, visual_constraints = _visual_reference_prompt(name, source_text, aliases, style)
         requirements.append({
             "reference_id": f"character-{identifier}",
             "canonical_entity_id": identifier, "canonical_name": name,
@@ -155,12 +156,13 @@ def _character_evidence(source_text: str, aliases: list[str]) -> list[str]:
 
 
 def _visual_reference_prompt(
-    name: str, source_text: str | None, aliases: list[str],
+    name: str, source_text: str | None, aliases: list[str], style: str,
 ) -> tuple[str, list[str]]:
     """Distill explicit nearby age/presentation facts without sending prose to Sana."""
     base = (
         f"Isolated full-body character design sheet for {name}, neutral plain background, "
-        "single character, cinematic illustrated realism, no text, no captions, no panels."
+        f"single character, {style}, clean anime linework, cel shading, "
+        "no text, no captions, no panels."
     )
     if not source_text:
         return base, []
