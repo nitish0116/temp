@@ -373,7 +373,11 @@ def test_prompt_compilation_is_complete_optional_and_selective(tmp_path):
         "canonical_name": "Mira",
         "aliases": ["Mira"],
         "source_evidence": [],
-        "reference_prompt": "Source-evidenced character design for Mira. No visual evidence available.",
+        "reference_prompt": (
+            "Isolated full-body character design sheet for Mira, neutral plain background, "
+            "single character, cinematic illustrated realism, no text, no captions, no panels."
+        ),
+        "brief_compiler": "source-visual-brief-v1",
         "selection_mode": "optional_user_override",
         "default_action": "generate_and_auto_rank",
         "status": "default_ready",
@@ -396,7 +400,8 @@ def test_character_reference_prompt_includes_bounded_source_evidence(tmp_path):
     )
     requirement = compiled["reference_requirements"][0]
     assert requirement["source_evidence"]
-    assert "young pilot in a blue uniform" in requirement["reference_prompt"]
+    assert "young pilot in a blue uniform" in requirement["source_evidence"][0]
+    assert "Evidence:" not in requirement["reference_prompt"]
     assert len(requirement["source_evidence"]) <= 3
 
 

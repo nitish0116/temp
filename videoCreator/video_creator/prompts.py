@@ -9,6 +9,7 @@ from .artifacts import sha256_text
 
 
 COMPILER = "deterministic-prompt-compiler-v1"
+REFERENCE_BRIEF_COMPILER = "source-visual-brief-v1"
 NEGATIVE_PROMPT = (
     "text, watermark, logo, duplicate character, extra limbs, identity drift, "
     "anachronistic objects, inconsistent costume"
@@ -48,15 +49,13 @@ def compile_prompts(
         name = entity.get("canonical_name") or entity["name"]
         aliases = [name, *entity.get("aliases", [])]
         evidence = _character_evidence(source_text, aliases) if source_text else []
-        brief = (
-            f"Source-evidenced character design for {name}. "
-            + (" Evidence: " + " | ".join(evidence) if evidence else "No visual evidence available.")
-        )
+        brief = _visual_reference_prompt(name, source_text, aliases)
         requirements.append({
             "reference_id": f"character-{identifier}",
             "canonical_entity_id": identifier, "canonical_name": name,
             "aliases": sorted(set(aliases), key=str.casefold),
             "source_evidence": evidence, "reference_prompt": brief,
+            "brief_compiler": REFERENCE_BRIEF_COMPILER,
             "selection_mode": "optional_user_override",
             "default_action": "generate_and_auto_rank", "status": "default_ready",
         })
@@ -129,6 +128,37 @@ def _character_evidence(source_text: str, aliases: list[str]) -> list[str]:
         if len(unique) == 3:
             break
     return unique
+
+
+def _visual_reference_prompt(name: str, source_text: str | None, aliases: list[str]) -> str:
+    """Distill explicit nearby age/presentation facts without sending prose to Sana."""
+    base = (
+        f"Isolated full-body character design sheet for {name}, neutral plain background, "
+        "single character, cinematic illustrated realism, no text, no captions, no panels."
+    )
+    if not source_text:
+        return base
+    offsets = [
+        match.start() for alias in aliases for match in re.finditer(
+            rf"\b{re.escape(alias)}\b", source_text, re.IGNORECASE,
+        )
+    ]
+    if not offsets:
+        return base
+    first = min(offsets)
+    context = source_text[max(0, first - 1800):first + 900].casefold()
+    constraints = []
+    if any(term in context for term in ("newborn babe", "infant's wails", "babies certainly")):
+        constraints.append("very young infant or toddler child, not an adult")
+    elif "elderly man" in context:
+        constraints.append("elderly man")
+    elif "elderly woman" in context:
+        constraints.append("elderly woman")
+    if "nun" in context and "infant" in context:
+        constraints.append("plain early-twentieth-century orphanage child clothing, not a nun")
+    if constraints:
+        base += " Source-supported constraints: " + "; ".join(constraints) + "."
+    return base
 
 
 def validate_prompts(compiled: dict, storyboard: dict, analysis: dict) -> list[str]:

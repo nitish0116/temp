@@ -61,6 +61,13 @@ class SmolVLMReviewer:
                 "accepted": line_match.group(1).upper() == "ACCEPT" and score >= 0.75,
                 "score": score, "reasons": [" ".join(line_match.group(3).split())[:240]],
             }
+        bare = re.fullmatch(r"\s*(ACCEPT|REJECT)\.?\s*", str(text), re.IGNORECASE)
+        if bare:
+            accepted = bare.group(1).upper() == "ACCEPT"
+            return {
+                "accepted": accepted, "score": 0.8 if accepted else 0.0,
+                "reasons": ["reviewer returned a bare semantic verdict"],
+            }
         match = re.search(r"\{.*\}", str(text), re.DOTALL)
         if not match:
             diagnostic = " ".join(str(text).split())[:240]

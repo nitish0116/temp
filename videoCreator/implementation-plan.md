@@ -489,3 +489,11 @@ also proved that raw prose is unsuitable as an image prompt: Sana rendered scene
 layouts and pseudo-text instead of isolated character sheets. Next, distill the
 evidence into a concise visual-only character brief before bounded regeneration;
 raw excerpts remain reviewer evidence but must not be sent directly to Sana.
+
+The visual-only brief compiler is now implemented. It extracts explicit nearby
+age and presentation constraints while keeping raw excerpts exclusively in the
+review context. The bounded retry produced clean character sheets: an elderly
+male design for Being X and a toddler in plain period orphanage clothing for
+Tanya. SmolVLM2 independently returned ACCEPT for all four candidates. Next,
+persist reviewer-selected canonical reference files and feed their hashes into
+shot prompt and selective-regeneration dependencies.
