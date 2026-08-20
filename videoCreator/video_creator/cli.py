@@ -75,6 +75,7 @@ def parser() -> argparse.ArgumentParser:
     )
     images.add_argument("workspace", type=Path)
     images.add_argument("--candidates-per-item", type=int, default=2)
+    images.add_argument("--maximum-attempts", type=int, default=2)
     validate = commands.add_parser("validate", help="Validate project artifacts")
     validate.add_argument("workspace", type=Path)
     status = commands.add_parser("status", help="Show project stage states")
@@ -120,6 +121,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "generate-images":
         result = generate_project_images(
             args.workspace, candidates_per_item=args.candidates_per_item,
+            maximum_attempts=args.maximum_attempts,
         )
     elif args.command == "validate":
         issues = validate_project(args.workspace)

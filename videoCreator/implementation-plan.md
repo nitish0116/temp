@@ -445,3 +445,15 @@ was required, and Tanya or Being X can still be overridden later. Workspace
 validation passes and the 22-test suite passes. Next, add asset-level reuse and
 provider retry/fallback so unchanged images incur no generation work and failed
 production candidates recover without intervention.
+
+Asset-level reuse and provider recovery are now implemented. An asset is reused
+only when its dependency, provider, candidate count, files, hashes, and successful
+generation provenance still match. Otherwise only that asset is regenerated.
+Each candidate records every provider attempt; failures receive bounded retries
+before the deterministic fallback runs automatically.
+
+The local manifest was upgraded with provenance for all 68 candidates. Its next
+run reused all 34 selected asset groups, regenerated none, and made no generation
+calls. Corruption, zero-call reuse, and retry-to-fallback behavior are covered by
+the 24-test passing suite. Next, implement autonomous narration-audio generation
+with the same provider, retry, hash, selection, and selective-reuse contracts.

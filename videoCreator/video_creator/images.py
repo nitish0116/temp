@@ -57,15 +57,22 @@ def _score(seed: int, prompt: str) -> dict:
 
 def generate_assets(
     prompts: dict, root: Path, provider: ImageProvider | None = None,
-    *, candidates_per_item: int = 2,
+    *, candidates_per_item: int = 2, maximum_attempts: int = 2,
+    fallback_provider: ImageProvider | None = None, previous: dict | None = None,
 ) -> dict:
     """Generate, rank, and select image and character-reference candidates."""
     if prompts.get("status") != "auto_accepted":
         raise ValueError("image generation requires accepted prompts")
     if not 1 <= candidates_per_item <= 4:
         raise ValueError("candidates_per_item must be between one and four")
+    if maximum_attempts < 1:
+        raise ValueError("maximum_attempts must be positive")
     selected = provider or DeterministicFixtureImageProvider()
+    fallback = fallback_provider or DeterministicFixtureImageProvider()
+    prior = {item.get("asset_id"): item for item in (previous or {}).get("assets", [])}
     items = []
+    reused = []
+    regenerated = []
     work = [
         (item["shot_id"], "shot", item["prompt"], item["dependency_sha256"])
         for item in prompts["prompts"]
@@ -77,16 +84,53 @@ def generate_assets(
         ) for item in prompts["reference_requirements"]
     ]
     for identifier, kind, prompt, dependency in work:
+        existing = prior.get(identifier)
+        if (
+            existing
+            and existing.get("dependency_sha256") == dependency
+            and existing.get("provider") == selected.name
+            and len(existing.get("candidates", [])) == candidates_per_item
+            and all(
+                (root / candidate.get("path", "")).is_file()
+                and sha256_file(root / candidate["path"]) == candidate.get("sha256")
+                and bool(candidate.get("generation_attempts"))
+                for candidate in existing["candidates"]
+            )
+        ):
+            items.append(existing)
+            reused.append(identifier)
+            continue
+        regenerated.append(identifier)
         candidates = []
         for index in range(1, candidates_per_item + 1):
             seed = int(hashlib.sha256(f"{identifier}:{index}".encode()).hexdigest()[:8], 16)
             relative = Path("images") / kind / identifier / f"candidate-{index:02d}.png"
             output = root / relative
-            selected.generate(prompt, output, seed=seed)
+            attempts = []
+            generated_by = selected
+            generated_successfully = False
+            for attempt in range(1, maximum_attempts + 2):
+                generated_by = selected if attempt <= maximum_attempts else fallback
+                try:
+                    generated_by.generate(prompt, output, seed=seed)
+                    attempts.append({
+                        "attempt": attempt, "provider": generated_by.name,
+                        "status": "generated", "error": None,
+                    })
+                    generated_successfully = True
+                    break
+                except Exception as exc:  # provider errors are recoverable stage data
+                    attempts.append({
+                        "attempt": attempt, "provider": generated_by.name,
+                        "status": "failed", "error": str(exc),
+                    })
+            if not generated_successfully or not output.is_file():
+                raise ValueError(f"all image providers failed for {identifier} candidate {index}")
             candidates.append({
                 "candidate_id": f"{identifier}-candidate-{index:02d}",
                 "path": relative.as_posix(), "seed": seed,
                 "sha256": sha256_file(output), "score": _score(seed, prompt),
+                "provider": generated_by.name, "generation_attempts": attempts,
             })
         winner = max(candidates, key=lambda value: (value["score"]["total"], value["candidate_id"]))
         items.append({
@@ -100,6 +144,9 @@ def generate_assets(
         "prompt_set_id": prompts["prompt_set_id"], "source_sha256": prompts["source_sha256"],
         "provider": selected.name, "status": "auto_accepted", "release_usable": False,
         "assets": items,
+        "regeneration": {
+            "reused_asset_ids": reused, "regenerated_asset_ids": regenerated,
+        },
     }
 
 
@@ -135,4 +182,7 @@ def validate_assets(assets: dict, prompts: dict, root: Path) -> list[str]:
                 issues.append(f"candidate hash mismatch: {candidate.get('candidate_id')}")
             if not 0 <= float(candidate.get("score", {}).get("total", -1)) <= 1:
                 issues.append(f"invalid candidate score: {candidate.get('candidate_id')}")
+            attempts = candidate.get("generation_attempts", [])
+            if not attempts or attempts[-1].get("status") != "generated":
+                issues.append(f"missing successful generation attempt: {candidate.get('candidate_id')}")
     return issues

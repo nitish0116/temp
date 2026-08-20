@@ -8,7 +8,9 @@ from video_creator.analysis import (
     ExtractiveAnalysisProvider, apply_analysis_decisions,
     build_analysis_review_template, validate_analysis,
 )
-from video_creator.images import generate_assets, validate_assets
+from video_creator.images import (
+    DeterministicFixtureImageProvider, generate_assets, validate_assets,
+)
 from video_creator.project import (
     analyze_project_source, ingest_project_source, initialize_project, validate_project,
 )
@@ -400,6 +402,54 @@ def test_fixture_images_are_ranked_selected_and_hash_validated(tmp_path):
     assert validate_assets(assets, prompts, tmp_path) == [
         f"candidate hash mismatch: {selected['candidates'][0]['candidate_id']}",
     ]
+
+
+def test_image_assets_reuse_valid_files_without_provider_calls(tmp_path):
+    class CountingProvider:
+        name = "counting-image-v1"
+
+        def __init__(self):
+            self.calls = 0
+            self.delegate = DeterministicFixtureImageProvider()
+
+        def generate(self, prompt, output, *, seed):
+            self.calls += 1
+            self.delegate.generate(prompt, output, seed=seed)
+
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    prompts = compile_prompts(plan_storyboard(scenes, target_shot_seconds=30), analysis)
+    provider = CountingProvider()
+    first = generate_assets(prompts, tmp_path, provider, candidates_per_item=1)
+    assert provider.calls == len(first["assets"])
+    provider.calls = 0
+    second = generate_assets(
+        prompts, tmp_path, provider, candidates_per_item=1, previous=first,
+    )
+    assert provider.calls == 0
+    assert second["regeneration"]["regenerated_asset_ids"] == []
+    assert second["regeneration"]["reused_asset_ids"] == [
+        item["asset_id"] for item in first["assets"]
+    ]
+
+
+def test_image_provider_failures_retry_then_use_fallback(tmp_path):
+    class FailingProvider:
+        name = "failing-image-v1"
+
+        def generate(self, prompt, output, *, seed):
+            raise RuntimeError("temporary provider failure")
+
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    prompts = compile_prompts(plan_storyboard(scenes, target_shot_seconds=30), analysis)
+    assets = generate_assets(
+        prompts, tmp_path, FailingProvider(), candidates_per_item=1, maximum_attempts=2,
+    )
+    attempts = assets["assets"][0]["candidates"][0]["generation_attempts"]
+    assert [item["status"] for item in attempts] == ["failed", "failed", "generated"]
+    assert attempts[-1]["provider"] == "deterministic-fixture-image-v1"
+    assert validate_assets(assets, prompts, tmp_path) == []
 
 
 def test_adaptation_blocks_invented_numbers_and_entities(tmp_path):

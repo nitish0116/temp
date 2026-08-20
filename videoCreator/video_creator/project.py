@@ -333,6 +333,7 @@ def compile_project_prompts(root: Path, *, style: str = "cinematic illustrated r
 
 def generate_project_images(
     root: Path, provider: ImageProvider | None = None, *, candidates_per_item: int = 2,
+    maximum_attempts: int = 2,
 ) -> dict:
     """Generate, rank, and select all visual candidates automatically."""
     manifest_path = root / "project.json"
@@ -341,19 +342,23 @@ def generate_project_images(
     if prompt_stage.get("status") != "auto_accepted":
         raise ValueError("image generation requires accepted prompts")
     prompts = read_json(root / prompt_stage["artifact"])
+    output = root / "images" / "assets.json"
+    previous = read_json(output) if output.is_file() else None
     assets = generate_assets(
         prompts, root, provider, candidates_per_item=candidates_per_item,
+        maximum_attempts=maximum_attempts, previous=previous,
     )
     issues = validate_assets(assets, prompts, root)
     if issues:
         raise ValueError("invalid generated images: " + "; ".join(issues))
-    output = root / "images" / "assets.json"
     write_json_atomic(output, assets)
     manifest["stages"]["images"] = {
         "status": "auto_accepted", "artifact": "images/assets.json",
         "input_sha256": prompts["source_sha256"], "provider": assets["provider"],
         "updated_at": now(), "approval_required": False,
         "asset_count": len(assets["assets"]),
+        "reused_count": len(assets["regeneration"]["reused_asset_ids"]),
+        "regenerated_count": len(assets["regeneration"]["regenerated_asset_ids"]),
     }
     write_json_atomic(manifest_path, manifest)
     return assets
