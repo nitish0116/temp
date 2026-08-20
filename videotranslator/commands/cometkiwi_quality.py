@@ -73,7 +73,8 @@ class CometKiwiQualityEstimator:
         try:
             checkpoint = download_model(
                 self.model_name,
-                saving_directory=self.cache_directory,
+                # COMET's legacy fallback calls ``endswith`` on this value.
+                saving_directory=str(self.cache_directory),
                 local_files_only=self.local_files_only,
             )
             model = load_model(checkpoint, local_files_only=self.local_files_only)

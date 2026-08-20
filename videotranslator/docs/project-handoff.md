@@ -143,6 +143,14 @@ recorded. Next, install `requirements/machine-review.txt`, accept the gated mode
 terms, prefetch into the configured cache, and run qualification before choosing
 or changing any score threshold.
 
+The first real setup attempt on 2026-08-20 installed COMET, then restored the
+primary environment after its legacy constraints downgraded NumPy, Protobuf, and
+TorchMetrics below pipeline requirements. The full suite still passes. Hugging
+Face authentication is valid, but model download returned 403 because this
+account has not been granted access to `Unbabel/wmt22-cometkiwi-da`. Run COMET in
+a dedicated environment after accepting the model terms. No real qualification
+report was produced and machine review remains non-promoting.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining

@@ -66,6 +66,7 @@ def test_adapter_is_lazy_batches_pairs_and_reuses_model(tmp_path):
     assert downloads == [] and loads == []
     scores = estimator.score_batch([("source one", "target one"), ("source two", "target two")])
     assert scores == [0.91, 0.82]
+    assert downloads[0][1]["saving_directory"] == str(tmp_path / "comet")
     assert downloads[0][1]["local_files_only"] is True
     assert loads[0][1]["local_files_only"] is True
     assert model.calls[0][1]["gpus"] == 0

@@ -79,10 +79,13 @@ headlessly from the local cache after download.
 the GPU has at least 8 GiB VRAM. `cuda` explicitly permits offload below that
 threshold; `cpu` forces `num_gpu=0`. This keeps both workstation profiles usable.
 
-Install the optional Step 27A adapter with
+Install the optional Step 27A adapter in a dedicated virtual environment with
 `python -m pip install -r videotranslator/requirements/machine-review.txt`.
-The adapter loads lazily, supports offline cache-only lookup, and must not be
-connected to promotion until its recorded adversarial qualification passes.
+COMET 2.2.7 constrains NumPy, Protobuf, and TorchMetrics below versions required
+by the main video pipeline, so do not resolve those downgrades into the primary
+environment. The adapter loads lazily, supports offline cache-only lookup, and
+must not be connected to promotion until its recorded adversarial qualification
+passes.
 
 ## Conditional alignment models
 

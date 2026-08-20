@@ -585,6 +585,13 @@ and remains disconnected from promotion. Next, install the optional COMET
 runtime, accept and prefetch the gated weights, and record the first real-score
 report; threshold tuning must use those results rather than assumptions.
 
+The first real setup attempt on 2026-08-20 confirmed that the account is
+authenticated but does not have access to the gated
+`Unbabel/wmt22-cometkiwi-da` repository. COMET 2.2.7 also requests dependency
+downgrades incompatible with the main pipeline, so qualification must run in a
+dedicated environment. The primary environment was restored and its full suite
+passes. No real score or qualification claim was produced.
+
 ### 28. Produce and validate dubbing only from approved subtitles
 
 - Freeze approved canonical text and speaker assignments before TTS begins.
