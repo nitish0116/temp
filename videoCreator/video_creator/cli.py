@@ -9,7 +9,8 @@ from pathlib import Path
 from .artifacts import read_json
 from .project import (
     RIGHTS_STATES, analyze_project_source, ingest_project_source,
-    initialize_project, validate_project,
+    approve_project_analysis, initialize_project, validate_project,
+    write_analysis_review_template,
 )
 
 
@@ -28,6 +29,12 @@ def parser() -> argparse.ArgumentParser:
     analyze = commands.add_parser("analyze", help="Create draft story/entity candidates")
     analyze.add_argument("workspace", type=Path)
     analyze.add_argument("manuscript", type=Path)
+    template = commands.add_parser("analysis-review-template", help="Create entity review decisions")
+    template.add_argument("workspace", type=Path)
+    template.add_argument("output", type=Path)
+    approve = commands.add_parser("approve-analysis", help="Apply complete entity decisions")
+    approve.add_argument("workspace", type=Path)
+    approve.add_argument("decisions", type=Path)
     validate = commands.add_parser("validate", help="Validate project artifacts")
     validate.add_argument("workspace", type=Path)
     status = commands.add_parser("status", help="Show project stage states")
@@ -44,6 +51,10 @@ def main(argv: list[str] | None = None) -> None:
         result = ingest_project_source(args.workspace, args.manuscript)
     elif args.command == "analyze":
         result = analyze_project_source(args.workspace, args.manuscript)
+    elif args.command == "analysis-review-template":
+        result = write_analysis_review_template(args.workspace, args.output)
+    elif args.command == "approve-analysis":
+        result = approve_project_analysis(args.workspace, args.decisions)
     elif args.command == "validate":
         issues = validate_project(args.workspace)
         result = {"passed": not issues, "issues": issues}

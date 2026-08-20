@@ -4,7 +4,10 @@ import json
 
 import pytest
 
-from video_creator.analysis import ExtractiveAnalysisProvider, validate_analysis
+from video_creator.analysis import (
+    ExtractiveAnalysisProvider, apply_analysis_decisions,
+    build_analysis_review_template, validate_analysis,
+)
 from video_creator.project import (
     analyze_project_source, ingest_project_source, initialize_project, validate_project,
 )
@@ -62,3 +65,39 @@ def test_project_analysis_rejects_changed_manuscript(tmp_path):
     manuscript.write_text("# Story\n\nThe source changed.\n", encoding="utf-8")
     with pytest.raises(ValueError, match="changed after ingestion"):
         analyze_project_source(workspace, manuscript)
+
+
+def test_analysis_approval_requires_complete_source_bound_decisions(tmp_path):
+    manuscript = tmp_path / "story.md"
+    manuscript.write_text("## City\n\nMira met Mira.\n", encoding="utf-8")
+    source = ingest_markdown(manuscript)
+    draft = ExtractiveAnalysisProvider().analyze(
+        manuscript.read_text(encoding="utf-8"), source["sha256"],
+    )
+    decisions = build_analysis_review_template(draft)
+    decisions.update({"reviewer": "editor", "reviewed_at": "2026-08-20T20:00:00Z"})
+    decisions["entities"][0].update({
+        "status": "approved", "canonical_id": "mira", "canonical_name": "Mira",
+        "kind": "character", "aliases": ["Mira"],
+    })
+    decisions["settings"][0].update({
+        "status": "approved", "canonical_id": "city", "canonical_name": "City",
+    })
+    approved = apply_analysis_decisions(draft, decisions)
+    assert approved["status"] == "approved" and approved["release_usable"] is True
+    assert approved["entities"][0]["canonical_id"] == "mira"
+    assert validate_analysis(approved, source) == []
+
+
+def test_analysis_approval_rejects_stale_or_pending_decisions(tmp_path):
+    manuscript = tmp_path / "story.md"
+    manuscript.write_text("# Story\n\nMira met Mira.\n", encoding="utf-8")
+    source = ingest_markdown(manuscript)
+    draft = ExtractiveAnalysisProvider().analyze(
+        manuscript.read_text(encoding="utf-8"), source["sha256"],
+    )
+    decisions = build_analysis_review_template(draft)
+    decisions.update({"reviewer": "editor", "reviewed_at": "2026-08-20T20:00:00Z"})
+    decisions["analysis_fingerprint"] = "0" * 64
+    with pytest.raises(ValueError, match="stale"):
+        apply_analysis_decisions(draft, decisions)

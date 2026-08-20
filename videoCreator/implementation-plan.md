@@ -285,3 +285,15 @@ Next, define approved entity/alias decisions and the narration and scene
 contracts. Then add deterministic fixture providers for source-linked narration
 adaptation and scene segmentation. Do not select production LLM, image, or TTS
 vendors until those offline contracts and selective regeneration are proven.
+
+Entity and setting decisions are now implemented. A generated review template
+binds every candidate to the exact analysis fingerprint and source hash, requires
+a named reviewer and timezone-qualified timestamp, and refuses incomplete or
+pending decisions. Approved candidates require stable canonical IDs, names, and
+entity kinds; rejected candidates remain explicit. The local Tanya workspace has
+a pending template for six entity/event/concept candidates and three settings.
+
+Next, resolve that template editorially, then implement narration blocks and
+scene contracts against the approved canonical IDs. Alias choices such as whether
+`God`, `Lord`, and `Creator` represent one canonical entity must not be inferred
+silently by the pipeline.

@@ -5,7 +5,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .analysis import AnalysisProvider, ExtractiveAnalysisProvider, validate_analysis
+from .analysis import (
+    AnalysisProvider, ExtractiveAnalysisProvider, apply_analysis_decisions,
+    build_analysis_review_template, validate_analysis,
+)
 from .artifacts import read_json, write_json_atomic
 from .source import ingest_markdown, normalize_markdown, validate_source
 
@@ -91,6 +94,34 @@ def analyze_project_source(
     return analysis
 
 
+def write_analysis_review_template(root: Path, output: Path) -> dict:
+    """Write a complete pending decision template for the current draft."""
+    template = build_analysis_review_template(read_json(root / "analysis" / "entities.json"))
+    write_json_atomic(output, template)
+    return template
+
+
+def approve_project_analysis(root: Path, decisions_path: Path) -> dict:
+    """Apply complete source-bound entity and setting review decisions."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    draft = read_json(root / "analysis" / "entities.json")
+    approved = apply_analysis_decisions(draft, read_json(decisions_path))
+    source = read_json(root / "source" / "source.json")
+    issues = validate_analysis(approved, source)
+    if issues:
+        raise ValueError("invalid approved analysis: " + "; ".join(issues))
+    output = root / "analysis" / "entities.approved.json"
+    write_json_atomic(output, approved)
+    manifest["stages"]["analysis"] = {
+        "status": "approved", "artifact": "analysis/entities.approved.json",
+        "input_sha256": source["sha256"], "provider": draft["provider"],
+        "updated_at": now(), "approval_required": False,
+    }
+    write_json_atomic(manifest_path, manifest)
+    return approved
+
+
 def validate_project(root: Path) -> list[str]:
     """Validate the available project and source contracts."""
     issues = []
@@ -109,9 +140,17 @@ def validate_project(root: Path) -> list[str]:
         else:
             issues.extend(validate_source(read_json(source_path)))
     analysis_path = root / "analysis" / "entities.json"
-    if manifest.get("stages", {}).get("analysis", {}).get("status") == "generated":
+    if manifest.get("stages", {}).get("analysis", {}).get("status") in {"generated", "approved"}:
         if not analysis_path.is_file():
             issues.append("generated analysis artifact is missing")
         elif source_path.is_file():
-            issues.extend(validate_analysis(read_json(analysis_path), read_json(source_path)))
+            selected = (
+                root / "analysis" / "entities.approved.json"
+                if manifest["stages"]["analysis"]["status"] == "approved"
+                else analysis_path
+            )
+            if not selected.is_file():
+                issues.append("selected analysis artifact is missing")
+            else:
+                issues.extend(validate_analysis(read_json(selected), read_json(source_path)))
     return issues
