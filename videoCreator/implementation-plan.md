@@ -558,3 +558,8 @@ Offline narration generation is implemented with FFmpeg's bundled Flite voice,
 blocks generated successfully on their first attempt (411.16 seconds total).
 Each clip has a text/provider dependency, immutable hash, duration, retry history,
 and selective-reuse contract.
+
+Audio-authoritative alignment and subtitles are complete. The 411.16-second
+narration was split into ordered cues capped at 42 characters, with continuous
+non-overlapping coverage. A shared alignment artifact now drives validated SRT
+and WebVTT deliverables, preventing timing drift between formats.

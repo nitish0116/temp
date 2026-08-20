@@ -25,6 +25,7 @@ from .scenes import (
 )
 from .source import ingest_markdown, normalize_markdown, validate_source
 from .storyboard import plan_storyboard, validate_storyboard
+from .subtitles import align_narration, validate_alignment, write_subtitles
 from .visual_review import review_character_references, review_shot_assets
 
 
@@ -432,6 +433,22 @@ def generate_project_narration_audio(root: Path) -> dict:
     }
     write_json_atomic(manifest_path, manifest)
     return audio
+
+def align_project_subtitles(root: Path) -> dict:
+    """Create authoritative timing plus SRT and WebVTT deliverables."""
+    manifest_path = root / "project.json"; manifest = read_json(manifest_path)
+    audio_stage = manifest.get("stages", {}).get("audio", {})
+    if audio_stage.get("status") != "auto_accepted": raise ValueError("subtitle alignment requires accepted narration audio")
+    narration = read_json(root / manifest["stages"]["narration"]["artifact"])
+    alignment = align_narration(narration, read_json(root / audio_stage["artifact"]))
+    issues = validate_alignment(alignment)
+    if issues: raise ValueError("invalid subtitle alignment: " + "; ".join(issues))
+    write_json_atomic(root / "subtitles" / "alignment.json", alignment)
+    write_subtitles(alignment, root / "subtitles" / "narration.srt", root / "subtitles" / "narration.vtt")
+    manifest["stages"]["subtitles"] = {"status": "auto_accepted", "artifact": "subtitles/alignment.json",
+        "srt": "subtitles/narration.srt", "vtt": "subtitles/narration.vtt", "cue_count": len(alignment["cues"]),
+        "duration_seconds": alignment["duration_seconds"], "updated_at": now(), "approval_required": False}
+    write_json_atomic(manifest_path, manifest); return alignment
 
 
 def generate_project_character_references(

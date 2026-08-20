@@ -31,6 +31,7 @@ from video_creator.scenes import (
     DeterministicSceneEnrichmentProvider, enrich_scenes, segment_scenes,
     validate_enriched_scenes, validate_scenes,
 )
+from video_creator.subtitles import align_narration, validate_alignment, write_subtitles
 from video_creator.source import ingest_markdown, validate_source
 from video_creator.storyboard import plan_storyboard, validate_storyboard
 from video_creator.visual_review import review_character_references, review_shot_assets
@@ -460,6 +461,11 @@ def test_narration_audio_is_complete_and_selectively_reused(tmp_path):
     assert second["regeneration"]["reused_ids"] == [
         block["narration_id"] for block in narration["blocks"]
     ]
+
+    alignment = align_narration(narration, first)
+    assert validate_alignment(alignment) == []
+    write_subtitles(alignment, tmp_path / "out.srt", tmp_path / "out.vtt")
+    assert "WEBVTT" in (tmp_path / "out.vtt").read_text(encoding="utf-8")
 
 
 def test_fixture_images_are_ranked_selected_and_hash_validated(tmp_path):

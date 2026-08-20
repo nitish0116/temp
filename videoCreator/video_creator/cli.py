@@ -16,7 +16,7 @@ from .local_image_environment import (
     REVIEW_MODEL_ID, REVIEW_MODEL_REVISION, setup_local_images,
 )
 from .project import (
-    RIGHTS_STATES, adapt_project_narration, analyze_project_source, ingest_project_source,
+    RIGHTS_STATES, adapt_project_narration, align_project_subtitles, analyze_project_source, ingest_project_source,
     approve_project_analysis, compile_project_prompts, enrich_project_scenes,
     generate_project_character_references, generate_project_images, initialize_project,
     generate_project_narration_audio,
@@ -135,6 +135,8 @@ def parser() -> argparse.ArgumentParser:
     image_review.add_argument("--offline", action="store_true")
     audio = commands.add_parser("generate-audio", help="Generate offline narration audio")
     audio.add_argument("workspace", type=Path)
+    subtitles = commands.add_parser("align-subtitles", help="Align narration and write subtitles")
+    subtitles.add_argument("workspace", type=Path)
     setup_images = commands.add_parser(
         "setup-local-images", help="Create imageEnv and prefetch Sana weights",
     )
@@ -229,6 +231,8 @@ def main(argv: list[str] | None = None) -> None:
         result = review_project_character_references(args.workspace)
     elif args.command == "generate-audio":
         result = generate_project_narration_audio(args.workspace)
+    elif args.command == "align-subtitles":
+        result = align_project_subtitles(args.workspace)
     elif args.command in {"review-shot-pilot", "review-images"}:
         if os.environ.get(ACTIVE_FLAG) != "1":
             raw_arguments = list(argv) if argv is not None else sys.argv[1:]
