@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -271,9 +272,19 @@ def main() -> None:
         qualify_text_main(sys.argv[2:])
         return
     if len(sys.argv) > 1 and sys.argv[1] == "qualify-machine-review":
-        from .commands.qualify_machine_review import main as qualify_machine_main
+        from .commands.comet_environment import ACTIVE_FLAG, run_machine_review
 
-        qualify_machine_main(sys.argv[2:])
+        if os.environ.get(ACTIVE_FLAG) == "1" or "--help" in sys.argv[2:]:
+            from .commands.qualify_machine_review import main as qualify_machine_main
+
+            qualify_machine_main(sys.argv[2:])
+        else:
+            raise SystemExit(run_machine_review(sys.argv[2:]))
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "setup-comet-env":
+        from .commands.comet_environment import main as comet_environment_main
+
+        comet_environment_main(sys.argv[2:])
         return
     parser = argparse.ArgumentParser(description="Structured video translation pipeline")
     parser.add_argument("config", type=Path, help="Pipeline configuration JSON")

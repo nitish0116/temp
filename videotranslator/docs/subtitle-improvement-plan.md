@@ -592,6 +592,15 @@ downgrades incompatible with the main pipeline, so qualification must run in a
 dedicated environment. The primary environment was restored and its full suite
 passes. No real score or qualification claim was produced.
 
+After gated access was granted, the managed `cometEnv` downloaded the checkpoint
+and completed CPU qualification. The model is rejected at the 0.85 threshold:
+it scored the reviewed Mandarin treaty translation 0.3946 and failed to block
+`lovely` for Korean `cute` (0.8632) and `Seattle` for `Seoul` (0.8587). The
+versioned report is `docs/machine-review-qualification.json`. Do not lower the
+threshold: no single threshold separates all reviewed good and bad cases. Next,
+add explicit terminology/entity gates or qualify a stronger estimator before
+running the 19 unresolved groups.
+
 ### 28. Produce and validate dubbing only from approved subtitles
 
 - Freeze approved canonical text and speaker assignments before TTS begins.

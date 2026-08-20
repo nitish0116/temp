@@ -80,7 +80,12 @@ the GPU has at least 8 GiB VRAM. `cuda` explicitly permits offload below that
 threshold; `cpu` forces `num_gpu=0`. This keeps both workstation profiles usable.
 
 Install the optional Step 27A adapter in a dedicated virtual environment with
-`python -m pip install -r videotranslator/requirements/machine-review.txt`.
+`python -m videotranslator setup-comet-env`. The pipeline creates the ignored
+workspace-local `cometEnv` once and refreshes it only when the isolated
+requirements or Python minor version changes. Running
+`python -m videotranslator qualify-machine-review` automatically delegates to
+that interpreter and returns to the caller's environment; shell activation is
+not required. An offline run refuses to create or refresh a missing environment.
 COMET 2.2.7 constrains NumPy, Protobuf, and TorchMetrics below versions required
 by the main video pipeline, so do not resolve those downgrades into the primary
 environment. The adapter loads lazily, supports offline cache-only lookup, and

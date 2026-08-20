@@ -1,4 +1,5 @@
 # Optional Step 27A reference-free translation quality estimation.
 # Install in a dedicated environment: COMET 2.2.7 constrains NumPy, Protobuf,
 # and TorchMetrics below versions required by the main video pipeline.
+setuptools<81
 unbabel-comet==2.2.7

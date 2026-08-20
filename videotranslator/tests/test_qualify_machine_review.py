@@ -2,7 +2,9 @@
 
 import json
 
-from videotranslator.commands.qualify_machine_review import load_fixtures, run_qualification
+from videotranslator.commands.qualify_machine_review import (
+    load_fixtures, prepare_machine_review_environment, run_qualification,
+)
 from videotranslator.pipeline import main
 
 
@@ -30,6 +32,12 @@ def test_qualification_passes_only_when_good_and_bad_scores_separate(tmp_path):
     assert report["passed"] is True
     assert report["release_qualified"] is True
     assert report["fixture_set"] == "test-v1"
+
+
+def test_machine_review_environment_uses_workspace_cache(tmp_path):
+    env = prepare_machine_review_environment({"PYTHON_CACHE_HOME": str(tmp_path)})
+    assert env["HF_HOME"] == str(tmp_path / "huggingface")
+    assert env["TORCH_HOME"] == str(tmp_path / "torch")
 
 
 def test_qualification_fails_when_plausible_corruption_scores_high(tmp_path):

@@ -9,13 +9,28 @@ from pathlib import Path
 from typing import Callable
 
 from .cometkiwi_quality import DEFAULT_COMETKIWI_MODEL, CometKiwiQualityEstimator
-from .create_subtitles import prepare_runtime_environment
 from .qa_machine_review import CalibrationFixture, MachineReviewPolicy, calibrate_machine_reviewer
 
 
 PROJECT = Path(__file__).resolve().parents[1]
 DEFAULT_FIXTURES = PROJECT / "tests" / "fixtures" / "machine_review_calibration.json"
 DEFAULT_REPORT = PROJECT / "docs" / "machine-review-qualification.json"
+
+
+def prepare_machine_review_environment(source: dict[str, str] | None = None) -> dict[str, str]:
+    """Route Hugging Face and Torch assets to the shared workspace cache."""
+    env = dict(os.environ if source is None else source)
+    root = Path(env.get("PYTHON_CACHE_HOME") or PROJECT.parent / ".model-cache").expanduser()
+    env.setdefault("PYTHON_CACHE_HOME", str(root))
+    env.setdefault("HF_HOME", str(root / "huggingface"))
+    env.setdefault("HF_HUB_CACHE", str(root / "huggingface" / "hub"))
+    env.setdefault("HUGGINGFACE_HUB_CACHE", str(root / "huggingface" / "hub"))
+    env.setdefault("TORCH_HOME", str(root / "torch"))
+    env.setdefault("TEMP", str(root / "tmp"))
+    env.setdefault("TMP", str(root / "tmp"))
+    for key in ("HF_HOME", "HF_HUB_CACHE", "TORCH_HOME", "TEMP"):
+        Path(env[key]).mkdir(parents=True, exist_ok=True)
+    return env
 
 
 def load_fixtures(path: Path) -> tuple[str, list[CalibrationFixture]]:
@@ -81,7 +96,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--output-report", type=Path, default=DEFAULT_REPORT)
     args = parser.parse_args(argv)
 
-    env, _fallbacks = prepare_runtime_environment(PROJECT / "outputs")
+    env = prepare_machine_review_environment()
     cache_keys = {
         "PYTHON_CACHE_HOME", "HF_HOME", "HF_HUB_CACHE", "HUGGINGFACE_HUB_CACHE",
         "TORCH_HOME", "TEMP", "TMP",

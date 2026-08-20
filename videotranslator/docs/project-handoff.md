@@ -151,6 +151,17 @@ account has not been granted access to `Unbabel/wmt22-cometkiwi-da`. Run COMET i
 a dedicated environment after accepting the model terms. No real qualification
 report was produced and machine review remains non-promoting.
 
+Gated access was subsequently granted. The pipeline now manages an ignored
+workspace-local `cometEnv`: `setup-comet-env` creates it once, a requirements
+fingerprint refreshes it when necessary, and `qualify-machine-review`
+automatically delegates to its interpreter without changing the caller's shell.
+The first CPU qualification completed and correctly rejected COMETKiwi at the
+0.85 threshold. It allowed `lovely` for `cute` (0.8632) and `Seattle` for `Seoul`
+(0.8587), while the reviewed Mandarin treaty translation scored only 0.3946.
+Evidence: `docs/machine-review-qualification.json`. No threshold can separate
+these reviewed good and bad cases; keep promotion disabled. Next, add explicit
+terminology/entity gates or qualify a stronger estimator.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining
