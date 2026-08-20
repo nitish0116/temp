@@ -405,3 +405,17 @@ lacked fingerprints; its next unchanged run reused all eight and regenerated
 none. Validation passes and the 19-test suite passes. Next, define the autonomous
 storyboard shot-planning contract and carry these fingerprints into shot-level
 selective regeneration.
+
+Autonomous storyboard planning is now implemented. Automatically accepted
+scenes produce bounded, ordered shots with setting and entity references,
+composition, mood, motion preset, duration coverage, and dependency
+fingerprints. Validation rejects missing scene coverage, sequence gaps, timing
+drift, canonical-reference changes, or unaccepted shots. Prior shots are reused
+only when their complete scene dependency still matches.
+
+The local eight-scene draft produced 32 shots covering the full estimated
+narration duration. Its immediate unchanged rerun reused all 32 shots and
+regenerated none. Project validation passes and the 20-test suite passes. Next,
+compile generation-ready image prompts and reference requirements from these
+shots, keeping major-character image selection optional and every other visual
+decision automatic.

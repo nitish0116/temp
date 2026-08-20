@@ -20,6 +20,7 @@ from .scenes import (
     validate_enriched_scenes, validate_scenes,
 )
 from .source import ingest_markdown, normalize_markdown, validate_source
+from .storyboard import plan_storyboard, validate_storyboard
 
 
 RIGHTS_STATES = {"unverified", "authorized", "original", "public-domain"}
@@ -55,6 +56,7 @@ def initialize_project(root: Path, project_id: str, title: str, rights_status: s
             "analysis": {"status": "pending"},
             "narration": {"status": "pending"},
             "scenes": {"status": "pending"},
+            "storyboard": {"status": "pending"},
         },
     }
     write_json_atomic(root / "project.json", manifest)
@@ -268,6 +270,35 @@ def enrich_project_scenes(
     return result
 
 
+def plan_project_storyboard(root: Path, *, target_shot_seconds: float = 15.0) -> dict:
+    """Plan and selectively reuse autonomous storyboard shots."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    scene_stage = manifest["stages"]["scenes"]
+    if scene_stage.get("status") != "auto_accepted":
+        raise ValueError("storyboard planning requires automatically accepted scenes")
+    scenes = read_json(root / scene_stage["artifact"])
+    output = root / "storyboard" / "shots.json"
+    previous = read_json(output) if output.is_file() else None
+    storyboard = plan_storyboard(
+        scenes, target_shot_seconds=target_shot_seconds,
+        previous_storyboard=previous,
+    )
+    issues = validate_storyboard(storyboard, scenes)
+    if issues:
+        raise ValueError("invalid storyboard: " + "; ".join(issues))
+    write_json_atomic(output, storyboard)
+    manifest["stages"]["storyboard"] = {
+        "status": "auto_accepted", "artifact": "storyboard/shots.json",
+        "input_sha256": scenes["source_sha256"], "planner": storyboard["planner"],
+        "updated_at": now(), "approval_required": False,
+        "reused_count": len(storyboard["regeneration"]["reused_shot_ids"]),
+        "regenerated_count": len(storyboard["regeneration"]["regenerated_shot_ids"]),
+    }
+    write_json_atomic(manifest_path, manifest)
+    return storyboard
+
+
 def validate_project(root: Path) -> list[str]:
     """Validate the available project and source contracts."""
     issues = []
@@ -332,5 +363,15 @@ def validate_project(root: Path) -> list[str]:
             issues.extend(validator(
                 read_json(scene_path), read_json(root / narration_stage["artifact"]),
                 read_json(root / manifest["stages"]["analysis"]["artifact"]),
+            ))
+    storyboard_stage = manifest.get("stages", {}).get("storyboard", {})
+    if storyboard_stage.get("status") == "auto_accepted":
+        storyboard_path = root / storyboard_stage.get("artifact", "")
+        scene_path = root / scenes_stage.get("artifact", "")
+        if not storyboard_path.is_file() or not scene_path.is_file():
+            issues.append("storyboard dependencies are missing")
+        else:
+            issues.extend(validate_storyboard(
+                read_json(storyboard_path), read_json(scene_path),
             ))
     return issues

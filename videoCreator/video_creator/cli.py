@@ -9,7 +9,8 @@ from pathlib import Path
 from .artifacts import read_json
 from .project import (
     RIGHTS_STATES, adapt_project_narration, analyze_project_source, ingest_project_source,
-    approve_project_analysis, enrich_project_scenes, initialize_project, validate_project,
+    approve_project_analysis, enrich_project_scenes, initialize_project,
+    plan_project_storyboard, validate_project,
     plan_project_narration, segment_project_scenes, write_analysis_review_template,
     write_narration_response_template,
 )
@@ -58,6 +59,11 @@ def parser() -> argparse.ArgumentParser:
     enrich.add_argument("workspace", type=Path)
     enrich.add_argument("--acceptance-threshold", type=float, default=0.8)
     enrich.add_argument("--maximum-attempts", type=int, default=2)
+    storyboard = commands.add_parser(
+        "plan-storyboard", help="Automatically plan source-bound shots",
+    )
+    storyboard.add_argument("workspace", type=Path)
+    storyboard.add_argument("--target-shot-seconds", type=float, default=15.0)
     validate = commands.add_parser("validate", help="Validate project artifacts")
     validate.add_argument("workspace", type=Path)
     status = commands.add_parser("status", help="Show project stage states")
@@ -93,6 +99,10 @@ def main(argv: list[str] | None = None) -> None:
         result = enrich_project_scenes(
             args.workspace, acceptance_threshold=args.acceptance_threshold,
             maximum_attempts=args.maximum_attempts,
+        )
+    elif args.command == "plan-storyboard":
+        result = plan_project_storyboard(
+            args.workspace, target_shot_seconds=args.target_shot_seconds,
         )
     elif args.command == "validate":
         issues = validate_project(args.workspace)

@@ -21,6 +21,7 @@ from video_creator.scenes import (
     validate_enriched_scenes, validate_scenes,
 )
 from video_creator.source import ingest_markdown, validate_source
+from video_creator.storyboard import plan_storyboard, validate_storyboard
 
 
 def test_markdown_ingestion_preserves_stable_section_ranges(tmp_path):
@@ -328,6 +329,30 @@ def test_scene_enrichment_selectively_regenerates_changed_dependencies(tmp_path)
         "regenerated_scene_ids": ["scene-0001"],
     }
     assert second_result["scenes"][1] == first["scenes"][1]
+
+
+def test_storyboard_covers_scenes_and_selectively_reuses_shots(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    duplicate = json.loads(json.dumps(scenes["scenes"][0]))
+    duplicate["scene_id"] = "scene-0002"
+    duplicate["dependency_sha256"] = "2" * 64
+    scenes["scenes"].append(duplicate)
+    first = plan_storyboard(scenes, target_shot_seconds=15)
+    assert validate_storyboard(first, scenes) == []
+    assert {shot["scene_id"] for shot in first["shots"]} == {"scene-0001", "scene-0002"}
+
+    scenes["scenes"][0]["dependency_sha256"] = "3" * 64
+    second = plan_storyboard(
+        scenes, target_shot_seconds=15, previous_storyboard=first,
+    )
+    assert all(identifier.startswith("scene-0001") for identifier in (
+        second["regeneration"]["regenerated_shot_ids"]
+    ))
+    assert all(identifier.startswith("scene-0002") for identifier in (
+        second["regeneration"]["reused_shot_ids"]
+    ))
+    assert validate_storyboard(second, scenes) == []
 
 
 def test_adaptation_blocks_invented_numbers_and_entities(tmp_path):
