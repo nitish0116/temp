@@ -4,10 +4,13 @@ import pytest
 
 from videotranslator.commands.qa_machine_review import (
     CalibrationFixture,
+    GroundingClaim,
     MachineReviewPolicy,
+    SourceGroundingRule,
     TerminologyRule,
     calibrate_machine_reviewer,
     entity_consensus_issues,
+    grounding_claim_issues,
     review_candidate,
     terminology_consensus_issues,
     terminology_issues,
@@ -127,6 +130,39 @@ def test_source_grounded_terms_report_single_route_assertions():
             {"term": "Shimonoseki", "supporting_routes": ["primary"]},
         ],
     }]
+
+
+def test_grounding_claim_requires_relation_and_route_support():
+    source = "treaty source"
+    rule = SourceGroundingRule("treaty", (source,), (GroundingClaim(
+        "signing", ("signed with Japan", "Japan signed"),
+        ("did not sign", "never signed"),
+    ),))
+    routes = {
+        "primary": "The Treaty of Shimonoseki was signed with Japan.",
+        "dedicated_mt": "Japan signed the Treaty of Shimonoseki.",
+        "speech": "A treaty was signed.",
+    }
+    assert grounding_claim_issues(
+        source, routes["primary"], routes, (rule,), minimum_routes=2,
+    ) == []
+
+
+@pytest.mark.parametrize("translation", [
+    "Japan did not sign the Treaty of Shimonoseki.",
+    "The Treaty of Shimonoseki signed Japan.",
+])
+def test_grounding_claim_blocks_negation_and_role_swap(translation):
+    source = "treaty source"
+    rule = SourceGroundingRule("treaty", (source,), (GroundingClaim(
+        "signing", ("signed with Japan", "Japan signed"),
+        ("did not sign", "never signed"),
+    ),))
+    issues = grounding_claim_issues(
+        source, translation, {"primary": translation}, (rule,), minimum_routes=2,
+    )
+    assert issues[0]["type"] == "source_grounding_mismatch"
+    assert issues[0]["claim_id"] == "signing"
 
 
 def test_machine_review_applies_terminology_and_entity_gates():

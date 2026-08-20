@@ -9,7 +9,10 @@ from pathlib import Path
 from typing import Callable
 
 from .cometkiwi_quality import DEFAULT_COMETKIWI_MODEL, CometKiwiQualityEstimator
-from .qa_machine_review import CalibrationFixture, MachineReviewPolicy, calibrate_machine_reviewer
+from .qa_machine_review import (
+    CalibrationFixture, GroundingClaim, MachineReviewPolicy,
+    calibrate_machine_reviewer,
+)
 
 
 PROJECT = Path(__file__).resolve().parents[1]
@@ -51,11 +54,29 @@ def load_fixtures(path: Path) -> tuple[str, list[CalibrationFixture]]:
             rejected_translations=rejected,
             required_terms=tuple(str(value) for value in item.get("required_terms", [])),
             forbidden_terms=tuple(str(value) for value in item.get("forbidden_terms", [])),
+            grounding_claims=tuple(
+                GroundingClaim(
+                    claim_id=str(claim.get("id") or "").strip(),
+                    required_phrases=tuple(
+                        str(value).strip() for value in claim.get("required_phrases", [])
+                    ),
+                    forbidden_phrases=tuple(
+                        str(value).strip() for value in claim.get("forbidden_phrases", [])
+                    ),
+                )
+                for claim in item.get("grounding_claims", [])
+            ),
         )
         if not fixture.fixture_id or not fixture.source_text or not fixture.accepted_translation:
             raise ValueError("machine-review fixtures require id, source, and accepted translation")
         if not rejected or any(not value for value in rejected):
             raise ValueError(f"fixture {fixture.fixture_id} requires nonempty rejected translations")
+        if any(
+            not claim.claim_id or not claim.required_phrases
+            or any(not phrase for phrase in claim.required_phrases + claim.forbidden_phrases)
+            for claim in fixture.grounding_claims
+        ):
+            raise ValueError(f"fixture {fixture.fixture_id} has an invalid grounding claim")
         fixtures.append(fixture)
     if not fixtures:
         raise ValueError("machine-review fixture set must not be empty")

@@ -47,6 +47,7 @@ class CalibrationFixture:
     rejected_translations: tuple[str, ...]
     required_terms: tuple[str, ...] = ()
     forbidden_terms: tuple[str, ...] = ()
+    grounding_claims: tuple["GroundingClaim", ...] = ()
 
 
 @dataclass(frozen=True)
@@ -57,6 +58,24 @@ class TerminologyRule:
     source_terms: tuple[str, ...]
     required_target_terms: tuple[str, ...]
     forbidden_target_terms: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class GroundingClaim:
+    """Describe a reviewed target-language relation and its contradictions."""
+
+    claim_id: str
+    required_phrases: tuple[str, ...]
+    forbidden_phrases: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class SourceGroundingRule:
+    """Activate polarity and relation claims only for matching source evidence."""
+
+    rule_id: str
+    source_terms: tuple[str, ...]
+    claims: tuple[GroundingClaim, ...]
 
 
 def _normalized(text: str) -> str:
@@ -163,6 +182,53 @@ def terminology_consensus_issues(
     return issues
 
 
+def grounding_claim_issues(
+    source_text: str,
+    translation: str,
+    route_candidates: dict[str, str],
+    rules: Iterable[SourceGroundingRule],
+    *,
+    minimum_routes: int = 2,
+) -> list[dict]:
+    """Check reviewed relation/polarity claims and independent route support."""
+    source = _normalized(source_text)
+    target = _normalized(translation)
+    issues = []
+    for rule in rules:
+        if rule.source_terms and not any(_normalized(term) in source for term in rule.source_terms):
+            continue
+        for claim in rule.claims:
+            required = tuple(_normalized(phrase) for phrase in claim.required_phrases)
+            forbidden = tuple(_normalized(phrase) for phrase in claim.forbidden_phrases)
+            matched_required = [
+                phrase for phrase, normalized in zip(claim.required_phrases, required)
+                if normalized and normalized in target
+            ]
+            matched_forbidden = [
+                phrase for phrase, normalized in zip(claim.forbidden_phrases, forbidden)
+                if normalized and normalized in target
+            ]
+            supporting_routes = sorted(
+                route for route, candidate in route_candidates.items()
+                if any(phrase and phrase in _normalized(candidate) for phrase in required)
+            )
+            if (
+                not matched_required
+                or matched_forbidden
+                or len(supporting_routes) < minimum_routes
+            ):
+                issues.append({
+                    "type": "source_grounding_mismatch",
+                    "rule_id": rule.rule_id,
+                    "claim_id": claim.claim_id,
+                    "matched_required": matched_required,
+                    "matched_forbidden": matched_forbidden,
+                    "supporting_routes": supporting_routes,
+                    "minimum_routes": minimum_routes,
+                })
+    return issues
+
+
 def review_candidate(
     source_text: str,
     translation: str,
@@ -176,9 +242,11 @@ def review_candidate(
     policy: MachineReviewPolicy,
     calibration_id: str,
     terminology_rules: Iterable[TerminologyRule] = (),
+    grounding_rules: Iterable[SourceGroundingRule] = (),
 ) -> dict:
     """Return machine_verified only when every independent gate passes."""
     terminology_rules = tuple(terminology_rules)
+    grounding_rules = tuple(grounding_rules)
     failures: list[dict] = []
     issues = deterministic_issues(source_text, translation)
     issues.extend(terminology_issues(source_text, translation, terminology_rules))
@@ -187,6 +255,10 @@ def review_candidate(
     ))
     issues.extend(terminology_consensus_issues(
         source_text, translation, route_candidates, terminology_rules,
+        minimum_routes=policy.minimum_agreeing_routes,
+    ))
+    issues.extend(grounding_claim_issues(
+        source_text, translation, route_candidates, grounding_rules,
         minimum_routes=policy.minimum_agreeing_routes,
     ))
     if issues:
@@ -252,6 +324,14 @@ def calibrate_machine_reviewer(
         accepted_issues.extend(terminology_issues(
             fixture.source_text, fixture.accepted_translation, (rule,),
         ))
+        grounding_rule = SourceGroundingRule(
+            rule_id=fixture.fixture_id, source_terms=(fixture.source_text,),
+            claims=fixture.grounding_claims,
+        )
+        accepted_issues.extend(grounding_claim_issues(
+            fixture.source_text, fixture.accepted_translation, {}, (grounding_rule,),
+            minimum_routes=0,
+        ))
         accepted_score = _bounded_score(
             estimate_quality(fixture.source_text, fixture.accepted_translation),
             "quality estimator",
@@ -263,6 +343,9 @@ def calibrate_machine_reviewer(
             )
             issues = deterministic_issues(fixture.source_text, translation)
             issues.extend(terminology_issues(fixture.source_text, translation, (rule,)))
+            issues.extend(grounding_claim_issues(
+                fixture.source_text, translation, {}, (grounding_rule,), minimum_routes=0,
+            ))
             rejected.append({
                 "translation": translation,
                 "score": score,

@@ -48,11 +48,19 @@
       "accepted_translation": "Taiwan, Penghu, and Liaodong, indemnities, and the humiliating Treaty of Shimonoseki signed with Japan.",
       "required_terms": ["Japan", "Treaty", "Shimonoseki"],
       "forbidden_terms": ["Yangtze Province", "Macau", "Customs Treaty"],
+      "grounding_claims": [
+        {
+          "id": "treaty-signing-relation",
+          "required_phrases": ["signed with Japan", "Japan signed"],
+          "forbidden_phrases": ["did not sign", "not signed", "never signed", "refused to sign"]
+        }
+      ],
       "rejected_translations": [
         "Taiwan's Yangtze Province claims 22,000 and is unable to sign.",
         "Sign the Treaty of Macau.",
         "Sign the Customs Treaty.",
-        "Japan did not sign the Treaty of Shimonoseki."
+        "Japan did not sign the Treaty of Shimonoseki.",
+        "The Treaty of Shimonoseki signed Japan."
       ]
     }
   ]

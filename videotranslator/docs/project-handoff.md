@@ -190,6 +190,16 @@ tested for the Mandarin `Japan`, `Treaty`, and `Shimonoseki` claims, remains
 non-promoting, and does not bypass COMET. Next, add polarity and relation-claim
 grounding and qualify those gates against negation and role-swap corruptions.
 
+Polarity and relation grounding is now implemented within protocol 3. Reviewed
+claims are source-triggered, require an allowed relation phrase in the selected
+translation, require two-route corroboration during review, and record matched
+required/forbidden phrases plus supporting routes when blocked. The Mandarin
+fixture binds the Japan/treaty signing relation and now includes negation and
+subject/object role-swap mutations; calibration blocks both even at a synthetic
+0.99 quality score. Machine review remains non-promoting. Next, create a
+route-backed protocol-3 qualification artifact and broaden relation paraphrases
+without weakening the adversarial cases.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining

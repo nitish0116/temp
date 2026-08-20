@@ -1,9 +1,13 @@
 """Tests for the repeatable COMETKiwi adversarial qualification command."""
 
 import json
+from pathlib import Path
 
 from videotranslator.commands.qualify_machine_review import (
     load_fixtures, prepare_machine_review_environment, run_qualification,
+)
+from videotranslator.commands.qa_machine_review import (
+    MachineReviewPolicy, calibrate_machine_reviewer,
 )
 from videotranslator.pipeline import main
 
@@ -58,6 +62,26 @@ def test_fixture_loader_rejects_empty_set(tmp_path):
         assert "must not be empty" in str(error)
     else:
         raise AssertionError("empty fixture set was accepted")
+
+
+def test_mandarin_grounding_blocks_negation_and_role_swap_at_high_score():
+    fixture_path = Path(__file__).parent / "fixtures" / "machine_review_calibration.json"
+    _fixture_set, fixtures = load_fixtures(fixture_path)
+    treaty = next(item for item in fixtures if item.fixture_id == "mandarin-shimonoseki")
+    report = calibrate_machine_reviewer(
+        (treaty,), lambda source, target: 0.99, MachineReviewPolicy(),
+    )
+    assert report["passed"] is True
+    rejected = {item["translation"]: item for item in report["results"][0]["rejected"]}
+    for translation in (
+        "Japan did not sign the Treaty of Shimonoseki.",
+        "The Treaty of Shimonoseki signed Japan.",
+    ):
+        assert rejected[translation]["blocked"] is True
+        assert any(
+            issue["type"] == "source_grounding_mismatch"
+            for issue in rejected[translation]["deterministic_issues"]
+        )
 
 
 def test_pipeline_dispatches_machine_review_help(monkeypatch):

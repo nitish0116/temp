@@ -631,6 +631,17 @@ prevents one route from introducing an uncorroborated `Japan`, `Treaty`, or
 does not override the failed COMET quality gate. Next, add source-grounded
 polarity and relation claims, then adversarially qualify the complete verifier.
 
+Protocol 3 now also supports reviewed polarity and relation claims. A claim is
+activated only by its bound source evidence, requires one accepted relation
+phrase in the selected translation and at least two supporting routes, and
+blocks reviewed contradictory phrases. The Mandarin fixture now requires the
+Japan/treaty signing relation and includes both negation and subject/object
+role-swap corruptions. Both remain blocked even when a synthetic quality
+estimator assigns 0.99. This is still bounded calibration evidence, not approval
+for the 19 unresolved groups. Next, add route evidence to a protocol-3
+qualification artifact and test the complete gate against paraphrased relations
+before considering integration.
+
 ### 28. Produce and validate dubbing only from approved subtitles
 
 - Freeze approved canonical text and speaker assignments before TTS begins.
