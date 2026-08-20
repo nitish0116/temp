@@ -539,3 +539,10 @@ character sheets use anime linework and cel shading, and negative prompts reject
 photorealistic, live-action, and 3D-render drift. The Tanya workspace is pinned
 to polished cinematic anime key art, so subsequent selective regeneration will
 replace the earlier realism-oriented pilot assets.
+
+The anime reference and pilot regeneration is complete. Sana 1.6B produced two
+fresh anime candidates for both Being X and Tanya; SmolVLM2 accepted all four
+and promoted candidate 02 for each character. The pinned Sana ControlNet then
+generated four reference-conditioned anime pilot shots offline. All four passed
+semantic review, narrative-diversity review, and the conditioning gate, so bulk
+shot generation is now unblocked.
