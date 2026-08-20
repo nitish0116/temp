@@ -118,6 +118,13 @@ early/middle/late groups (eight per sample) and 24 verified-readable hashed WAV
 clips. The 19 unresolved items and 24 accepted audit items are both pending real
 human decisions; no generated subtitle has been promoted.
 
+Step 27 review schema v2 is being developed on `videoTranslator` because the
+project owner does not speak the sample source languages. It replaces ambiguous
+`human_verified` decisions with capability-aware `bilingual_verified`,
+`target_language_reviewed`, and `unable_to_verify` states. Only bilingual review
+can resolve semantic disagreements; English-only review remains useful evidence
+but cannot promote a subtitle.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining

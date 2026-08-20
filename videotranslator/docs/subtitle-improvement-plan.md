@@ -524,7 +524,10 @@ changing defaults.
 - Store approvals as versioned provenance tied to the source/audio hash and model
   protocol; never encode approval as an untracked conversation or blanket bypass.
 - Support terminal states `multi_route_consensus`, `adjudicator_verified`,
-  `reviewed_reference_verified`, `human_verified`, and `unresolved`.
+  `reviewed_reference_verified`, `bilingual_verified`, and `unresolved`.
+- Record reviewer language capabilities. An English-only reviewer may submit
+  `target_language_reviewed` or `unable_to_verify`, but neither state resolves a
+  semantic disagreement or permits promotion.
 - Permit `final.srt` only when structural QA passes and no group is unresolved.
 - Invalidate only affected approvals when source text, audio regions, translation
   models, or QA protocol changes.
@@ -549,6 +552,12 @@ The accepted-group audit is also generated under
 early/middle/late groups per sample, 24 total, each with the same portable hashed
 evidence and a verified-readable audio clip. Both the 19-item correction set and
 24-item semantic audit remain pending human decisions.
+
+Reviewer-capability enforcement is now in development on the `videoTranslator`
+branch. Review schema v2 binds source and output languages into each approval
+key. Only a reviewer attesting capability in both languages may submit
+`bilingual_verified`; target-language-only review and `unable_to_verify` are
+durable, explicitly non-promoting decisions.
 
 ### 28. Produce and validate dubbing only from approved subtitles
 

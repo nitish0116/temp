@@ -80,26 +80,28 @@ def unresolved_review():
     return document, review
 
 
-def test_matching_human_decision_updates_text_and_provenance():
+def test_matching_bilingual_decision_updates_text_and_provenance():
     document, review = unresolved_review()
     item = review["items"][0]
     decisions = {"sample_id": "sample", "decisions": [{
         "semantic_group_id": "group-1", "approval_key": item["approval_key"],
-        "status": "human_verified", "translation": "Was there such a place in Seoul?",
+        "status": "bilingual_verified", "translation": "Was there such a place in Seoul?",
         "reviewer": "reviewer@example", "reviewed_at": "2026-08-16T02:00:00+05:30",
+        "reviewer_languages": ["ko", "en"],
     }]}
     output, report = apply_review_decisions(document, review, decisions)
-    assert report["passed"] is True and report["human_verified_count"] == 1
+    assert report["passed"] is True and report["bilingual_verified_count"] == 1
     assert output["segments"][0]["translated_text"].endswith("Seoul?")
-    assert output["segments"][0]["provenance"][-1]["stage"] == "bounded-human-review"
+    assert output["segments"][0]["provenance"][-1]["stage"] == "bounded-bilingual-review"
 
 
 def test_review_decision_rejects_wrong_key_or_stale_evidence():
     document, review = unresolved_review()
     decisions = {"sample_id": "sample", "decisions": [{
         "semantic_group_id": "group-1", "approval_key": "wrong",
-        "status": "unresolved", "reviewer": "reviewer@example",
+        "status": "unable_to_verify", "reviewer": "reviewer@example",
         "reviewed_at": "2026-08-16T02:00:00Z",
+        "reviewer_languages": ["en"],
     }]}
     with pytest.raises(ValueError, match="approval key"):
         apply_review_decisions(document, review, decisions)
@@ -108,15 +110,63 @@ def test_review_decision_rejects_wrong_key_or_stale_evidence():
         apply_review_decisions(document, review, {"sample_id": "sample", "decisions": []})
 
 
+def test_review_decision_rejects_stale_review_schema():
+    document, review = unresolved_review()
+    review["schema_version"] = 1
+    with pytest.raises(ValueError, match="regenerate"):
+        apply_review_decisions(document, review, {"sample_id": "sample", "decisions": []})
+
+
 def test_review_decision_rejects_invalid_human_translation():
     document, review = unresolved_review()
     item = review["items"][0]
     decisions = {"sample_id": "sample", "decisions": [{
         "semantic_group_id": "group-1", "approval_key": item["approval_key"],
-        "status": "human_verified", "translation": "x", "reviewer": "reviewer@example",
+        "status": "bilingual_verified", "translation": "x", "reviewer": "reviewer@example",
         "reviewed_at": "2026-08-16T02:00:00Z",
+        "reviewer_languages": ["ko", "en"],
     }]}
     with pytest.raises(ValueError, match="integrity checks"):
+        apply_review_decisions(document, review, decisions)
+
+
+def test_english_only_reviewer_cannot_semantically_verify_source():
+    document, review = unresolved_review()
+    item = review["items"][0]
+    decisions = {"sample_id": "sample", "decisions": [{
+        "semantic_group_id": "group-1", "approval_key": item["approval_key"],
+        "status": "bilingual_verified", "translation": "Was there such a place in Seoul?",
+        "reviewer": "reviewer@example", "reviewed_at": "2026-08-16T02:00:00Z",
+        "reviewer_languages": ["en"],
+    }]}
+    with pytest.raises(ValueError, match="source language ko"):
+        apply_review_decisions(document, review, decisions)
+
+
+@pytest.mark.parametrize("status", ["target_language_reviewed", "unable_to_verify"])
+def test_non_bilingual_decisions_are_recorded_but_do_not_promote(status):
+    document, review = unresolved_review()
+    item = review["items"][0]
+    decisions = {"sample_id": "sample", "decisions": [{
+        "semantic_group_id": "group-1", "approval_key": item["approval_key"],
+        "status": status, "reviewer": "reviewer@example",
+        "reviewed_at": "2026-08-16T02:00:00Z", "reviewer_languages": ["en"],
+    }]}
+    _output, report = apply_review_decisions(document, review, decisions)
+    assert report["passed"] is False
+    assert report["unresolved_count"] == 1
+    assert report[f"{status}_count"] == 1
+
+
+def test_target_language_review_requires_output_language_capability():
+    document, review = unresolved_review()
+    item = review["items"][0]
+    decisions = {"sample_id": "sample", "decisions": [{
+        "semantic_group_id": "group-1", "approval_key": item["approval_key"],
+        "status": "target_language_reviewed", "reviewer": "reviewer@example",
+        "reviewed_at": "2026-08-16T02:00:00Z", "reviewer_languages": ["ko"],
+    }]}
+    with pytest.raises(ValueError, match="output language en"):
         apply_review_decisions(document, review, decisions)
 
 
