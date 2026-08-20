@@ -349,6 +349,9 @@ def generate_project_images(
     """Generate, rank, and select all visual candidates automatically."""
     manifest_path = root / "project.json"
     manifest = read_json(manifest_path)
+    pilot_review = manifest.get("stages", {}).get("shot_pilot_review", {})
+    if pilot_review.get("status") != "auto_accepted":
+        raise ValueError("full image generation requires an accepted conditioned shot pilot")
     prompt_stage = manifest.get("stages", {}).get("prompts", {})
     if prompt_stage.get("status") != "auto_accepted":
         raise ValueError("image generation requires accepted prompts")
@@ -382,6 +385,30 @@ def generate_project_images(
     }
     write_json_atomic(manifest_path, manifest)
     return assets
+
+
+def review_project_images(root: Path) -> dict:
+    """Semantically review the complete production image batch."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    stage = manifest.get("stages", {}).get("images", {})
+    if stage.get("status") != "auto_accepted":
+        raise ValueError("full image review requires generated production images")
+    assets = read_json(root / stage["artifact"])
+    if not assets.get("reference_conditioning"):
+        raise ValueError("production images were not reference conditioned")
+    prompts = read_json(root / manifest["stages"]["prompts"]["artifact"])
+    shot_assets = dict(assets)
+    shot_assets["assets"] = [item for item in assets["assets"] if item.get("kind") == "shot"]
+    review = review_shot_assets(shot_assets, prompts, root)
+    output = root / "images" / "production-review.json"
+    write_json_atomic(output, review)
+    manifest["stages"]["image_review"] = {
+        "status": review["status"], "artifact": "images/production-review.json",
+        "reviewer": review["reviewer"], "updated_at": now(), "approval_required": False,
+    }
+    write_json_atomic(manifest_path, manifest)
+    return review
 
 
 def generate_project_character_references(

@@ -20,6 +20,7 @@ from .project import (
     approve_project_analysis, compile_project_prompts, enrich_project_scenes,
     generate_project_character_references, generate_project_images, initialize_project,
     review_project_character_references,
+    review_project_images,
     generate_project_shot_pilot, review_project_shot_pilot,
     plan_project_storyboard, validate_project,
     plan_project_narration, segment_project_scenes, write_analysis_review_template,
@@ -128,6 +129,9 @@ def parser() -> argparse.ArgumentParser:
     pilot_review = commands.add_parser("review-shot-pilot", help="Semantically review the shot pilot")
     pilot_review.add_argument("workspace", type=Path)
     pilot_review.add_argument("--offline", action="store_true")
+    image_review = commands.add_parser("review-images", help="Review all production images")
+    image_review.add_argument("workspace", type=Path)
+    image_review.add_argument("--offline", action="store_true")
     setup_images = commands.add_parser(
         "setup-local-images", help="Create imageEnv and prefetch Sana weights",
     )
@@ -220,11 +224,14 @@ def main(argv: list[str] | None = None) -> None:
             raw_arguments = list(argv) if argv is not None else sys.argv[1:]
             raise SystemExit(run_local_images(raw_arguments))
         result = review_project_character_references(args.workspace)
-    elif args.command == "review-shot-pilot":
+    elif args.command in {"review-shot-pilot", "review-images"}:
         if os.environ.get(ACTIVE_FLAG) != "1":
             raw_arguments = list(argv) if argv is not None else sys.argv[1:]
             raise SystemExit(run_local_images(raw_arguments))
-        result = review_project_shot_pilot(args.workspace)
+        result = (
+            review_project_shot_pilot(args.workspace)
+            if args.command == "review-shot-pilot" else review_project_images(args.workspace)
+        )
     elif args.command == "validate":
         issues = validate_project(args.workspace)
         result = {"passed": not issues, "issues": issues}

@@ -546,3 +546,9 @@ and promoted candidate 02 for each character. The pinned Sana ControlNet then
 generated four reference-conditioned anime pilot shots offline. All four passed
 semantic review, narrative-diversity review, and the conditioning gate, so bulk
 shot generation is now unblocked.
+
+Production expansion now requires an accepted conditioned pilot. All 32 anime
+storyboard shots were generated offline with the pinned Sana ControlNet, using
+canonical character edges where applicable and neutral control for environment-
+only shots. SmolVLM2 accepted all 32, the production review recorded no issues,
+and workspace validation passes.

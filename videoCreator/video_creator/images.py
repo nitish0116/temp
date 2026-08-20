@@ -201,11 +201,16 @@ class SanaControlNetImageProvider:
     def generate_conditioned(
         self, prompt: str, output: Path, *, seed: int, reference_images: list[Path],
     ) -> None:
+        self._generate_with_control(
+            prompt, output, seed=seed, control_image=self._control_image(reference_images),
+        )
+
+    def _generate_with_control(self, prompt: str, output: Path, *, seed: int, control_image) -> None:
         pipeline = self._load()
         import torch
         result = pipeline(
             prompt=prompt, negative_prompt="photorealism, live action, 3D render",
-            control_image=self._control_image(reference_images), width=1024, height=1024,
+            control_image=control_image, width=1024, height=1024,
             num_inference_steps=self.inference_steps, guidance_scale=self.guidance_scale,
             controlnet_conditioning_scale=self.conditioning_scale,
             generator=torch.Generator(device=self.device).manual_seed(seed),
@@ -216,7 +221,10 @@ class SanaControlNetImageProvider:
         result.images[0].save(output, format="PNG")
 
     def generate(self, prompt: str, output: Path, *, seed: int) -> None:
-        raise ValueError("Sana ControlNet provider requires canonical reference images")
+        from PIL import Image
+        self._generate_with_control(
+            prompt, output, seed=seed, control_image=Image.new("RGB", (1024, 1024), "black"),
+        )
 
 
 def _score(seed: int, prompt: str) -> dict:
