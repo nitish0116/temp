@@ -552,3 +552,9 @@ storyboard shots were generated offline with the pinned Sana ControlNet, using
 canonical character edges where applicable and neutral control for environment-
 only shots. SmolVLM2 accepted all 32, the production review recorded no issues,
 and workspace validation passes.
+
+Offline narration generation is implemented with FFmpeg's bundled Flite voice,
+48 kHz mono PCM output, and loudness normalization. All 14 adapted narration
+blocks generated successfully on their first attempt (411.16 seconds total).
+Each clip has a text/provider dependency, immutable hash, duration, retry history,
+and selective-reuse contract.

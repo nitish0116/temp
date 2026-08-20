@@ -11,6 +11,7 @@ from .analysis import (
     build_analysis_review_template, validate_analysis,
 )
 from .artifacts import read_json, sha256_file, write_json_atomic
+from .audio import generate_narration_audio, validate_narration_audio
 from .images import ImageProvider, generate_assets, validate_assets
 from .narration import (
     MappingNarrationProvider, adapt_narration, build_narration_plan,
@@ -409,6 +410,28 @@ def review_project_images(root: Path) -> dict:
     }
     write_json_atomic(manifest_path, manifest)
     return review
+
+
+def generate_project_narration_audio(root: Path) -> dict:
+    """Synthesize all narration blocks after production visuals pass review."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    if manifest.get("stages", {}).get("image_review", {}).get("status") != "auto_accepted":
+        raise ValueError("narration audio requires accepted production images")
+    narration = read_json(root / manifest["stages"]["narration"]["artifact"])
+    output = root / "audio" / "narration.json"
+    previous = read_json(output) if output.is_file() else None
+    audio = generate_narration_audio(narration, root, previous=previous)
+    issues = validate_narration_audio(audio, narration, root)
+    if issues: raise ValueError("invalid narration audio: " + "; ".join(issues))
+    write_json_atomic(output, audio)
+    manifest["stages"]["audio"] = {
+        "status": "auto_accepted", "artifact": "audio/narration.json",
+        "provider": audio["provider"], "clip_count": len(audio["clips"]),
+        "updated_at": now(), "approval_required": False,
+    }
+    write_json_atomic(manifest_path, manifest)
+    return audio
 
 
 def generate_project_character_references(

@@ -19,6 +19,7 @@ from .project import (
     RIGHTS_STATES, adapt_project_narration, analyze_project_source, ingest_project_source,
     approve_project_analysis, compile_project_prompts, enrich_project_scenes,
     generate_project_character_references, generate_project_images, initialize_project,
+    generate_project_narration_audio,
     review_project_character_references,
     review_project_images,
     generate_project_shot_pilot, review_project_shot_pilot,
@@ -132,6 +133,8 @@ def parser() -> argparse.ArgumentParser:
     image_review = commands.add_parser("review-images", help="Review all production images")
     image_review.add_argument("workspace", type=Path)
     image_review.add_argument("--offline", action="store_true")
+    audio = commands.add_parser("generate-audio", help="Generate offline narration audio")
+    audio.add_argument("workspace", type=Path)
     setup_images = commands.add_parser(
         "setup-local-images", help="Create imageEnv and prefetch Sana weights",
     )
@@ -224,6 +227,8 @@ def main(argv: list[str] | None = None) -> None:
             raw_arguments = list(argv) if argv is not None else sys.argv[1:]
             raise SystemExit(run_local_images(raw_arguments))
         result = review_project_character_references(args.workspace)
+    elif args.command == "generate-audio":
+        result = generate_project_narration_audio(args.workspace)
     elif args.command in {"review-shot-pilot", "review-images"}:
         if os.environ.get(ACTIVE_FLAG) != "1":
             raw_arguments = list(argv) if argv is not None else sys.argv[1:]

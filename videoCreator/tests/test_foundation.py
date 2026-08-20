@@ -9,6 +9,9 @@ from video_creator.analysis import (
     build_analysis_review_template, validate_analysis,
 )
 from video_creator.artifacts import sha256_file
+from video_creator.audio import (
+    DeterministicToneProvider, generate_narration_audio, validate_narration_audio,
+)
 from video_creator.images import (
     DeterministicFixtureImageProvider, SanaImageProvider, generate_assets,
     validate_assets,
@@ -445,6 +448,18 @@ def test_shot_generation_consumes_canonical_reference_images(tmp_path):
     )
     assert assets["reference_conditioning"] is True
     assert validate_assets(assets, prompts, tmp_path) == []
+
+
+def test_narration_audio_is_complete_and_selectively_reused(tmp_path):
+    _source, _analysis, _plan, narration = adapted_fixture(tmp_path)
+    first = generate_narration_audio(narration, tmp_path, DeterministicToneProvider())
+    assert validate_narration_audio(first, narration, tmp_path) == []
+    second = generate_narration_audio(
+        narration, tmp_path, DeterministicToneProvider(), previous=first,
+    )
+    assert second["regeneration"]["reused_ids"] == [
+        block["narration_id"] for block in narration["blocks"]
+    ]
 
 
 def test_fixture_images_are_ranked_selected_and_hash_validated(tmp_path):
