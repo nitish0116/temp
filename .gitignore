@@ -9,6 +9,7 @@ mp3ToYT/**/*.md
 pdf-md/**/*.md
 pdf-md/**/*.epub
 *.log
+*.db
 *.cue
 cleanup/**/*.txt
 md-audio/**/*.txt
