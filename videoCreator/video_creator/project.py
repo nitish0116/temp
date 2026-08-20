@@ -10,7 +10,12 @@ from .analysis import (
     build_analysis_review_template, validate_analysis,
 )
 from .artifacts import read_json, write_json_atomic
-from .narration import build_narration_plan, validate_narration_plan
+from .narration import (
+    MappingNarrationProvider, adapt_narration, build_narration_plan,
+    build_narration_response_template,
+    validate_adapted_narration, validate_narration_plan,
+)
+from .scenes import segment_scenes, validate_scenes
 from .source import ingest_markdown, normalize_markdown, validate_source
 
 
@@ -154,6 +159,75 @@ def plan_project_narration(
     return plan
 
 
+def adapt_project_narration(root: Path, manuscript: Path, responses_path: Path) -> dict:
+    """Apply pre-generated provider responses to every planned narration unit."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    plan = read_json(root / "script" / "narration.plan.json")
+    responses = read_json(responses_path)
+    if responses.get("schema_version") != 1:
+        raise ValueError("unsupported narration response schema_version")
+    if responses.get("narration_plan_id") != plan["narration_plan_id"]:
+        raise ValueError("narration responses do not match the current plan")
+    values = responses.get("responses", [])
+    mapping = {str(item.get("narration_id") or ""): item for item in values}
+    if len(mapping) != len(values) or set(mapping) != {
+        item["narration_id"] for item in plan["blocks"]
+    }:
+        raise ValueError("narration responses must cover every planned block exactly once")
+    provider = MappingNarrationProvider(
+        mapping, name=str(responses.get("provider") or "mapping-provider-v1"),
+    )
+    narration = adapt_narration(
+        plan, manuscript.read_text(encoding="utf-8-sig"), provider,
+    )
+    issues = validate_adapted_narration(narration, plan)
+    if issues:
+        raise ValueError("invalid adapted narration: " + "; ".join(issues))
+    output = root / "script" / "narration.json"
+    write_json_atomic(output, narration)
+    manifest["stages"]["narration"] = {
+        "status": "adapted_draft", "artifact": "script/narration.json",
+        "plan_artifact": "script/narration.plan.json", "provider": provider.name,
+        "input_sha256": plan["source_sha256"], "updated_at": now(),
+        "approval_required": True,
+    }
+    write_json_atomic(manifest_path, manifest)
+    return narration
+
+
+def write_narration_response_template(root: Path, output: Path) -> dict:
+    """Write pending provider responses for every current narration block."""
+    template = build_narration_response_template(
+        read_json(root / "script" / "narration.plan.json"),
+    )
+    write_json_atomic(output, template)
+    return template
+
+
+def segment_project_scenes(root: Path, *, maximum_blocks: int = 2) -> dict:
+    """Create draft scenes from validated adapted narration."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    if manifest["stages"]["narration"].get("status") != "adapted_draft":
+        raise ValueError("scene segmentation requires adapted narration")
+    narration = read_json(root / manifest["stages"]["narration"]["artifact"])
+    analysis = read_json(root / manifest["stages"]["analysis"]["artifact"])
+    scenes = segment_scenes(narration, analysis, maximum_blocks=maximum_blocks)
+    issues = validate_scenes(scenes, narration, analysis)
+    if issues:
+        raise ValueError("invalid scene plan: " + "; ".join(issues))
+    output = root / "storyboard" / "scenes.json"
+    write_json_atomic(output, scenes)
+    manifest["stages"]["scenes"] = {
+        "status": "draft", "artifact": "storyboard/scenes.json",
+        "input_sha256": narration["source_sha256"], "updated_at": now(),
+        "approval_required": True,
+    }
+    write_json_atomic(manifest_path, manifest)
+    return scenes
+
+
 def validate_project(root: Path) -> list[str]:
     """Validate the available project and source contracts."""
     issues = []
@@ -186,14 +260,33 @@ def validate_project(root: Path) -> list[str]:
             else:
                 issues.extend(validate_analysis(read_json(selected), read_json(source_path)))
     narration_stage = manifest.get("stages", {}).get("narration", {})
-    if narration_stage.get("status") == "planned":
+    if narration_stage.get("status") in {"planned", "adapted_draft"}:
         narration_path = root / narration_stage.get("artifact", "")
         analysis_artifact = manifest["stages"]["analysis"].get("artifact", "")
         if not narration_path.is_file() or not analysis_artifact:
             issues.append("planned narration dependencies are missing")
         else:
-            issues.extend(validate_narration_plan(
-                read_json(narration_path), read_json(source_path),
-                read_json(root / analysis_artifact),
+            if narration_stage["status"] == "planned":
+                issues.extend(validate_narration_plan(
+                    read_json(narration_path), read_json(source_path),
+                    read_json(root / analysis_artifact),
+                ))
+            else:
+                plan_path = root / narration_stage.get("plan_artifact", "")
+                if not plan_path.is_file():
+                    issues.append("adapted narration plan is missing")
+                else:
+                    issues.extend(validate_adapted_narration(
+                        read_json(narration_path), read_json(plan_path),
+                    ))
+    scenes_stage = manifest.get("stages", {}).get("scenes", {})
+    if scenes_stage.get("status") == "draft":
+        scene_path = root / scenes_stage.get("artifact", "")
+        if not scene_path.is_file() or narration_stage.get("status") != "adapted_draft":
+            issues.append("draft scene dependencies are missing")
+        else:
+            issues.extend(validate_scenes(
+                read_json(scene_path), read_json(root / narration_stage["artifact"]),
+                read_json(root / manifest["stages"]["analysis"]["artifact"]),
             ))
     return issues

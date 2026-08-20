@@ -311,3 +311,16 @@ source-range units, records referenced canonical IDs, and leaves all adapted tex
 empty with `pending_adaptation` status. Next, add a deterministic narration
 provider fixture, adaptation fidelity checks, and scene segmentation tied to
 these narration IDs.
+
+Narration adaptation and scene contracts are now implemented. Provider responses
+must cover all planned IDs exactly once; adapted blocks retain immutable source
+ranges and hashes, declare canonical entities, preserve source-number evidence,
+and stay non-release drafts. Fidelity checks reject unsupported numbers,
+entities, empty text/tone, and unsafe compression. Scene segmentation covers
+every validated narration ID exactly once, preserves ordering, does not cross
+approved setting boundaries, and records estimated narration duration.
+
+The local Tanya workspace now has a complete 14-item pending response template.
+Next, generate model-assisted adapted text for those bounded units, validate it,
+then create and review the first real scene plan. No scene plan should be derived
+from empty or unvalidated narration.

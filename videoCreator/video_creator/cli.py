@@ -8,9 +8,10 @@ from pathlib import Path
 
 from .artifacts import read_json
 from .project import (
-    RIGHTS_STATES, analyze_project_source, ingest_project_source,
+    RIGHTS_STATES, adapt_project_narration, analyze_project_source, ingest_project_source,
     approve_project_analysis, initialize_project, validate_project,
-    plan_project_narration, write_analysis_review_template,
+    plan_project_narration, segment_project_scenes, write_analysis_review_template,
+    write_narration_response_template,
 )
 
 
@@ -39,6 +40,18 @@ def parser() -> argparse.ArgumentParser:
     narration.add_argument("workspace", type=Path)
     narration.add_argument("manuscript", type=Path)
     narration.add_argument("--maximum-source-characters", type=int, default=2400)
+    adapt = commands.add_parser("adapt-narration", help="Apply complete adaptation responses")
+    adapt.add_argument("workspace", type=Path)
+    adapt.add_argument("manuscript", type=Path)
+    adapt.add_argument("responses", type=Path)
+    response_template = commands.add_parser(
+        "narration-response-template", help="Create complete adaptation responses",
+    )
+    response_template.add_argument("workspace", type=Path)
+    response_template.add_argument("output", type=Path)
+    scenes = commands.add_parser("segment-scenes", help="Create draft scenes")
+    scenes.add_argument("workspace", type=Path)
+    scenes.add_argument("--maximum-blocks", type=int, default=2)
     validate = commands.add_parser("validate", help="Validate project artifacts")
     validate.add_argument("workspace", type=Path)
     status = commands.add_parser("status", help="Show project stage states")
@@ -64,6 +77,12 @@ def main(argv: list[str] | None = None) -> None:
             args.workspace, args.manuscript,
             maximum_source_characters=args.maximum_source_characters,
         )
+    elif args.command == "adapt-narration":
+        result = adapt_project_narration(args.workspace, args.manuscript, args.responses)
+    elif args.command == "narration-response-template":
+        result = write_narration_response_template(args.workspace, args.output)
+    elif args.command == "segment-scenes":
+        result = segment_project_scenes(args.workspace, maximum_blocks=args.maximum_blocks)
     elif args.command == "validate":
         issues = validate_project(args.workspace)
         result = {"passed": not issues, "issues": issues}

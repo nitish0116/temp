@@ -11,7 +11,12 @@ from video_creator.analysis import (
 from video_creator.project import (
     analyze_project_source, ingest_project_source, initialize_project, validate_project,
 )
-from video_creator.narration import build_narration_plan, validate_narration_plan
+from video_creator.narration import (
+    MappingNarrationProvider, adapt_narration, build_narration_plan,
+    build_narration_response_template, validate_adapted_narration,
+    validate_narration_plan,
+)
+from video_creator.scenes import segment_scenes, validate_scenes
 from video_creator.source import ingest_markdown, validate_source
 
 
@@ -161,3 +166,63 @@ def test_narration_plan_rejects_unreviewed_analysis(tmp_path):
             manuscript.read_text(encoding="utf-8"), source,
             {"analysis_id": "draft", "planning_usable": False},
         )
+
+
+def adapted_fixture(tmp_path):
+    """Return synthetic source, analysis, plan, and adapted narration."""
+    text = "# Story\n\nMira entered the city.\n\nMira waited for dawn.\n\nNight fell quietly.\n"
+    manuscript = tmp_path / "story.md"
+    manuscript.write_text(text, encoding="utf-8")
+    source = ingest_markdown(manuscript)
+    analysis = {
+        "analysis_id": "analysis-0001", "status": "reviewed_draft",
+        "planning_usable": True,
+        "entities": [{
+            "review_status": "approved", "canonical_id": "mira", "name": "Mira",
+            "canonical_name": "Mira", "aliases": [],
+        }],
+        "settings": [{
+            "review_status": "approved", "canonical_id": "city",
+            "source_start": 0,
+        }],
+    }
+    plan = build_narration_plan(text, source, analysis, maximum_source_characters=200)
+    responses = {
+        block["narration_id"]: {
+            "text": "Mira entered the city and waited until night fell.",
+            "tone": "quiet", "canonical_entity_ids": ["mira"],
+        } for block in plan["blocks"]
+    }
+    narration = adapt_narration(plan, text, MappingNarrationProvider(responses))
+    return source, analysis, plan, narration
+
+
+def test_adaptation_and_scene_contracts_cover_every_block(tmp_path):
+    _source, analysis, plan, narration = adapted_fixture(tmp_path)
+    assert validate_adapted_narration(narration, plan) == []
+    scenes = segment_scenes(narration, analysis, maximum_blocks=2)
+    assert validate_scenes(scenes, narration, analysis) == []
+    assert [item for scene in scenes["scenes"] for item in scene["narration_ids"]] == [
+        block["narration_id"] for block in narration["blocks"]
+    ]
+
+
+def test_adaptation_blocks_invented_numbers_and_entities(tmp_path):
+    _source, _analysis, plan, _narration = adapted_fixture(tmp_path)
+    provider = MappingNarrationProvider({
+        plan["blocks"][0]["narration_id"]: {
+            "text": "Mira met 99 dragons.", "tone": "tense",
+            "canonical_entity_ids": ["invented"],
+        },
+    })
+    with pytest.raises(ValueError, match="unsupported numbers.*unsupported entities"):
+        adapt_narration(plan, "# Story\n\nMira entered the city.\n\nMira waited for dawn.\n\nNight fell quietly.\n", provider)
+
+
+def test_response_template_covers_all_planned_blocks(tmp_path):
+    _source, _analysis, plan, _narration = adapted_fixture(tmp_path)
+    template = build_narration_response_template(plan)
+    assert [item["narration_id"] for item in template["responses"]] == [
+        block["narration_id"] for block in plan["blocks"]
+    ]
+    assert all(item["text"] is None for item in template["responses"])
