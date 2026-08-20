@@ -4,9 +4,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import sys
 from pathlib import Path
 
 from .artifacts import read_json
+from .images import SanaImageProvider
+from .local_image_environment import (
+    ACTIVE_FLAG, MODEL_ID, MODEL_REVISION, cache_root, run_local_images,
+    setup_local_images,
+)
 from .project import (
     RIGHTS_STATES, adapt_project_narration, analyze_project_source, ingest_project_source,
     approve_project_analysis, compile_project_prompts, enrich_project_scenes,
@@ -76,6 +83,16 @@ def parser() -> argparse.ArgumentParser:
     images.add_argument("workspace", type=Path)
     images.add_argument("--candidates-per-item", type=int, default=2)
     images.add_argument("--maximum-attempts", type=int, default=2)
+    images.add_argument("--provider", choices=("fixture", "sana"), default="fixture")
+    images.add_argument("--model-id", default=MODEL_ID)
+    images.add_argument("--model-revision", default=MODEL_REVISION)
+    images.add_argument("--inference-steps", type=int, default=20)
+    images.add_argument("--guidance-scale", type=float, default=4.5)
+    images.add_argument("--offline", action="store_true")
+    setup_images = commands.add_parser(
+        "setup-local-images", help="Create imageEnv and prefetch Sana weights",
+    )
+    setup_images.add_argument("--offline", action="store_true")
     validate = commands.add_parser("validate", help="Validate project artifacts")
     validate.add_argument("workspace", type=Path)
     status = commands.add_parser("status", help="Show project stage states")
@@ -86,7 +103,14 @@ def parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     """Run one video-creator command."""
     args = parser().parse_args(argv)
-    if args.command == "init":
+    if args.command == "setup-local-images":
+        python = setup_local_images(offline=args.offline)
+        result = {
+            "status": "ready", "environment_python": str(python),
+            "model": MODEL_ID, "revision": MODEL_REVISION,
+            "license": "Apache-2.0", "cache_root": str(cache_root()),
+        }
+    elif args.command == "init":
         result = initialize_project(args.workspace, args.project_id, args.title, args.rights_status)
     elif args.command == "ingest":
         result = ingest_project_source(args.workspace, args.manuscript)
@@ -119,8 +143,16 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "compile-prompts":
         result = compile_project_prompts(args.workspace, style=args.style)
     elif args.command == "generate-images":
+        if args.provider == "sana" and os.environ.get(ACTIVE_FLAG) != "1":
+            raw_arguments = list(argv) if argv is not None else sys.argv[1:]
+            raise SystemExit(run_local_images(raw_arguments))
+        provider = None if args.provider == "fixture" else SanaImageProvider(
+            args.model_id, model_revision=args.model_revision,
+            inference_steps=args.inference_steps,
+            guidance_scale=args.guidance_scale,
+        )
         result = generate_project_images(
-            args.workspace, candidates_per_item=args.candidates_per_item,
+            args.workspace, provider, candidates_per_item=args.candidates_per_item,
             maximum_attempts=args.maximum_attempts,
         )
     elif args.command == "validate":

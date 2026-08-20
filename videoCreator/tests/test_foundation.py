@@ -9,7 +9,8 @@ from video_creator.analysis import (
     build_analysis_review_template, validate_analysis,
 )
 from video_creator.images import (
-    DeterministicFixtureImageProvider, generate_assets, validate_assets,
+    DeterministicFixtureImageProvider, SanaImageProvider, generate_assets,
+    validate_assets,
 )
 from video_creator.project import (
     analyze_project_source, ingest_project_source, initialize_project, validate_project,
@@ -445,11 +446,20 @@ def test_image_provider_failures_retry_then_use_fallback(tmp_path):
     prompts = compile_prompts(plan_storyboard(scenes, target_shot_seconds=30), analysis)
     assets = generate_assets(
         prompts, tmp_path, FailingProvider(), candidates_per_item=1, maximum_attempts=2,
+        fallback_provider=DeterministicFixtureImageProvider(),
     )
     attempts = assets["assets"][0]["candidates"][0]["generation_attempts"]
     assert [item["status"] for item in attempts] == ["failed", "failed", "generated"]
     assert attempts[-1]["provider"] == "deterministic-fixture-image-v1"
     assert validate_assets(assets, prompts, tmp_path) == []
+
+
+def test_sana_provider_requires_a_complete_local_cache(tmp_path):
+    provider = SanaImageProvider(cache_directory=tmp_path / "missing-model")
+    with pytest.raises(RuntimeError, match="local Sana model cache is missing"):
+        provider.generate("synthetic prompt", tmp_path / "output.png", seed=1)
+    assert "Sana_1600M_1024px_diffusers" in provider.name
+    assert "@ac0da2ff55fb" in provider.name
 
 
 def test_adaptation_blocks_invented_numbers_and_entities(tmp_path):

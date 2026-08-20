@@ -457,3 +457,15 @@ run reused all 34 selected asset groups, regenerated none, and made no generatio
 calls. Corruption, zero-call reuse, and retry-to-fallback behavior are covered by
 the 24-test passing suite. Next, implement autonomous narration-audio generation
 with the same provider, retry, hash, selection, and selective-reuse contracts.
+
+Offline production image generation is now integrated through the Apache-2.0
+Sana 1.6B model at a pinned revision. It follows the translator lifecycle: a
+workspace-root `imageEnv` is created once from a dependency fingerprint, commands
+delegate to it automatically, and weights live in the shared ignored
+`.model-cache`. Setup and cache verification have explicit offline behavior, and
+production generation fails early instead of substituting fixture blobs.
+
+The pinned model was cached and a real 1024-pixel CUDA smoke image was generated
+offline on the local RTX PRO 4000. Next, generate and automatically rank the
+canonical Tanya and Being X reference candidates before expanding generation to
+all storyboard shots.

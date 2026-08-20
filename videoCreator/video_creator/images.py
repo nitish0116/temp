@@ -46,6 +46,78 @@ class DeterministicFixtureImageProvider:
         output.write_bytes(png)
 
 
+class SanaImageProvider:
+    """Offline Sana adapter loading only from a pre-populated local model cache."""
+
+    def __init__(
+        self, model_id: str = "Efficient-Large-Model/Sana_1600M_1024px_diffusers", *,
+        model_revision: str = "ac0da2ff55fbe434795be0dce883042e4d49e2fc",
+        cache_directory: Path | None = None, inference_steps: int = 20,
+        guidance_scale: float = 4.5, device: str = "cuda",
+    ) -> None:
+        self.model_id = model_id
+        self.model_revision = model_revision
+        self.cache_directory = cache_directory
+        self.inference_steps = inference_steps
+        self.guidance_scale = guidance_scale
+        self.device = device
+        self._pipeline = None
+
+    @property
+    def name(self) -> str:
+        return (
+            f"sana-local:{self.model_id}@{self.model_revision[:12]}:steps={self.inference_steps}:"
+            f"guidance={self.guidance_scale}"
+        )
+
+    def _load(self):
+        if self._pipeline is not None:
+            return self._pipeline
+        if self.cache_directory is not None and not self.cache_directory.is_dir():
+            raise RuntimeError(
+                f"local Sana model cache is missing or incomplete: {self.model_id}; "
+                "run setup-local-images online first"
+            )
+        try:
+            import torch
+            from diffusers import SanaPipeline
+        except ImportError as error:
+            raise RuntimeError(
+                "Sana dependencies are missing; run the command from imageEnv"
+            ) from error
+        if self.device == "cuda" and not torch.cuda.is_available():
+            raise RuntimeError("CUDA is required for the configured local Sana provider")
+        try:
+            pipeline = SanaPipeline.from_pretrained(
+                self.model_id, revision=self.model_revision, dtype=torch.float16,
+                variant="fp16", local_files_only=True,
+                cache_dir=str(self.cache_directory) if self.cache_directory else None,
+            )
+        except OSError as error:
+            raise RuntimeError(
+                f"local Sana model cache is missing or incomplete: {self.model_id}; "
+                "run setup-local-images online first"
+            ) from error
+        pipeline.to(self.device)
+        self._pipeline = pipeline
+        return pipeline
+
+    def generate(self, prompt: str, output: Path, *, seed: int) -> None:
+        """Generate a real image without any network access."""
+        pipeline = self._load()
+        import torch
+        generator = torch.Generator(device=self.device).manual_seed(seed)
+        result = pipeline(
+            prompt=prompt, negative_prompt="", width=1024, height=1024,
+            num_inference_steps=self.inference_steps,
+            guidance_scale=self.guidance_scale, generator=generator,
+        )
+        if not result.images:
+            raise RuntimeError("local Sana provider returned no image")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        result.images[0].save(output, format="PNG")
+
+
 def _score(seed: int, prompt: str) -> dict:
     digest = hashlib.sha256(f"score:{seed}:{prompt}".encode("utf-8")).digest()
     values = [round(0.75 + byte / 1020, 4) for byte in digest[:3]]
@@ -68,7 +140,9 @@ def generate_assets(
     if maximum_attempts < 1:
         raise ValueError("maximum_attempts must be positive")
     selected = provider or DeterministicFixtureImageProvider()
-    fallback = fallback_provider or DeterministicFixtureImageProvider()
+    fallback = fallback_provider or (
+        DeterministicFixtureImageProvider() if provider is None else selected
+    )
     prior = {item.get("asset_id"): item for item in (previous or {}).get("assets", [])}
     items = []
     reused = []

@@ -1,0 +1,134 @@
+"""Manage and invoke the isolated local-image environment and shared model cache."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import subprocess
+import sys
+from collections.abc import Callable, Sequence
+from pathlib import Path
+
+
+WORKSPACE = Path(__file__).resolve().parents[2]
+PROJECT = WORKSPACE / "videoCreator"
+ENVIRONMENT = WORKSPACE / "imageEnv"
+REQUIREMENTS = PROJECT / "requirements-local-images.txt"
+MARKER = ENVIRONMENT / ".video-creator-environment.json"
+ACTIVE_FLAG = "VIDEO_CREATOR_IMAGE_ENV"
+MODEL_ID = "Efficient-Large-Model/Sana_1600M_1024px_diffusers"
+MODEL_REVISION = "ac0da2ff55fbe434795be0dce883042e4d49e2fc"
+TORCH_REQUIREMENTS = ("torch==2.11.0+cu128", "torchvision==0.26.0+cu128")
+Runner = Callable[..., subprocess.CompletedProcess]
+
+
+def environment_python(environment: Path = ENVIRONMENT) -> Path:
+    return environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+
+
+def cache_root() -> Path:
+    configured = os.environ.get("PYTHON_CACHE_HOME")
+    return Path(configured).expanduser() if configured else WORKSPACE / ".model-cache"
+
+
+def cache_environment() -> dict[str, str]:
+    """Return process-local cache routing without persisting workstation paths."""
+    root = cache_root().resolve()
+    values = dict(os.environ)
+    values.setdefault("PYTHON_CACHE_HOME", str(root))
+    values.setdefault("HF_HOME", str(root / "huggingface"))
+    values.setdefault("TORCH_HOME", str(root / "torch"))
+    values.setdefault("TEMP", str(root / "tmp"))
+    values.setdefault("TMP", str(root / "tmp"))
+    for key in ("HF_HOME", "TORCH_HOME", "TEMP", "TMP"):
+        Path(values[key]).mkdir(parents=True, exist_ok=True)
+    return values
+
+
+def requirements_fingerprint(path: Path = REQUIREMENTS) -> str:
+    digest = hashlib.sha256(path.read_bytes())
+    digest.update(f"{sys.version_info.major}.{sys.version_info.minor}".encode())
+    digest.update("\n".join(TORCH_REQUIREMENTS).encode())
+    return digest.hexdigest()
+
+
+def environment_is_current(
+    environment: Path = ENVIRONMENT, requirements: Path = REQUIREMENTS,
+) -> bool:
+    python = environment_python(environment)
+    marker = environment / MARKER.name
+    if not python.is_file() or not marker.is_file():
+        return False
+    try:
+        state = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return state.get("requirements_fingerprint") == requirements_fingerprint(requirements)
+
+
+def ensure_image_environment(
+    *, environment: Path = ENVIRONMENT, requirements: Path = REQUIREMENTS,
+    runner: Runner = subprocess.run, offline: bool = False,
+) -> Path:
+    """Create once and refresh only when isolated requirements change."""
+    python = environment_python(environment)
+    if environment_is_current(environment, requirements):
+        return python
+    if offline:
+        raise RuntimeError(
+            "imageEnv is missing or stale; run `python -m video_creator.cli setup-local-images` online first"
+        )
+    if not python.is_file():
+        runner([sys.executable, "-m", "venv", str(environment)], cwd=WORKSPACE, check=True)
+    runner([
+        str(python), "-m", "pip", "install", *TORCH_REQUIREMENTS,
+        "--index-url", "https://download.pytorch.org/whl/cu128",
+    ], cwd=WORKSPACE, check=True, env=cache_environment())
+    runner([
+        str(python), "-m", "pip", "install", "-r", str(requirements),
+    ], cwd=WORKSPACE, check=True, env=cache_environment())
+    runner([
+        str(python), "-m", "pip", "install", "--no-build-isolation", "-e", str(PROJECT),
+    ], cwd=WORKSPACE, check=True, env=cache_environment())
+    marker = environment / MARKER.name
+    marker.write_text(json.dumps({
+        "schema_version": 1,
+        "requirements": "videoCreator/requirements-local-images.txt",
+        "requirements_fingerprint": requirements_fingerprint(requirements),
+        "python_version": f"{sys.version_info.major}.{sys.version_info.minor}",
+        "torch_requirements": list(TORCH_REQUIREMENTS),
+    }, indent=2) + "\n", encoding="utf-8")
+    return python
+
+
+def prefetch_sana(*, python: Path, offline: bool, runner: Runner = subprocess.run) -> None:
+    """Cache model weights once; offline mode verifies without network access."""
+    command = [
+        str(python), "-c",
+        (
+            "from huggingface_hub import snapshot_download; "
+            f"snapshot_download({MODEL_ID!r}, revision={MODEL_REVISION!r}, "
+            f"local_files_only={offline!r})"
+        ),
+    ]
+    runner(command, cwd=WORKSPACE, check=True, env=cache_environment())
+
+
+def setup_local_images(*, offline: bool = False, runner: Runner = subprocess.run) -> Path:
+    python = ensure_image_environment(runner=runner, offline=offline)
+    prefetch_sana(python=python, offline=offline, runner=runner)
+    return python
+
+
+def run_local_images(arguments: Sequence[str], *, runner: Runner = subprocess.run) -> int:
+    """Delegate image generation to imageEnv and return to the caller automatically."""
+    offline = "--offline" in arguments
+    python = setup_local_images(offline=offline, runner=runner)
+    environment = cache_environment()
+    environment[ACTIVE_FLAG] = "1"
+    completed = runner(
+        [str(python), "-m", "video_creator.cli", *arguments],
+        cwd=PROJECT, env=environment, check=False,
+    )
+    return int(completed.returncode)

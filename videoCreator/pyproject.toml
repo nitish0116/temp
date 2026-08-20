@@ -11,5 +11,9 @@ requires-python = ">=3.11"
 [project.scripts]
 video-creator = "video_creator.cli:main"
 
+[tool.setuptools.packages.find]
+include = ["video_creator*"]
+exclude = ["workspaces*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

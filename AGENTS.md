@@ -35,3 +35,19 @@ python -m videotranslator history --update-from path/to/handoff-next.md
 Every commit must use a concise subject line followed by a blank line and a
 bulleted body describing the material changes. Do not create subject-only
 commits.
+
+## Local model environments and caches
+
+All future local model integrations must follow the `videotranslator` lifecycle:
+
+- keep conflicting model dependencies in a dedicated ignored environment at the
+  workspace root;
+- create the environment once and refresh it only when its requirements
+  fingerprint or Python minor version changes;
+- delegate model work to that interpreter automatically without shell activation;
+- store downloaded weights in the shared ignored `.model-cache` hierarchy, honoring
+  `PYTHON_CACHE_HOME`, `HF_HOME`, and framework-specific cache variables;
+- separate package installation from model prefetch, record the model ID and license,
+  and support an offline mode that fails early when the environment or weights are
+  missing;
+- never hardcode a workstation-specific absolute cache path or commit model weights.

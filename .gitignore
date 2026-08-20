@@ -1,6 +1,7 @@
 *.mp3
 *.mp4
 *.pyc
+*.egg-info/
 cleanup/**/*.md
 cleanup/markdownCleaner/data/*
 md-audio/**/*.md
@@ -36,6 +37,7 @@ md-audio/.hyphen-review-cache.json
 
 # Managed COMET runtime; created locally by `setup-comet-env`.
 /cometEnv/
+/imageEnv/
 
 # Always keep project documentation and dependency manifests visible.
 !**/README.md
