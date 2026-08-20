@@ -601,6 +601,15 @@ threshold: no single threshold separates all reviewed good and bad cases. Next,
 add explicit terminology/entity gates or qualify a stronger estimator before
 running the 19 unresolved groups.
 
+Step 27B terminology and entity consensus gates are now implemented under
+machine-review protocol 2. Source-triggered reviewed rules block required-term
+omissions and forbidden substitutions, while proper names independently present
+in at least two routes must survive the selected translation. The cached offline
+rerun now passes all three Korean fixtures and blocks the previous `lovely` and
+`Seattle` escapes. Overall qualification remains rejected because the reviewed
+Mandarin treaty translation still scores 0.3946. Next, qualify a stronger
+reference-free estimator with the same protocol-2 fixture set.
+
 ### 28. Produce and validate dubbing only from approved subtitles
 
 - Freeze approved canonical text and speaker assignments before TTS begins.

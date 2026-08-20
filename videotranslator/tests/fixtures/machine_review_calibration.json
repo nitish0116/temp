@@ -7,6 +7,8 @@
       "source_language": "ko",
       "source_text": "참귀엽죠?",
       "accepted_translation": "Isn't he cute?",
+      "required_terms": ["cute"],
+      "forbidden_terms": ["freak", "cruel", "lovely"],
       "rejected_translations": [
         "You're a little bit of a freak, aren't you?",
         "Isn't he cruel?",
@@ -18,6 +20,8 @@
       "source_language": "ko",
       "source_text": "서울에그런곳도있었니?",
       "accepted_translation": "There was a place like that in Seoul?",
+      "required_terms": ["Seoul"],
+      "forbidden_terms": ["Seattle"],
       "rejected_translations": [
         "Seattle also had such a place?",
         "There was a place like that?",
@@ -29,6 +33,8 @@
       "source_language": "ko",
       "source_text": "Dalsan-ri? 서울에 그런 곳도 있었니?",
       "accepted_translation": "Dalsan-ri? Was there such a place in Seoul?",
+      "required_terms": ["Dalsan-ri", "Seoul"],
+      "forbidden_terms": ["Seattle"],
       "rejected_translations": [
         "Was there such a place in Seoul?",
         "Dalsan-ri? Was there no such place in Seoul?",
@@ -40,6 +46,8 @@
       "source_language": "zh",
       "source_text": "台湾澎湖辽东赔款两万无万两无耻无能签订这丧权国的条约",
       "accepted_translation": "Taiwan, Penghu, and Liaodong, indemnities, and the humiliating Treaty of Shimonoseki signed with Japan.",
+      "required_terms": ["Japan", "Treaty", "Shimonoseki"],
+      "forbidden_terms": ["Yangtze Province", "Macau", "Customs Treaty"],
       "rejected_translations": [
         "Taiwan's Yangtze Province claims 22,000 and is unable to sign.",
         "Sign the Treaty of Macau.",

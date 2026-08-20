@@ -49,6 +49,8 @@ def load_fixtures(path: Path) -> tuple[str, list[CalibrationFixture]]:
             source_text=str(item.get("source_text") or "").strip(),
             accepted_translation=str(item.get("accepted_translation") or "").strip(),
             rejected_translations=rejected,
+            required_terms=tuple(str(value) for value in item.get("required_terms", [])),
+            forbidden_terms=tuple(str(value) for value in item.get("forbidden_terms", [])),
         )
         if not fixture.fixture_id or not fixture.source_text or not fixture.accepted_translation:
             raise ValueError("machine-review fixtures require id, source, and accepted translation")
@@ -97,9 +99,12 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     env = prepare_machine_review_environment()
+    if args.offline:
+        env["HF_HUB_OFFLINE"] = "1"
+        env["TRANSFORMERS_OFFLINE"] = "1"
     cache_keys = {
         "PYTHON_CACHE_HOME", "HF_HOME", "HF_HUB_CACHE", "HUGGINGFACE_HUB_CACHE",
-        "TORCH_HOME", "TEMP", "TMP",
+        "TORCH_HOME", "TEMP", "TMP", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE",
     }
     os.environ.update({key: env[key] for key in cache_keys if key in env})
     estimator = CometKiwiQualityEstimator(

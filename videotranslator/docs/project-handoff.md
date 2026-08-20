@@ -162,6 +162,15 @@ Evidence: `docs/machine-review-qualification.json`. No threshold can separate
 these reviewed good and bad cases; keep promotion disabled. Next, add explicit
 terminology/entity gates or qualify a stronger estimator.
 
+Machine-review protocol 2 now adds source-triggered terminology rules and
+cross-route proper-name consensus. A genuinely offline cached rerun succeeded
+after setting both Hugging Face and Transformers offline flags. All three Korean
+fixtures now pass and the prior `lovely`/`cute` and `Seattle`/`Seoul` escapes are
+blocked. Overall qualification remains rejected because the reviewed Mandarin
+treaty translation scores 0.3946. Evidence was refreshed in
+`docs/machine-review-qualification.json`. Next, qualify a stronger estimator;
+do not lower the threshold or run the 19 unresolved groups yet.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining
