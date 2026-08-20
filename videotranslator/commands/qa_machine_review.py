@@ -9,7 +9,7 @@ from typing import Callable, Iterable
 from .qa_translation_integrity import adjudication_coverage_issues, integrity_issues
 
 
-MACHINE_REVIEW_PROTOCOL_VERSION = 2
+MACHINE_REVIEW_PROTOCOL_VERSION = 3
 QualityEstimator = Callable[[str, str], float]
 SemanticSimilarity = Callable[[str, str], float]
 BackTranslator = Callable[[str, str, str], str]
@@ -129,6 +129,40 @@ def entity_consensus_issues(
     return [{"type": "entity_consensus_mismatch", "missing": missing}] if missing else []
 
 
+def terminology_consensus_issues(
+    source_text: str,
+    translation: str,
+    route_candidates: dict[str, str],
+    rules: Iterable[TerminologyRule],
+    *,
+    minimum_routes: int = 2,
+) -> list[dict]:
+    """Require independent route support for reviewed source-grounded terms."""
+    source = source_text.casefold()
+    target = translation.casefold()
+    issues = []
+    for rule in rules:
+        if rule.source_terms and not any(term.casefold() in source for term in rule.source_terms):
+            continue
+        unsupported = []
+        for term in rule.required_target_terms:
+            folded = term.casefold()
+            supporting_routes = sorted(
+                route for route, candidate in route_candidates.items()
+                if folded in candidate.casefold()
+            )
+            if folded not in target or len(supporting_routes) < minimum_routes:
+                unsupported.append({"term": term, "supporting_routes": supporting_routes})
+        if unsupported:
+            issues.append({
+                "type": "terminology_consensus_mismatch",
+                "rule_id": rule.rule_id,
+                "minimum_routes": minimum_routes,
+                "unsupported": unsupported,
+            })
+    return issues
+
+
 def review_candidate(
     source_text: str,
     translation: str,
@@ -144,11 +178,16 @@ def review_candidate(
     terminology_rules: Iterable[TerminologyRule] = (),
 ) -> dict:
     """Return machine_verified only when every independent gate passes."""
+    terminology_rules = tuple(terminology_rules)
     failures: list[dict] = []
     issues = deterministic_issues(source_text, translation)
     issues.extend(terminology_issues(source_text, translation, terminology_rules))
     issues.extend(entity_consensus_issues(
         translation, route_candidates, minimum_routes=policy.minimum_agreeing_routes,
+    ))
+    issues.extend(terminology_consensus_issues(
+        source_text, translation, route_candidates, terminology_rules,
+        minimum_routes=policy.minimum_agreeing_routes,
     ))
     if issues:
         failures.append({"type": "deterministic_integrity", "issues": issues})

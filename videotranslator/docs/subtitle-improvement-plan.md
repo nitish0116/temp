@@ -622,6 +622,15 @@ can safely separate those cases. Evidence:
 non-promoting. Next, develop source/terminology-grounded verification for the
 Mandarin treaty case instead of lowering or model-tuning the scalar threshold.
 
+Machine-review protocol 3 has started that verifier. When a reviewed source
+rule is active, every required target term must now appear in the selected
+translation and be independently present in at least two route candidates.
+Failures retain the unsupported term and its supporting route names. This
+prevents one route from introducing an uncorroborated `Japan`, `Treaty`, or
+`Shimonoseki` assertion. The verifier remains disconnected from promotion and
+does not override the failed COMET quality gate. Next, add source-grounded
+polarity and relation claims, then adversarially qualify the complete verifier.
+
 ### 28. Produce and validate dubbing only from approved subtitles
 
 - Freeze approved canonical text and speaker assignments before TTS begins.

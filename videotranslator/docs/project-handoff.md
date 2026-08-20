@@ -182,6 +182,14 @@ non-promoting and the 19 unresolved groups remain untouched. Next, develop a
 source/terminology-grounded verifier for the Mandarin treaty case; do not lower
 the quality threshold.
 
+Machine-review protocol 3 now begins that source-grounded verifier. Required
+terms from an active reviewed source rule must appear in the selected candidate
+and be corroborated by at least two independent translation routes; failure
+evidence identifies each unsupported term and its supporting routes. This is
+tested for the Mandarin `Japan`, `Treaty`, and `Shimonoseki` claims, remains
+non-promoting, and does not bypass COMET. Next, add polarity and relation-claim
+grounding and qualify those gates against negation and role-swap corruptions.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining

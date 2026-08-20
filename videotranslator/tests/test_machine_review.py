@@ -9,6 +9,7 @@ from videotranslator.commands.qa_machine_review import (
     calibrate_machine_reviewer,
     entity_consensus_issues,
     review_candidate,
+    terminology_consensus_issues,
     terminology_issues,
 )
 
@@ -87,6 +88,47 @@ def test_entity_consensus_blocks_minority_place_name_variant():
     }]
 
 
+def test_source_grounded_terms_require_independent_route_consensus():
+    source = "Taiwan Penghu Liaodong treaty source"
+    rule = TerminologyRule(
+        "shimonoseki", ("treaty source",),
+        ("Japan", "Treaty", "Shimonoseki"),
+    )
+    routes = {
+        "primary": "Japan signed the Treaty of Shimonoseki.",
+        "dedicated_mt": "The Treaty of Shimonoseki was signed with Japan.",
+        "speech": "A treaty was signed.",
+    }
+    assert terminology_consensus_issues(
+        source, routes["primary"], routes, (rule,), minimum_routes=2,
+    ) == []
+
+
+def test_source_grounded_terms_report_single_route_assertions():
+    source = "Taiwan Penghu Liaodong treaty source"
+    rule = TerminologyRule(
+        "shimonoseki", ("treaty source",),
+        ("Japan", "Treaty", "Shimonoseki"),
+    )
+    routes = {
+        "primary": "Japan signed the Treaty of Shimonoseki.",
+        "dedicated_mt": "An agreement was signed.",
+        "speech": "A treaty was signed.",
+    }
+    issues = terminology_consensus_issues(
+        source, routes["primary"], routes, (rule,), minimum_routes=2,
+    )
+    assert issues == [{
+        "type": "terminology_consensus_mismatch",
+        "rule_id": "shimonoseki",
+        "minimum_routes": 2,
+        "unsupported": [
+            {"term": "Japan", "supporting_routes": ["primary"]},
+            {"term": "Shimonoseki", "supporting_routes": ["primary"]},
+        ],
+    }]
+
+
 def test_machine_review_applies_terminology_and_entity_gates():
     result = review_candidate(
         "서울에 그런 곳도 있었니?", "There was a place like that in Seattle?",
@@ -109,7 +151,10 @@ def test_machine_review_applies_terminology_and_entity_gates():
         issue["type"] for failure in result["failures"]
         if failure["type"] == "deterministic_integrity" for issue in failure["issues"]
     }
-    assert issue_types == {"terminology_mismatch", "entity_consensus_mismatch"}
+    assert issue_types == {
+        "terminology_mismatch", "entity_consensus_mismatch",
+        "terminology_consensus_mismatch",
+    }
 
 
 def test_adversarial_calibration_blocks_activation_when_semantic_defect_scores_high():
