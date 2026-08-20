@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from copy import deepcopy
 from datetime import datetime
@@ -308,13 +309,55 @@ def stratified_accepted_group_ids(adjudication_report: dict, sample_size: int = 
     return selected
 
 
+def zero_error_sample_size(
+    minimum_accuracy: float = 0.95, confidence: float = 0.95,
+) -> int:
+    """Return the conservative sample needed to support a zero-error lower bound."""
+    if not 0.0 < minimum_accuracy < 1.0:
+        raise ValueError("minimum_accuracy must be between 0 and 1")
+    if not 0.0 < confidence < 1.0:
+        raise ValueError("confidence must be between 0 and 1")
+    return math.ceil(math.log(1.0 - confidence) / math.log(minimum_accuracy))
+
+
+def random_accepted_group_ids(
+    adjudication_report: dict, sample_size: int, *, seed: str,
+) -> list[str]:
+    """Select an auditable pseudorandom sample without mutable RNG state."""
+    if sample_size < 1:
+        raise ValueError("sample_size must be positive")
+    if not seed.strip():
+        raise ValueError("seed must be nonempty")
+    accepted = [
+        str(item["semantic_group_id"]) for item in adjudication_report["checks"]
+        if item["passed"]
+    ]
+    ranked = sorted(
+        accepted,
+        key=lambda group_id: hashlib.sha256(
+            f"{seed}\0{group_id}".encode("utf-8")
+        ).digest(),
+    )
+    return ranked[:sample_size]
+
+
 def build_accepted_audit(
     document: dict, adjudication_report: dict, *, sample_id: str,
     source_media: str, media_sha256: str, adjudication_model: str,
     sample_size: int = 8, context_size: int = 3,
+    selection_method: str = "deterministic_early_middle_late",
+    selection_seed: str | None = None,
 ) -> dict:
     """Build a hashed human-audit artifact from stratified accepted groups."""
-    selected = set(stratified_accepted_group_ids(adjudication_report, sample_size))
+    if selection_method == "deterministic_early_middle_late":
+        selected_ids = stratified_accepted_group_ids(adjudication_report, sample_size)
+    elif selection_method == "seeded_random":
+        selected_ids = random_accepted_group_ids(
+            adjudication_report, sample_size, seed=selection_seed or "",
+        )
+    else:
+        raise ValueError(f"unsupported accepted-audit selection method: {selection_method}")
+    selected = set(selected_ids)
     audit_report = deepcopy(adjudication_report)
     for check in audit_report["checks"]:
         group_id = str(check["semantic_group_id"])
@@ -330,11 +373,40 @@ def build_accepted_audit(
     )
     audit["artifact_type"] = "accepted_subtitle_audit"
     audit["selection"] = {
-        "method": "deterministic_early_middle_late",
+        "method": selection_method,
         "requested_size": sample_size,
         "selected_size": len(audit["items"]),
     }
+    if selection_seed is not None:
+        audit["selection"]["seed"] = selection_seed
     for item in audit["items"]:
         item["terminal_state"] = "adjudicator_verified"
         item["review"]["status"] = "audit_pending"
+    return audit
+
+
+def build_reliability_audit(
+    document: dict, adjudication_report: dict, *, sample_id: str,
+    source_media: str, media_sha256: str, adjudication_model: str,
+    sample_size: int, selection_seed: str, context_size: int = 3,
+    minimum_accuracy: float = 0.95, confidence: float = 0.95,
+) -> dict:
+    """Build one episode stratum for a precommitted accuracy audit."""
+    audit = build_accepted_audit(
+        document, adjudication_report, sample_id=sample_id,
+        source_media=source_media, media_sha256=media_sha256,
+        adjudication_model=adjudication_model, sample_size=sample_size,
+        context_size=context_size, selection_method="seeded_random",
+        selection_seed=selection_seed,
+    )
+    audit["artifact_type"] = "accepted_subtitle_reliability_audit"
+    audit["statistical_target"] = {
+        "method": "zero_error_one_sided_binomial_bound",
+        "minimum_accuracy": minimum_accuracy,
+        "confidence": confidence,
+        "required_total_sample_size": zero_error_sample_size(
+            minimum_accuracy, confidence,
+        ),
+        "claim_requires_zero_material_errors": True,
+    }
     return audit

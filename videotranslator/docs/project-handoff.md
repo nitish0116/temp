@@ -210,6 +210,16 @@ and any failed companion gate remain unresolved. This policy is implemented and
 tested but is not yet connected to `final.srt` promotion. Next, qualify it with
 route-backed paraphrases, then wire only qualified `machine_verified` results.
 
+Before promotion, a statistically precommitted episode audit has been prepared
+for the 348 accepted groups. A published seeded SHA-256 ranking selected 59
+groups proportionally: 32 Japanese, 16 Korean, and 11 Mandarin. This supports a
+one-sided “at least 95% accuracy at 95% confidence” statement only if all 59
+receive independent semantic review with zero material errors. The ignored
+workspace artifact contains 59 hash-valid, FFprobe-readable audio clips under
+`outputs/step27-reliability-audit`; no decisions are present yet. Evidence and
+method: `docs/episode-accuracy-audit.md`. Next, obtain bilingual labels, or keep
+an automated result explicitly categorized as model-estimated reliability.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining

@@ -652,6 +652,15 @@ failed calibration without lowering its global threshold. The policy is not yet
 wired to `final.srt`; next, qualify route-backed paraphrases and then integrate
 only this bounded `machine_verified` state into the promotion decision.
 
+A credibility audit is now precommitted before promotion. The 348 accepted
+groups are sampled proportionally by episode using a published seeded SHA-256
+ranking: 32 Japanese, 16 Korean, and 11 Mandarin groups, for 59 total. With zero
+material errors, 59 reviews support a conservative one-sided 95%-accuracy claim
+at 95% confidence. All generated clips are readable and hash-valid. Semantic
+decisions remain pending, so no episode-accuracy claim exists yet. Record:
+`docs/episode-accuracy-audit.md`. Next, obtain independent bilingual labels or
+report any automated labels explicitly as model-estimated rather than proven.
+
 ### 28. Produce and validate dubbing only from approved subtitles
 
 - Freeze approved canonical text and speaker assignments before TTS begins.

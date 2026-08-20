@@ -3,9 +3,11 @@
 import pytest
 
 from videotranslator.commands.bounded_review import (
-    apply_review_decisions, attach_audio_clips, build_accepted_audit, build_bounded_review,
-    stratified_accepted_group_ids,
+    apply_review_decisions, attach_audio_clips, build_accepted_audit,
+    build_bounded_review, build_reliability_audit, random_accepted_group_ids,
+    stratified_accepted_group_ids, zero_error_sample_size,
 )
+from videotranslator.pipeline import main
 from videotranslator.tests.test_translation_agreement import translated_document
 
 
@@ -198,3 +200,44 @@ def test_accepted_audit_contains_only_selected_verified_groups():
     assert audit["selection"]["selected_size"] == 1
     assert audit["items"][0]["terminal_state"] == "adjudicator_verified"
     assert audit["items"][0]["review"]["status"] == "audit_pending"
+
+
+def test_zero_error_reliability_sample_requires_59_reviews():
+    assert zero_error_sample_size(0.95, 0.95) == 59
+
+
+def test_seeded_random_selection_is_reproducible_and_excludes_rejections():
+    report = {"checks": [
+        {"semantic_group_id": f"group-{index:02d}", "passed": index != 7}
+        for index in range(20)
+    ]}
+    selected = random_accepted_group_ids(report, 6, seed="published-seed")
+    assert selected == random_accepted_group_ids(report, 6, seed="published-seed")
+    assert "group-07" not in selected
+    assert selected != random_accepted_group_ids(report, 6, seed="different-seed")
+
+
+def test_reliability_audit_records_precommitted_statistical_target():
+    document = translated_document()
+    report = {"protocol_version": 3, "checks": [{
+        "semantic_group_id": "group-1", "passed": True,
+        "selected_translation": "Was there such a place in Seoul?",
+        "proposed_translation": "Was there such a place in Seoul?",
+        "error": None, "reason": "verified",
+    }]}
+    audit = build_reliability_audit(
+        document, report, sample_id="sample", source_media="sample-data/source.mp4",
+        media_sha256="e" * 64, adjudication_model="fixture", sample_size=1,
+        selection_seed="published-seed",
+    )
+    assert audit["artifact_type"] == "accepted_subtitle_reliability_audit"
+    assert audit["selection"]["method"] == "seeded_random"
+    assert audit["selection"]["seed"] == "published-seed"
+    assert audit["statistical_target"]["required_total_sample_size"] == 59
+
+
+def test_pipeline_dispatches_reliability_audit_help(monkeypatch):
+    monkeypatch.setattr("sys.argv", ["videotranslator", "prepare-reliability-audit", "--help"])
+    with pytest.raises(SystemExit) as error:
+        main()
+    assert error.value.code == 0

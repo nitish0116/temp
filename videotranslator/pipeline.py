@@ -286,6 +286,11 @@ def main() -> None:
 
         comet_environment_main(sys.argv[2:])
         return
+    if len(sys.argv) > 1 and sys.argv[1] == "prepare-reliability-audit":
+        from .commands.prepare_reliability_audit import main as reliability_audit_main
+
+        reliability_audit_main(sys.argv[2:])
+        return
     parser = argparse.ArgumentParser(description="Structured video translation pipeline")
     parser.add_argument("config", type=Path, help="Pipeline configuration JSON")
     subparsers = parser.add_subparsers(dest="command", required=True)
