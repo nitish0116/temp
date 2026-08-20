@@ -19,6 +19,7 @@ from .project import (
     approve_project_analysis, compile_project_prompts, enrich_project_scenes,
     generate_project_character_references, generate_project_images, initialize_project,
     review_project_character_references,
+    generate_project_shot_pilot, review_project_shot_pilot,
     plan_project_storyboard, validate_project,
     plan_project_narration, segment_project_scenes, write_analysis_review_template,
     write_narration_response_template,
@@ -109,6 +110,20 @@ def parser() -> argparse.ArgumentParser:
     )
     review_references.add_argument("workspace", type=Path)
     review_references.add_argument("--offline", action="store_true")
+    pilot = commands.add_parser("generate-shot-pilot", help="Generate a bounded real-shot pilot")
+    pilot.add_argument("workspace", type=Path)
+    pilot.add_argument("--shot-limit", type=int, default=4)
+    pilot.add_argument("--candidates-per-item", type=int, default=1)
+    pilot.add_argument("--maximum-attempts", type=int, default=2)
+    pilot.add_argument("--provider", choices=("fixture", "sana"), default="fixture")
+    pilot.add_argument("--model-id", default=MODEL_ID)
+    pilot.add_argument("--model-revision", default=MODEL_REVISION)
+    pilot.add_argument("--inference-steps", type=int, default=20)
+    pilot.add_argument("--guidance-scale", type=float, default=4.5)
+    pilot.add_argument("--offline", action="store_true")
+    pilot_review = commands.add_parser("review-shot-pilot", help="Semantically review the shot pilot")
+    pilot_review.add_argument("workspace", type=Path)
+    pilot_review.add_argument("--offline", action="store_true")
     setup_images = commands.add_parser(
         "setup-local-images", help="Create imageEnv and prefetch Sana weights",
     )
@@ -165,7 +180,7 @@ def main(argv: list[str] | None = None) -> None:
         )
     elif args.command == "compile-prompts":
         result = compile_project_prompts(args.workspace, style=args.style)
-    elif args.command in {"generate-images", "generate-character-references"}:
+    elif args.command in {"generate-images", "generate-character-references", "generate-shot-pilot"}:
         if args.provider == "sana" and os.environ.get(ACTIVE_FLAG) != "1":
             raw_arguments = list(argv) if argv is not None else sys.argv[1:]
             raise SystemExit(run_local_images(raw_arguments))
@@ -174,19 +189,31 @@ def main(argv: list[str] | None = None) -> None:
             inference_steps=args.inference_steps,
             guidance_scale=args.guidance_scale,
         )
-        generator = (
-            generate_project_images if args.command == "generate-images"
-            else generate_project_character_references
-        )
-        result = generator(
-            args.workspace, provider, candidates_per_item=args.candidates_per_item,
-            maximum_attempts=args.maximum_attempts,
-        )
+        if args.command == "generate-shot-pilot":
+            result = generate_project_shot_pilot(
+                args.workspace, provider, shot_limit=args.shot_limit,
+                candidates_per_item=args.candidates_per_item,
+                maximum_attempts=args.maximum_attempts,
+            )
+        else:
+            generator = (
+                generate_project_images if args.command == "generate-images"
+                else generate_project_character_references
+            )
+            result = generator(
+                args.workspace, provider, candidates_per_item=args.candidates_per_item,
+                maximum_attempts=args.maximum_attempts,
+            )
     elif args.command == "review-character-references":
         if os.environ.get(ACTIVE_FLAG) != "1":
             raw_arguments = list(argv) if argv is not None else sys.argv[1:]
             raise SystemExit(run_local_images(raw_arguments))
         result = review_project_character_references(args.workspace)
+    elif args.command == "review-shot-pilot":
+        if os.environ.get(ACTIVE_FLAG) != "1":
+            raw_arguments = list(argv) if argv is not None else sys.argv[1:]
+            raise SystemExit(run_local_images(raw_arguments))
+        result = review_project_shot_pilot(args.workspace)
     elif args.command == "validate":
         issues = validate_project(args.workspace)
         result = {"passed": not issues, "issues": issues}

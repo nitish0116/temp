@@ -134,6 +134,7 @@ def generate_assets(
     fallback_provider: ImageProvider | None = None, previous: dict | None = None,
     asset_kinds: frozenset[str] | None = None, asset_namespace: str | None = None,
     canonical_references: dict[str, str] | None = None,
+    asset_ids: frozenset[str] | None = None,
 ) -> dict:
     """Generate, rank, and select image and character-reference candidates."""
     if prompts.get("status") != "auto_accepted":
@@ -174,7 +175,11 @@ def generate_assets(
             hashlib.sha256(json_key(item).encode("utf-8")).hexdigest(),
         ) for item in prompts["reference_requirements"]
     ]
-    work = [item for item in all_work if asset_kinds is None or item[1] in asset_kinds]
+    work = [
+        item for item in all_work
+        if (asset_kinds is None or item[1] in asset_kinds)
+        and (asset_ids is None or item[0] in asset_ids)
+    ]
     for identifier, kind, prompt, dependency in work:
         existing = prior.get(identifier)
         if (
@@ -241,6 +246,7 @@ def generate_assets(
         "asset_kinds": sorted(asset_kinds or {"shot", "character_reference"}),
         "asset_namespace": asset_namespace,
         "canonical_reference_sha256": reference_hashes,
+        "asset_ids": sorted(asset_ids) if asset_ids is not None else None,
         "assets": items,
         "regeneration": {
             "reused_asset_ids": reused, "regenerated_asset_ids": regenerated,
@@ -266,6 +272,9 @@ def validate_assets(assets: dict, prompts: dict, root: Path) -> list[str]:
         [item["reference_id"] for item in prompts.get("reference_requirements", [])]
         if "character_reference" in kinds else []
     )
+    configured_ids = assets.get("asset_ids")
+    if configured_ids is not None:
+        expected = [identifier for identifier in expected if identifier in set(configured_ids)]
     actual = [item.get("asset_id") for item in assets.get("assets", [])]
     if actual != expected:
         issues.append("assets must cover every prompt and reference exactly once")

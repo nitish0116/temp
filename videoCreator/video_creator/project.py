@@ -24,7 +24,7 @@ from .scenes import (
 )
 from .source import ingest_markdown, normalize_markdown, validate_source
 from .storyboard import plan_storyboard, validate_storyboard
-from .visual_review import review_character_references
+from .visual_review import review_character_references, review_shot_assets
 
 
 RIGHTS_STATES = {"unverified", "authorized", "original", "public-domain"}
@@ -413,6 +413,62 @@ def generate_project_character_references(
     }
     write_json_atomic(manifest_path, manifest)
     return assets
+
+
+def generate_project_shot_pilot(
+    root: Path, provider: ImageProvider | None = None, *, shot_limit: int = 4,
+    candidates_per_item: int = 1, maximum_attempts: int = 2,
+) -> dict:
+    """Generate an isolated bounded shot batch before full production expansion."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    prompts = read_json(root / manifest["stages"]["prompts"]["artifact"])
+    canonical_stage = manifest.get("stages", {}).get("canonical_references", {})
+    if canonical_stage.get("status") != "auto_accepted":
+        raise ValueError("shot pilot requires accepted canonical references")
+    canonical = read_json(root / canonical_stage["artifact"])
+    hashes = {item["reference_id"]: item["sha256"] for item in canonical["references"]}
+    identifiers = frozenset(item["shot_id"] for item in prompts["prompts"][:shot_limit])
+    output = root / "images" / "shot-pilot.json"
+    previous = read_json(output) if output.is_file() else None
+    assets = generate_assets(
+        prompts, root, provider, candidates_per_item=candidates_per_item,
+        maximum_attempts=maximum_attempts, previous=previous,
+        asset_kinds=frozenset({"shot"}), asset_namespace="shot-pilot",
+        canonical_references=hashes, asset_ids=identifiers,
+    )
+    issues = validate_assets(assets, prompts, root)
+    if issues:
+        raise ValueError("invalid shot pilot: " + "; ".join(issues))
+    write_json_atomic(output, assets)
+    manifest["stages"]["shot_pilot"] = {
+        "status": "generated", "artifact": "images/shot-pilot.json",
+        "provider": assets["provider"], "shot_count": len(assets["assets"]),
+        "updated_at": now(), "approval_required": False,
+    }
+    write_json_atomic(manifest_path, manifest)
+    return assets
+
+
+def review_project_shot_pilot(root: Path) -> dict:
+    """Review the bounded production pilot and block expansion on any failure."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    stage = manifest.get("stages", {}).get("shot_pilot", {})
+    if stage.get("status") != "generated":
+        raise ValueError("shot pilot review requires generated pilot images")
+    assets = read_json(root / stage["artifact"])
+    prompts = read_json(root / manifest["stages"]["prompts"]["artifact"])
+    review = review_shot_assets(assets, prompts, root)
+    output = root / "images" / "shot-pilot-review.json"
+    write_json_atomic(output, review)
+    manifest["stages"]["shot_pilot_review"] = {
+        "status": review["status"], "artifact": "images/shot-pilot-review.json",
+        "reviewer": review["reviewer"], "updated_at": now(),
+        "approval_required": False,
+    }
+    write_json_atomic(manifest_path, manifest)
+    return review
 
 
 def review_project_character_references(root: Path) -> dict:

@@ -27,7 +27,7 @@ from video_creator.scenes import (
 )
 from video_creator.source import ingest_markdown, validate_source
 from video_creator.storyboard import plan_storyboard, validate_storyboard
-from video_creator.visual_review import review_character_references
+from video_creator.visual_review import review_character_references, review_shot_assets
 
 
 def test_markdown_ingestion_preserves_stable_section_ranges(tmp_path):
@@ -378,6 +378,7 @@ def test_prompt_compilation_is_complete_optional_and_selective(tmp_path):
             "single character, cinematic illustrated realism, no text, no captions, no panels."
         ),
         "brief_compiler": "source-visual-brief-v1",
+        "visual_constraints": [],
         "selection_mode": "optional_user_override",
         "default_action": "generate_and_auto_rank",
         "status": "default_ready",
@@ -551,6 +552,30 @@ def test_semantic_character_review_fails_closed_and_selects_passing_candidate(tm
     review = review_character_references(assets, prompts, tmp_path, Reviewer())
     assert review["status"] == "auto_accepted"
     assert review["assets"][0]["selected_candidate_id"].endswith("candidate-02")
+
+
+def test_shot_pilot_rejects_camera_only_prompt_variants(tmp_path):
+    class Reviewer:
+        name = "accepting-reviewer"
+
+        def review(self, image, brief):
+            return {"accepted": True, "score": 0.9, "reasons": ["accepted"]}
+
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    prompts = compile_prompts(plan_storyboard(scenes, target_shot_seconds=30), analysis)
+    duplicate = json.loads(json.dumps(prompts["prompts"][0]))
+    duplicate["shot_id"] = "duplicate-shot"
+    duplicate["prompt"] = duplicate["prompt"].replace("slow push", "slow pan")
+    prompts["prompts"].append(duplicate)
+    assets = generate_assets(
+        prompts, tmp_path, candidates_per_item=1, asset_kinds=frozenset({"shot"}),
+    )
+    review = review_shot_assets(assets, prompts, tmp_path, Reviewer())
+    assert review["status"] == "retry_required"
+    assert review["issues"] == [
+        "pilot shots require distinct narrative visual beats, not camera-only variants",
+    ]
 
 
 def test_adaptation_blocks_invented_numbers_and_entities(tmp_path):

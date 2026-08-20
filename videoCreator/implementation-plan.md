@@ -509,3 +509,14 @@ with their hashes, and then reused all 34 asset groups on an unchanged rerun wit
 zero generation calls. The 29-test suite and full workspace validation pass.
 Next, generate the first bounded batch of real Sana storyboard shots using these
 canonical dependencies, then apply the same local semantic gate before expansion.
+
+A four-shot offline Sana pilot and SmolVLM2 review stage are now implemented in
+isolated paths. The pilot caught two prompt-contract defects through bounded
+retries: missing character constraints initially produced an adult Tanya, and
+adding age constraints corrected identity but revealed four camera-only variants
+of the same portrait. A semantic-core diversity gate now marks such batches
+`retry_required` even if the per-image reviewer accepts them.
+
+Expansion to all 32 shots remains blocked. Next, enrich storyboard shots with
+distinct source-bound actions, framing, environment changes, and narrative beats;
+then rerun this same four-shot pilot without changing the acceptance policy.

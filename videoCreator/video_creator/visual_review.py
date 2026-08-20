@@ -118,3 +118,39 @@ def review_character_references(
         "status": "auto_accepted" if all_accepted else "retry_required",
         "acceptance_threshold": 0.75, "assets": reviewed,
     }
+
+
+def review_shot_assets(assets: dict, prompts: dict, root: Path, reviewer=None) -> dict:
+    """Apply the cached semantic reviewer to a bounded shot batch."""
+    selected_reviewer = reviewer or SmolVLMReviewer()
+    prompt_map = {item["shot_id"]: item for item in prompts.get("prompts", [])}
+    reviewed = []
+    all_accepted = True
+    semantic_cores = []
+    for asset in assets.get("assets", []):
+        prompt = prompt_map[asset["asset_id"]]["prompt"]
+        semantic_cores.append(re.sub(
+            r"Composition supports [^.]+ motion\.\s*", "", prompt,
+            flags=re.IGNORECASE,
+        ))
+        candidates = []
+        for candidate in asset["candidates"]:
+            result = selected_reviewer.review(root / candidate["path"], prompt)
+            candidates.append({"candidate_id": candidate["candidate_id"], **result})
+        passing = [item for item in candidates if item["accepted"]]
+        winner = max(passing, key=lambda item: (item["score"], item["candidate_id"])) if passing else None
+        all_accepted &= winner is not None
+        reviewed.append({
+            "asset_id": asset["asset_id"], "candidates": candidates,
+            "selected_candidate_id": winner["candidate_id"] if winner else None,
+            "status": "auto_accepted" if winner else "retry_required",
+        })
+    issues = []
+    if len(set(semantic_cores)) != len(semantic_cores):
+        issues.append("pilot shots require distinct narrative visual beats, not camera-only variants")
+        all_accepted = False
+    return {
+        "schema_version": 1, "reviewer": selected_reviewer.name,
+        "status": "auto_accepted" if all_accepted else "retry_required",
+        "acceptance_threshold": 0.75, "issues": issues, "assets": reviewed,
+    }
