@@ -5,8 +5,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .analysis import AnalysisProvider, ExtractiveAnalysisProvider, validate_analysis
 from .artifacts import read_json, write_json_atomic
-from .source import ingest_markdown, validate_source
+from .source import ingest_markdown, normalize_markdown, validate_source
 
 
 RIGHTS_STATES = {"unverified", "authorized", "original", "public-domain"}
@@ -63,6 +64,33 @@ def ingest_project_source(root: Path, manuscript: Path) -> dict:
     return source
 
 
+def analyze_project_source(
+    root: Path, manuscript: Path, provider: AnalysisProvider | None = None,
+) -> dict:
+    """Generate a source-bound draft analysis for explicit human review."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    source = read_json(root / "source" / "source.json")
+    text = normalize_markdown(manuscript.read_text(encoding="utf-8-sig"))
+    current = ingest_markdown(manuscript)
+    if current["sha256"] != source["sha256"]:
+        raise ValueError("manuscript changed after ingestion; ingest it again before analysis")
+    selected = provider or ExtractiveAnalysisProvider()
+    analysis = selected.analyze(text, source["sha256"])
+    issues = validate_analysis(analysis, source)
+    if issues:
+        raise ValueError("invalid analysis: " + "; ".join(issues))
+    output = root / "analysis" / "entities.json"
+    write_json_atomic(output, analysis)
+    manifest["stages"]["analysis"] = {
+        "status": "generated", "artifact": "analysis/entities.json",
+        "input_sha256": source["sha256"], "provider": selected.name,
+        "updated_at": now(), "approval_required": True,
+    }
+    write_json_atomic(manifest_path, manifest)
+    return analysis
+
+
 def validate_project(root: Path) -> list[str]:
     """Validate the available project and source contracts."""
     issues = []
@@ -80,4 +108,10 @@ def validate_project(root: Path) -> list[str]:
             issues.append("generated source artifact is missing")
         else:
             issues.extend(validate_source(read_json(source_path)))
+    analysis_path = root / "analysis" / "entities.json"
+    if manifest.get("stages", {}).get("analysis", {}).get("status") == "generated":
+        if not analysis_path.is_file():
+            issues.append("generated analysis artifact is missing")
+        elif source_path.is_file():
+            issues.extend(validate_analysis(read_json(analysis_path), read_json(source_path)))
     return issues

@@ -275,7 +275,13 @@ gaps, and unlicensed assets are blocking.
 
 ## Immediate next action
 
-Start Phase 1/Sprint 1: scaffold the Python package and CLI, define the project
-and source contracts, and create an authorized short-story fixture. Do not select
-production LLM, image, or TTS vendors until the offline fixture pipeline and
-artifact contracts are proven.
+Phase 1 source ingestion is implemented. The local Tanya prologue validates as
+three source-linked dated sections while remaining untracked and release-blocked
+under `unverified` rights. Draft story analysis is also implemented through a
+provider contract and an offline extractive baseline. Its candidates retain
+source offsets, require review, and cannot be used for release automatically.
+
+Next, define approved entity/alias decisions and the narration and scene
+contracts. Then add deterministic fixture providers for source-linked narration
+adaptation and scene segmentation. Do not select production LLM, image, or TTS
+vendors until those offline contracts and selective regeneration are proven.

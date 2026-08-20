@@ -7,7 +7,10 @@ import json
 from pathlib import Path
 
 from .artifacts import read_json
-from .project import RIGHTS_STATES, ingest_project_source, initialize_project, validate_project
+from .project import (
+    RIGHTS_STATES, analyze_project_source, ingest_project_source,
+    initialize_project, validate_project,
+)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -22,6 +25,9 @@ def parser() -> argparse.ArgumentParser:
     ingest = commands.add_parser("ingest", help="Ingest a Markdown manuscript")
     ingest.add_argument("workspace", type=Path)
     ingest.add_argument("manuscript", type=Path)
+    analyze = commands.add_parser("analyze", help="Create draft story/entity candidates")
+    analyze.add_argument("workspace", type=Path)
+    analyze.add_argument("manuscript", type=Path)
     validate = commands.add_parser("validate", help="Validate project artifacts")
     validate.add_argument("workspace", type=Path)
     status = commands.add_parser("status", help="Show project stage states")
@@ -36,6 +42,8 @@ def main(argv: list[str] | None = None) -> None:
         result = initialize_project(args.workspace, args.project_id, args.title, args.rights_status)
     elif args.command == "ingest":
         result = ingest_project_source(args.workspace, args.manuscript)
+    elif args.command == "analyze":
+        result = analyze_project_source(args.workspace, args.manuscript)
     elif args.command == "validate":
         issues = validate_project(args.workspace)
         result = {"passed": not issues, "issues": issues}
