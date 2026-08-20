@@ -577,6 +577,14 @@ connected to subtitle promotion. Next, install and prefetch the gated model,
 then qualify it against the reviewed multilingual fixtures plus omission,
 entity, number, polarity, and plausible-mistranslation mutations.
 
+The repeatable `qualify-machine-review` command is now implemented with four
+reviewed Korean/Mandarin fixtures and thirteen critical-error mutations. It
+writes auditable evidence, exits nonzero when any accepted translation scores
+below threshold or any corruption escapes both deterministic and learned gates,
+and remains disconnected from promotion. Next, install the optional COMET
+runtime, accept and prefetch the gated weights, and record the first real-score
+report; threshold tuning must use those results rather than assumptions.
+
 ### 28. Produce and validate dubbing only from approved subtitles
 
 - Freeze approved canonical text and speaker assignments before TTS begins.

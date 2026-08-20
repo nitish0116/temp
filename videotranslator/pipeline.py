@@ -270,6 +270,11 @@ def main() -> None:
 
         qualify_text_main(sys.argv[2:])
         return
+    if len(sys.argv) > 1 and sys.argv[1] == "qualify-machine-review":
+        from .commands.qualify_machine_review import main as qualify_machine_main
+
+        qualify_machine_main(sys.argv[2:])
+        return
     parser = argparse.ArgumentParser(description="Structured video translation pipeline")
     parser.add_argument("config", type=Path, help="Pipeline configuration JSON")
     subparsers = parser.add_subparsers(dest="command", required=True)

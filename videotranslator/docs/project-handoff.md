@@ -136,6 +136,13 @@ adapter is now implemented with shared-cache, offline, batch, device, and
 reference-free contract enforcement; model installation, gated-weight prefetch,
 and real-score qualification remain pending.
 
+The `qualify-machine-review` CLI now evaluates four reviewed Korean/Mandarin
+fixtures and thirteen adversarial corruptions, writes a versioned report, and
+fails closed. Offline contract tests pass, but no real COMET score has been
+recorded. Next, install `requirements/machine-review.txt`, accept the gated model
+terms, prefetch into the configured cache, and run qualification before choosing
+or changing any score threshold.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining
