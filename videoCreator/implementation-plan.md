@@ -2,11 +2,33 @@
 
 ## Objective
 
-Build a resumable pipeline that turns an authorized, cleaned Markdown chapter
-into a reviewable 5–10 minute narrated visual video. The MVP should produce
-stable intermediate artifacts, allow scene-level regeneration, and prove story
-fidelity, character consistency, timing, cost, and render quality before scaling
-to full chapters or novels.
+Build a resumable, autonomous pipeline that turns an authorized, cleaned
+Markdown chapter into a finished 5–10 minute narrated visual video. The MVP
+should produce stable intermediate artifacts, allow scene-level regeneration,
+and prove story fidelity, character consistency, timing, cost, and render quality
+before scaling to full chapters or novels.
+
+## Autonomy contract
+
+The installed pipeline—not a coding assistant—owns routine decisions from source
+analysis through final QA. Each stage must provide deterministic defaults,
+machine-readable validation, bounded retries, and automatic fallback behavior.
+The normal successful path requires no editorial prompts or manual artifact
+editing.
+
+User interaction is limited to:
+
+- declaring source rights and supplying credentials or unavailable inputs;
+- optionally selecting or replacing major character reference images;
+- resolving an exception only after automatic repair and fallback budgets are
+  exhausted.
+
+Entity merging, narration adaptation, scene design, shot selection, prompt
+construction, candidate ranking, TTS, timing, audio mix, rendering, and QA are
+automatic. Low-confidence results are regenerated or handled by a documented
+fallback policy. The pipeline emits a concise exception report only when it
+cannot continue safely; it never asks the user or a coding assistant to make a
+routine production decision.
 
 ## Scope decisions
 
@@ -15,7 +37,7 @@ to full chapters or novels.
 - Clean Markdown input and project metadata.
 - Source-linked narration adaptation.
 - Character, location, continuity, scene, and storyboard artifacts.
-- Approved reference images and 15–30 generated base panels.
+- Automatically accepted reference images and 15–30 generated base panels.
 - Scene-level narration audio and pronunciation overrides.
 - Audio-derived alignment, SRT/WebVTT, and master timeline.
 - Still-image pan, zoom, crop, crossfade, music ducking, and limited SFX.
@@ -27,7 +49,7 @@ to full chapters or novels.
 - Multi-chapter and multi-hour orchestration.
 - Automated lip synchronization.
 - AI video for routine shots.
-- Fully automatic reference-image approval or final publishing.
+- Unattended public publishing; the pipeline produces a validated local deliverable.
 - Large asset libraries, distributed rendering, and cloud job scheduling.
 
 ## Architecture
@@ -39,7 +61,7 @@ records input hashes, configuration, model/version, timestamps, and status.
 ```text
 source -> analysis -> narration -> scenes -> storyboard -> prompts
        -> references/panels -> TTS -> alignment/subtitles
-       -> timeline -> preview/render -> QA/review
+       -> timeline -> preview/render -> automatic QA -> deliverable
 ```
 
 Suggested package boundaries:
@@ -133,34 +155,37 @@ Deliver:
 - Scene segmentation and duration estimates.
 - Fidelity checks for uncovered source ranges, invented names/numbers, missing
   entities, and narration duplication.
-- Human-readable narration and storyboard review exports.
+- Human-readable narration and storyboard audit exports.
 
-Review gate:
+Automatic gate:
 
-- Approve narration and scene breakdown before any paid image generation.
+- Score narration and scene fidelity before paid image generation; retry failed
+  units within budget and stop only on unresolved blocking defects.
 
 Exit criteria:
 
 - Every narration block maps to valid source ranges.
 - Every source narrative range is included or explicitly excluded with reason.
 - Entity references resolve to canonical IDs.
-- A reviewer can reject and regenerate one block or scene independently.
+- Automatic QA can reject and regenerate one block or scene independently.
 
 ### Phase 3 — Visual bible, storyboard, and prompts
 
 Deliver:
 
-- Character/location/prop reference specifications and approval workflow.
+- Character/location/prop reference specifications and automatic ranking workflow.
 - Shot planning with panel reuse and crop/motion variants.
 - Deterministic prompt compiler using approved references and global style.
 - Budget estimator enforcing panels-per-minute and candidate limits.
 - Image provider interface, fixture generator, prompt/seed/reference provenance,
   candidate selection, and rejection/regeneration.
 
-Review gates:
+Interaction policy:
 
-- Approve major character and recurring-location references.
-- Approve 10–20 representative panels before bulk generation.
+- Offer the user an optional major-character image choice with an automatic
+  default and timeout-safe continuation.
+- Automatically rank representative panels for identity, composition, source
+  fit, and technical quality before bulk generation.
 
 Exit criteria:
 
@@ -204,7 +229,7 @@ Exit criteria:
 
 ### Phase 6 — MVP evaluation and scale decision
 
-Run one approved 5–10 minute segment and record:
+Run one automatically validated 5–10 minute segment and record:
 
 - Source-to-narration fidelity defects.
 - Character/location consistency defects.
@@ -223,13 +248,13 @@ cost per finished minute.
 The final render remains blocked unless:
 
 - adaptation rights are recorded;
-- narration/storyboard and visual references are approved;
+- narration, storyboard, and visual references pass automatic quality thresholds;
 - source coverage and narration lineage pass;
-- all timeline assets exist and are approved;
+- all timeline assets exist and pass automatic quality thresholds;
 - character continuity checks have no blocking issue;
 - TTS, alignment, subtitle, and timeline validation pass;
 - narration loudness, music ducking, SFX peaks, and final encoding pass;
-- the preview and final review decisions are recorded.
+- preview and final automatic QA decisions are recorded.
 
 Warnings may remain for intentional panel reuse or minor stylistic variation,
 but story contradictions, identity drift, missing audio/visual coverage, timing
@@ -263,7 +288,7 @@ gaps, and unlicensed assets are blocking.
 1. Add provider interfaces and deterministic fixture providers.
 2. Implement entity analysis, narration adaptation, and scene segmentation.
 3. Add source-coverage and unsupported-claim checks.
-4. Export narration/storyboard review documents and accept/reject decisions.
+4. Export narration/storyboard audit documents and automatic accept/retry decisions.
 5. Demonstrate selective regeneration after one narration edit.
 
 ### Sprint 3 — End-to-end media proof
@@ -298,12 +323,14 @@ scene contracts against the approved canonical IDs. Alias choices such as whethe
 `God`, `Lord`, and `Creator` represent one canonical entity must not be inferred
 silently by the pipeline.
 
-A model-assisted planning review has now resolved the local draft without
-misrepresenting it as human approval. It treats Tanya and Being X as characters,
+A model-assisted planning review has now resolved the local draft. It treats
+Tanya and Being X as characters,
 records `God`, `Creator`, and `Lord` as Being X aliases, retains Malthus as a
 historical reference, and classifies the Stanford Prison Experiment as an event.
-The result is `reviewed_draft`, planning-usable, non-release-usable, and still
-requires human approval.
+The result is `reviewed_draft`, planning-usable, and non-release-usable under the
+current contract. That mandatory human-approval behavior is now technical debt:
+it must be replaced by source-bound automatic confidence and QA gates. Rights
+status remains an independent release blocker.
 
 The narration planning contract is also implemented. It verifies the manuscript
 hash, requires reviewed canonical identities, groups the prologue into 14 bounded
@@ -328,7 +355,10 @@ every narration ID exactly once without crossing canonical setting boundaries.
 The full workspace validator reports no issues, and the 13-test suite passes.
 
 These artifacts remain local, model-assisted, non-release drafts because the
-source rights and editorial review are unresolved. Next, add a scene-review
-contract that records event, mood, visual intent, and accept/revise decisions for
-each of the eight scenes. Keep media generation blocked until that review is
-complete, then prove selective regeneration after revising one narration unit.
+source rights are unresolved and the automatic promotion contract is not yet
+implemented. Next, add an automatic scene-enrichment and QA contract that
+derives event, mood, visual intent, confidence, and accept/retry decisions for
+each of the eight scenes. It must promote passing artifacts without human or
+coding-assistant guidance, route failures through bounded repair and fallback,
+and produce an exception report only if those routes fail. Then prove selective
+regeneration after automatically revising one narration unit.
