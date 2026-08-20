@@ -131,7 +131,10 @@ round-trip semantic preservation, deterministic integrity checks, and a named
 passing adversarial calibration. Successful output is `machine_verified`, not
 human verification. It is not yet wired to promotion. Next, implement and
 qualify the COMETKiwi adapter against reviewed and deliberately corrupted
-multilingual fixtures before running it over the 19 unresolved groups.
+multilingual fixtures before running it over the 19 unresolved groups. The lazy
+adapter is now implemented with shared-cache, offline, batch, device, and
+reference-free contract enforcement; model installation, gated-weight prefetch,
+and real-score qualification remain pending.
 
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added

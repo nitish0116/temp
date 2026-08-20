@@ -570,10 +570,12 @@ durable, explicitly non-promoting decisions.
   approval, and retain `unresolved` whenever any gate fails.
 
 Status: in progress. The model-independent policy, candidate-review contract,
-and fail-closed adversarial calibration are implemented. They are not connected
-to subtitle promotion. Next, add a COMETKiwi adapter and qualify it against the
-reviewed multilingual fixtures plus omission, entity, number, polarity, and
-plausible-mistranslation mutations.
+fail-closed adversarial calibration, and lazy COMETKiwi adapter are implemented.
+The adapter uses the shared model cache, supports offline lookup, rejects
+reference-based models and malformed scores, and remains optional. It is not
+connected to subtitle promotion. Next, install and prefetch the gated model,
+then qualify it against the reviewed multilingual fixtures plus omission,
+entity, number, polarity, and plausible-mistranslation mutations.
 
 ### 28. Produce and validate dubbing only from approved subtitles
 

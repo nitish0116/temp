@@ -60,6 +60,7 @@ source; set the user-level variables for that machine.
 | `qwen2.5:7b` | Qualified Ollama independent translator | Selected by Step 23; Apache 2.0 | `ollama pull qwen2.5:7b` |
 | `qwen3:14b` | Rejected Step 26 adjudicator candidate | Passed `cute` and Shimonoseki but omitted the Dalsan-ri clause in 5/5 stability trials; do not use for automatic promotion | `ollama pull qwen3:14b` |
 | `facebook/seamless-m4t-v2-large` | Direct speech-to-English evidence (Step 24) | Required when `--speech-translation` is enabled; CC-BY-NC 4.0 | Hugging Face Transformers cache under `HF_HOME` |
+| `Unbabel/wmt22-cometkiwi-da` | Reference-free translation quality estimation (Step 27A) | Optional and non-promoting until adversarial qualification passes; gated CC-BY-NC-SA 4.0 | COMET cache under `PYTHON_CACHE_HOME`; accept the model terms before download |
 
 `qwen3:1.7b` must not be treated as release-qualified merely because its files are
 installed. Step 22 measured invalid-output rates of 100% for the Japanese probe,
@@ -77,6 +78,11 @@ headlessly from the local cache after download.
 `--ollama-device auto` offloads when the installed Torch profile supports CUDA and
 the GPU has at least 8 GiB VRAM. `cuda` explicitly permits offload below that
 threshold; `cpu` forces `num_gpu=0`. This keeps both workstation profiles usable.
+
+Install the optional Step 27A adapter with
+`python -m pip install -r videotranslator/requirements/machine-review.txt`.
+The adapter loads lazily, supports offline cache-only lookup, and must not be
+connected to promotion until its recorded adversarial qualification passes.
 
 ## Conditional alignment models
 
