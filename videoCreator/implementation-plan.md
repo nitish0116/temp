@@ -469,3 +469,12 @@ The pinned model was cached and a real 1024-pixel CUDA smoke image was generated
 offline on the local RTX PRO 4000. Next, generate and automatically rank the
 canonical Tanya and Being X reference candidates before expanding generation to
 all storyboard shots.
+
+Character references can now run as an independent, selectively reusable stage
+before shot generation. The first offline Sana run produced two candidates each
+for Being X and Tanya in 27 seconds, but visual inspection exposed a semantic
+grounding failure: Tanya appeared as an adult and Being X was not consistently
+elderly. These candidates are diagnostic, not approved production references.
+Next, compile source-evidenced visual character briefs and replace the synthetic
+hash scorer with a cached local vision-language reviewer that can reject identity,
+age, costume, and prompt-grounding failures automatically.

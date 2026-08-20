@@ -462,6 +462,21 @@ def test_sana_provider_requires_a_complete_local_cache(tmp_path):
     assert "@ac0da2ff55fb" in provider.name
 
 
+def test_character_reference_generation_can_run_before_shot_images(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    prompts = compile_prompts(plan_storyboard(scenes, target_shot_seconds=30), analysis)
+    references = generate_assets(
+        prompts, tmp_path, candidates_per_item=2,
+        asset_kinds=frozenset({"character_reference"}),
+        asset_namespace="reference-stage",
+    )
+    assert references["asset_kinds"] == ["character_reference"]
+    assert references["asset_namespace"] == "reference-stage"
+    assert [item["kind"] for item in references["assets"]] == ["character_reference"]
+    assert validate_assets(references, prompts, tmp_path) == []
+
+
 def test_adaptation_blocks_invented_numbers_and_entities(tmp_path):
     _source, _analysis, plan, _narration = adapted_fixture(tmp_path)
     provider = MappingNarrationProvider({

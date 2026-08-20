@@ -364,6 +364,41 @@ def generate_project_images(
     return assets
 
 
+def generate_project_character_references(
+    root: Path, provider: ImageProvider | None = None, *, candidates_per_item: int = 2,
+    maximum_attempts: int = 2,
+) -> dict:
+    """Generate and auto-select canonical character references before shot images."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    prompt_stage = manifest.get("stages", {}).get("prompts", {})
+    if prompt_stage.get("status") != "auto_accepted":
+        raise ValueError("character-reference generation requires accepted prompts")
+    prompts = read_json(root / prompt_stage["artifact"])
+    output = root / "images" / "character-references.json"
+    previous = read_json(output) if output.is_file() else None
+    assets = generate_assets(
+        prompts, root, provider, candidates_per_item=candidates_per_item,
+        maximum_attempts=maximum_attempts, previous=previous,
+        asset_kinds=frozenset({"character_reference"}),
+        asset_namespace="reference-stage",
+    )
+    issues = validate_assets(assets, prompts, root)
+    if issues:
+        raise ValueError("invalid character references: " + "; ".join(issues))
+    write_json_atomic(output, assets)
+    manifest["stages"]["character_references"] = {
+        "status": "auto_accepted", "artifact": "images/character-references.json",
+        "input_sha256": prompts["source_sha256"], "provider": assets["provider"],
+        "updated_at": now(), "approval_required": False,
+        "optional_user_override": True, "asset_count": len(assets["assets"]),
+        "reused_count": len(assets["regeneration"]["reused_asset_ids"]),
+        "regenerated_count": len(assets["regeneration"]["regenerated_asset_ids"]),
+    }
+    write_json_atomic(manifest_path, manifest)
+    return assets
+
+
 def validate_project(root: Path) -> list[str]:
     """Validate the available project and source contracts."""
     issues = []
@@ -459,5 +494,15 @@ def validate_project(root: Path) -> list[str]:
         else:
             issues.extend(validate_assets(
                 read_json(assets_path), read_json(prompts_path), root,
+            ))
+    references_stage = manifest.get("stages", {}).get("character_references", {})
+    if references_stage.get("status") == "auto_accepted":
+        references_path = root / references_stage.get("artifact", "")
+        prompts_path = root / prompts_stage.get("artifact", "")
+        if not references_path.is_file() or not prompts_path.is_file():
+            issues.append("character-reference dependencies are missing")
+        else:
+            issues.extend(validate_assets(
+                read_json(references_path), read_json(prompts_path), root,
             ))
     return issues

@@ -131,6 +131,7 @@ def generate_assets(
     prompts: dict, root: Path, provider: ImageProvider | None = None,
     *, candidates_per_item: int = 2, maximum_attempts: int = 2,
     fallback_provider: ImageProvider | None = None, previous: dict | None = None,
+    asset_kinds: frozenset[str] | None = None, asset_namespace: str | None = None,
 ) -> dict:
     """Generate, rank, and select image and character-reference candidates."""
     if prompts.get("status") != "auto_accepted":
@@ -143,11 +144,14 @@ def generate_assets(
     fallback = fallback_provider or (
         DeterministicFixtureImageProvider() if provider is None else selected
     )
-    prior = {item.get("asset_id"): item for item in (previous or {}).get("assets", [])}
+    previous_matches_namespace = (previous or {}).get("asset_namespace") == asset_namespace
+    prior = {
+        item.get("asset_id"): item for item in (previous or {}).get("assets", [])
+    } if previous_matches_namespace else {}
     items = []
     reused = []
     regenerated = []
-    work = [
+    all_work = [
         (item["shot_id"], "shot", item["prompt"], item["dependency_sha256"])
         for item in prompts["prompts"]
     ] + [
@@ -157,6 +161,7 @@ def generate_assets(
             hashlib.sha256(json_key(item).encode("utf-8")).hexdigest(),
         ) for item in prompts["reference_requirements"]
     ]
+    work = [item for item in all_work if asset_kinds is None or item[1] in asset_kinds]
     for identifier, kind, prompt, dependency in work:
         existing = prior.get(identifier)
         if (
@@ -178,7 +183,10 @@ def generate_assets(
         candidates = []
         for index in range(1, candidates_per_item + 1):
             seed = int(hashlib.sha256(f"{identifier}:{index}".encode()).hexdigest()[:8], 16)
-            relative = Path("images") / kind / identifier / f"candidate-{index:02d}.png"
+            relative = Path("images")
+            if asset_namespace:
+                relative /= asset_namespace
+            relative = relative / kind / identifier / f"candidate-{index:02d}.png"
             output = root / relative
             attempts = []
             generated_by = selected
@@ -217,6 +225,8 @@ def generate_assets(
         "schema_version": 1, "asset_set_id": "asset-set-0001",
         "prompt_set_id": prompts["prompt_set_id"], "source_sha256": prompts["source_sha256"],
         "provider": selected.name, "status": "auto_accepted", "release_usable": False,
+        "asset_kinds": sorted(asset_kinds or {"shot", "character_reference"}),
+        "asset_namespace": asset_namespace,
         "assets": items,
         "regeneration": {
             "reused_asset_ids": reused, "regenerated_asset_ids": regenerated,
@@ -234,9 +244,13 @@ def json_key(item: dict) -> str:
 def validate_assets(assets: dict, prompts: dict, root: Path) -> list[str]:
     """Validate coverage, selections, paths, and immutable file hashes."""
     issues = []
-    expected = [item["shot_id"] for item in prompts.get("prompts", [])] + [
-        item["reference_id"] for item in prompts.get("reference_requirements", [])
-    ]
+    kinds = set(assets.get("asset_kinds", {"shot", "character_reference"}))
+    expected = (
+        [item["shot_id"] for item in prompts.get("prompts", [])] if "shot" in kinds else []
+    ) + (
+        [item["reference_id"] for item in prompts.get("reference_requirements", [])]
+        if "character_reference" in kinds else []
+    )
     actual = [item.get("asset_id") for item in assets.get("assets", [])]
     if actual != expected:
         issues.append("assets must cover every prompt and reference exactly once")

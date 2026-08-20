@@ -17,7 +17,7 @@ from .local_image_environment import (
 from .project import (
     RIGHTS_STATES, adapt_project_narration, analyze_project_source, ingest_project_source,
     approve_project_analysis, compile_project_prompts, enrich_project_scenes,
-    generate_project_images, initialize_project,
+    generate_project_character_references, generate_project_images, initialize_project,
     plan_project_storyboard, validate_project,
     plan_project_narration, segment_project_scenes, write_analysis_review_template,
     write_narration_response_template,
@@ -89,6 +89,19 @@ def parser() -> argparse.ArgumentParser:
     images.add_argument("--inference-steps", type=int, default=20)
     images.add_argument("--guidance-scale", type=float, default=4.5)
     images.add_argument("--offline", action="store_true")
+    references = commands.add_parser(
+        "generate-character-references",
+        help="Generate and automatically rank canonical character references",
+    )
+    references.add_argument("workspace", type=Path)
+    references.add_argument("--candidates-per-item", type=int, default=2)
+    references.add_argument("--maximum-attempts", type=int, default=2)
+    references.add_argument("--provider", choices=("fixture", "sana"), default="fixture")
+    references.add_argument("--model-id", default=MODEL_ID)
+    references.add_argument("--model-revision", default=MODEL_REVISION)
+    references.add_argument("--inference-steps", type=int, default=20)
+    references.add_argument("--guidance-scale", type=float, default=4.5)
+    references.add_argument("--offline", action="store_true")
     setup_images = commands.add_parser(
         "setup-local-images", help="Create imageEnv and prefetch Sana weights",
     )
@@ -142,7 +155,7 @@ def main(argv: list[str] | None = None) -> None:
         )
     elif args.command == "compile-prompts":
         result = compile_project_prompts(args.workspace, style=args.style)
-    elif args.command == "generate-images":
+    elif args.command in {"generate-images", "generate-character-references"}:
         if args.provider == "sana" and os.environ.get(ACTIVE_FLAG) != "1":
             raw_arguments = list(argv) if argv is not None else sys.argv[1:]
             raise SystemExit(run_local_images(raw_arguments))
@@ -151,7 +164,11 @@ def main(argv: list[str] | None = None) -> None:
             inference_steps=args.inference_steps,
             guidance_scale=args.guidance_scale,
         )
-        result = generate_project_images(
+        generator = (
+            generate_project_images if args.command == "generate-images"
+            else generate_project_character_references
+        )
+        result = generator(
             args.workspace, provider, candidates_per_item=args.candidates_per_item,
             maximum_attempts=args.maximum_attempts,
         )
