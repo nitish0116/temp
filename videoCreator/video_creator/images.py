@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import struct
 import zlib
 from pathlib import Path
@@ -132,6 +133,7 @@ def generate_assets(
     *, candidates_per_item: int = 2, maximum_attempts: int = 2,
     fallback_provider: ImageProvider | None = None, previous: dict | None = None,
     asset_kinds: frozenset[str] | None = None, asset_namespace: str | None = None,
+    canonical_references: dict[str, str] | None = None,
 ) -> dict:
     """Generate, rank, and select image and character-reference candidates."""
     if prompts.get("status") != "auto_accepted":
@@ -151,8 +153,18 @@ def generate_assets(
     items = []
     reused = []
     regenerated = []
+    reference_hashes = canonical_references or {}
     all_work = [
-        (item["shot_id"], "shot", item["prompt"], item["dependency_sha256"])
+        (
+            item["shot_id"], "shot", item["prompt"],
+            hashlib.sha256(json.dumps({
+                "prompt_dependency_sha256": item["dependency_sha256"],
+                "reference_sha256": {
+                    identifier: reference_hashes.get(identifier)
+                    for identifier in item.get("reference_ids", [])
+                },
+            }, sort_keys=True).encode()).hexdigest(),
+        )
         for item in prompts["prompts"]
     ] + [
         (
@@ -228,6 +240,7 @@ def generate_assets(
         "provider": selected.name, "status": "auto_accepted", "release_usable": False,
         "asset_kinds": sorted(asset_kinds or {"shot", "character_reference"}),
         "asset_namespace": asset_namespace,
+        "canonical_reference_sha256": reference_hashes,
         "assets": items,
         "regeneration": {
             "reused_asset_ids": reused, "regenerated_asset_ids": regenerated,

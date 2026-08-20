@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+import shutil
 
 from .analysis import (
     AnalysisProvider, ExtractiveAnalysisProvider, apply_analysis_decisions,
     build_analysis_review_template, validate_analysis,
 )
-from .artifacts import read_json, write_json_atomic
+from .artifacts import read_json, sha256_file, write_json_atomic
 from .images import ImageProvider, generate_assets, validate_assets
 from .narration import (
     MappingNarrationProvider, adapt_narration, build_narration_plan,
@@ -351,9 +352,17 @@ def generate_project_images(
     prompts = read_json(root / prompt_stage["artifact"])
     output = root / "images" / "assets.json"
     previous = read_json(output) if output.is_file() else None
+    canonical_stage = manifest.get("stages", {}).get("canonical_references", {})
+    canonical_hashes = {}
+    if canonical_stage.get("status") == "auto_accepted":
+        canonical = read_json(root / canonical_stage["artifact"])
+        canonical_hashes = {
+            item["reference_id"]: item["sha256"] for item in canonical["references"]
+        }
     assets = generate_assets(
         prompts, root, provider, candidates_per_item=candidates_per_item,
         maximum_attempts=maximum_attempts, previous=previous,
+        canonical_references=canonical_hashes,
     )
     issues = validate_assets(assets, prompts, root)
     if issues:
@@ -423,6 +432,36 @@ def review_project_character_references(root: Path) -> dict:
         "reviewer": review["reviewer"], "updated_at": now(),
         "approval_required": False,
     }
+    if review["status"] == "auto_accepted":
+        by_asset = {item["asset_id"]: item for item in assets["assets"]}
+        promoted = []
+        for item in review["assets"]:
+            asset = by_asset[item["asset_id"]]
+            candidate = next(
+                value for value in asset["candidates"]
+                if value["candidate_id"] == item["selected_candidate_id"]
+            )
+            relative = Path("references") / "characters" / f"{item['asset_id']}.png"
+            destination = root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(root / candidate["path"], destination)
+            promoted.append({
+                "reference_id": item["asset_id"],
+                "selected_candidate_id": item["selected_candidate_id"],
+                "path": relative.as_posix(), "sha256": sha256_file(destination),
+                "reviewer": review["reviewer"],
+            })
+        canonical = {
+            "schema_version": 1, "status": "auto_accepted",
+            "source_sha256": prompts["source_sha256"], "references": promoted,
+        }
+        canonical_output = root / "references" / "characters.json"
+        write_json_atomic(canonical_output, canonical)
+        manifest["stages"]["canonical_references"] = {
+            "status": "auto_accepted", "artifact": "references/characters.json",
+            "updated_at": now(), "reference_count": len(promoted),
+            "approval_required": False,
+        }
     write_json_atomic(manifest_path, manifest)
     return review
 
@@ -533,4 +572,23 @@ def validate_project(root: Path) -> list[str]:
             issues.extend(validate_assets(
                 read_json(references_path), read_json(prompts_path), root,
             ))
+    canonical_stage = manifest.get("stages", {}).get("canonical_references", {})
+    if canonical_stage.get("status") == "auto_accepted":
+        canonical_path = root / canonical_stage.get("artifact", "")
+        if not canonical_path.is_file():
+            issues.append("canonical character-reference manifest is missing")
+        else:
+            canonical = read_json(canonical_path)
+            expected_ids = {
+                item["reference_id"] for item in read_json(
+                    root / prompts_stage["artifact"]
+                ).get("reference_requirements", [])
+            }
+            actual_ids = {item.get("reference_id") for item in canonical.get("references", [])}
+            if actual_ids != expected_ids:
+                issues.append("canonical references must cover every character exactly")
+            for item in canonical.get("references", []):
+                path = root / str(item.get("path") or "")
+                if not path.is_file() or sha256_file(path) != item.get("sha256"):
+                    issues.append(f"canonical reference hash mismatch: {item.get('reference_id')}")
     return issues

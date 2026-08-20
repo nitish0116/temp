@@ -497,3 +497,15 @@ male design for Being X and a toddler in plain period orphanage clothing for
 Tanya. SmolVLM2 independently returned ACCEPT for all four candidates. Next,
 persist reviewer-selected canonical reference files and feed their hashes into
 shot prompt and selective-regeneration dependencies.
+
+Reviewer-selected references are now promoted into stable
+`references/characters` files with immutable hashes and provenance. Project
+validation rejects missing, incomplete, or modified canonical references. Every
+shot asset dependency incorporates only the hashes of characters that shot
+actually references, so a changed design selectively invalidates affected shots.
+
+The Tanya workspace promoted Being X and Tanya, upgraded the full asset manifest
+with their hashes, and then reused all 34 asset groups on an unchanged rerun with
+zero generation calls. The 29-test suite and full workspace validation pass.
+Next, generate the first bounded batch of real Sana storyboard shots using these
+canonical dependencies, then apply the same local semantic gate before expansion.

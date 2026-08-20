@@ -457,6 +457,39 @@ def test_image_assets_reuse_valid_files_without_provider_calls(tmp_path):
     ]
 
 
+def test_character_reference_hash_invalidates_only_dependent_shots(tmp_path):
+    class CountingProvider:
+        name = "counting-reference-dependency-v1"
+
+        def __init__(self):
+            self.calls = []
+            self.delegate = DeterministicFixtureImageProvider()
+
+        def generate(self, prompt, output, *, seed):
+            self.calls.append(output)
+            self.delegate.generate(prompt, output, seed=seed)
+
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    prompts = compile_prompts(plan_storyboard(scenes, target_shot_seconds=30), analysis)
+    independent = json.loads(json.dumps(prompts["prompts"][0]))
+    independent["shot_id"] = "independent-shot"
+    prompts["prompts"].append(independent)
+    prompts["prompts"][1]["reference_ids"] = []
+    provider = CountingProvider()
+    first = generate_assets(
+        prompts, tmp_path, provider, candidates_per_item=1,
+        asset_kinds=frozenset({"shot"}), canonical_references={"character-mira": "a" * 64},
+    )
+    provider.calls.clear()
+    second = generate_assets(
+        prompts, tmp_path, provider, candidates_per_item=1, previous=first,
+        asset_kinds=frozenset({"shot"}), canonical_references={"character-mira": "b" * 64},
+    )
+    assert prompts["prompts"][0]["shot_id"] in second["regeneration"]["regenerated_asset_ids"]
+    assert prompts["prompts"][1]["shot_id"] in second["regeneration"]["reused_asset_ids"]
+
+
 def test_image_provider_failures_retry_then_use_fallback(tmp_path):
     class FailingProvider:
         name = "failing-image-v1"
