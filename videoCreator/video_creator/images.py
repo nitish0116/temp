@@ -135,6 +135,7 @@ def generate_assets(
     asset_kinds: frozenset[str] | None = None, asset_namespace: str | None = None,
     canonical_references: dict[str, str] | None = None,
     asset_ids: frozenset[str] | None = None,
+    reference_conditioning: bool = False,
 ) -> dict:
     """Generate, rank, and select image and character-reference candidates."""
     if prompts.get("status") != "auto_accepted":
@@ -247,6 +248,7 @@ def generate_assets(
         "asset_namespace": asset_namespace,
         "canonical_reference_sha256": reference_hashes,
         "asset_ids": sorted(asset_ids) if asset_ids is not None else None,
+        "reference_conditioning": reference_conditioning,
         "assets": items,
         "regeneration": {
             "reused_asset_ids": reused, "regenerated_asset_ids": regenerated,

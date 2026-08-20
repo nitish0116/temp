@@ -27,6 +27,16 @@ def _fingerprint(shot: dict, prompt: str, reference_ids: list[str], style: str) 
     }, sort_keys=True, ensure_ascii=False))
 
 
+def _visualize_narrative_beat(beat: str) -> str:
+    """Rewrite contrastive prose so excluded concepts do not become image subjects."""
+    prefix, _separator, sentence = beat.partition(": ")
+    match = re.match(r"Instead of (.+?), there (?:is|are) (.+)", sentence, re.IGNORECASE)
+    if not match:
+        return beat
+    _excluded, depicted = match.groups()
+    return f"{prefix}: Show {depicted}"
+
+
 def compile_prompts(
     storyboard: dict, analysis: dict, *, style: str = "cinematic illustrated realism",
     previous: dict | None = None, source_text: str | None = None,
@@ -78,7 +88,9 @@ def compile_prompts(
         ]
         subjects = ", ".join(names) if names else "environmental storytelling"
         prompt = (
-            f"{style}. {shot['composition']} Depict {subjects}. "
+            f"{style}. {shot['composition']} Narrative action: "
+            f"{_visualize_narrative_beat(shot['narrative_beat'])} "
+            f"Depict {subjects}. "
             f"Mood: {shot['mood']}. Composition supports {shot['motion'].replace('_', ' ')} motion."
         )
         constraints = [

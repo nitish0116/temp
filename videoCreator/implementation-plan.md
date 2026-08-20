@@ -520,3 +520,15 @@ of the same portrait. A semantic-core diversity gate now marks such batches
 Expansion to all 32 shots remains blocked. Next, enrich storyboard shots with
 distinct source-bound actions, framing, environment changes, and narrative beats;
 then rerun this same four-shot pilot without changing the acceptance policy.
+
+Storyboard planning now distributes adapted narration sentences into distinct,
+source-bound shot beats and validates uniqueness within each scene. The first
+scene now progresses through first breath, fragmented awareness, infant-body
+realization, orphanage reveal, and forced feeding. Contrastive prose is rewritten
+to omit negated visual subjects; this selectively regenerated only the affected
+orphanage shot and removed the incorrectly rendered train.
+
+The four-shot pilot now passes semantic-core diversity, but development audit
+still shows clothing and facial drift from the canonical Tanya reference. Full
+expansion remains blocked until Sana generation consumes the canonical image as
+visual conditioning rather than using its hash only as an invalidation key.

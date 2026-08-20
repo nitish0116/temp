@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 
 from .artifacts import sha256_text
 
@@ -11,7 +12,7 @@ from .artifacts import sha256_text
 MOTIONS = ("slow_push", "slow_pan", "static_hold", "slow_pull")
 
 
-def _shot_fingerprint(scene: dict, index: int, duration: float) -> str:
+def _shot_fingerprint(scene: dict, index: int, duration: float, narrative_beat: str) -> str:
     payload = {
         "planner": "deterministic-storyboard-v1",
         "scene_dependency_sha256": scene["dependency_sha256"],
@@ -19,13 +20,14 @@ def _shot_fingerprint(scene: dict, index: int, duration: float) -> str:
         "duration_seconds": duration,
         "mood": scene["mood"],
         "visual_intent": scene["visual_intent"],
+        "narrative_beat": narrative_beat,
     }
     return sha256_text(json.dumps(payload, sort_keys=True, ensure_ascii=False))
 
 
 def plan_storyboard(
     scenes: dict, *, target_shot_seconds: float = 15.0,
-    previous_storyboard: dict | None = None,
+    previous_storyboard: dict | None = None, narration: dict | None = None,
 ) -> dict:
     """Create deterministic shots covering every automatically accepted scene."""
     if scenes.get("status") != "auto_accepted":
@@ -38,15 +40,29 @@ def plan_storyboard(
     }
     reused = []
     regenerated = []
+    narration_map = {
+        item["narration_id"]: item["adapted_text"]
+        for item in (narration or {}).get("blocks", [])
+    }
     for scene in scenes["scenes"]:
         if scene.get("status") != "auto_accepted":
             raise ValueError(f"storyboard planning requires accepted scene: {scene.get('scene_id')}")
         scene_duration = float(scene["estimated_narration_seconds"])
         count = max(1, min(6, math.ceil(scene_duration / target_shot_seconds)))
         duration = round(scene_duration / count, 3)
+        sentences = [
+            value.strip() for identifier in scene.get("narration_ids", [])
+            for value in re.split(r"(?<=[.!?])\s+", narration_map.get(identifier, ""))
+            if value.strip()
+        ]
+        if not sentences:
+            sentences = [scene["story_event"]]
+        phases = ("Opening", "Development", "Escalation", "Revelation", "Reaction", "Transition")
         for index in range(1, count + 1):
             shot_id = f"{scene['scene_id']}-shot-{index:03d}"
-            fingerprint = _shot_fingerprint(scene, index, duration)
+            sentence_index = min(len(sentences) - 1, math.floor((index - 1) * len(sentences) / count))
+            narrative_beat = f"{phases[index - 1]} beat: {sentences[sentence_index]}"
+            fingerprint = _shot_fingerprint(scene, index, duration, narrative_beat)
             prior = previous.get(shot_id)
             if prior and prior.get("dependency_sha256") == fingerprint:
                 shots.append(prior)
@@ -61,6 +77,7 @@ def plan_storyboard(
                 "setting_id": scene["setting_id"],
                 "canonical_entity_ids": list(scene["canonical_entity_ids"]),
                 "composition": scene["visual_intent"],
+                "narrative_beat": narrative_beat,
                 "mood": scene["mood"],
                 "motion": MOTIONS[(index - 1) % len(MOTIONS)],
                 "dependency_sha256": fingerprint,
@@ -109,6 +126,8 @@ def validate_storyboard(storyboard: dict, scenes: dict) -> list[str]:
             issues.append(f"invalid duration for {identifier}")
         if shot.get("status") != "auto_accepted":
             issues.append(f"unaccepted shot: {identifier}")
+        if not str(shot.get("narrative_beat") or "").strip():
+            issues.append(f"missing narrative beat for {identifier}")
         fingerprint = str(shot.get("dependency_sha256") or "")
         if len(fingerprint) != 64 or any(value not in "0123456789abcdef" for value in fingerprint):
             issues.append(f"invalid dependency fingerprint for {identifier}")
@@ -122,4 +141,7 @@ def validate_storyboard(storyboard: dict, scenes: dict) -> list[str]:
         total = sum(float(shot["duration_seconds"]) for shot in scene_shots)
         if abs(total - float(scene_map[scene_id]["estimated_narration_seconds"])) > 0.01:
             issues.append(f"shot duration coverage mismatch for {scene_id}")
+        beats = [shot.get("narrative_beat") for shot in scene_shots]
+        if len(set(beats)) != len(beats):
+            issues.append(f"shot narrative beats must be distinct for {scene_id}")
     return issues

@@ -149,6 +149,9 @@ def review_shot_assets(assets: dict, prompts: dict, root: Path, reviewer=None) -
     if len(set(semantic_cores)) != len(semantic_cores):
         issues.append("pilot shots require distinct narrative visual beats, not camera-only variants")
         all_accepted = False
+    if assets.get("canonical_reference_sha256") and not assets.get("reference_conditioning"):
+        issues.append("canonical reference images must condition generation before expansion")
+        all_accepted = False
     return {
         "schema_version": 1, "reviewer": selected_reviewer.name,
         "status": "auto_accepted" if all_accepted else "retry_required",

@@ -20,7 +20,7 @@ from video_creator.narration import (
     build_narration_response_template, validate_adapted_narration,
     validate_narration_plan,
 )
-from video_creator.prompts import compile_prompts, validate_prompts
+from video_creator.prompts import _visualize_narrative_beat, compile_prompts, validate_prompts
 from video_creator.scenes import (
     DeterministicSceneEnrichmentProvider, enrich_scenes, segment_scenes,
     validate_enriched_scenes, validate_scenes,
@@ -404,6 +404,13 @@ def test_character_reference_prompt_includes_bounded_source_evidence(tmp_path):
     assert "young pilot in a blue uniform" in requirement["source_evidence"][0]
     assert "Evidence:" not in requirement["reference_prompt"]
     assert len(requirement["source_evidence"]) <= 3
+
+
+def test_contrastive_narrative_beat_becomes_visual_exclusion():
+    beat = "Revelation beat: Instead of a train platform, there is a stone orphanage."
+    visual = _visualize_narrative_beat(beat)
+    assert "Show a stone orphanage" in visual
+    assert "train platform" not in visual
 
 
 def test_fixture_images_are_ranked_selected_and_hash_validated(tmp_path):
