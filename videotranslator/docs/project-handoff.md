@@ -1,6 +1,6 @@
 # Video Translator project handoff
 
-Last durable update: 2026-08-16. Run `python -m videotranslator history` for the
+Last durable update: 2026-08-20. Run `python -m videotranslator history` for the
 current branch, working tree, and recent commit IDs rather than copying a possibly
 stale commit hash from this document.
 
@@ -33,6 +33,22 @@ Rejected runs retain diagnostic `rejected.srt` files and do not retain
 subtitles.
 
 ## Current blocker and next action
+
+Current active state: three-route adjudication accepted 348 of 367 groups and
+left 19 unresolved. Protocol-3 machine review now has terminology consensus,
+polarity/relation grounding, and an explicitly recorded low-COMET override that
+is allowed only when every stronger companion gate passes. It remains
+disconnected from `final.srt` promotion.
+
+The immediate blocker is credible semantic labeling of the accepted population.
+A precommitted 59-item reliability audit (32 Japanese, 16 Korean, 11 Mandarin)
+has been generated under the ignored workspace-local
+`outputs/step27-reliability-audit`; all clips are readable and hash-valid. No
+semantic decisions exist yet. The next action is to obtain independent bilingual
+labels, or run an independent-model audit while clearly reporting it as
+machine-estimated reliability. Do not claim episode accuracy or enable automatic
+promotion before evaluating those decisions. See
+`docs/episode-accuracy-audit.md`.
 
 Step 24 speech-to-English evidence is implemented and opt-in via
 `--speech-translation`. Workstation A prefetched `facebook/seamless-m4t-v2-large`
@@ -260,7 +276,7 @@ on the destination system.
 
 ## Verification baseline
 
-The current workstation suite reports `189 passed, 3 skipped`. The three skips
+The current workstation suite reports `257 passed, 3 skipped`. The three skips
 require cached release artifacts absent from this checkout. The maintainability
 scan now excludes the ignored workspace-local `.venv`; targeted translation,
 agreement, and speech-translation tests also pass.
