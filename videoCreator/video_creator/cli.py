@@ -12,12 +12,13 @@ from .artifacts import read_json
 from .images import SanaImageProvider
 from .local_image_environment import (
     ACTIVE_FLAG, MODEL_ID, MODEL_REVISION, cache_root, run_local_images,
-    setup_local_images,
+    REVIEW_MODEL_ID, REVIEW_MODEL_REVISION, setup_local_images,
 )
 from .project import (
     RIGHTS_STATES, adapt_project_narration, analyze_project_source, ingest_project_source,
     approve_project_analysis, compile_project_prompts, enrich_project_scenes,
     generate_project_character_references, generate_project_images, initialize_project,
+    review_project_character_references,
     plan_project_storyboard, validate_project,
     plan_project_narration, segment_project_scenes, write_analysis_review_template,
     write_narration_response_template,
@@ -102,6 +103,12 @@ def parser() -> argparse.ArgumentParser:
     references.add_argument("--inference-steps", type=int, default=20)
     references.add_argument("--guidance-scale", type=float, default=4.5)
     references.add_argument("--offline", action="store_true")
+    review_references = commands.add_parser(
+        "review-character-references",
+        help="Review references against source evidence with cached SmolVLM2",
+    )
+    review_references.add_argument("workspace", type=Path)
+    review_references.add_argument("--offline", action="store_true")
     setup_images = commands.add_parser(
         "setup-local-images", help="Create imageEnv and prefetch Sana weights",
     )
@@ -122,6 +129,9 @@ def main(argv: list[str] | None = None) -> None:
             "status": "ready", "environment_python": str(python),
             "model": MODEL_ID, "revision": MODEL_REVISION,
             "license": "Apache-2.0", "cache_root": str(cache_root()),
+            "review_model": REVIEW_MODEL_ID,
+            "review_revision": REVIEW_MODEL_REVISION,
+            "review_license": "Apache-2.0",
         }
     elif args.command == "init":
         result = initialize_project(args.workspace, args.project_id, args.title, args.rights_status)
@@ -172,6 +182,11 @@ def main(argv: list[str] | None = None) -> None:
             args.workspace, provider, candidates_per_item=args.candidates_per_item,
             maximum_attempts=args.maximum_attempts,
         )
+    elif args.command == "review-character-references":
+        if os.environ.get(ACTIVE_FLAG) != "1":
+            raw_arguments = list(argv) if argv is not None else sys.argv[1:]
+            raise SystemExit(run_local_images(raw_arguments))
+        result = review_project_character_references(args.workspace)
     elif args.command == "validate":
         issues = validate_project(args.workspace)
         result = {"passed": not issues, "issues": issues}

@@ -157,7 +157,8 @@ def generate_assets(
     ] + [
         (
             item["reference_id"], "character_reference",
-            f"Canonical character reference portrait: {item['canonical_name']}",
+            item.get("reference_prompt")
+            or f"Canonical character reference portrait: {item['canonical_name']}",
             hashlib.sha256(json_key(item).encode("utf-8")).hexdigest(),
         ) for item in prompts["reference_requirements"]
     ]
@@ -238,6 +239,7 @@ def json_key(item: dict) -> str:
     """Return a stable character-reference dependency key."""
     return "|".join(str(item.get(key) or "") for key in (
         "reference_id", "canonical_entity_id", "canonical_name", "default_action",
+        "reference_prompt",
     ))
 
 

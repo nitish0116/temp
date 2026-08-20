@@ -23,6 +23,7 @@ from .scenes import (
 )
 from .source import ingest_markdown, normalize_markdown, validate_source
 from .storyboard import plan_storyboard, validate_storyboard
+from .visual_review import review_character_references
 
 
 RIGHTS_STATES = {"unverified", "authorized", "original", "public-domain"}
@@ -74,6 +75,8 @@ def ingest_project_source(root: Path, manuscript: Path) -> dict:
     source = ingest_markdown(manuscript)
     output = root / "source" / "source.json"
     write_json_atomic(output, source)
+    normalized = normalize_markdown(manuscript.read_text(encoding="utf-8-sig"))
+    (root / "source" / "manuscript.md").write_text(normalized, encoding="utf-8")
     manifest["stages"]["source"] = {
         "status": "generated", "artifact": "source/source.json",
         "input_sha256": source["sha256"], "updated_at": now(),
@@ -314,7 +317,11 @@ def compile_project_prompts(root: Path, *, style: str = "cinematic illustrated r
     analysis = read_json(root / manifest["stages"]["analysis"]["artifact"])
     output = root / "prompts" / "image-prompts.json"
     previous = read_json(output) if output.is_file() else None
-    compiled = compile_prompts(storyboard, analysis, style=style, previous=previous)
+    manuscript_path = root / "source" / "manuscript.md"
+    source_text = manuscript_path.read_text(encoding="utf-8") if manuscript_path.is_file() else None
+    compiled = compile_prompts(
+        storyboard, analysis, style=style, previous=previous, source_text=source_text,
+    )
     issues = validate_prompts(compiled, storyboard, analysis)
     if issues:
         raise ValueError("invalid image prompts: " + "; ".join(issues))
@@ -397,6 +404,27 @@ def generate_project_character_references(
     }
     write_json_atomic(manifest_path, manifest)
     return assets
+
+
+def review_project_character_references(root: Path) -> dict:
+    """Semantically review references and fail closed on source mismatches."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    stage = manifest.get("stages", {}).get("character_references", {})
+    if stage.get("status") != "auto_accepted":
+        raise ValueError("semantic review requires generated character references")
+    assets = read_json(root / stage["artifact"])
+    prompts = read_json(root / manifest["stages"]["prompts"]["artifact"])
+    review = review_character_references(assets, prompts, root)
+    output = root / "images" / "character-reference-review.json"
+    write_json_atomic(output, review)
+    manifest["stages"]["character_reference_review"] = {
+        "status": review["status"], "artifact": "images/character-reference-review.json",
+        "reviewer": review["reviewer"], "updated_at": now(),
+        "approval_required": False,
+    }
+    write_json_atomic(manifest_path, manifest)
+    return review
 
 
 def validate_project(root: Path) -> list[str]:

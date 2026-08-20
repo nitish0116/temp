@@ -19,6 +19,8 @@ MARKER = ENVIRONMENT / ".video-creator-environment.json"
 ACTIVE_FLAG = "VIDEO_CREATOR_IMAGE_ENV"
 MODEL_ID = "Efficient-Large-Model/Sana_1600M_1024px_diffusers"
 MODEL_REVISION = "ac0da2ff55fbe434795be0dce883042e4d49e2fc"
+REVIEW_MODEL_ID = "HuggingFaceTB/SmolVLM2-2.2B-Instruct"
+REVIEW_MODEL_REVISION = "482adb537c021c86670beed01cd58990d01e72e4"
 TORCH_REQUIREMENTS = ("torch==2.11.0+cu128", "torchvision==0.26.0+cu128")
 Runner = Callable[..., subprocess.CompletedProcess]
 
@@ -102,22 +104,25 @@ def ensure_image_environment(
     return python
 
 
-def prefetch_sana(*, python: Path, offline: bool, runner: Runner = subprocess.run) -> None:
-    """Cache model weights once; offline mode verifies without network access."""
-    command = [
-        str(python), "-c",
-        (
-            "from huggingface_hub import snapshot_download; "
-            f"snapshot_download({MODEL_ID!r}, revision={MODEL_REVISION!r}, "
-            f"local_files_only={offline!r})"
-        ),
-    ]
-    runner(command, cwd=WORKSPACE, check=True, env=cache_environment())
+def prefetch_models(*, python: Path, offline: bool, runner: Runner = subprocess.run) -> None:
+    """Cache every pinned visual model once or verify all snapshots offline."""
+    for model_id, revision in (
+        (MODEL_ID, MODEL_REVISION), (REVIEW_MODEL_ID, REVIEW_MODEL_REVISION),
+    ):
+        command = [
+            str(python), "-c",
+            (
+                "from huggingface_hub import snapshot_download; "
+                f"snapshot_download({model_id!r}, revision={revision!r}, "
+                f"local_files_only={offline!r})"
+            ),
+        ]
+        runner(command, cwd=WORKSPACE, check=True, env=cache_environment())
 
 
 def setup_local_images(*, offline: bool = False, runner: Runner = subprocess.run) -> Path:
     python = ensure_image_environment(runner=runner, offline=offline)
-    prefetch_sana(python=python, offline=offline, runner=runner)
+    prefetch_models(python=python, offline=offline, runner=runner)
     return python
 
 

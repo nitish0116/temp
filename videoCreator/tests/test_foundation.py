@@ -27,6 +27,7 @@ from video_creator.scenes import (
 )
 from video_creator.source import ingest_markdown, validate_source
 from video_creator.storyboard import plan_storyboard, validate_storyboard
+from video_creator.visual_review import review_character_references
 
 
 def test_markdown_ingestion_preserves_stable_section_ranges(tmp_path):
@@ -370,6 +371,9 @@ def test_prompt_compilation_is_complete_optional_and_selective(tmp_path):
         "reference_id": "character-mira",
         "canonical_entity_id": "mira",
         "canonical_name": "Mira",
+        "aliases": ["Mira"],
+        "source_evidence": [],
+        "reference_prompt": "Source-evidenced character design for Mira. No visual evidence available.",
         "selection_mode": "optional_user_override",
         "default_action": "generate_and_auto_rank",
         "status": "default_ready",
@@ -380,6 +384,20 @@ def test_prompt_compilation_is_complete_optional_and_selective(tmp_path):
     assert second["regeneration"]["reused_shot_ids"] == [
         shot["shot_id"] for shot in storyboard["shots"]
     ]
+
+
+def test_character_reference_prompt_includes_bounded_source_evidence(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    storyboard = plan_storyboard(scenes)
+    compiled = compile_prompts(
+        storyboard, analysis,
+        source_text="Mira was a young pilot in a blue uniform. " * 20,
+    )
+    requirement = compiled["reference_requirements"][0]
+    assert requirement["source_evidence"]
+    assert "young pilot in a blue uniform" in requirement["reference_prompt"]
+    assert len(requirement["source_evidence"]) <= 3
 
 
 def test_fixture_images_are_ranked_selected_and_hash_validated(tmp_path):
@@ -475,6 +493,26 @@ def test_character_reference_generation_can_run_before_shot_images(tmp_path):
     assert references["asset_namespace"] == "reference-stage"
     assert [item["kind"] for item in references["assets"]] == ["character_reference"]
     assert validate_assets(references, prompts, tmp_path) == []
+
+
+def test_semantic_character_review_fails_closed_and_selects_passing_candidate(tmp_path):
+    class Reviewer:
+        name = "fixture-reviewer"
+
+        def review(self, image, brief):
+            accepted = image.name == "candidate-02.png"
+            return {"accepted": accepted, "score": 0.9 if accepted else 0.2, "reasons": [brief[:20]]}
+
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    prompts = compile_prompts(plan_storyboard(scenes, target_shot_seconds=30), analysis)
+    assets = generate_assets(
+        prompts, tmp_path, candidates_per_item=2,
+        asset_kinds=frozenset({"character_reference"}),
+    )
+    review = review_character_references(assets, prompts, tmp_path, Reviewer())
+    assert review["status"] == "auto_accepted"
+    assert review["assets"][0]["selected_candidate_id"].endswith("candidate-02")
 
 
 def test_adaptation_blocks_invented_numbers_and_entities(tmp_path):

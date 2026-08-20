@@ -22,3 +22,15 @@ the manager also routes Hugging Face and PyTorch caches beneath it.
 The deterministic fixture provider is retained for tests only. Production Sana
 generation fails early if CUDA, dependencies, or cached weights are unavailable;
 it does not silently replace production output with fixture blobs.
+
+## Semantic visual review
+
+- Model: `HuggingFaceTB/SmolVLM2-2.2B-Instruct`
+- Revision: `482adb537c021c86670beed01cd58990d01e72e4`
+- License: Apache-2.0
+- Purpose: compare generated references with source-evidenced visual briefs
+- Environment and cache: shared `imageEnv` and `.model-cache/huggingface`
+
+The setup command prefetches both Sana and SmolVLM2. Offline setup succeeds only
+when both exact revisions are present, ensuring the automatic reviewer cannot be
+silently skipped when internet access is unavailable.

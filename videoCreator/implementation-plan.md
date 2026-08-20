@@ -478,3 +478,14 @@ elderly. These candidates are diagnostic, not approved production references.
 Next, compile source-evidenced visual character briefs and replace the synthetic
 hash scorer with a cached local vision-language reviewer that can reject identity,
 age, costume, and prompt-grounding failures automatically.
+
+The Apache-2.0 SmolVLM2 2.2B reviewer is now pinned and cached alongside Sana in
+the shared model cache. Ingestion retains a local normalized manuscript, prompt
+compilation attaches bounded source evidence to each character, and semantic
+review fails closed with per-candidate diagnostics and a retry-required state.
+
+The first evidence-grounded retry correctly did not promote any references. It
+also proved that raw prose is unsuitable as an image prompt: Sana rendered scene
+layouts and pseudo-text instead of isolated character sheets. Next, distill the
+evidence into a concise visual-only character brief before bounded regeneration;
+raw excerpts remain reviewer evidence but must not be sent directly to Sana.
