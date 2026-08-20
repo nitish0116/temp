@@ -2,6 +2,41 @@
 
 from __future__ import annotations
 
+from typing import Protocol
+
+
+class SceneEnrichmentProvider(Protocol):
+    """Provider contract for autonomous editorial scene decisions."""
+
+    name: str
+
+    def enrich(self, scene: dict, narration_blocks: list[dict]) -> dict:
+        """Return source-bound event, mood, and visual intent for one scene."""
+
+
+class DeterministicSceneEnrichmentProvider:
+    """Offline fallback that derives safe decisions from validated narration."""
+
+    name = "deterministic-scene-enrichment-v1"
+
+    def enrich(self, scene: dict, narration_blocks: list[dict]) -> dict:
+        text = " ".join(block["adapted_text"].strip() for block in narration_blocks)
+        first_sentence = text.split(". ", 1)[0].strip().rstrip(".") + "."
+        tones = [block["tone"].split(",", 1)[0].strip() for block in narration_blocks]
+        mood = tones[0] if tones else "neutral"
+        subjects = scene.get("canonical_entity_ids") or []
+        subject = ", ".join(subjects) if subjects else "environmental details"
+        setting = scene.get("setting_id") or "unspecified setting"
+        return {
+            "story_event": first_sentence,
+            "mood": mood,
+            "visual_intent": (
+                f"Establish {setting}; focus on {subject}; support the narrated event "
+                "without adding characters, text, or chronology."
+            ),
+            "canonical_entity_ids": list(subjects),
+        }
+
 
 def segment_scenes(narration: dict, analysis: dict, *, maximum_blocks: int = 2) -> dict:
     """Group adjacent narration blocks without crossing canonical settings."""
@@ -86,4 +121,90 @@ def validate_scenes(scenes: dict, narration: dict, analysis: dict) -> list[str]:
             issues.append(f"unknown entities for {identifier}: {sorted(unknown)}")
         if float(scene.get("estimated_narration_seconds", 0)) <= 0:
             issues.append(f"invalid duration estimate for {identifier}")
+    return issues
+
+
+def enrich_scenes(
+    scenes: dict, narration: dict, provider: SceneEnrichmentProvider | None = None,
+    *, acceptance_threshold: float = 0.8, maximum_attempts: int = 2,
+) -> dict:
+    """Enrich and automatically promote scenes using bounded QA decisions."""
+    if scenes.get("status") != "draft":
+        raise ValueError("scene enrichment requires a draft scene plan")
+    if not 0 < acceptance_threshold <= 1:
+        raise ValueError("acceptance_threshold must be between zero and one")
+    if maximum_attempts < 1:
+        raise ValueError("maximum_attempts must be positive")
+    selected = provider or DeterministicSceneEnrichmentProvider()
+    blocks = {item["narration_id"]: item for item in narration["blocks"]}
+    enriched = []
+    for scene in scenes["scenes"]:
+        scene_blocks = [blocks[identifier] for identifier in scene["narration_ids"]]
+        decision = selected.enrich(scene, scene_blocks)
+        expected_entities = set(scene["canonical_entity_ids"])
+        supplied_entities = set(decision.get("canonical_entity_ids", []))
+        checks = {
+            "story_event_present": bool(str(decision.get("story_event") or "").strip()),
+            "mood_present": bool(str(decision.get("mood") or "").strip()),
+            "visual_intent_present": bool(str(decision.get("visual_intent") or "").strip()),
+            "entities_preserved": supplied_entities == expected_entities,
+        }
+        confidence = sum(checks.values()) / len(checks)
+        accepted = confidence >= acceptance_threshold and all(checks.values())
+        item = dict(scene)
+        item.update({
+            "story_event": str(decision.get("story_event") or "").strip(),
+            "mood": str(decision.get("mood") or "").strip(),
+            "visual_intent": str(decision.get("visual_intent") or "").strip(),
+            "status": "auto_accepted" if accepted else "retry_required",
+            "automatic_qa": {
+                "provider": selected.name,
+                "confidence": confidence,
+                "acceptance_threshold": acceptance_threshold,
+                "checks": checks,
+                "attempt": 1,
+                "maximum_attempts": maximum_attempts,
+                "decision": "accept" if accepted else "retry",
+            },
+        })
+        enriched.append(item)
+    accepted = all(item["status"] == "auto_accepted" for item in enriched)
+    return {
+        **{key: value for key, value in scenes.items() if key != "scenes"},
+        "status": "auto_accepted" if accepted else "retry_required",
+        "release_usable": False,
+        "provider": selected.name,
+        "scenes": enriched,
+        "exception_report": [] if accepted else [
+            {
+                "scene_id": item["scene_id"],
+                "reason": "automatic scene QA did not meet its acceptance threshold",
+                "next_action": "retry",
+            }
+            for item in enriched if item["status"] == "retry_required"
+        ],
+    }
+
+
+def validate_enriched_scenes(scenes: dict, narration: dict, analysis: dict) -> list[str]:
+    """Validate autonomous enrichment, QA evidence, and promotion decisions."""
+    draft = {**scenes, "status": "draft", "release_usable": False}
+    issues = validate_scenes(draft, narration, analysis)
+    expected_status = "auto_accepted" if all(
+        scene.get("status") == "auto_accepted" for scene in scenes.get("scenes", [])
+    ) else "retry_required"
+    if scenes.get("status") != expected_status:
+        issues.append("scene plan status does not match automatic scene decisions")
+    for scene in scenes.get("scenes", []):
+        identifier = scene.get("scene_id")
+        for field in ("story_event", "mood", "visual_intent"):
+            if not str(scene.get(field) or "").strip():
+                issues.append(f"missing {field} for {identifier}")
+        qa = scene.get("automatic_qa", {})
+        checks = qa.get("checks", {})
+        if not checks or not all(checks.values()):
+            if scene.get("status") != "retry_required":
+                issues.append(f"failed automatic QA must require retry for {identifier}")
+        elif scene.get("status") != "auto_accepted":
+            issues.append(f"passing automatic QA must accept {identifier}")
     return issues

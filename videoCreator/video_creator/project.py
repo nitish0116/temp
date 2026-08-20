@@ -15,7 +15,10 @@ from .narration import (
     build_narration_response_template,
     validate_adapted_narration, validate_narration_plan,
 )
-from .scenes import segment_scenes, validate_scenes
+from .scenes import (
+    SceneEnrichmentProvider, enrich_scenes, segment_scenes,
+    validate_enriched_scenes, validate_scenes,
+)
 from .source import ingest_markdown, normalize_markdown, validate_source
 
 
@@ -228,6 +231,40 @@ def segment_project_scenes(root: Path, *, maximum_blocks: int = 2) -> dict:
     return scenes
 
 
+def enrich_project_scenes(
+    root: Path, provider: SceneEnrichmentProvider | None = None,
+    *, acceptance_threshold: float = 0.8, maximum_attempts: int = 2,
+) -> dict:
+    """Automatically enrich and promote scenes without an editorial prompt."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    scene_stage = manifest["stages"]["scenes"]
+    if scene_stage.get("status") != "draft":
+        raise ValueError("automatic scene enrichment requires draft scenes")
+    scenes = read_json(root / scene_stage["artifact"])
+    narration = read_json(root / manifest["stages"]["narration"]["artifact"])
+    analysis = read_json(root / manifest["stages"]["analysis"]["artifact"])
+    result = enrich_scenes(
+        scenes, narration, provider,
+        acceptance_threshold=acceptance_threshold,
+        maximum_attempts=maximum_attempts,
+    )
+    issues = validate_enriched_scenes(result, narration, analysis)
+    if issues:
+        raise ValueError("invalid enriched scene plan: " + "; ".join(issues))
+    output = root / "storyboard" / "scenes.enriched.json"
+    write_json_atomic(output, result)
+    manifest["stages"]["scenes"] = {
+        "status": result["status"], "artifact": "storyboard/scenes.enriched.json",
+        "draft_artifact": scene_stage["artifact"], "provider": result["provider"],
+        "input_sha256": narration["source_sha256"], "updated_at": now(),
+        "approval_required": result["status"] != "auto_accepted",
+        "exception_count": len(result["exception_report"]),
+    }
+    write_json_atomic(manifest_path, manifest)
+    return result
+
+
 def validate_project(root: Path) -> list[str]:
     """Validate the available project and source contracts."""
     issues = []
@@ -280,12 +317,16 @@ def validate_project(root: Path) -> list[str]:
                         read_json(narration_path), read_json(plan_path),
                     ))
     scenes_stage = manifest.get("stages", {}).get("scenes", {})
-    if scenes_stage.get("status") == "draft":
+    if scenes_stage.get("status") in {"draft", "auto_accepted", "retry_required"}:
         scene_path = root / scenes_stage.get("artifact", "")
         if not scene_path.is_file() or narration_stage.get("status") != "adapted_draft":
             issues.append("draft scene dependencies are missing")
         else:
-            issues.extend(validate_scenes(
+            validator = (
+                validate_scenes if scenes_stage["status"] == "draft"
+                else validate_enriched_scenes
+            )
+            issues.extend(validator(
                 read_json(scene_path), read_json(root / narration_stage["artifact"]),
                 read_json(root / manifest["stages"]["analysis"]["artifact"]),
             ))

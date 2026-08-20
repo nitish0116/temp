@@ -16,7 +16,9 @@ from video_creator.narration import (
     build_narration_response_template, validate_adapted_narration,
     validate_narration_plan,
 )
-from video_creator.scenes import segment_scenes, validate_scenes
+from video_creator.scenes import (
+    enrich_scenes, segment_scenes, validate_enriched_scenes, validate_scenes,
+)
 from video_creator.source import ingest_markdown, validate_source
 
 
@@ -204,6 +206,36 @@ def test_adaptation_and_scene_contracts_cover_every_block(tmp_path):
     assert validate_scenes(scenes, narration, analysis) == []
     assert [item for scene in scenes["scenes"] for item in scene["narration_ids"]] == [
         block["narration_id"] for block in narration["blocks"]
+    ]
+
+
+def test_automatic_scene_enrichment_promotes_complete_decisions(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    draft = segment_scenes(narration, analysis)
+    enriched = enrich_scenes(draft, narration)
+    assert enriched["status"] == "auto_accepted"
+    assert enriched["exception_report"] == []
+    assert all(scene["status"] == "auto_accepted" for scene in enriched["scenes"])
+    assert all(scene["automatic_qa"]["decision"] == "accept" for scene in enriched["scenes"])
+    assert validate_enriched_scenes(enriched, narration, analysis) == []
+
+
+def test_automatic_scene_enrichment_routes_bad_output_to_retry(tmp_path):
+    class IncompleteProvider:
+        name = "incomplete-fixture"
+
+        def enrich(self, scene, narration_blocks):
+            return {"story_event": "", "mood": "quiet", "visual_intent": ""}
+
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    draft = segment_scenes(narration, analysis)
+    enriched = enrich_scenes(draft, narration, IncompleteProvider())
+    assert enriched["status"] == "retry_required"
+    assert enriched["exception_report"][0]["next_action"] == "retry"
+    assert enriched["scenes"][0]["automatic_qa"]["maximum_attempts"] == 2
+    assert validate_enriched_scenes(enriched, narration, analysis) == [
+        "missing story_event for scene-0001",
+        "missing visual_intent for scene-0001",
     ]
 
 

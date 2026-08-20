@@ -362,3 +362,17 @@ each of the eight scenes. It must promote passing artifacts without human or
 coding-assistant guidance, route failures through bounded repair and fallback,
 and produce an exception report only if those routes fail. Then prove selective
 regeneration after automatically revising one narration unit.
+
+Automatic scene enrichment and structural QA are now implemented. The offline
+fallback derives source-bound story events, moods, and visual intent, records
+per-check confidence and retry budgets, promotes complete results, and emits a
+machine-readable exception report for incomplete provider output. All eight
+local scenes were automatically accepted with no exceptions, the workspace
+validator passes, and the 15-test suite passes. Rights remain independently
+release-blocking.
+
+Next, strengthen automatic QA from structural completeness to semantic and
+continuity scoring, including setting-boundary detection, event-to-narration
+support, and visual-intent/entity consistency. Then implement bounded provider
+retry and deterministic fallback execution rather than only recording the retry
+decision.
