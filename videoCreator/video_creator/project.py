@@ -10,6 +10,7 @@ from .analysis import (
     build_analysis_review_template, validate_analysis,
 )
 from .artifacts import read_json, write_json_atomic
+from .images import ImageProvider, generate_assets, validate_assets
 from .narration import (
     MappingNarrationProvider, adapt_narration, build_narration_plan,
     build_narration_response_template,
@@ -59,6 +60,7 @@ def initialize_project(root: Path, project_id: str, title: str, rights_status: s
             "scenes": {"status": "pending"},
             "storyboard": {"status": "pending"},
             "prompts": {"status": "pending"},
+            "images": {"status": "pending"},
         },
     }
     write_json_atomic(root / "project.json", manifest)
@@ -329,6 +331,34 @@ def compile_project_prompts(root: Path, *, style: str = "cinematic illustrated r
     return compiled
 
 
+def generate_project_images(
+    root: Path, provider: ImageProvider | None = None, *, candidates_per_item: int = 2,
+) -> dict:
+    """Generate, rank, and select all visual candidates automatically."""
+    manifest_path = root / "project.json"
+    manifest = read_json(manifest_path)
+    prompt_stage = manifest.get("stages", {}).get("prompts", {})
+    if prompt_stage.get("status") != "auto_accepted":
+        raise ValueError("image generation requires accepted prompts")
+    prompts = read_json(root / prompt_stage["artifact"])
+    assets = generate_assets(
+        prompts, root, provider, candidates_per_item=candidates_per_item,
+    )
+    issues = validate_assets(assets, prompts, root)
+    if issues:
+        raise ValueError("invalid generated images: " + "; ".join(issues))
+    output = root / "images" / "assets.json"
+    write_json_atomic(output, assets)
+    manifest["stages"]["images"] = {
+        "status": "auto_accepted", "artifact": "images/assets.json",
+        "input_sha256": prompts["source_sha256"], "provider": assets["provider"],
+        "updated_at": now(), "approval_required": False,
+        "asset_count": len(assets["assets"]),
+    }
+    write_json_atomic(manifest_path, manifest)
+    return assets
+
+
 def validate_project(root: Path) -> list[str]:
     """Validate the available project and source contracts."""
     issues = []
@@ -414,5 +444,15 @@ def validate_project(root: Path) -> list[str]:
         else:
             issues.extend(validate_prompts(
                 read_json(prompts_path), read_json(storyboard_path), read_json(analysis_path),
+            ))
+    images_stage = manifest.get("stages", {}).get("images", {})
+    if images_stage.get("status") == "auto_accepted":
+        assets_path = root / images_stage.get("artifact", "")
+        prompts_path = root / prompts_stage.get("artifact", "")
+        if not assets_path.is_file() or not prompts_path.is_file():
+            issues.append("image asset dependencies are missing")
+        else:
+            issues.extend(validate_assets(
+                read_json(assets_path), read_json(prompts_path), root,
             ))
     return issues

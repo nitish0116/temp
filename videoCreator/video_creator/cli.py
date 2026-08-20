@@ -9,7 +9,8 @@ from pathlib import Path
 from .artifacts import read_json
 from .project import (
     RIGHTS_STATES, adapt_project_narration, analyze_project_source, ingest_project_source,
-    approve_project_analysis, compile_project_prompts, enrich_project_scenes, initialize_project,
+    approve_project_analysis, compile_project_prompts, enrich_project_scenes,
+    generate_project_images, initialize_project,
     plan_project_storyboard, validate_project,
     plan_project_narration, segment_project_scenes, write_analysis_review_template,
     write_narration_response_template,
@@ -69,6 +70,11 @@ def parser() -> argparse.ArgumentParser:
     )
     prompts.add_argument("workspace", type=Path)
     prompts.add_argument("--style", default="cinematic illustrated realism")
+    images = commands.add_parser(
+        "generate-images", help="Generate and automatically rank image candidates",
+    )
+    images.add_argument("workspace", type=Path)
+    images.add_argument("--candidates-per-item", type=int, default=2)
     validate = commands.add_parser("validate", help="Validate project artifacts")
     validate.add_argument("workspace", type=Path)
     status = commands.add_parser("status", help="Show project stage states")
@@ -111,6 +117,10 @@ def main(argv: list[str] | None = None) -> None:
         )
     elif args.command == "compile-prompts":
         result = compile_project_prompts(args.workspace, style=args.style)
+    elif args.command == "generate-images":
+        result = generate_project_images(
+            args.workspace, candidates_per_item=args.candidates_per_item,
+        )
     elif args.command == "validate":
         issues = validate_project(args.workspace)
         result = {"passed": not issues, "issues": issues}

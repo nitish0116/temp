@@ -8,6 +8,7 @@ from video_creator.analysis import (
     ExtractiveAnalysisProvider, apply_analysis_decisions,
     build_analysis_review_template, validate_analysis,
 )
+from video_creator.images import generate_assets, validate_assets
 from video_creator.project import (
     analyze_project_source, ingest_project_source, initialize_project, validate_project,
 )
@@ -375,6 +376,29 @@ def test_prompt_compilation_is_complete_optional_and_selective(tmp_path):
     assert second["regeneration"]["regenerated_shot_ids"] == []
     assert second["regeneration"]["reused_shot_ids"] == [
         shot["shot_id"] for shot in storyboard["shots"]
+    ]
+
+
+def test_fixture_images_are_ranked_selected_and_hash_validated(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    storyboard = plan_storyboard(scenes, target_shot_seconds=30)
+    prompts = compile_prompts(storyboard, analysis)
+    assets = generate_assets(prompts, tmp_path, candidates_per_item=2)
+    assert validate_assets(assets, prompts, tmp_path) == []
+    assert len(assets["assets"]) == len(prompts["prompts"]) + 1
+    assert all(len(item["candidates"]) == 2 for item in assets["assets"])
+    assert all(item["selection"] == "automatic_rank" for item in assets["assets"])
+    selected = assets["assets"][0]
+    winner = max(
+        selected["candidates"], key=lambda item: (item["score"]["total"], item["candidate_id"]),
+    )
+    assert selected["selected_candidate_id"] == winner["candidate_id"]
+
+    damaged = tmp_path / selected["candidates"][0]["path"]
+    damaged.write_bytes(b"damaged")
+    assert validate_assets(assets, prompts, tmp_path) == [
+        f"candidate hash mismatch: {selected['candidates'][0]['candidate_id']}",
     ]
 
 

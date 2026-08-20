@@ -432,3 +432,16 @@ for Tanya and Being X. Its unchanged rerun reused all 32 prompts and regenerated
 none. Project validation passes and the 21-test suite passes. Next, implement the
 image-provider contract, deterministic fixture images, automatic candidate
 scoring, and default reference selection while preserving the optional override.
+
+The image-provider contract and offline deterministic raster provider are now
+implemented. Each prompt and default character reference produces a bounded
+candidate set with reproducible seeds, technical/prompt-fit/continuity scores,
+automatic winner selection, provenance, relative paths, and content hashes.
+Project validation fails on missing, modified, unranked, or uncovered assets.
+
+The local run generated 68 PNG candidates for 32 shots and two default character
+references, then automatically selected all 34 required assets. No user choice
+was required, and Tanya or Being X can still be overridden later. Workspace
+validation passes and the 22-test suite passes. Next, add asset-level reuse and
+provider retry/fallback so unchanged images incur no generation work and failed
+production candidates recover without intervention.

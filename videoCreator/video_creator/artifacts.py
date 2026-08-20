@@ -15,6 +15,15 @@ def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def sha256_file(path: Path) -> str:
+    """Return a streaming digest for a binary artifact."""
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
     """Write formatted JSON atomically beside its destination."""
     path.parent.mkdir(parents=True, exist_ok=True)
