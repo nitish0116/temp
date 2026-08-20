@@ -61,6 +61,7 @@ source; set the user-level variables for that machine.
 | `qwen3:14b` | Rejected Step 26 adjudicator candidate | Passed `cute` and Shimonoseki but omitted the Dalsan-ri clause in 5/5 stability trials; do not use for automatic promotion | `ollama pull qwen3:14b` |
 | `facebook/seamless-m4t-v2-large` | Direct speech-to-English evidence (Step 24) | Required when `--speech-translation` is enabled; CC-BY-NC 4.0 | Hugging Face Transformers cache under `HF_HOME` |
 | `Unbabel/wmt22-cometkiwi-da` | Reference-free translation quality estimation (Step 27A) | Optional and non-promoting until adversarial qualification passes; gated CC-BY-NC-SA 4.0 | COMET cache under `PYTHON_CACHE_HOME`; accept the model terms before download |
+| `Unbabel/wmt23-cometkiwi-da-xl` | Rejected stronger Step 27A estimator | Failed all four accepted fixtures at 0.85 and ranked the Seattle corruption above correct Seoul; gated CC-BY-NC-SA 4.0 | COMET cache under `PYTHON_CACHE_HOME`; Xet transfer support is installed in `cometEnv` |
 
 `qwen3:1.7b` must not be treated as release-qualified merely because its files are
 installed. Step 22 measured invalid-output rates of 100% for the Japanese probe,

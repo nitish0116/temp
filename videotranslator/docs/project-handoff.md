@@ -171,6 +171,17 @@ treaty translation scores 0.3946. Evidence was refreshed in
 `docs/machine-review-qualification.json`. Next, qualify a stronger estimator;
 do not lower the threshold or run the 19 unresolved groups yet.
 
+The stronger `Unbabel/wmt23-cometkiwi-da-xl` qualification is complete and
+rejected. Correct Korean/Mandarin fixtures scored 0.7845, 0.8027, 0.6575, and
+0.2779 at the unchanged 0.85 threshold. It also ranked the `Seattle` corruption
+(0.8062) above correct `Seoul` (0.8027), so no scalar threshold makes it safe.
+Its documented Tanh negative tail is model-specifically floored to zero, with
+out-of-range values still rejected. Evidence:
+`docs/machine-review-wmt23-cometkiwi-xl-qualification.json`. Machine review stays
+non-promoting and the 19 unresolved groups remain untouched. Next, develop a
+source/terminology-grounded verifier for the Mandarin treaty case; do not lower
+the quality threshold.
+
 The agreed forward architecture is audio-only. OCR and burned-subtitle extraction
 are excluded as required, optional, and fallback evidence paths. Step 24 added
 independent direct speech-to-English evidence with SeamlessM4T-v2 while retaining

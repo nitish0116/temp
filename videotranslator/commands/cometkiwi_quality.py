@@ -11,6 +11,7 @@ from .runtime_device import resolve_device
 
 
 DEFAULT_COMETKIWI_MODEL = "Unbabel/wmt22-cometkiwi-da"
+TANH_COMETKIWI_MODELS = frozenset({"Unbabel/wmt23-cometkiwi-da-xl"})
 
 
 def default_comet_cache(source: dict[str, str] | None = None) -> Path:
@@ -91,8 +92,7 @@ class CometKiwiQualityEstimator:
         self._model = model
         return model
 
-    @staticmethod
-    def _scores(prediction: Any, expected: int) -> list[float]:
+    def _scores(self, prediction: Any, expected: int) -> list[float]:
         """Normalize the current COMET Prediction contract into bounded floats."""
         values = prediction.get("scores") if isinstance(prediction, dict) else getattr(prediction, "scores", None)
         if values is None:
@@ -107,8 +107,24 @@ class CometKiwiQualityEstimator:
             raise RuntimeError(
                 f"COMETKiwi returned {len(scores)} scores for {expected} inputs"
             )
-        if any(not 0.0 <= score <= 1.0 for score in scores):
-            raise RuntimeError("COMETKiwi returned a score outside the calibrated 0..1 range")
+        if self.model_name in TANH_COMETKIWI_MODELS:
+            invalid_tanh = [score for score in scores if not -1.0 <= score <= 1.0]
+            if invalid_tanh:
+                rendered = ", ".join(f"{score:.6g}" for score in invalid_tanh)
+                raise RuntimeError(
+                    "COMETKiwi returned a score outside the declared Tanh range: "
+                    f"{rendered}"
+                )
+            # The XL model card defines zero as random translation quality even
+            # though its Tanh head can emit a small negative tail.
+            scores = [max(0.0, score) for score in scores]
+        outside = [score for score in scores if not 0.0 <= score <= 1.0]
+        if outside:
+            rendered = ", ".join(f"{score:.6g}" for score in outside)
+            raise RuntimeError(
+                "COMETKiwi returned a score outside the calibrated 0..1 range: "
+                f"{rendered}"
+            )
         return scores
 
     def score_batch(self, pairs: Iterable[tuple[str, str]]) -> list[float]:

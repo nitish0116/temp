@@ -97,6 +97,29 @@ def test_adapter_rejects_invalid_prediction_contract(tmp_path, scores, message):
         estimator("source", "translation")
 
 
+def test_adapter_reports_out_of_range_score(tmp_path):
+    estimator, _downloads, _loads = adapter(tmp_path, FakeModel(scores=(-0.125,)))
+    with pytest.raises(RuntimeError, match=r"outside.*-0\.125"):
+        estimator("source", "translation")
+
+
+def test_xl_adapter_floors_tanh_negative_tail(tmp_path):
+    estimator, _downloads, _loads = adapter(
+        tmp_path, FakeModel(scores=(-0.125,)),
+        model_name="Unbabel/wmt23-cometkiwi-da-xl",
+    )
+    assert estimator("source", "translation") == 0.0
+
+
+def test_xl_adapter_rejects_score_outside_tanh_range(tmp_path):
+    estimator, _downloads, _loads = adapter(
+        tmp_path, FakeModel(scores=(-1.01,)),
+        model_name="Unbabel/wmt23-cometkiwi-da-xl",
+    )
+    with pytest.raises(RuntimeError, match=r"Tanh range.*-1\.01"):
+        estimator("source", "translation")
+
+
 def test_adapter_rejects_empty_text_without_loading(tmp_path):
     estimator, downloads, _loads = adapter(tmp_path, FakeModel())
     with pytest.raises(ValueError, match="nonempty"):

@@ -610,6 +610,18 @@ rerun now passes all three Korean fixtures and blocks the previous `lovely` and
 Mandarin treaty translation still scores 0.3946. Next, qualify a stronger
 reference-free estimator with the same protocol-2 fixture set.
 
+The stronger `Unbabel/wmt23-cometkiwi-da-xl` estimator has now been downloaded
+and qualified with that unchanged fixture set. Its Tanh head produced a small
+negative tail for severe corruptions, so the adapter floors negative values to
+the model card's documented random-quality floor of zero while continuing to
+reject values outside `-1..1`. The model is rejected: correct-fixture scores are
+0.7845, 0.8027, 0.6575, and 0.2779, all below 0.85, and the `Seattle`
+substitution scored 0.8062 versus 0.8027 for correct `Seoul`. No scalar threshold
+can safely separate those cases. Evidence:
+`docs/machine-review-wmt23-cometkiwi-xl-qualification.json`. Keep machine review
+non-promoting. Next, develop source/terminology-grounded verification for the
+Mandarin treaty case instead of lowering or model-tuning the scalar threshold.
+
 ### 28. Produce and validate dubbing only from approved subtitles
 
 - Freeze approved canonical text and speaker assignments before TTS begins.
