@@ -18,6 +18,7 @@ from .local_image_environment import (
 from .project import (
     RIGHTS_STATES, adapt_project_narration, align_project_subtitles, analyze_project_source, ingest_project_source,
     approve_project_analysis, compile_project_prompts, compile_project_timeline, enrich_project_scenes,
+    evaluate_project,
     generate_project_character_references, generate_project_images, initialize_project,
     generate_project_narration_audio,
     review_project_character_references,
@@ -142,6 +143,8 @@ def parser() -> argparse.ArgumentParser:
     timeline.add_argument("workspace", type=Path)
     render = commands.add_parser("render", help="Render and mux the final video")
     render.add_argument("workspace", type=Path)
+    evaluate = commands.add_parser("evaluate", help="Run final encoded-media QA")
+    evaluate.add_argument("workspace", type=Path)
     setup_images = commands.add_parser(
         "setup-local-images", help="Create imageEnv and prefetch Sana weights",
     )
@@ -242,6 +245,8 @@ def main(argv: list[str] | None = None) -> None:
         result = compile_project_timeline(args.workspace)
     elif args.command == "render":
         result = render_project_video(args.workspace)
+    elif args.command == "evaluate":
+        result = evaluate_project(args.workspace)
     elif args.command in {"review-shot-pilot", "review-images"}:
         if os.environ.get(ACTIVE_FLAG) != "1":
             raw_arguments = list(argv) if argv is not None else sys.argv[1:]

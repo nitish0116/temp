@@ -573,3 +573,9 @@ The final rendering stage is complete. FFmpeg rendered 32 resumable 1080p/30 fps
 H.264 motion segments, concatenated them without re-encoding, and muxed AAC
 narration plus an English mov_text subtitle stream. The resulting local Tanya
 prologue MP4 has an immutable recorded hash.
+
+End-to-end encoded-media evaluation passes. The final file is 411.133 seconds,
+H.264 1920x1080 at 30 fps, with AAC audio peaking at -2.5 dB and an embedded
+mov_text subtitle stream; no sustained near-black frames were detected. The
+technical pipeline is complete. Release remains deliberately blocked because
+adaptation rights are still recorded as unverified.

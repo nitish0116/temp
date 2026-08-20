@@ -28,6 +28,7 @@ from .storyboard import plan_storyboard, validate_storyboard
 from .subtitles import align_narration, validate_alignment, write_subtitles
 from .timeline import compile_timeline, mix_narration, validate_timeline
 from .render import render_video
+from .quality import evaluate_video
 from .visual_review import review_character_references, review_shot_assets
 
 
@@ -479,6 +480,17 @@ def render_project_video(root: Path) -> dict:
     manifest["stages"]["render"] = {"status": "rendered", "artifact": "renders/final/render.json",
         "video": result["path"], "updated_at": now(), "approval_required": False}
     write_json_atomic(manifest_path, manifest); return result
+
+def evaluate_project(root: Path) -> dict:
+    manifest_path = root / "project.json"; manifest = read_json(manifest_path)
+    render_stage = manifest.get("stages", {}).get("render", {})
+    if render_stage.get("status") != "rendered": raise ValueError("evaluation requires a completed render")
+    timeline = read_json(root / manifest["stages"]["timeline"]["artifact"])
+    report = evaluate_video(root / render_stage["video"], timeline["duration_seconds"], manifest["rights"])
+    write_json_atomic(root / "reports" / "final-qa.json", report)
+    manifest["stages"]["evaluation"] = {"status": report["status"], "artifact": "reports/final-qa.json",
+        "release_status": report["release_status"], "updated_at": now(), "approval_required": False}
+    write_json_atomic(manifest_path, manifest); return report
 
 
 def generate_project_character_references(
