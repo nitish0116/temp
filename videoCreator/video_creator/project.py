@@ -27,6 +27,7 @@ from .source import ingest_markdown, normalize_markdown, validate_source
 from .storyboard import plan_storyboard, validate_storyboard
 from .subtitles import align_narration, validate_alignment, write_subtitles
 from .timeline import compile_timeline, mix_narration, validate_timeline
+from .render import render_video
 from .visual_review import review_character_references, review_shot_assets
 
 
@@ -468,6 +469,16 @@ def compile_project_timeline(root: Path) -> dict:
         "duration_seconds": timeline["duration_seconds"], "interval_count": len(timeline["intervals"]),
         "updated_at": now(), "approval_required": False}
     write_json_atomic(manifest_path, manifest); return timeline
+
+def render_project_video(root: Path) -> dict:
+    manifest_path = root / "project.json"; manifest = read_json(manifest_path)
+    stage = manifest.get("stages", {}).get("timeline", {})
+    if stage.get("status") != "auto_accepted": raise ValueError("rendering requires an accepted timeline")
+    result = render_video(read_json(root / stage["artifact"]), root)
+    write_json_atomic(root / "renders" / "final" / "render.json", result)
+    manifest["stages"]["render"] = {"status": "rendered", "artifact": "renders/final/render.json",
+        "video": result["path"], "updated_at": now(), "approval_required": False}
+    write_json_atomic(manifest_path, manifest); return result
 
 
 def generate_project_character_references(

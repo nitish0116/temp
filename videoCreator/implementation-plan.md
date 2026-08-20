@@ -568,3 +568,8 @@ The master timeline and audio mix are complete. Thirty-two reviewed shots fill
 the entire 411.16-second narration without gaps or overlaps, retain storyboard
 motion presets, and reference immutable selected image hashes. The 14 normalized
 clips are concatenated into a validated 48 kHz narration-first master mix.
+
+The final rendering stage is complete. FFmpeg rendered 32 resumable 1080p/30 fps
+H.264 motion segments, concatenated them without re-encoding, and muxed AAC
+narration plus an English mov_text subtitle stream. The resulting local Tanya
+prologue MP4 has an immutable recorded hash.

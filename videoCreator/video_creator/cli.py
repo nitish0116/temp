@@ -24,6 +24,7 @@ from .project import (
     review_project_images,
     generate_project_shot_pilot, review_project_shot_pilot,
     plan_project_storyboard, validate_project,
+    render_project_video,
     plan_project_narration, segment_project_scenes, write_analysis_review_template,
     write_narration_response_template,
 )
@@ -139,6 +140,8 @@ def parser() -> argparse.ArgumentParser:
     subtitles.add_argument("workspace", type=Path)
     timeline = commands.add_parser("compile-timeline", help="Compile motion timeline and audio mix")
     timeline.add_argument("workspace", type=Path)
+    render = commands.add_parser("render", help="Render and mux the final video")
+    render.add_argument("workspace", type=Path)
     setup_images = commands.add_parser(
         "setup-local-images", help="Create imageEnv and prefetch Sana weights",
     )
@@ -237,6 +240,8 @@ def main(argv: list[str] | None = None) -> None:
         result = align_project_subtitles(args.workspace)
     elif args.command == "compile-timeline":
         result = compile_project_timeline(args.workspace)
+    elif args.command == "render":
+        result = render_project_video(args.workspace)
     elif args.command in {"review-shot-pilot", "review-images"}:
         if os.environ.get(ACTIVE_FLAG) != "1":
             raw_arguments = list(argv) if argv is not None else sys.argv[1:]
