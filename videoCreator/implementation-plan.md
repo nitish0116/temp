@@ -563,3 +563,8 @@ Audio-authoritative alignment and subtitles are complete. The 411.16-second
 narration was split into ordered cues capped at 42 characters, with continuous
 non-overlapping coverage. A shared alignment artifact now drives validated SRT
 and WebVTT deliverables, preventing timing drift between formats.
+
+The master timeline and audio mix are complete. Thirty-two reviewed shots fill
+the entire 411.16-second narration without gaps or overlaps, retain storyboard
+motion presets, and reference immutable selected image hashes. The 14 normalized
+clips are concatenated into a validated 48 kHz narration-first master mix.

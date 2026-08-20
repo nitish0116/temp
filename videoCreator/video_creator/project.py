@@ -26,6 +26,7 @@ from .scenes import (
 from .source import ingest_markdown, normalize_markdown, validate_source
 from .storyboard import plan_storyboard, validate_storyboard
 from .subtitles import align_narration, validate_alignment, write_subtitles
+from .timeline import compile_timeline, mix_narration, validate_timeline
 from .visual_review import review_character_references, review_shot_assets
 
 
@@ -449,6 +450,24 @@ def align_project_subtitles(root: Path) -> dict:
         "srt": "subtitles/narration.srt", "vtt": "subtitles/narration.vtt", "cue_count": len(alignment["cues"]),
         "duration_seconds": alignment["duration_seconds"], "updated_at": now(), "approval_required": False}
     write_json_atomic(manifest_path, manifest); return alignment
+
+def compile_project_timeline(root: Path) -> dict:
+    manifest_path = root / "project.json"; manifest = read_json(manifest_path)
+    if manifest.get("stages", {}).get("subtitles", {}).get("status") != "auto_accepted":
+        raise ValueError("timeline compilation requires accepted subtitles")
+    scenes = read_json(root / manifest["stages"]["scenes"]["artifact"])
+    storyboard = read_json(root / manifest["stages"]["storyboard"]["artifact"])
+    assets = read_json(root / manifest["stages"]["images"]["artifact"])
+    audio = read_json(root / manifest["stages"]["audio"]["artifact"])
+    timeline = compile_timeline(scenes, storyboard, assets, audio)
+    issues = validate_timeline(timeline, root)
+    if issues: raise ValueError("invalid timeline: " + "; ".join(issues))
+    mix = mix_narration(audio, root, root / "audio" / "mix.wav"); timeline["audio_mix"] = mix
+    write_json_atomic(root / "timeline" / "master.json", timeline)
+    manifest["stages"]["timeline"] = {"status": "auto_accepted", "artifact": "timeline/master.json",
+        "duration_seconds": timeline["duration_seconds"], "interval_count": len(timeline["intervals"]),
+        "updated_at": now(), "approval_required": False}
+    write_json_atomic(manifest_path, manifest); return timeline
 
 
 def generate_project_character_references(
