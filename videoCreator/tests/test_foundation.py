@@ -159,6 +159,24 @@ def test_narration_plan_uses_bounded_source_ranges_and_canonical_ids(tmp_path):
     assert validate_narration_plan(plan, source, analysis) == []
 
 
+def test_narration_plan_never_crosses_source_sections(tmp_path):
+    text = "## First\n\nMira waits.\n\n## Second\n\nMira leaves.\n"
+    manuscript = tmp_path / "story.md"
+    manuscript.write_text(text, encoding="utf-8")
+    source = ingest_markdown(manuscript)
+    analysis = {
+        "analysis_id": "analysis-0001", "status": "reviewed_draft",
+        "planning_usable": True,
+        "entities": [{
+            "review_status": "approved", "canonical_id": "mira",
+            "name": "Mira", "canonical_name": "Mira", "aliases": [],
+        }],
+    }
+    plan = build_narration_plan(text, source, analysis, maximum_source_characters=1000)
+    assert len(plan["blocks"]) == 2
+    assert plan["blocks"][0]["source_end"] <= source["sections"][1]["source_start"]
+
+
 def test_narration_plan_rejects_unreviewed_analysis(tmp_path):
     manuscript = tmp_path / "story.md"
     manuscript.write_text("# Story\n\nA synthetic paragraph.\n", encoding="utf-8")
@@ -209,6 +227,18 @@ def test_adaptation_and_scene_contracts_cover_every_block(tmp_path):
     ]
 
 
+def test_scene_validation_rejects_setting_boundary_crossing(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    analysis["settings"].append({
+        "review_status": "approved", "canonical_id": "later-city",
+        "source_start": narration["blocks"][0]["source_start"] + 1,
+    })
+    scenes = segment_scenes(narration, analysis)
+    assert validate_scenes(scenes, narration, analysis) == [
+        "scene crosses setting boundary for scene-0001: ['later-city']",
+    ]
+
+
 def test_automatic_scene_enrichment_promotes_complete_decisions(tmp_path):
     _source, analysis, _plan, narration = adapted_fixture(tmp_path)
     draft = segment_scenes(narration, analysis)
@@ -220,7 +250,7 @@ def test_automatic_scene_enrichment_promotes_complete_decisions(tmp_path):
     assert validate_enriched_scenes(enriched, narration, analysis) == []
 
 
-def test_automatic_scene_enrichment_routes_bad_output_to_retry(tmp_path):
+def test_automatic_scene_enrichment_uses_fallback_after_retries(tmp_path):
     class IncompleteProvider:
         name = "incomplete-fixture"
 
@@ -230,9 +260,32 @@ def test_automatic_scene_enrichment_routes_bad_output_to_retry(tmp_path):
     _source, analysis, _plan, narration = adapted_fixture(tmp_path)
     draft = segment_scenes(narration, analysis)
     enriched = enrich_scenes(draft, narration, IncompleteProvider())
+    assert enriched["status"] == "auto_accepted"
+    assert enriched["exception_report"] == []
+    qa = enriched["scenes"][0]["automatic_qa"]
+    assert qa["maximum_attempts"] == 2
+    assert qa["used_fallback"] is True
+    assert [attempt["decision"] for attempt in qa["attempts"]] == [
+        "retry", "retry", "accept",
+    ]
+    assert validate_enriched_scenes(enriched, narration, analysis) == []
+
+
+def test_automatic_scene_enrichment_reports_exhausted_fallback(tmp_path):
+    class IncompleteProvider:
+        name = "incomplete-fixture"
+
+        def enrich(self, scene, narration_blocks):
+            return {"story_event": "", "mood": "quiet", "visual_intent": ""}
+
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    draft = segment_scenes(narration, analysis)
+    provider = IncompleteProvider()
+    enriched = enrich_scenes(
+        draft, narration, provider, maximum_attempts=1, fallback_provider=provider,
+    )
     assert enriched["status"] == "retry_required"
     assert enriched["exception_report"][0]["next_action"] == "retry"
-    assert enriched["scenes"][0]["automatic_qa"]["maximum_attempts"] == 2
     assert validate_enriched_scenes(enriched, narration, analysis) == [
         "missing story_event for scene-0001",
         "missing visual_intent for scene-0001",

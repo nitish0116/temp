@@ -376,3 +376,17 @@ continuity scoring, including setting-boundary detection, event-to-narration
 support, and visual-intent/entity consistency. Then implement bounded provider
 retry and deterministic fallback execution rather than only recording the retry
 decision.
+
+The stronger automatic gate is now implemented. Narration planning cannot group
+paragraphs across ingested source sections, scene validation rejects any range
+that crosses a canonical setting boundary, and enrichment scores narration
+support plus setting/entity grounding. Provider failures and low scores receive
+bounded retries followed by the deterministic fallback; only exhaustion creates
+an exception report.
+
+This gate detected a real historical-to-Tokyo boundary defect in the local draft.
+The pipeline failed closed, replanned the affected narration boundaries,
+regenerated downstream narration and scenes, and automatically accepted all
+eight corrected scenes. The workspace validator now passes and the 18-test suite
+passes. Next, prove dependency-aware selective regeneration so a corrected unit
+invalidates and rebuilds only its downstream scenes and audit decisions.

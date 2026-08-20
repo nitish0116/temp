@@ -68,9 +68,17 @@ def build_narration_plan(
     ]
     groups: list[list[tuple[int, int]]] = []
     current: list[tuple[int, int]] = []
+    section_starts = sorted(section["source_start"] for section in source.get("sections", []))
+
+    def section_for(position: int) -> int:
+        return sum(start <= position for start in section_starts) - 1
+
     for paragraph in paragraphs:
         proposed_start = current[0][0] if current else paragraph[0]
-        if current and paragraph[1] - proposed_start > maximum_source_characters:
+        crosses_section = current and section_for(current[0][0]) != section_for(paragraph[0])
+        if current and (
+            paragraph[1] - proposed_start > maximum_source_characters or crosses_section
+        ):
             groups.append(current)
             current = []
         current.append(paragraph)

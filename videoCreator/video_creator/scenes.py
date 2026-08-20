@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Protocol
 
 
@@ -104,6 +105,11 @@ def validate_scenes(scenes: dict, narration: dict, analysis: dict) -> list[str]:
         item["canonical_id"] for item in analysis.get("settings", [])
         if item.get("review_status") == "approved"
     }
+    setting_starts = sorted(
+        (item["source_start"], item["canonical_id"])
+        for item in analysis.get("settings", [])
+        if item.get("review_status") == "approved"
+    )
     valid_entities = {
         item["canonical_id"] for item in analysis.get("entities", [])
         if item.get("review_status") == "approved"
@@ -116,6 +122,14 @@ def validate_scenes(scenes: dict, narration: dict, analysis: dict) -> list[str]:
         identifiers.add(identifier)
         if scene.get("setting_id") not in valid_settings:
             issues.append(f"unknown setting for {identifier}")
+        scene_start = int(scene.get("source_start", -1))
+        scene_end = int(scene.get("source_end", -1))
+        crossings = [
+            canonical_id for start, canonical_id in setting_starts
+            if scene_start < start < scene_end
+        ]
+        if crossings:
+            issues.append(f"scene crosses setting boundary for {identifier}: {crossings}")
         unknown = set(scene.get("canonical_entity_ids", [])) - valid_entities
         if unknown:
             issues.append(f"unknown entities for {identifier}: {sorted(unknown)}")
@@ -127,6 +141,7 @@ def validate_scenes(scenes: dict, narration: dict, analysis: dict) -> list[str]:
 def enrich_scenes(
     scenes: dict, narration: dict, provider: SceneEnrichmentProvider | None = None,
     *, acceptance_threshold: float = 0.8, maximum_attempts: int = 2,
+    fallback_provider: SceneEnrichmentProvider | None = None,
 ) -> dict:
     """Enrich and automatically promote scenes using bounded QA decisions."""
     if scenes.get("status") != "draft":
@@ -136,21 +151,54 @@ def enrich_scenes(
     if maximum_attempts < 1:
         raise ValueError("maximum_attempts must be positive")
     selected = provider or DeterministicSceneEnrichmentProvider()
+    fallback = fallback_provider or DeterministicSceneEnrichmentProvider()
     blocks = {item["narration_id"]: item for item in narration["blocks"]}
     enriched = []
     for scene in scenes["scenes"]:
         scene_blocks = [blocks[identifier] for identifier in scene["narration_ids"]]
-        decision = selected.enrich(scene, scene_blocks)
-        expected_entities = set(scene["canonical_entity_ids"])
-        supplied_entities = set(decision.get("canonical_entity_ids", []))
-        checks = {
-            "story_event_present": bool(str(decision.get("story_event") or "").strip()),
-            "mood_present": bool(str(decision.get("mood") or "").strip()),
-            "visual_intent_present": bool(str(decision.get("visual_intent") or "").strip()),
-            "entities_preserved": supplied_entities == expected_entities,
-        }
-        confidence = sum(checks.values()) / len(checks)
-        accepted = confidence >= acceptance_threshold and all(checks.values())
+        narration_text = " ".join(block["adapted_text"] for block in scene_blocks).casefold()
+        narration_terms = set(re.findall(r"[a-z]{4,}", narration_text))
+        attempts = []
+        decision = {}
+        checks = {}
+        confidence = 0.0
+        used_provider = selected
+        for attempt in range(1, maximum_attempts + 2):
+            used_provider = selected if attempt <= maximum_attempts else fallback
+            try:
+                decision = used_provider.enrich(scene, scene_blocks)
+                event = str(decision.get("story_event") or "").strip()
+                visual = str(decision.get("visual_intent") or "").strip().casefold()
+                event_terms = set(re.findall(r"[a-z]{4,}", event.casefold()))
+                overlap = len(event_terms & narration_terms) / max(1, len(event_terms))
+                expected_entities = set(scene["canonical_entity_ids"])
+                supplied_entities = set(decision.get("canonical_entity_ids", []))
+                checks = {
+                    "story_event_present": bool(event),
+                    "story_event_supported": overlap >= 0.5,
+                    "mood_present": bool(str(decision.get("mood") or "").strip()),
+                    "visual_intent_present": bool(visual),
+                    "setting_grounded": str(scene.get("setting_id") or "").casefold() in visual,
+                    "entities_preserved": supplied_entities == expected_entities,
+                    "entities_grounded": all(entity.casefold() in visual for entity in expected_entities),
+                }
+                confidence = sum(checks.values()) / len(checks)
+                error = None
+            except Exception as exc:  # provider failures are retryable pipeline data
+                checks = {"provider_succeeded": False}
+                confidence = 0.0
+                error = str(exc)
+            accepted = confidence >= acceptance_threshold and all(checks.values())
+            attempts.append({
+                "attempt": attempt,
+                "provider": used_provider.name,
+                "confidence": confidence,
+                "checks": checks,
+                "error": error,
+                "decision": "accept" if accepted else "retry",
+            })
+            if accepted or attempt > maximum_attempts:
+                break
         item = dict(scene)
         item.update({
             "story_event": str(decision.get("story_event") or "").strip(),
@@ -158,13 +206,15 @@ def enrich_scenes(
             "visual_intent": str(decision.get("visual_intent") or "").strip(),
             "status": "auto_accepted" if accepted else "retry_required",
             "automatic_qa": {
-                "provider": selected.name,
+                "provider": used_provider.name,
                 "confidence": confidence,
                 "acceptance_threshold": acceptance_threshold,
                 "checks": checks,
-                "attempt": 1,
+                "attempt": attempts[-1]["attempt"],
                 "maximum_attempts": maximum_attempts,
                 "decision": "accept" if accepted else "retry",
+                "used_fallback": used_provider.name == fallback.name and provider is not None,
+                "attempts": attempts,
             },
         })
         enriched.append(item)
