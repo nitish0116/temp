@@ -320,7 +320,15 @@ entities, empty text/tone, and unsafe compression. Scene segmentation covers
 every validated narration ID exactly once, preserves ordering, does not cross
 approved setting boundaries, and records estimated narration duration.
 
-The local Tanya workspace now has a complete 14-item pending response template.
-Next, generate model-assisted adapted text for those bounded units, validate it,
-then create and review the first real scene plan. No scene plan should be derived
-from empty or unvalidated narration.
+The local Tanya workspace now has a complete model-assisted narration draft for
+all 14 bounded units. Every unit passed the implemented lineage, entity,
+unsupported-number, and compression checks, with adaptation length ratios from
+20.2% to 49.0%. The validated narration produced an eight-scene draft covering
+every narration ID exactly once without crossing canonical setting boundaries.
+The full workspace validator reports no issues, and the 13-test suite passes.
+
+These artifacts remain local, model-assisted, non-release drafts because the
+source rights and editorial review are unresolved. Next, add a scene-review
+contract that records event, mood, visual intent, and accept/revise decisions for
+each of the eight scenes. Keep media generation blocked until that review is
+complete, then prove selective regeneration after revising one narration unit.
