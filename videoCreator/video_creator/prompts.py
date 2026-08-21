@@ -8,7 +8,7 @@ import re
 from .artifacts import sha256_text
 
 
-COMPILER = "deterministic-prompt-compiler-v1"
+COMPILER = "deterministic-prompt-compiler-v3-compact-scene"
 REFERENCE_BRIEF_COMPILER = "source-visual-brief-v1"
 DEFAULT_VISUAL_STYLE = "anime-style illustration, polished cinematic anime key art"
 NEGATIVE_PROMPT = (
@@ -36,6 +36,46 @@ def _visualize_narrative_beat(beat: str) -> str:
         return beat
     _excluded, depicted = match.groups()
     return f"{prefix}: Show {depicted}"
+
+
+def _compact_words(value: str, maximum: int) -> str:
+    """Keep SDXL scene prompts inside CLIP's useful token window."""
+    words = value.replace(";", ",").split()
+    return " ".join(words[:maximum]).rstrip(".,:;")
+
+
+def _compact_constraint(value: str) -> str:
+    lowered = value.casefold()
+    if "infant or toddler" in lowered:
+        return "infant toddler"
+    if "child smock" in lowered and "bareheaded" in lowered:
+        return "1914 child smock, bareheaded, hair visible"
+    return _compact_words(value, 8)
+
+
+def _compact_event(value: str) -> str:
+    lowered = value.casefold()
+    visualizations = (
+        (
+            "newborn body struggles for its first breath",
+            "newborn Tanya lies in a crib, gasping and crying, nurse reaching toward her",
+        ),
+        (
+            "awareness comes only in fragments",
+            "infant Tanya cries in a crib, blurred gaslit nursery and nuns around her",
+        ),
+        (
+            "this body is an infant's, vulnerable and easily exhausted",
+            "exhausted infant Tanya lies under a crib blanket, frightened adult awareness in her eyes",
+        ),
+    )
+    for phrase, visible_event in visualizations:
+        if phrase in lowered:
+            return visible_event
+    words = value.replace(";", ",").split()
+    if len(words) <= 16:
+        return " ".join(words).rstrip(".,:;")
+    return (" ".join(words[:8]) + ", " + " ".join(words[-8:])).rstrip(".,:;")
 
 
 def compile_prompts(
@@ -88,20 +128,20 @@ def compile_prompts(
             if identifier in character_ids
         ]
         subjects = ", ".join(names) if names else "environmental storytelling"
-        prompt = (
-            f"{style}. {shot['composition']} Narrative action: "
-            f"{_visualize_narrative_beat(shot['narrative_beat'])} "
-            f"Depict {subjects}. "
-            f"Mood: {shot['mood']}. Composition supports {shot['motion'].replace('_', ' ')} motion."
-        )
-        constraints = [
-            f"{requirement_map[identifier]['canonical_name']}: "
-            + "; ".join(requirement_map[identifier]["visual_constraints"])
+        action = _visualize_narrative_beat(shot["narrative_beat"])
+        setting = shot["setting_id"].replace("-", " ")
+        compact_action = _compact_event(action.partition(": ")[2] or action)
+        compact_constraints = [
+            _compact_constraint(value)
             for identifier in shot["canonical_entity_ids"]
-            if identifier in requirement_map and requirement_map[identifier]["visual_constraints"]
+            if identifier in requirement_map
+            for value in requirement_map[identifier]["visual_constraints"]
         ]
-        if constraints:
-            prompt += " Mandatory character constraints: " + " | ".join(constraints) + "."
+        prompt = (
+            f"Anime cinematic story scene. Characters: {subjects}. "
+            + (f"Appearance: {', '.join(compact_constraints)}. " if compact_constraints else "")
+            + f"Event: {compact_action}. Setting: {setting}. {shot['mood']} mood. No posed portrait."
+        )
         fingerprint = _fingerprint(shot, prompt, references, style)
         existing = prior.get(shot["shot_id"])
         if existing and existing.get("dependency_sha256") == fingerprint:
@@ -114,6 +154,10 @@ def compile_prompts(
             "prompt": prompt,
             "negative_prompt": NEGATIVE_PROMPT,
             "reference_ids": references,
+            "scene_contract": {
+                "setting": setting, "visible_event": action,
+                "characters": names, "mood": shot["mood"],
+            },
             "style": style,
             "dependency_sha256": fingerprint,
             "status": "auto_accepted",

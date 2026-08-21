@@ -132,18 +132,22 @@ class SanaImageProvider:
         result.images[0].save(output, format="PNG")
 
 
-class SanaControlNetImageProvider:
-    """Offline Sana ControlNet adapter using canonical images as edge conditions."""
+class AnimeIPAdapterImageProvider:
+    """Offline anime scene generator with canonical-reference image conditioning."""
 
     def __init__(
-        self, model_id: str = "ishan24/Sana_600M_1024px_ControlNetPlus_diffusers", *,
-        model_revision: str = "c2c790efb0285f3d42dc6d7e73e58c80577cf447",
+        self, model_id: str = "cagliostrolab/animagine-xl-3.1", *,
+        model_revision: str = "483f0c322568ed13697ed01dd0be07204746d12b",
+        adapter_model_id: str = "h94/IP-Adapter",
+        adapter_revision: str = "9fa34f007c162daaf4b73f84609e414986991d44",
         cache_directory: Path | None = None, inference_steps: int = 20,
-        guidance_scale: float = 4.5, conditioning_scale: float = 0.65,
+        guidance_scale: float = 7.0, conditioning_scale: float = 0.35,
         device: str = "cuda",
     ) -> None:
         self.model_id = model_id
         self.model_revision = model_revision
+        self.adapter_model_id = adapter_model_id
+        self.adapter_revision = adapter_revision
         self.cache_directory = cache_directory
         self.inference_steps = inference_steps
         self.guidance_scale = guidance_scale
@@ -154,77 +158,92 @@ class SanaControlNetImageProvider:
     @property
     def name(self) -> str:
         return (
-            f"sana-controlnet-local:{self.model_id}@{self.model_revision[:12]}:"
+            f"anime-ip-adapter-local:{self.model_id}@{self.model_revision[:12]}:"
             f"steps={self.inference_steps}:guidance={self.guidance_scale}:"
-            f"conditioning={self.conditioning_scale}"
+            f"conditioning={self.conditioning_scale}:identity=face-crop-v1"
         )
 
     def _load(self):
         if self._pipeline is not None:
             return self._pipeline
         if self.cache_directory is not None and not self.cache_directory.is_dir():
-            raise RuntimeError("local Sana ControlNet cache is missing; run setup-local-images")
+            raise RuntimeError("local anime/IP-Adapter cache is missing; run setup-local-images")
         try:
             import torch
-            from diffusers import SanaControlNetPipeline
+            from diffusers import StableDiffusionXLPipeline
+            from huggingface_hub import snapshot_download
         except ImportError as error:
-            raise RuntimeError("Sana ControlNet dependencies are missing from imageEnv") from error
+            raise RuntimeError("SDXL IP-Adapter dependencies are missing from imageEnv") from error
         if self.device == "cuda" and not torch.cuda.is_available():
-            raise RuntimeError("CUDA is required for Sana ControlNet")
+            raise RuntimeError("CUDA is required for the anime IP-Adapter provider")
         try:
-            pipeline = SanaControlNetPipeline.from_pretrained(
-                self.model_id, revision=self.model_revision, variant="fp16",
-                torch_dtype={"default": torch.float16}, local_files_only=True,
+            model_snapshot = snapshot_download(
+                self.model_id, revision=self.model_revision, local_files_only=True,
                 cache_dir=str(self.cache_directory) if self.cache_directory else None,
             )
+            adapter_snapshot = snapshot_download(
+                self.adapter_model_id, revision=self.adapter_revision, local_files_only=True,
+                cache_dir=str(self.cache_directory) if self.cache_directory else None,
+                allow_patterns=[
+                    "models/image_encoder/config.json",
+                    "models/image_encoder/model.safetensors",
+                    "sdxl_models/ip-adapter_sdxl_vit-h.bin",
+                ],
+            )
+            pipeline = StableDiffusionXLPipeline.from_pretrained(
+                model_snapshot,
+                torch_dtype=torch.float16, local_files_only=True, use_safetensors=True,
+                cache_dir=str(self.cache_directory) if self.cache_directory else None,
+            )
+            pipeline.load_ip_adapter(
+                adapter_snapshot,
+                subfolder="sdxl_models", weight_name="ip-adapter_sdxl_vit-h.bin",
+                image_encoder_folder="models/image_encoder", local_files_only=True,
+                cache_dir=str(self.cache_directory) if self.cache_directory else None,
+            )
+            pipeline.set_ip_adapter_scale(self.conditioning_scale)
         except OSError as error:
-            raise RuntimeError("local Sana ControlNet cache is missing; run setup-local-images") from error
+            raise RuntimeError("local anime/IP-Adapter cache is missing; run setup-local-images") from error
         pipeline.to(self.device)
         self._pipeline = pipeline
         return pipeline
 
-    @staticmethod
-    def _control_image(reference_images: list[Path]):
-        from PIL import Image, ImageFilter, ImageOps
-        if not reference_images:
-            raise ValueError("Sana ControlNet requires at least one canonical reference")
-        images = [Image.open(path).convert("RGB").resize((1024, 1024)) for path in reference_images]
-        if len(images) == 1:
-            source = images[0]
-        else:
-            tile_width = 1024 // len(images)
-            source = Image.new("RGB", (1024, 1024), "white")
-            for index, image in enumerate(images):
-                source.paste(ImageOps.fit(image, (tile_width, 1024)), (index * tile_width, 0))
-        return ImageOps.autocontrast(source.convert("L").filter(ImageFilter.FIND_EDGES)).convert("RGB")
-
     def generate_conditioned(
         self, prompt: str, output: Path, *, seed: int, reference_images: list[Path],
     ) -> None:
-        self._generate_with_control(
-            prompt, output, seed=seed, control_image=self._control_image(reference_images),
-        )
+        if not reference_images:
+            raise ValueError("IP-Adapter generation requires a canonical reference")
+        from PIL import Image
+        references = [self._identity_crop(Image.open(path).convert("RGB")) for path in reference_images]
+        self._generate(prompt, output, seed=seed, reference_images=references)
 
-    def _generate_with_control(self, prompt: str, output: Path, *, seed: int, control_image) -> None:
+    @staticmethod
+    def _identity_crop(image):
+        """Condition on face/hair identity without copying a design-sheet body pose."""
+        width, height = image.size
+        side = max(1, int(min(width, height) * 0.46))
+        left = max(0, (width - side) // 2)
+        top = max(0, int(height * 0.02))
+        return image.crop((left, top, left + side, min(height, top + side))).resize((512, 512))
+
+    def _generate(self, prompt: str, output: Path, *, seed: int, reference_images=None) -> None:
         pipeline = self._load()
         import torch
         result = pipeline(
-            prompt=prompt, negative_prompt="photorealism, live action, 3D render",
-            control_image=control_image, width=1024, height=1024,
+            prompt=prompt,
+            negative_prompt=("photorealism, live action, 3D render, character sheet, "
+                             "neutral pose, different person, changed hair, changed clothing"),
+            ip_adapter_image=reference_images, width=1024, height=1024,
             num_inference_steps=self.inference_steps, guidance_scale=self.guidance_scale,
-            controlnet_conditioning_scale=self.conditioning_scale,
             generator=torch.Generator(device=self.device).manual_seed(seed),
         )
         if not result.images:
-            raise RuntimeError("local Sana ControlNet returned no image")
+            raise RuntimeError("local anime IP-Adapter returned no image")
         output.parent.mkdir(parents=True, exist_ok=True)
         result.images[0].save(output, format="PNG")
 
     def generate(self, prompt: str, output: Path, *, seed: int) -> None:
-        from PIL import Image
-        self._generate_with_control(
-            prompt, output, seed=seed, control_image=Image.new("RGB", (1024, 1024), "black"),
-        )
+        self._generate(prompt, output, seed=seed)
 
 
 def _score(seed: int, prompt: str) -> dict:

@@ -34,7 +34,7 @@ from video_creator.scenes import (
 from video_creator.subtitles import align_narration, validate_alignment, write_subtitles
 from video_creator.source import ingest_markdown, validate_source
 from video_creator.storyboard import plan_storyboard, validate_storyboard
-from video_creator.visual_review import review_character_references, review_shot_assets
+from video_creator.visual_review import SmolVLMReviewer, review_character_references, review_shot_assets
 
 
 def test_markdown_ingestion_preserves_stable_section_ranges(tmp_path):
@@ -426,7 +426,7 @@ def test_default_prompts_enforce_anime_illustration_style(tmp_path):
     scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
     prompts = compile_prompts(plan_storyboard(scenes, target_shot_seconds=30), analysis)
     assert all(item["style"] == DEFAULT_VISUAL_STYLE for item in prompts["prompts"])
-    assert all(DEFAULT_VISUAL_STYLE in item["prompt"] for item in prompts["prompts"])
+    assert all("Anime cinematic story scene" in item["prompt"] for item in prompts["prompts"])
     assert all("photorealism" in item["negative_prompt"] for item in prompts["prompts"])
     assert all(
         DEFAULT_VISUAL_STYLE in item["reference_prompt"]
@@ -638,6 +638,64 @@ def test_shot_pilot_rejects_camera_only_prompt_variants(tmp_path):
     assert review["issues"] == [
         "pilot shots require distinct narrative visual beats, not camera-only variants",
     ]
+
+
+def test_prompts_carry_machine_reviewable_scene_contract(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    prompts = compile_prompts(plan_storyboard(scenes, target_shot_seconds=30), analysis)
+    item = prompts["prompts"][0]
+    assert item["scene_contract"]["visible_event"]
+    assert item["scene_contract"]["setting"]
+    assert item["scene_contract"]["characters"] == ["Mira"]
+    assert "story scene" in item["prompt"]
+    assert "Event:" in item["prompt"]
+
+
+def test_semantic_reviewer_rejects_bare_accept_response(tmp_path):
+    image = tmp_path / "candidate.png"
+    image.write_bytes(b"fixture")
+    reviewer = SmolVLMReviewer()
+    reviewer._pipeline = lambda **_kwargs: [{"generated_text": "ACCEPT"}]
+    result = reviewer.review_scene(image, {
+        "setting": "nursery", "visible_event": "an infant struggles to breathe",
+        "characters": ["Tanya"], "mood": "disoriented",
+    }, [])
+    assert result["accepted"] is False
+    assert result["score"] == 0.0
+    assert result["reasons"][0].startswith("invalid response")
+
+
+def test_semantic_reviewer_requires_every_scene_match(tmp_path):
+    image = tmp_path / "candidate.png"
+    image.write_bytes(b"fixture")
+    reviewer = SmolVLMReviewer()
+    reviewer._pipeline = lambda **_kwargs: [{"generated_text": json.dumps({
+        "accepted": True, "score": 0.95, "character_match": True,
+        "setting_match": True, "action_match": False,
+        "reasons": ["the required event is not visible"],
+    })}]
+    result = reviewer.review_scene(image, {
+        "setting": "nursery", "visible_event": "an infant struggles to breathe",
+        "characters": ["Tanya"], "mood": "disoriented",
+    }, [])
+    assert result["accepted"] is False
+    assert result["action_match"] is False
+
+
+def test_semantic_reviewer_derives_acceptance_from_required_matches(tmp_path):
+    image = tmp_path / "candidate.png"
+    image.write_bytes(b"fixture")
+    reviewer = SmolVLMReviewer()
+    reviewer._pipeline = lambda **_kwargs: [{"generated_text": json.dumps({
+        "accepted": False, "score": 0.75, "character_match": True,
+        "setting_match": True, "action_match": True, "reasons": ["all criteria match"],
+    })}]
+    result = reviewer.review_scene(image, {
+        "setting": "nursery", "visible_event": "an infant cries in a crib",
+        "characters": ["Tanya"], "mood": "disoriented",
+    }, [])
+    assert result["accepted"] is True
 
 
 def test_adaptation_blocks_invented_numbers_and_entities(tmp_path):

@@ -19,8 +19,10 @@ MARKER = ENVIRONMENT / ".video-creator-environment.json"
 ACTIVE_FLAG = "VIDEO_CREATOR_IMAGE_ENV"
 MODEL_ID = "Efficient-Large-Model/Sana_1600M_1024px_diffusers"
 MODEL_REVISION = "ac0da2ff55fbe434795be0dce883042e4d49e2fc"
-CONTROLNET_MODEL_ID = "ishan24/Sana_600M_1024px_ControlNetPlus_diffusers"
-CONTROLNET_MODEL_REVISION = "c2c790efb0285f3d42dc6d7e73e58c80577cf447"
+ANIME_MODEL_ID = "cagliostrolab/animagine-xl-3.1"
+ANIME_MODEL_REVISION = "483f0c322568ed13697ed01dd0be07204746d12b"
+IP_ADAPTER_MODEL_ID = "h94/IP-Adapter"
+IP_ADAPTER_MODEL_REVISION = "9fa34f007c162daaf4b73f84609e414986991d44"
 REVIEW_MODEL_ID = "HuggingFaceTB/SmolVLM2-2.2B-Instruct"
 REVIEW_MODEL_REVISION = "482adb537c021c86670beed01cd58990d01e72e4"
 TORCH_REQUIREMENTS = ("torch==2.11.0+cu128", "torchvision==0.26.0+cu128")
@@ -108,16 +110,25 @@ def ensure_image_environment(
 
 def prefetch_models(*, python: Path, offline: bool, runner: Runner = subprocess.run) -> None:
     """Cache every pinned visual model once or verify all snapshots offline."""
-    for model_id, revision in (
-        (MODEL_ID, MODEL_REVISION), (CONTROLNET_MODEL_ID, CONTROLNET_MODEL_REVISION),
-        (REVIEW_MODEL_ID, REVIEW_MODEL_REVISION),
+    for model_id, revision, allow_patterns in (
+        (MODEL_ID, MODEL_REVISION, None),
+        (ANIME_MODEL_ID, ANIME_MODEL_REVISION, None),
+        (
+            IP_ADAPTER_MODEL_ID, IP_ADAPTER_MODEL_REVISION,
+            [
+                "models/image_encoder/config.json",
+                "models/image_encoder/model.safetensors",
+                "sdxl_models/ip-adapter_sdxl_vit-h.bin",
+            ],
+        ),
+        (REVIEW_MODEL_ID, REVIEW_MODEL_REVISION, None),
     ):
         command = [
             str(python), "-c",
             (
                 "from huggingface_hub import snapshot_download; "
                 f"snapshot_download({model_id!r}, revision={revision!r}, "
-                f"local_files_only={offline!r})"
+                f"allow_patterns={allow_patterns!r}, local_files_only={offline!r})"
             ),
         ]
         runner(command, cwd=WORKSPACE, check=True, env=cache_environment())

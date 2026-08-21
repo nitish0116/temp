@@ -36,38 +36,37 @@ class SmolVLMReviewer:
         return self._pipeline
 
     def review(self, image: Path, brief: str) -> dict:
+        return self._review(image, brief, scene=False)
+
+    def review_scene(self, image: Path, contract: dict, reference_images: list[Path]) -> dict:
+        brief = (
+            f"SETTING: {contract.get('setting')}. VISIBLE EVENT: {contract.get('visible_event')}. "
+            f"CHARACTERS: {', '.join(contract.get('characters', []))}. MOOD: {contract.get('mood')}. "
+            f"A canonical reference image is supplied separately to generation; verify that the "
+            f"pictured main character retains the same age, hair, face, and clothing design."
+        )
+        return self._review(image, brief, scene=True)
+
+    def _review(self, image: Path, brief: str, *, scene: bool) -> dict:
         instruction = (
-            "Compare the pictured character only with this source evidence. Reject any "
-            "age, gender, clothing, role, or physical contradiction. Do not add franchise "
-            f"knowledge. Evidence: {brief[:3500]}\n"
-            "Answer exactly one line: VERDICT: ACCEPT or REJECT; SCORE: 0.00-1.00; "
-            "REASON: one short explanation."
+            ("Judge whether this image visibly depicts the required setting and event, and "
+             "whether the main character design is internally consistent. " if scene else
+             "Compare the pictured character only with this source evidence. Reject any age, "
+             "gender, clothing, role, or physical contradiction. ")
+            + f"Do not add franchise knowledge. Requirements: {brief[:3500]}\n"
+            "Return JSON only with keys score, character_match, setting_match, "
+            "action_match, and reasons. Each *_match value must be true or false. For a "
+            "character reference, setting_match and action_match may be true. Accept only when "
+            "every match is true and score is at least 0.75."
         )
         messages = [{"role": "user", "content": [
             {"type": "image", "path": str(image.resolve())},
             {"type": "text", "text": instruction},
         ]}]
-        output = self._load()(text=messages, max_new_tokens=80, return_full_text=False)
+        output = self._load()(text=messages, max_new_tokens=160, return_full_text=False)
         text = output[0].get("generated_text", "")
         if isinstance(text, list):
             text = text[-1].get("content", "")
-        line_match = re.search(
-            r"VERDICT\s*:\s*(ACCEPT|REJECT).*?SCORE\s*:\s*(0(?:\.\d+)?|1(?:\.0+)?)"
-            r".*?REASON\s*:\s*(.+)", str(text), re.IGNORECASE | re.DOTALL,
-        )
-        if line_match:
-            score = float(line_match.group(2))
-            return {
-                "accepted": line_match.group(1).upper() == "ACCEPT" and score >= 0.75,
-                "score": score, "reasons": [" ".join(line_match.group(3).split())[:240]],
-            }
-        bare = re.fullmatch(r"\s*(ACCEPT|REJECT)\.?\s*", str(text), re.IGNORECASE)
-        if bare:
-            accepted = bare.group(1).upper() == "ACCEPT"
-            return {
-                "accepted": accepted, "score": 0.8 if accepted else 0.0,
-                "reasons": ["reviewer returned a bare semantic verdict"],
-            }
         match = re.search(r"\{.*\}", str(text), re.DOTALL)
         if not match:
             diagnostic = " ".join(str(text).split())[:240]
@@ -79,9 +78,14 @@ class SmolVLMReviewer:
                 result = ast.literal_eval(match.group())
             score = max(0.0, min(1.0, float(result.get("score", 0))))
             reasons = [str(value)[:240] for value in result.get("reasons", [])][:6]
+            criteria = {
+                key: result.get(key) is True
+                for key in ("character_match", "setting_match", "action_match")
+            }
             return {
-                "accepted": bool(result.get("accepted")) and score >= 0.75,
-                "score": score, "reasons": reasons or ["no reviewer rationale"],
+                "accepted": score >= 0.75 and all(criteria.values()),
+                "score": score, **criteria,
+                "reasons": reasons or ["no reviewer rationale"],
             }
         except (ValueError, TypeError, SyntaxError):
             diagnostic = " ".join(str(text).split())[:240]
@@ -128,14 +132,19 @@ def review_shot_assets(assets: dict, prompts: dict, root: Path, reviewer=None) -
     all_accepted = True
     semantic_cores = []
     for asset in assets.get("assets", []):
-        prompt = prompt_map[asset["asset_id"]]["prompt"]
+        prompt_item = prompt_map[asset["asset_id"]]
+        prompt = prompt_item["prompt"]
         semantic_cores.append(re.sub(
             r"Composition supports [^.]+ motion\.\s*", "", prompt,
             flags=re.IGNORECASE,
         ))
         candidates = []
         for candidate in asset["candidates"]:
-            result = selected_reviewer.review(root / candidate["path"], prompt)
+            review_scene = getattr(selected_reviewer, "review_scene", None)
+            result = (
+                review_scene(root / candidate["path"], prompt_item.get("scene_contract", {}), [])
+                if review_scene else selected_reviewer.review(root / candidate["path"], prompt)
+            )
             candidates.append({"candidate_id": candidate["candidate_id"], **result})
         passing = [item for item in candidates if item["accepted"]]
         winner = max(passing, key=lambda item: (item["score"], item["candidate_id"])) if passing else None
