@@ -63,11 +63,11 @@ class SmolVLMReviewer:
             {"type": "image", "path": str(image.resolve())},
             {"type": "text", "text": instruction},
         ]}]
-        output = self._load()(text=messages, max_new_tokens=160, return_full_text=False)
+        output = self._load()(text=messages, max_new_tokens=256, return_full_text=False)
         text = output[0].get("generated_text", "")
         if isinstance(text, list):
             text = text[-1].get("content", "")
-        match = re.search(r"\{.*\}", str(text), re.DOTALL)
+        match = re.search(r"\{.*(?:\}|\Z)", str(text), re.DOTALL)
         if not match:
             diagnostic = " ".join(str(text).split())[:240]
             return {"accepted": False, "score": 0.0, "reasons": [f"invalid response: {diagnostic}"]}
@@ -88,8 +88,29 @@ class SmolVLMReviewer:
                 "reasons": reasons or ["no reviewer rationale"],
             }
         except (ValueError, TypeError, SyntaxError):
+            recovered = _recover_required_criteria(match.group())
+            if recovered is not None:
+                return recovered
             diagnostic = " ".join(str(text).split())[:240]
             return {"accepted": False, "score": 0.0, "reasons": [f"malformed response: {diagnostic}"]}
+
+
+def _recover_required_criteria(text: str) -> dict | None:
+    """Recover complete mandatory fields when only optional rationale was truncated."""
+    score_match = re.search(r'["\']score["\']\s*:\s*(0(?:\.\d+)?|1(?:\.0+)?)', text)
+    criteria = {}
+    for key in ("character_match", "setting_match", "action_match"):
+        match = re.search(rf'["\']{key}["\']\s*:\s*(true|false)', text, re.IGNORECASE)
+        if not match:
+            return None
+        criteria[key] = match.group(1).casefold() == "true"
+    if not score_match:
+        return None
+    score = float(score_match.group(1))
+    return {
+        "accepted": score >= 0.75 and all(criteria.values()), "score": score, **criteria,
+        "reasons": ["mandatory criteria recovered; optional rationale was truncated"],
+    }
 
 
 def review_character_references(

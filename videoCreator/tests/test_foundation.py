@@ -1,6 +1,8 @@
 """Foundation tests for project scaffolding and Markdown lineage."""
 
 import json
+import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -13,7 +15,7 @@ from video_creator.audio import (
     DeterministicToneProvider, generate_narration_audio, validate_narration_audio,
 )
 from video_creator.images import (
-    DeterministicFixtureImageProvider, SanaImageProvider, generate_assets,
+    AnimeIPAdapterImageProvider, DeterministicFixtureImageProvider, SanaImageProvider, generate_assets,
     validate_assets,
 )
 from video_creator.project import (
@@ -451,6 +453,43 @@ def test_shot_generation_consumes_canonical_reference_images(tmp_path):
     assert validate_assets(assets, prompts, tmp_path) == []
 
 
+def test_ip_adapter_generates_character_free_shot_with_zero_strength(tmp_path, monkeypatch):
+    from PIL import Image
+
+    class FakePipeline:
+        def __init__(self):
+            self.scales = []
+            self.arguments = None
+
+        def set_ip_adapter_scale(self, scale):
+            self.scales.append(scale)
+
+        def __call__(self, **arguments):
+            self.arguments = arguments
+            return SimpleNamespace(images=[Image.new("RGB", (8, 8), "blue")])
+
+    class FakeGenerator:
+        def __init__(self, device):
+            self.device = device
+
+        def manual_seed(self, seed):
+            self.seed = seed
+            return self
+
+    pipeline = FakePipeline()
+    provider = AnimeIPAdapterImageProvider(device="cpu")
+    provider._pipeline = pipeline
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(Generator=FakeGenerator))
+    output = tmp_path / "environment.png"
+
+    provider.generate("an empty nursery at dawn", output, seed=17)
+
+    assert output.is_file()
+    assert pipeline.scales == [0.0]
+    assert pipeline.arguments["ip_adapter_image"][0].size == (512, 512)
+    assert pipeline.arguments["generator"].seed == 17
+
+
 def test_narration_audio_is_complete_and_selectively_reused(tmp_path):
     _source, _analysis, _plan, narration = adapted_fixture(tmp_path)
     first = generate_narration_audio(narration, tmp_path, DeterministicToneProvider())
@@ -696,6 +735,24 @@ def test_semantic_reviewer_derives_acceptance_from_required_matches(tmp_path):
         "characters": ["Tanya"], "mood": "disoriented",
     }, [])
     assert result["accepted"] is True
+
+
+def test_semantic_reviewer_recovers_criteria_before_truncated_rationale(tmp_path):
+    image = tmp_path / "candidate.png"
+    image.write_bytes(b"fixture")
+    reviewer = SmolVLMReviewer()
+    reviewer._pipeline = lambda **_kwargs: [{"generated_text": (
+        '{"score": 0.75, "character_match": true, "setting_match": true, '
+        '"action_match": true, "reasons": [{"reason": "unfinished'
+    )}]
+    result = reviewer.review_scene(image, {
+        "setting": "nursery", "visible_event": "an infant cries in a crib",
+        "characters": ["Tanya"], "mood": "disoriented",
+    }, [])
+    assert result["accepted"] is True
+    assert result["reasons"] == [
+        "mandatory criteria recovered; optional rationale was truncated",
+    ]
 
 
 def test_adaptation_blocks_invented_numbers_and_entities(tmp_path):

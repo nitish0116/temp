@@ -229,14 +229,23 @@ class AnimeIPAdapterImageProvider:
     def _generate(self, prompt: str, output: Path, *, seed: int, reference_images=None) -> None:
         pipeline = self._load()
         import torch
-        result = pipeline(
+        from PIL import Image
+        if reference_images:
+            pipeline.set_ip_adapter_scale(self.conditioning_scale)
+            adapter_images = reference_images
+        else:
+            pipeline.set_ip_adapter_scale(0.0)
+            adapter_images = [Image.new("RGB", (512, 512), "white")]
+        arguments = dict(
             prompt=prompt,
             negative_prompt=("photorealism, live action, 3D render, character sheet, "
                              "neutral pose, different person, changed hair, changed clothing"),
-            ip_adapter_image=reference_images, width=1024, height=1024,
+            width=1024, height=1024,
             num_inference_steps=self.inference_steps, guidance_scale=self.guidance_scale,
             generator=torch.Generator(device=self.device).manual_seed(seed),
+            ip_adapter_image=adapter_images,
         )
+        result = pipeline(**arguments)
         if not result.images:
             raise RuntimeError("local anime IP-Adapter returned no image")
         output.parent.mkdir(parents=True, exist_ok=True)
