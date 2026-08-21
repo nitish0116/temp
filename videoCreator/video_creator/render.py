@@ -33,7 +33,7 @@ def render_video(timeline: dict, root: Path, executable: str = "ffmpeg") -> dict
     completed = subprocess.run([executable, "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0",
         "-i", str(concat_file), "-c", "copy", str(silent)], capture_output=True, text=True, check=False)
     if completed.returncode: raise RuntimeError(completed.stderr.strip())
-    final = root / "renders" / "final" / "tanya-prologue.mp4"; final.parent.mkdir(parents=True, exist_ok=True)
+    final = root / "renders" / "final" / f"{root.name}.mp4"; final.parent.mkdir(parents=True, exist_ok=True)
     completed = subprocess.run([executable, "-hide_banner", "-loglevel", "error", "-y", "-i", str(silent),
         "-i", str(root / timeline["audio_mix"]["path"]), "-i", str(root / "subtitles" / "narration.srt"),
         "-map", "0:v:0", "-map", "1:a:0", "-map", "2:0", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",

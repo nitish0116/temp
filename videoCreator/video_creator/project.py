@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+import hashlib
 import shutil
 
 from .analysis import (
@@ -12,7 +13,7 @@ from .analysis import (
 )
 from .artifacts import read_json, sha256_file, write_json_atomic
 from .audio import KokoroNarrationProvider, generate_narration_audio, validate_narration_audio
-from .images import ImageProvider, generate_assets, validate_assets
+from .images import ImageProvider, generate_assets, json_key, validate_assets
 from .narration import (
     MappingNarrationProvider, adapt_narration, build_narration_plan,
     build_narration_response_template,
@@ -507,7 +508,7 @@ def evaluate_project(root: Path) -> dict:
 
 def generate_project_character_references(
     root: Path, provider: ImageProvider | None = None, *, candidates_per_item: int = 2,
-    maximum_attempts: int = 2,
+    maximum_attempts: int = 2, reused_references: dict[str, dict] | None = None,
 ) -> dict:
     """Generate and auto-select canonical character references before shot images."""
     manifest_path = root / "project.json"
@@ -518,12 +519,45 @@ def generate_project_character_references(
     prompts = read_json(root / prompt_stage["artifact"])
     output = root / "images" / "character-references.json"
     previous = read_json(output) if output.is_file() else None
+    reused_references = reused_references or {}
+    requirement_ids = [item["reference_id"] for item in prompts["reference_requirements"]]
+    missing_ids = frozenset(identifier for identifier in requirement_ids if identifier not in reused_references)
     assets = generate_assets(
         prompts, root, provider, candidates_per_item=candidates_per_item,
         maximum_attempts=maximum_attempts, previous=previous,
         asset_kinds=frozenset({"character_reference"}),
         asset_namespace="reference-stage",
+        asset_ids=missing_ids,
     )
+    generated = {item["asset_id"]: item for item in assets["assets"]}
+    requirements = {item["reference_id"]: item for item in prompts["reference_requirements"]}
+    for identifier, reused in reused_references.items():
+        requirement = requirements.get(identifier)
+        if requirement is None:
+            continue
+        generated[identifier] = {
+            "asset_id": identifier, "kind": "character_reference",
+            "dependency_sha256": hashlib.sha256(json_key(requirement).encode("utf-8")).hexdigest(),
+            "provider": "shared-series-library-v1",
+            "candidates": [{
+                "candidate_id": f"{identifier}-shared",
+                "path": reused["path"], "seed": None, "sha256": reused["sha256"],
+                "score": {"technical": 1.0, "prompt_fit": 1.0, "continuity": 1.0, "total": 1.0},
+                "provider": "shared-series-library-v1",
+                "generation_attempts": [{
+                    "attempt": 0, "provider": "shared-series-library-v1",
+                    "status": "generated", "error": None,
+                }],
+            }],
+            "selected_candidate_id": f"{identifier}-shared",
+            "selection": "series_reuse", "status": "auto_accepted",
+        }
+    assets["assets"] = [generated[identifier] for identifier in requirement_ids]
+    assets["asset_ids"] = None
+    assets["provider"] = (
+        "shared-series-library-v1" if not missing_ids else assets["provider"]
+    )
+    assets["regeneration"]["reused_asset_ids"] = sorted(reused_references)
     issues = validate_assets(assets, prompts, root)
     if issues:
         raise ValueError("invalid character references: " + "; ".join(issues))
@@ -631,6 +665,14 @@ def review_project_character_references(root: Path) -> dict:
             shutil.copyfile(root / candidate["path"], destination)
             promoted.append({
                 "reference_id": item["asset_id"],
+                "canonical_entity_id": next(
+                    value["canonical_entity_id"] for value in prompts["reference_requirements"]
+                    if value["reference_id"] == item["asset_id"]
+                ),
+                "canonical_name": next(
+                    value["canonical_name"] for value in prompts["reference_requirements"]
+                    if value["reference_id"] == item["asset_id"]
+                ),
                 "selected_candidate_id": item["selected_candidate_id"],
                 "path": relative.as_posix(), "sha256": sha256_file(destination),
                 "reviewer": review["reviewer"],

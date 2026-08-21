@@ -19,6 +19,7 @@ from .local_audio_environment import (
     ACTIVE_FLAG as AUDIO_ACTIVE_FLAG, MODEL_ID as AUDIO_MODEL_ID,
     MODEL_REVISION as AUDIO_MODEL_REVISION, run_local_audio, setup_local_audio,
 )
+from .orchestrator import run_project
 from .project import (
     RIGHTS_STATES, adapt_project_narration, align_project_subtitles, analyze_project_source, ingest_project_source,
     approve_project_analysis, compile_project_prompts, compile_project_timeline, enrich_project_scenes,
@@ -39,6 +40,22 @@ def parser() -> argparse.ArgumentParser:
     """Build the command-line parser."""
     root = argparse.ArgumentParser(prog="video-creator")
     commands = root.add_subparsers(dest="command", required=True)
+    run = commands.add_parser("run", help="Run or resume the complete autonomous pipeline")
+    run.add_argument("workspace", type=Path)
+    run.add_argument("manuscript", type=Path)
+    run.add_argument("--project-id", default=None)
+    run.add_argument("--title", default=None)
+    run.add_argument("--rights-status", choices=sorted(RIGHTS_STATES), default="unverified")
+    run.add_argument(
+        "--series-library", type=Path, default=None,
+        help="Shared character library reused across manuscript-part workspaces",
+    )
+    run.add_argument("--provider", choices=("fixture", "anime-ip-adapter"), default="anime-ip-adapter")
+    run.add_argument("--candidates-per-item", type=int, default=1)
+    run.add_argument("--maximum-attempts", type=int, default=2)
+    run.add_argument("--inference-steps", type=int, default=20)
+    run.add_argument("--guidance-scale", type=float, default=7.0)
+    run.add_argument("--offline", action="store_true")
     initialize = commands.add_parser("init", help="Create a project workspace")
     initialize.add_argument("workspace", type=Path)
     initialize.add_argument("--project-id", required=True)
@@ -166,7 +183,25 @@ def parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     """Run one video-creator command."""
     args = parser().parse_args(argv)
-    if args.command == "setup-local-images":
+    if args.command == "run":
+        raw_arguments = list(argv) if argv is not None else sys.argv[1:]
+        if os.environ.get(ACTIVE_FLAG) != "1":
+            raise SystemExit(run_local_images(raw_arguments))
+        provider = None if args.provider == "fixture" else AnimeIPAdapterImageProvider(
+            ANIME_MODEL_ID, model_revision=ANIME_MODEL_REVISION,
+            adapter_model_id=IP_ADAPTER_MODEL_ID,
+            adapter_revision=IP_ADAPTER_MODEL_REVISION,
+            inference_steps=args.inference_steps, guidance_scale=args.guidance_scale,
+        )
+        result = run_project(
+            args.workspace, args.manuscript,
+            project_id=args.project_id or args.workspace.name,
+            title=args.title or args.manuscript.stem,
+            rights_status=args.rights_status, series_library=args.series_library,
+            image_provider=provider, candidates_per_item=args.candidates_per_item,
+            maximum_attempts=args.maximum_attempts, offline=args.offline,
+        )
+    elif args.command == "setup-local-images":
         python = setup_local_images(offline=args.offline)
         result = {
             "status": "ready", "environment_python": str(python),
@@ -287,6 +322,8 @@ def main(argv: list[str] | None = None) -> None:
         }
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if args.command == "validate" and not result["passed"]:
+        raise SystemExit(1)
+    if args.command == "run" and result["status"] != "completed":
         raise SystemExit(1)
 
 

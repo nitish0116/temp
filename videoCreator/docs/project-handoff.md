@@ -19,9 +19,15 @@ at 0.92 speed, measures 121.1 spoken words per minute, and includes 48 sentence
 pauses plus eight scene pauses. Safe framing contains each square illustration
 over a blurred widescreen extension.
 
-The latest verification is 40 passing tests plus successful bytecode compilation.
+The latest verification is 43 passing tests plus successful bytecode compilation.
 Generated media, model weights, and dedicated `imageEnv`/`audioEnv` environments
 remain ignored and local.
+
+The CLI now provides one resumable `run` command for the complete pipeline. A
+shared series library preserves accepted canonical character images across
+separate manuscript workspaces, seeds known characters even on a single mention,
+and generates only previously unseen characters. The coordinator stays in
+`imageEnv` and delegates only speech synthesis to `audioEnv`.
 
 ## Durable decisions
 
@@ -44,8 +50,9 @@ remain ignored and local.
 - SmolVLM2 sometimes emits inaccurate optional rationale even when its mandatory
   structured character, setting, and action fields pass. Automated review needs
   stronger grounding before its prose can be trusted as evidence.
-- The current CLI exposes individual stages but no single autonomous run/resume
-  command, so an operator or coding assistant still sequences the pipeline.
+- Automated entity typing remains conservative only at the contract level: the
+  extractive baseline currently treats repeated proper-name candidates as
+  characters. Its output remains model-assisted and non-release-usable.
 
 ## Git and local output state
 
@@ -56,7 +63,7 @@ from the history command rather than relying on these identifiers indefinitely.
 
 ## Next action
 
-Implement a one-command `video-creator run <workspace> <manuscript> --offline`
-orchestrator. It must discover completed stages, resume selectively, delegate to
-managed model environments, apply bounded retries and fallbacks, run final QA,
-and emit one concise exception report without requiring coding-assistant decisions.
+Run the new `video-creator run <workspace> <manuscript> --series-library <path>`
+command with `--offline` on a second real manuscript part. Confirm that established
+characters report `series_reuse`, only new characters are generated, and the
+completed video passes final QA without coding-assistant sequencing.
