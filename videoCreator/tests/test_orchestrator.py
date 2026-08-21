@@ -8,6 +8,7 @@ from video_creator.artifacts import read_json, sha256_file, write_json_atomic
 from video_creator.cli import parser
 from video_creator.images import DeterministicFixtureImageProvider
 from video_creator.orchestrator import run_project
+from video_creator.orchestrator import _automatic_analysis_decisions, _entity_kind
 from video_creator.project import generate_project_character_references, initialize_project
 from video_creator.series import (
     load_shared_references, publish_shared_references, seed_analysis_with_shared_characters,
@@ -127,3 +128,39 @@ def test_cli_exposes_single_run_command_with_series_library(tmp_path):
     assert args.command == "run"
     assert args.provider == "anime-ip-adapter"
     assert args.offline is True
+
+
+def test_fictional_entity_typing_rejects_noise_and_merges_aliases(tmp_path):
+    text = (
+        "My thoughts wandered. The continent of Dicathen contains the kingdom of Sapin. "
+        "The Beast Glades remain dangerous. Arthur entered the Adventurers Guild. "
+        "Arthur was called Art for short. Augmenting strengthens the body."
+    )
+    assert _entity_kind("My", text) is None
+    assert _entity_kind("Dicathen", text) == "location"
+    assert _entity_kind("Sapin", text) == "location"
+    assert _entity_kind("Beast Glades", text) == "location"
+    assert _entity_kind("Adventurers Guild", text) == "organization"
+    assert _entity_kind("Augmenting", text) == "concept"
+    assert _entity_kind("Arthur", text) == "character"
+
+    (tmp_path / "analysis").mkdir(); (tmp_path / "source").mkdir()
+    (tmp_path / "source/manuscript.md").write_text(text, encoding="utf-8")
+    draft = {
+        "schema_version": 1, "analysis_id": "analysis-0001", "provider": "fixture",
+        "source_sha256": "a" * 64, "status": "draft", "release_usable": False,
+        "entities": [
+            {"entity_id": f"entity-{index}", "name": name, "kind": "unknown",
+             "mention_count": 2, "evidence": [], "review_status": "needs_review"}
+            for index, name in enumerate(("Arthur", "Art", "Dicathen", "My"), start=1)
+        ],
+        "settings": [], "world_rules": [], "continuity_facts": [],
+    }
+    write_json_atomic(tmp_path / "analysis/entities.json", draft)
+    decisions = read_json(_automatic_analysis_decisions(tmp_path))
+    by_name = {item["canonical_name"]: item for item in decisions["entities"]}
+    assert by_name["Arthur"]["kind"] == "character"
+    assert by_name["Arthur"]["aliases"] == ["Art"]
+    assert by_name["Art"]["status"] == "rejected"
+    assert by_name["Dicathen"]["kind"] == "location"
+    assert by_name["My"]["status"] == "rejected"

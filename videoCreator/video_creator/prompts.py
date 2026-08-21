@@ -126,7 +126,7 @@ def compile_prompts(
         references = [
             f"character-{identifier}" for identifier in shot["canonical_entity_ids"]
             if identifier in character_ids
-        ]
+        ][:1]
         subjects = ", ".join(names) if names else "environmental storytelling"
         action = _visualize_narrative_beat(shot["narrative_beat"])
         setting = shot["setting_id"].replace("-", " ")

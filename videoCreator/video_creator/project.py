@@ -294,11 +294,12 @@ def plan_project_storyboard(root: Path, *, target_shot_seconds: float = 15.0) ->
         raise ValueError("storyboard planning requires automatically accepted scenes")
     scenes = read_json(root / scene_stage["artifact"])
     narration = read_json(root / manifest["stages"]["narration"]["artifact"])
+    analysis = read_json(root / manifest["stages"]["analysis"]["artifact"])
     output = root / "storyboard" / "shots.json"
     previous = read_json(output) if output.is_file() else None
     storyboard = plan_storyboard(
         scenes, target_shot_seconds=target_shot_seconds,
-        previous_storyboard=previous, narration=narration,
+        previous_storyboard=previous, narration=narration, analysis=analysis,
     )
     issues = validate_storyboard(storyboard, scenes)
     if issues:

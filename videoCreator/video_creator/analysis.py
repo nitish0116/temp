@@ -20,9 +20,10 @@ NAME_STOPWORDS = {
     "A", "After", "All", "And", "Are", "As", "At", "Before", "Being",
     "But", "By", "Despite", "Even", "For", "From", "He", "Her", "His",
     "Huh", "Humans", "I", "If", "In", "It", "Just", "Naturally", "Not",
-    "On", "Or", "She", "Should", "So", "That", "The", "Then", "There",
-    "They", "This", "Those", "Thou", "Thus", "To", "Uh", "Unable", "Wait",
-    "What", "When", "While", "Why", "With", "Yet", "Yes", "You",
+    "An", "Because", "Closing", "However", "Instead", "My", "No", "On", "Once",
+    "One", "Or", "She", "Should", "So", "Taking", "That", "The", "Then", "There",
+    "They", "This", "Those", "Thou", "Thus", "To", "Uh", "Unable", "Wait", "We",
+    "What", "When", "Whether", "While", "Why", "With", "Yet", "Yes", "You",
 }
 CANONICAL_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
@@ -208,7 +209,7 @@ def apply_analysis_decisions(analysis: dict, decisions: dict) -> dict:
                 })
                 if id_field == "entity_id":
                     kind = str(decision.get("kind") or "").strip()
-                    if kind not in {"character", "organization", "concept", "event", "other"}:
+                    if kind not in {"character", "location", "organization", "concept", "event", "other"}:
                         raise ValueError(f"approved entity {item[id_field]} requires a valid kind")
                     item["kind"] = kind
     output["status"] = "approved" if reviewer_type == "human" else "reviewed_draft"

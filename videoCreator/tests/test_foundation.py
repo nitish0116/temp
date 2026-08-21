@@ -370,6 +370,63 @@ def test_storyboard_covers_scenes_and_selectively_reuses_shots(tmp_path):
     assert validate_storyboard(second, scenes) == []
 
 
+def test_storyboard_links_characters_only_to_their_local_shot_sentence():
+    scenes = {
+        "status": "auto_accepted", "scene_plan_id": "scene-plan-0001",
+        "source_sha256": "a" * 64, "scenes": [{
+            "scene_id": "scene-0001", "status": "auto_accepted",
+            "estimated_narration_seconds": 20, "setting_id": "prologue",
+            "canonical_entity_ids": ["arthur"], "mood": "calm",
+            "visual_intent": "Establish prologue", "dependency_sha256": "b" * 64,
+        }],
+    }
+    narration = {"blocks": [{
+        "narration_id": "narration-0001",
+        "adapted_text": "The continent stretched beyond the mountains. Arthur opened the book.",
+    }]}
+    scenes["scenes"][0]["narration_ids"] = ["narration-0001"]
+    analysis = {"entities": [{
+        "review_status": "approved", "kind": "character", "canonical_id": "arthur",
+        "name": "Arthur", "canonical_name": "Arthur", "aliases": ["Art"],
+    }]}
+    storyboard = plan_storyboard(
+        scenes, target_shot_seconds=10, narration=narration, analysis=analysis,
+    )
+    assert storyboard["shots"][0]["canonical_entity_ids"] == []
+    assert storyboard["shots"][1]["canonical_entity_ids"] == ["arthur"]
+    assert validate_storyboard(storyboard, scenes) == []
+
+
+def test_prompt_conditioning_is_limited_to_primary_visible_character(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    analysis["entities"].append({
+        "review_status": "approved", "kind": "character", "canonical_id": "rowan",
+        "name": "Rowan", "canonical_name": "Rowan", "aliases": [],
+    })
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    scenes["scenes"][0]["canonical_entity_ids"] = ["mira", "rowan"]
+    storyboard = plan_storyboard(scenes)
+    prompts = compile_prompts(storyboard, analysis)
+    assert all(len(item["reference_ids"]) == 1 for item in prompts["prompts"])
+
+
+def test_image_generation_preserves_underlying_provider_errors(tmp_path):
+    class FailingProvider:
+        name = "failing-provider"
+
+        def generate(self, *_args, **_kwargs):
+            raise RuntimeError("CUDA out of memory")
+
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    prompts = compile_prompts(plan_storyboard(scenes), analysis)
+    with pytest.raises(ValueError, match="CUDA out of memory"):
+        generate_assets(
+            prompts, tmp_path, FailingProvider(), candidates_per_item=1,
+            maximum_attempts=1, asset_kinds=frozenset({"shot"}),
+        )
+
+
 def test_prompt_compilation_is_complete_optional_and_selective(tmp_path):
     _source, analysis, _plan, narration = adapted_fixture(tmp_path)
     scenes = enrich_scenes(segment_scenes(narration, analysis), narration)

@@ -19,7 +19,7 @@ at 0.92 speed, measures 121.1 spoken words per minute, and includes 48 sentence
 pauses plus eight scene pauses. Safe framing contains each square illustration
 over a blurred widescreen extension.
 
-The latest verification is 43 passing tests plus successful bytecode compilation.
+The latest verification is 47 passing tests plus successful bytecode compilation.
 Generated media, model weights, and dedicated `imageEnv`/`audioEnv` environments
 remain ignored and local.
 
@@ -51,8 +51,18 @@ and generates only previously unseen characters. The coordinator stays in
   structured character, setting, and action fields pass. Automated review needs
   stronger grounding before its prose can be trusted as evidence.
 - Automated entity typing remains conservative only at the contract level: the
-  extractive baseline currently treats repeated proper-name candidates as
-  characters. Its output remains model-assisted and non-release-usable.
+  contextual policy now separates characters, fictional locations,
+  organizations, concepts, and noise, and merges source-supported character
+  aliases. Its output remains model-assisted and non-release-usable.
+
+The first TBAtE run exposed a classification cascade: 30 capitalized phrases
+were treated as characters and 15 identity images were attached to a landscape
+pilot shot. The fix filters sentence-start noise, recognizes explicit fictional
+place and organization contexts, merges Arthur/Art, Alice/Mother, and Reynolds
+Leywin/Reynolds, links characters at the shot-sentence level, and conditions on
+at most one primary identity. Provider retry failures now retain the underlying
+exception. The polluted local workspace and series catalog were preserved in
+`*-invalid-entity-classification-20260821` backup directories.
 
 ## Git and local output state
 
@@ -63,7 +73,7 @@ from the history command rather than relying on these identifiers indefinitely.
 
 ## Next action
 
-Run the new `video-creator run <workspace> <manuscript> --series-library <path>`
-command with `--offline` on a second real manuscript part. Confirm that established
-characters report `series_reuse`, only new characters are generated, and the
-completed video passes final QA without coding-assistant sequencing.
+Rerun the first TBAtE manuscript through the clean original workspace and series
+paths. Confirm its analysis contains three canonical characters, its opening
+landscape shots have no identity reference, and the pipeline proceeds beyond the
+shot pilot before expanding to later manuscript parts.

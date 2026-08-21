@@ -43,7 +43,7 @@ def _canonical_terms(analysis: dict) -> dict[str, set[str]]:
     """Return approved canonical IDs and observable source names."""
     terms = {}
     for item in analysis.get("entities", []):
-        if item.get("review_status") != "approved":
+        if item.get("review_status") != "approved" or item.get("kind") not in {None, "character"}:
             continue
         values = {str(item.get("name") or ""), str(item.get("canonical_name") or "")}
         values.update(str(value) for value in item.get("aliases", []))

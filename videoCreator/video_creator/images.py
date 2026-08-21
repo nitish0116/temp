@@ -380,7 +380,14 @@ def generate_assets(
                         "status": "failed", "error": str(exc),
                     })
             if not generated_successfully or not output.is_file():
-                raise ValueError(f"all image providers failed for {identifier} candidate {index}")
+                failures = "; ".join(
+                    f"attempt {item['attempt']} ({item['provider']}): {item['error']}"
+                    for item in attempts if item.get("error")
+                )
+                raise ValueError(
+                    f"all image providers failed for {identifier} candidate {index}"
+                    + (f"; {failures}" if failures else "")
+                )
             candidates.append({
                 "candidate_id": f"{identifier}-candidate-{index:02d}",
                 "path": relative.as_posix(), "seed": seed,

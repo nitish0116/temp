@@ -12,7 +12,10 @@ from .artifacts import sha256_text
 MOTIONS = ("slow_push", "slow_pan", "static_hold", "slow_pull")
 
 
-def _shot_fingerprint(scene: dict, index: int, duration: float, narrative_beat: str) -> str:
+def _shot_fingerprint(
+    scene: dict, index: int, duration: float, narrative_beat: str,
+    canonical_entity_ids: list[str],
+) -> str:
     payload = {
         "planner": "deterministic-storyboard-v1",
         "scene_dependency_sha256": scene["dependency_sha256"],
@@ -21,6 +24,7 @@ def _shot_fingerprint(scene: dict, index: int, duration: float, narrative_beat: 
         "mood": scene["mood"],
         "visual_intent": scene["visual_intent"],
         "narrative_beat": narrative_beat,
+        "canonical_entity_ids": canonical_entity_ids,
     }
     return sha256_text(json.dumps(payload, sort_keys=True, ensure_ascii=False))
 
@@ -28,6 +32,7 @@ def _shot_fingerprint(scene: dict, index: int, duration: float, narrative_beat: 
 def plan_storyboard(
     scenes: dict, *, target_shot_seconds: float = 15.0,
     previous_storyboard: dict | None = None, narration: dict | None = None,
+    analysis: dict | None = None,
 ) -> dict:
     """Create deterministic shots covering every automatically accepted scene."""
     if scenes.get("status") != "auto_accepted":
@@ -43,6 +48,14 @@ def plan_storyboard(
     narration_map = {
         item["narration_id"]: item["adapted_text"]
         for item in (narration or {}).get("blocks", [])
+    }
+    entity_terms = {
+        item["canonical_id"]: sorted({
+            str(item.get("name") or ""), str(item.get("canonical_name") or ""),
+            *(str(value) for value in item.get("aliases", [])),
+        } - {""}, key=lambda value: (-len(value), value.casefold()))
+        for item in (analysis or {}).get("entities", [])
+        if item.get("review_status") == "approved" and item.get("kind") == "character"
     }
     for scene in scenes["scenes"]:
         if scene.get("status") != "auto_accepted":
@@ -61,8 +74,23 @@ def plan_storyboard(
         for index in range(1, count + 1):
             shot_id = f"{scene['scene_id']}-shot-{index:03d}"
             sentence_index = min(len(sentences) - 1, math.floor((index - 1) * len(sentences) / count))
-            narrative_beat = f"{phases[index - 1]} beat: {sentences[sentence_index]}"
-            fingerprint = _shot_fingerprint(scene, index, duration, narrative_beat)
+            sentence = sentences[sentence_index]
+            narrative_beat = f"{phases[index - 1]} beat: {sentence}"
+            if entity_terms:
+                local_entities = [
+                    identifier for identifier in scene["canonical_entity_ids"]
+                    if any(re.search(rf"\b{re.escape(term)}\b", sentence, re.I)
+                           for term in entity_terms.get(identifier, []))
+                ]
+                if not local_entities and len(scene["canonical_entity_ids"]) == 1 and re.search(
+                    r"\b(?:I|me|my|he|him|his|she|her)\b", sentence, re.I,
+                ):
+                    local_entities = list(scene["canonical_entity_ids"])
+            else:
+                local_entities = list(scene["canonical_entity_ids"])
+            fingerprint = _shot_fingerprint(
+                scene, index, duration, narrative_beat, local_entities,
+            )
             prior = previous.get(shot_id)
             if prior and prior.get("dependency_sha256") == fingerprint:
                 shots.append(prior)
@@ -75,7 +103,7 @@ def plan_storyboard(
                 "sequence": index,
                 "duration_seconds": duration,
                 "setting_id": scene["setting_id"],
-                "canonical_entity_ids": list(scene["canonical_entity_ids"]),
+                "canonical_entity_ids": local_entities,
                 "composition": scene["visual_intent"],
                 "narrative_beat": narrative_beat,
                 "mood": scene["mood"],
@@ -120,7 +148,9 @@ def validate_storyboard(storyboard: dict, scenes: dict) -> list[str]:
         grouped[scene["scene_id"]].append(shot)
         if shot.get("setting_id") != scene.get("setting_id"):
             issues.append(f"setting mismatch for {identifier}")
-        if set(shot.get("canonical_entity_ids", [])) != set(scene.get("canonical_entity_ids", [])):
+        if not set(shot.get("canonical_entity_ids", [])).issubset(
+            set(scene.get("canonical_entity_ids", []))
+        ):
             issues.append(f"entity mismatch for {identifier}")
         if float(shot.get("duration_seconds", 0)) <= 0:
             issues.append(f"invalid duration for {identifier}")

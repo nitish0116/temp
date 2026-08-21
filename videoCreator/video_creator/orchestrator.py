@@ -45,8 +45,36 @@ def _slug(value: str, fallback: str) -> str:
     return result or fallback
 
 
+def _entity_kind(name: str, text: str) -> str | None:
+    """Classify an extracted proper name from explicit local linguistic evidence."""
+    folded = name.casefold()
+    if folded in {
+        "an", "because", "closing the", "however", "instead", "my", "no",
+        "once", "one", "taking", "we", "whether",
+    }:
+        return None
+    escaped = re.escape(name)
+    if any(term in folded for term in ("glades", "hall")) or folded == "earth":
+        return "location"
+    if folded.endswith("ing") or folded in {"dwarven"}:
+        return "concept"
+    if re.search(rf"\b{escaped}\s+(?:guild|council|army|academy|church)\b", text, re.I) or re.search(
+        rf"\b{escaped}\b", text, re.I,
+    ) and any(word in folded for word in ("guild", "council", "academy")):
+        return "organization"
+    location_patterns = (
+        rf"(?:continent|kingdom|forest|city|town|village|region|homeland)\s+(?:of|called)\s+{escaped}\b",
+        rf"\b{escaped}\b\s+(?:continent|kingdom|city|town|village|forest|glades|hall)\b",
+        rf"\b(?:in|on|from|near|toward|across)\s+(?:the\s+)?{escaped}\b",
+    )
+    if any(re.search(pattern, text, re.I) for pattern in location_patterns):
+        return "location"
+    return "character"
+
+
 def _automatic_analysis_decisions(root: Path) -> Path:
     draft = read_json(root / "analysis/entities.json")
+    source_text = (root / "source/manuscript.md").read_text(encoding="utf-8")
     decisions = build_analysis_review_template(draft)
     decisions.update({
         "reviewer": "video-creator-auto-review-v1",
@@ -54,15 +82,64 @@ def _automatic_analysis_decisions(root: Path) -> Path:
     })
     used = set()
     draft_entities = {item["entity_id"]: item for item in draft["entities"]}
+    kinds = {
+        item["entity_id"]: _entity_kind(item["name"], source_text)
+        for item in draft["entities"]
+    }
+    character_names = {
+        item["entity_id"]: item["name"] for item in draft["entities"]
+        if kinds[item["entity_id"]] == "character"
+    }
+    aliases: dict[str, str] = {}
+    values = list(character_names.items())
+    for identifier, name in values:
+        folded = name.casefold()
+        longer = [
+            (other_id, other_name) for other_id, other_name in values
+            if other_id != identifier and len(other_name) > len(name)
+            and (
+                other_name.casefold().startswith(folded + " ")
+                or (len(name) >= 3 and other_name.casefold().startswith(folded))
+            )
+        ]
+        if longer:
+            aliases[identifier] = max(longer, key=lambda value: len(value[1]))[0]
+            continue
+        surname_matches = [
+            other_id for other_id, other_name in values
+            if other_id != identifier and other_name.casefold().endswith(" " + folded)
+        ]
+        if surname_matches:
+            kinds[identifier] = None
+
+    names_by_folded = {name.casefold(): identifier for identifier, name in values}
+    for role, pattern in {
+        "mother": r"\bmother(?:\s+and\s+father)?[-, ]+([A-Z][a-z]+)\b",
+        "father": r"\bfather[-, ]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b",
+    }.items():
+        role_id = names_by_folded.get(role)
+        match = re.search(pattern, source_text)
+        target_id = names_by_folded.get(match.group(1).casefold()) if match else None
+        if role_id and target_id and role_id != target_id:
+            aliases[role_id] = target_id
+
+    decision_by_id = {item["entity_id"]: item for item in decisions["entities"]}
+    for alias_id, target_id in aliases.items():
+        target = decision_by_id[target_id]
+        target["aliases"] = sorted(set(target.get("aliases", [])) | {character_names[alias_id]})
+
     for index, item in enumerate(decisions["entities"], start=1):
-        identifier = (
-            draft_entities[item["entity_id"]].get("series_canonical_id")
-            or _slug(item["canonical_name"], f"character-{index}")
+        kind = kinds[item["entity_id"]]
+        if kind is None or item["entity_id"] in aliases:
+            item["status"] = "rejected"
+            continue
+        identifier = draft_entities[item["entity_id"]].get("series_canonical_id") or _slug(
+            item["canonical_name"], f"entity-{index}",
         )
         while identifier in used:
             identifier = f"{identifier}-{index}"
         used.add(identifier)
-        item.update({"status": "approved", "canonical_id": identifier, "kind": "character"})
+        item.update({"status": "approved", "canonical_id": identifier, "kind": kind})
     for index, item in enumerate(decisions["settings"], start=1):
         identifier = _slug(item["canonical_name"], f"setting-{index}")
         while identifier in used:
