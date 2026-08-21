@@ -33,7 +33,7 @@ from video_creator.scenes import (
     DeterministicSceneEnrichmentProvider, enrich_scenes, segment_scenes,
     validate_enriched_scenes, validate_scenes,
 )
-from video_creator.subtitles import align_narration, validate_alignment, write_subtitles
+from video_creator.subtitles import _chunks, align_narration, validate_alignment, write_subtitles
 from video_creator.source import ingest_markdown, validate_source
 from video_creator.storyboard import plan_storyboard, validate_storyboard
 from video_creator.visual_review import SmolVLMReviewer, review_character_references, review_shot_assets
@@ -562,6 +562,17 @@ def test_narration_audio_is_complete_and_selectively_reused(tmp_path):
     assert validate_alignment(alignment) == []
     write_subtitles(alignment, tmp_path / "out.srt", tmp_path / "out.vtt")
     assert "WEBVTT" in (tmp_path / "out.vtt").read_text(encoding="utf-8")
+
+
+def test_subtitle_chunks_split_oversized_hyphenated_word_without_text_loss():
+    text = "shining-light-with-a-faint-hum-from-her-freaking- hands type of healing."
+    chunks = _chunks(text)
+    assert chunks == [
+        "shining-light-with-a-faint-hum-from-her-",
+        "freaking- hands type of healing.",
+    ]
+    assert all(len(chunk) <= 42 for chunk in chunks)
+    assert "".join(chunks) == text
 
 
 def test_fixture_images_are_ranked_selected_and_hash_validated(tmp_path):

@@ -19,7 +19,7 @@ at 0.92 speed, measures 121.1 spoken words per minute, and includes 48 sentence
 pauses plus eight scene pauses. Safe framing contains each square illustration
 over a blurred widescreen extension.
 
-The latest verification is 47 passing tests plus successful bytecode compilation.
+The latest verification is 48 passing tests plus successful bytecode compilation.
 Generated media, model weights, and dedicated `imageEnv`/`audioEnv` environments
 remain ignored and local.
 
@@ -64,6 +64,13 @@ at most one primary identity. Provider retry failures now retain the underlying
 exception. The polluted local workspace and series catalog were preserved in
 `*-invalid-entity-classification-20260821` backup directories.
 
+The clean TBAtE rerun then exposed one 49-character hyphenated subtitle token.
+Subtitle chunking now splits oversized tokens preferentially at hyphens and uses
+a hard 42-character boundary only when necessary. The resumed run reused images,
+reviews, and audio, executed only subtitles through evaluation, and passed final
+QA. Its 2491.033-second 1080p video has AAC audio, embedded subtitles, no black
+frames, and an authorized `release_ready` status.
+
 ## Git and local output state
 
 The active branch is `videoCreator`. Commit `4a823dde` completed the offline
@@ -73,7 +80,7 @@ from the history command rather than relying on these identifiers indefinitely.
 
 ## Next action
 
-Rerun the first TBAtE manuscript through the clean original workspace and series
-paths. Confirm its analysis contains three canonical characters, its opening
-landscape shots have no identity reference, and the pipeline proceeds beyond the
-shot pilot before expanding to later manuscript parts.
+Inspect the completed first TBAtE video for editorial quality, then run the next
+manuscript part with a new workspace and the same series library. Confirm the
+three established character images report `series_reuse` and only new identities
+are generated.

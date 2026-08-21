@@ -3,11 +3,35 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+
+def _split_oversized_word(word: str, maximum_characters: int) -> list[str]:
+    """Split one token at hyphens where possible, then at a hard safe boundary."""
+    if len(word) <= maximum_characters:
+        return [word]
+    pieces = []
+    remaining = word
+    while len(remaining) > maximum_characters:
+        boundary = remaining.rfind("-", 0, maximum_characters + 1)
+        if boundary <= 0:
+            boundary = maximum_characters
+        else:
+            boundary += 1
+        pieces.append(remaining[:boundary])
+        remaining = remaining[boundary:]
+    if remaining:
+        pieces.append(remaining)
+    return pieces
+
+
 def _chunks(text: str, maximum_characters: int = 42) -> list[str]:
     chunks = []
     for sentence in re.split(r"(?<=[.!?])\s+", " ".join(text.split())):
         current = []
-        for word in sentence.split():
+        words = [
+            piece for word in sentence.split()
+            for piece in _split_oversized_word(word, maximum_characters)
+        ]
+        for word in words:
             if current and len(" ".join([*current, word])) > maximum_characters:
                 chunks.append(" ".join(current)); current = []
             current.append(word)
