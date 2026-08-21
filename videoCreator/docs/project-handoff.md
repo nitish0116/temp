@@ -19,7 +19,7 @@ at 0.92 speed, measures 121.1 spoken words per minute, and includes 48 sentence
 pauses plus eight scene pauses. Safe framing contains each square illustration
 over a blurred widescreen extension.
 
-The latest verification is 48 passing tests plus successful bytecode compilation.
+The latest verification is 53 passing tests plus successful bytecode compilation.
 Generated media, model weights, and dedicated `imageEnv`/`audioEnv` environments
 remain ignored and local.
 
@@ -71,6 +71,19 @@ reviews, and audio, executed only subtitles through evaluation, and passed final
 QA. Its 2491.033-second 1080p video has AAC audio, embedded subtitles, no black
 frames, and an authorized `release_ready` status.
 
+The subsequent visual-quality audit found that generic reference prompts and
+wide evidence windows could mix relatives' descriptions, one-off fictional
+locations could be discarded, pronoun-only shot sentences lost their active
+character, and semantic scene review did not receive canonical reference images.
+Reference prompts now carry structured, proximity- and pronoun-grounded human
+profiles and explicitly request a single front-view anime character. Against the
+real TBAtE source, Alice resolves as an adult woman with auburn hair and brown
+eyes, Arthur as an infant boy with auburn hair and bright azure eyes, and Reynolds
+as an adult man with ashy-brown hair and a square jaw. Shot prompts retain one
+contiguous event, use recognized fictional locations, and carry prior characters
+through pronoun continuations. SmolVLM2 now compares scene candidates directly
+with the selected canonical reference image.
+
 ## Git and local output state
 
 The active branch is `videoCreator`. Commit `4a823dde` completed the offline
@@ -80,7 +93,6 @@ from the history command rather than relying on these identifiers indefinitely.
 
 ## Next action
 
-Inspect the completed first TBAtE video for editorial quality, then run the next
-manuscript part with a new workspace and the same series library. Confirm the
-three established character images report `series_reuse` and only new identities
-are generated.
+Regenerate the TBAtE character references and scene prompts from the corrected
+profiles, then resume the pipeline so image generation and semantic review replace
+the three previously accepted but inaccurate character sheets and affected shots.

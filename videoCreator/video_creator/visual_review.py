@@ -36,18 +36,20 @@ class SmolVLMReviewer:
         return self._pipeline
 
     def review(self, image: Path, brief: str) -> dict:
-        return self._review(image, brief, scene=False)
+        return self._review(image, brief, scene=False, reference_images=[])
 
     def review_scene(self, image: Path, contract: dict, reference_images: list[Path]) -> dict:
         brief = (
             f"SETTING: {contract.get('setting')}. VISIBLE EVENT: {contract.get('visible_event')}. "
             f"CHARACTERS: {', '.join(contract.get('characters', []))}. MOOD: {contract.get('mood')}. "
-            f"A canonical reference image is supplied separately to generation; verify that the "
-            f"pictured main character retains the same age, hair, face, and clothing design."
+            f"The first image is the scene candidate. Any following images are canonical character "
+            f"references; compare age, species, hair, face, and clothing directly."
         )
-        return self._review(image, brief, scene=True)
+        return self._review(image, brief, scene=True, reference_images=reference_images)
 
-    def _review(self, image: Path, brief: str, *, scene: bool) -> dict:
+    def _review(
+        self, image: Path, brief: str, *, scene: bool, reference_images: list[Path],
+    ) -> dict:
         instruction = (
             ("Judge whether this image visibly depicts the required setting and event, and "
              "whether the main character design is internally consistent. " if scene else
@@ -59,10 +61,13 @@ class SmolVLMReviewer:
             "character reference, setting_match and action_match may be true. Accept only when "
             "every match is true and score is at least 0.75."
         )
-        messages = [{"role": "user", "content": [
-            {"type": "image", "path": str(image.resolve())},
-            {"type": "text", "text": instruction},
-        ]}]
+        content = [{"type": "image", "path": str(image.resolve())}]
+        content.extend(
+            {"type": "image", "path": str(reference.resolve())}
+            for reference in reference_images
+        )
+        content.append({"type": "text", "text": instruction})
+        messages = [{"role": "user", "content": content}]
         output = self._load()(text=messages, max_new_tokens=256, return_full_text=False)
         text = output[0].get("generated_text", "")
         if isinstance(text, list):
@@ -149,6 +154,12 @@ def review_shot_assets(assets: dict, prompts: dict, root: Path, reviewer=None) -
     """Apply the cached semantic reviewer to a bounded shot batch."""
     selected_reviewer = reviewer or SmolVLMReviewer()
     prompt_map = {item["shot_id"]: item for item in prompts.get("prompts", [])}
+    canonical_path = root / "references" / "characters.json"
+    canonical = json.loads(canonical_path.read_text(encoding="utf-8")) if canonical_path.is_file() else {}
+    reference_paths = {
+        item["reference_id"]: root / item["path"]
+        for item in canonical.get("references", [])
+    }
     reviewed = []
     all_accepted = True
     semantic_cores = []
@@ -163,7 +174,11 @@ def review_shot_assets(assets: dict, prompts: dict, root: Path, reviewer=None) -
         for candidate in asset["candidates"]:
             review_scene = getattr(selected_reviewer, "review_scene", None)
             result = (
-                review_scene(root / candidate["path"], prompt_item.get("scene_contract", {}), [])
+                review_scene(
+                    root / candidate["path"], prompt_item.get("scene_contract", {}),
+                    [reference_paths[identifier] for identifier in prompt_item.get("reference_ids", [])
+                     if identifier in reference_paths],
+                )
                 if review_scene else selected_reviewer.review(root / candidate["path"], prompt)
             )
             candidates.append({"candidate_id": candidate["candidate_id"], **result})

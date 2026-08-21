@@ -70,24 +70,38 @@ def plan_storyboard(
         ]
         if not sentences:
             sentences = [scene["story_event"]]
+        resolved_entities = []
+        narrator = None
+        if entity_terms:
+            explicit_by_sentence = [[
+                identifier for identifier in scene["canonical_entity_ids"]
+                if any(re.search(rf"\b{re.escape(term)}\b", sentence, re.I)
+                       for term in entity_terms.get(identifier, []))
+            ] for sentence in sentences]
+            narrator = next(
+                (identifiers[0] for identifiers in explicit_by_sentence if identifiers), None,
+            )
+            last_entities = []
+            for sentence, identifiers in zip(sentences, explicit_by_sentence):
+                local = list(identifiers)
+                if narrator and re.search(r"\b(?:I|me|my|mine)\b", sentence, re.I):
+                    local = list(dict.fromkeys([narrator, *local]))
+                if last_entities and re.search(
+                    r"\b(?:he|him|his|she|her|hers|they|them|their)\b", sentence, re.I,
+                ):
+                    local = list(dict.fromkeys([*last_entities, *local]))
+                if local:
+                    last_entities = list(local)
+                resolved_entities.append(local)
+        else:
+            resolved_entities = [list(scene["canonical_entity_ids"]) for _ in sentences]
         phases = ("Opening", "Development", "Escalation", "Revelation", "Reaction", "Transition")
         for index in range(1, count + 1):
             shot_id = f"{scene['scene_id']}-shot-{index:03d}"
             sentence_index = min(len(sentences) - 1, math.floor((index - 1) * len(sentences) / count))
             sentence = sentences[sentence_index]
             narrative_beat = f"{phases[index - 1]} beat: {sentence}"
-            if entity_terms:
-                local_entities = [
-                    identifier for identifier in scene["canonical_entity_ids"]
-                    if any(re.search(rf"\b{re.escape(term)}\b", sentence, re.I)
-                           for term in entity_terms.get(identifier, []))
-                ]
-                if not local_entities and len(scene["canonical_entity_ids"]) == 1 and re.search(
-                    r"\b(?:I|me|my|he|him|his|she|her)\b", sentence, re.I,
-                ):
-                    local_entities = list(scene["canonical_entity_ids"])
-            else:
-                local_entities = list(scene["canonical_entity_ids"])
+            local_entities = resolved_entities[sentence_index]
             fingerprint = _shot_fingerprint(
                 scene, index, duration, narrative_beat, local_entities,
             )

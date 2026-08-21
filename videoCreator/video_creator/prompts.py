@@ -9,7 +9,7 @@ from .artifacts import sha256_text
 
 
 COMPILER = "deterministic-prompt-compiler-v3-compact-scene"
-REFERENCE_BRIEF_COMPILER = "source-visual-brief-v1"
+REFERENCE_BRIEF_COMPILER = "source-character-profile-v2"
 DEFAULT_VISUAL_STYLE = "anime-style illustration, polished cinematic anime key art"
 NEGATIVE_PROMPT = (
     "text, watermark, logo, duplicate character, extra limbs, identity drift, "
@@ -72,10 +72,9 @@ def _compact_event(value: str) -> str:
     for phrase, visible_event in visualizations:
         if phrase in lowered:
             return visible_event
-    words = value.replace(";", ",").split()
-    if len(words) <= 16:
-        return " ".join(words).rstrip(".,:;")
-    return (" ".join(words[:8]) + ", " + " ".join(words[-8:])).rstrip(".,:;")
+    cleaned = re.sub(r"(?:\.\.\.\s*)?flip(?:,?\s*flip)*\s*(?:\.\.\.)?", " ", value, flags=re.I)
+    words = cleaned.replace(";", ",").split()
+    return " ".join(words[:36]).rstrip(".,:;")
 
 
 def compile_prompts(
@@ -94,18 +93,22 @@ def compile_prompts(
     character_ids = {
         identifier for identifier, item in entities.items() if item.get("kind") == "character"
     }
+    locations = [item for item in entities.values() if item.get("kind") == "location"]
     requirements = []
     for identifier in sorted(character_ids):
         entity = entities[identifier]
         name = entity.get("canonical_name") or entity["name"]
         aliases = [name, *entity.get("aliases", [])]
         evidence = _character_evidence(source_text, aliases) if source_text else []
-        brief, visual_constraints = _visual_reference_prompt(name, source_text, aliases, style)
+        brief, visual_constraints, profile = _visual_reference_prompt(
+            name, source_text, aliases, style,
+        )
         requirements.append({
             "reference_id": f"character-{identifier}",
             "canonical_entity_id": identifier, "canonical_name": name,
             "aliases": sorted(set(aliases), key=str.casefold),
             "source_evidence": evidence, "reference_prompt": brief,
+            "character_profile": profile,
             "brief_compiler": REFERENCE_BRIEF_COMPILER,
             "visual_constraints": visual_constraints,
             "selection_mode": "optional_user_override",
@@ -129,7 +132,14 @@ def compile_prompts(
         ][:1]
         subjects = ", ".join(names) if names else "environmental storytelling"
         action = _visualize_narrative_beat(shot["narrative_beat"])
-        setting = shot["setting_id"].replace("-", " ")
+        location_names = [
+            item.get("canonical_name") or item["name"] for item in locations
+            if any(re.search(rf"\b{re.escape(term)}\b", action, re.I) for term in {
+                str(item.get("name") or ""), str(item.get("canonical_name") or ""),
+                *(str(value) for value in item.get("aliases", [])),
+            } - {""})
+        ]
+        setting = ", ".join(location_names) or shot["setting_id"].replace("-", " ")
         compact_action = _compact_event(action.partition(": ")[2] or action)
         compact_constraints = [
             _compact_constraint(value)
@@ -201,39 +211,136 @@ def _character_evidence(source_text: str, aliases: list[str]) -> list[str]:
 
 def _visual_reference_prompt(
     name: str, source_text: str | None, aliases: list[str], style: str,
-) -> tuple[str, list[str]]:
-    """Distill explicit nearby age/presentation facts without sending prose to Sana."""
-    base = (
-        f"Isolated full-body character design sheet for {name}, neutral plain background, "
-        f"single character, {style}, clean anime linework, cel shading, "
-        "no text, no captions, no panels."
-    )
-    if not source_text:
-        return base, []
-    offsets = [
-        match.start() for alias in aliases for match in re.finditer(
-            rf"\b{re.escape(alias)}\b", source_text, re.IGNORECASE,
-        )
+) -> tuple[str, list[str], dict]:
+    """Build one source-grounded human portrait contract."""
+    searchable_aliases = list(aliases)
+    source = source_text or ""
+    canonical = re.escape(name)
+    inferred_father = bool(re.search(
+        rf"\b(?:my\s+)?father\s*[,—-]?\s*{canonical}\b", source, re.I,
+    ))
+    inferred_mother = bool(re.search(
+        rf"\b(?:my\s+)?mother\s*[,—-]?\s*{canonical}\b", source, re.I,
+    ))
+    if inferred_father:
+        searchable_aliases.extend(["father", "my father"])
+    if inferred_mother:
+        searchable_aliases.extend(["mother", "my mother"])
+    evidence = _character_evidence(source, searchable_aliases) if source_text else []
+    context = " ".join(evidence)
+    folded = context.casefold()
+    alias_words = {value.strip().casefold() for value in searchable_aliases}
+    subject_offsets = [
+        match.start() for alias in searchable_aliases if len(alias.strip()) >= 3
+        for match in re.finditer(rf"\b{re.escape(alias)}\b", source, re.I)
     ]
-    if not offsets:
-        return base, []
-    first = min(offsets)
-    context = source_text[max(0, first - 1800):first + 900].casefold()
-    constraints = []
-    if any(term in context for term in ("newborn babe", "infant's wails", "babies certainly")):
-        constraints.append("very young infant or toddler child, not an adult")
-    elif "elderly man" in context:
-        constraints.append("elderly man")
-    elif "elderly woman" in context:
-        constraints.append("elderly woman")
-    if "nun" in context and "infant" in context:
-        constraints.append(
-            "plain early-twentieth-century child smock, bareheaded with hair fully visible, "
-            "no veil, no head covering, no religious habit"
+
+    def close_to_subject(start: int, maximum: int = 320) -> bool:
+        return bool(subject_offsets) and min(abs(start - offset) for offset in subject_offsets) <= maximum
+
+    def trait_belongs(match: re.Match) -> bool:
+        sentence_start = max(source.rfind(".", 0, match.start()), source.rfind("\n", 0, match.start())) + 1
+        stops = [value for value in (source.find(".", match.end()), source.find("\n", match.end())) if value >= 0]
+        sentence_end = min(stops) if stops else len(source)
+        sentence = source[sentence_start:sentence_end]
+        first_person_owner = bool(re.search(
+            r"\b(?:I had|my (?:hair|eyes|face|features))\b", sentence, re.I,
+        ))
+        if first_person_owner:
+            return presentation in {"boy", "girl"}
+        if presentation == "woman":
+            pronoun_match = bool(re.search(r"\b(?:she|her|hers)\b", sentence, re.I))
+            if pronoun_match:
+                return True
+        if presentation == "man":
+            pronoun_match = bool(re.search(r"\b(?:he|him|his)\b", sentence, re.I))
+            if pronoun_match:
+                return True
+        if presentation in {"boy", "girl"}:
+            return False
+        return any(
+            abs(match.start() - alias_match.start()) <= 100
+            for alias in aliases
+            for alias_match in re.finditer(rf"\b{re.escape(alias)}\b", source, re.I)
         )
-    if constraints:
-        base += " Source-supported constraints: " + "; ".join(constraints) + "."
-    return base, constraints
+
+    age = "adult"
+    juvenile_nearby = any(
+        close_to_subject(match.start(), 260) for match in re.finditer(
+            r"\b(?:newborn|infant|baby|barely crawl(?:ing)?)\b", source, re.I,
+        )
+    )
+    if not ({"mother", "my mother", "father", "my father"} & alias_words) and juvenile_nearby:
+        age = "infant or crawling baby"
+    presentation = "person"
+    if inferred_mother or "mother" in {value.strip().casefold() for value in aliases}:
+        presentation = "woman"
+    elif inferred_father or "father" in {value.strip().casefold() for value in aliases}:
+        presentation = "man"
+    else:
+        direct_contexts = []
+        for alias in aliases:
+            for match in re.finditer(rf"\b{re.escape(alias)}\b", source_text or "", re.I):
+                direct_contexts.append((source_text or "")[match.start():match.end() + 180].casefold())
+        direct = " ".join(direct_contexts[:5])
+        if re.search(r"\b(?:she|her|hers)\b", direct):
+            presentation = "woman"
+        elif re.search(r"\b(?:he|him|his)\b", direct):
+            presentation = "man"
+    if age != "adult" and presentation == "man":
+        presentation = "boy"
+    elif age != "adult" and presentation == "woman":
+        presentation = "girl"
+    traits = []
+    patterns = (
+        r"(?:ashy\s+|dark\s+|light\s+|striking\s+)?"
+        r"(?:auburn|brown|black|blond|blonde|white|silver|grey|gray|red)\s+hair",
+        r"(?:bright\s+|deep\s+|almost\s+)?(?:azure|blue|brown|green|grey|gray|violet|red)"
+        r"(?:,\s*almost\s+[a-z]+)?(?:\s+color)?\s+(?:eyes|hue of his irises)",
+    )
+    for pattern in patterns:
+        for match in re.finditer(pattern, source, re.I):
+            if not close_to_subject(match.start()) or not trait_belongs(match):
+                continue
+            value = " ".join(match.group().split()).strip(" ,.")
+            if value and value.casefold() not in {item.casefold() for item in traits}:
+                traits.append(value)
+    for match in re.finditer(
+        r"eyes\s+(?:were|are)\s+(?:a\s+)?((?:bright\s+|deep\s+)?"
+        r"(?:azure|blue|brown|green|grey|gray|violet|red))(?:\s+color)?", source, re.I,
+    ):
+        if close_to_subject(match.start()) and trait_belongs(match):
+            value = f"{match.group(1).strip()} eyes"
+            if value.casefold() not in {item.casefold() for item in traits}:
+                traits.append(value)
+    for match in re.finditer(r"hair,\s*([a-z -]{1,24})\s+in color", source, re.I):
+        if not close_to_subject(match.start()) or not trait_belongs(match):
+            continue
+        value = f"{match.group(1).strip()} hair"
+        if value.casefold() not in {item.casefold() for item in traits}:
+            traits.append(value)
+    for phrase in ("square jawline", "long eye lashes", "perky nose"):
+        for match in re.finditer(re.escape(phrase), source, re.I):
+            if close_to_subject(match.start()) and trait_belongs(match):
+                traits.append(phrase)
+                break
+    profile = {
+        "name": name, "species": "human", "age_stage": age,
+        "presentation": presentation, "visible_traits": traits[:8],
+        "source_evidence": evidence,
+    }
+    constraints = [f"human {age} {presentation}", *profile["visible_traits"]]
+    if "nun" in folded and "infant" in folded:
+        constraints.append(
+            "plain early-twentieth-century child smock, bareheaded with hair visible"
+        )
+    base = (
+        f"Single full-body reference portrait of {name}, exactly one human character, one front view, "
+        f"natural standing pose, neutral plain background, {style}, clean anime linework, cel shading. "
+        f"Appearance: {'; '.join(constraints)}. No text, no captions, no panels, no turnaround sheet, "
+        "no alternate views, no robotic or non-human anatomy."
+    )
+    return base, constraints, profile
 
 
 def validate_prompts(compiled: dict, storyboard: dict, analysis: dict) -> list[str]:

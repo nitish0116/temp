@@ -27,7 +27,8 @@ from video_creator.narration import (
     validate_narration_plan,
 )
 from video_creator.prompts import (
-    DEFAULT_VISUAL_STYLE, _visualize_narrative_beat, compile_prompts, validate_prompts,
+    DEFAULT_VISUAL_STYLE, _compact_event, _visualize_narrative_beat, compile_prompts,
+    validate_prompts,
 )
 from video_creator.scenes import (
     DeterministicSceneEnrichmentProvider, enrich_scenes, segment_scenes,
@@ -115,6 +116,13 @@ def test_analysis_approval_requires_complete_source_bound_decisions(tmp_path):
     assert approved["status"] == "approved" and approved["release_usable"] is True
     assert approved["entities"][0]["canonical_id"] == "mira"
     assert validate_analysis(approved, source) == []
+
+
+def test_extractive_analysis_keeps_explicit_single_mention_fictional_location():
+    text = "They settled in a remote city called Ashber before winter arrived."
+    analysis = ExtractiveAnalysisProvider().analyze(text, "a" * 64)
+    candidates = {item["name"]: item for item in analysis["entities"]}
+    assert candidates["Ashber"]["mention_count"] == 1
 
 
 def test_analysis_approval_rejects_stale_or_pending_decisions(tmp_path):
@@ -397,6 +405,34 @@ def test_storyboard_links_characters_only_to_their_local_shot_sentence():
     assert validate_storyboard(storyboard, scenes) == []
 
 
+def test_storyboard_resolves_pronoun_continuation_to_last_character():
+    scenes = {
+        "status": "auto_accepted", "scene_plan_id": "scene-plan-0001",
+        "source_sha256": "a" * 64, "scenes": [{
+            "scene_id": "scene-0001", "status": "auto_accepted",
+            "estimated_narration_seconds": 20, "setting_id": "home",
+            "canonical_entity_ids": ["alice", "arthur"], "mood": "warm",
+            "visual_intent": "Establish home", "dependency_sha256": "b" * 64,
+            "narration_ids": ["narration-0001"],
+        }],
+    }
+    narration = {"blocks": [{
+        "narration_id": "narration-0001",
+        "adapted_text": "Alice entered the nursery. She lifted Arthur from his crib.",
+    }]}
+    analysis = {"entities": [
+        {"review_status": "approved", "kind": "character", "canonical_id": "alice",
+         "name": "Alice", "canonical_name": "Alice", "aliases": []},
+        {"review_status": "approved", "kind": "character", "canonical_id": "arthur",
+         "name": "Arthur", "canonical_name": "Arthur", "aliases": []},
+    ]}
+    shots = plan_storyboard(
+        scenes, target_shot_seconds=10, narration=narration, analysis=analysis,
+    )["shots"]
+    assert shots[0]["canonical_entity_ids"] == ["alice"]
+    assert shots[1]["canonical_entity_ids"] == ["alice", "arthur"]
+
+
 def test_prompt_conditioning_is_limited_to_primary_visible_character(tmp_path):
     _source, analysis, _plan, narration = adapted_fixture(tmp_path)
     analysis["entities"].append({
@@ -439,13 +475,19 @@ def test_prompt_compilation_is_complete_optional_and_selective(tmp_path):
         "canonical_name": "Mira",
         "aliases": ["Mira"],
         "source_evidence": [],
-            "reference_prompt": (
-                "Isolated full-body character design sheet for Mira, neutral plain background, "
-                "single character, anime-style illustration, polished cinematic anime key art, "
-                "clean anime linework, cel shading, no text, no captions, no panels."
+        "reference_prompt": (
+            "Single full-body reference portrait of Mira, exactly one human character, one front view, "
+            "natural standing pose, neutral plain background, anime-style illustration, polished "
+            "cinematic anime key art, clean anime linework, cel shading. Appearance: human adult person. "
+            "No text, no captions, no panels, no turnaround sheet, no alternate views, no robotic or "
+            "non-human anatomy."
         ),
-        "brief_compiler": "source-visual-brief-v1",
-        "visual_constraints": [],
+        "character_profile": {
+            "name": "Mira", "species": "human", "age_stage": "adult",
+            "presentation": "person", "visible_traits": [], "source_evidence": [],
+        },
+        "brief_compiler": "source-character-profile-v2",
+        "visual_constraints": ["human adult person"],
         "selection_mode": "optional_user_override",
         "default_action": "generate_and_auto_rank",
         "status": "default_ready",
@@ -471,6 +513,34 @@ def test_character_reference_prompt_includes_bounded_source_evidence(tmp_path):
     assert "young pilot in a blue uniform" in requirement["source_evidence"][0]
     assert "Evidence:" not in requirement["reference_prompt"]
     assert len(requirement["source_evidence"]) <= 3
+
+
+def test_character_profiles_are_source_grounded_and_single_view(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    analysis["entities"][0]["aliases"] = ["Mother"]
+    source = (
+        "Mother Alice had striking auburn hair and brown eyes, long eye lashes, and a perky nose. "
+        "Alice smiled at her newborn baby."
+    )
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    requirement = compile_prompts(
+        plan_storyboard(scenes), analysis, source_text=source,
+    )["reference_requirements"][0]
+    assert requirement["character_profile"]["species"] == "human"
+    assert requirement["character_profile"]["presentation"] == "woman"
+    assert any(
+        trait.endswith("auburn hair")
+        for trait in requirement["character_profile"]["visible_traits"]
+    )
+    assert "brown eyes" in requirement["character_profile"]["visible_traits"]
+    assert "exactly one human character" in requirement["reference_prompt"]
+    assert "no turnaround sheet" in requirement["reference_prompt"].casefold()
+
+
+def test_compact_event_keeps_one_coherent_contiguous_event():
+    event = " ".join(f"word{index}" for index in range(50))
+    compact = _compact_event(event)
+    assert compact.split() == event.split()[:36]
 
 
 def test_contrastive_narrative_beat_becomes_visual_exclusion():
@@ -771,6 +841,33 @@ def test_semantic_reviewer_rejects_bare_accept_response(tmp_path):
     assert result["accepted"] is False
     assert result["score"] == 0.0
     assert result["reasons"][0].startswith("invalid response")
+
+
+def test_semantic_scene_review_sends_canonical_reference_image(tmp_path):
+    scene = tmp_path / "scene.png"
+    reference = tmp_path / "alice.png"
+    scene.write_bytes(b"scene")
+    reference.write_bytes(b"reference")
+    captured = {}
+    reviewer = SmolVLMReviewer()
+
+    def pipeline(**kwargs):
+        captured.update(kwargs)
+        return [{"generated_text": json.dumps({
+            "score": 0.9, "character_match": True,
+            "setting_match": True, "action_match": True, "reasons": ["matched"],
+        })}]
+
+    reviewer._pipeline = pipeline
+    result = reviewer.review_scene(scene, {
+        "setting": "nursery", "visible_event": "Alice lifts Arthur",
+        "characters": ["Alice", "Arthur"], "mood": "warm",
+    }, [reference])
+    content = captured["text"][0]["content"]
+    assert [item["path"] for item in content if item["type"] == "image"] == [
+        str(scene.resolve()), str(reference.resolve()),
+    ]
+    assert result["accepted"] is True
 
 
 def test_semantic_reviewer_requires_every_scene_match(tmp_path):

@@ -28,6 +28,14 @@ NAME_STOPWORDS = {
 CANONICAL_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
+def _explicit_location(name: str, text: str) -> bool:
+    escaped = re.escape(name)
+    return any(re.search(pattern, text, re.IGNORECASE) for pattern in (
+        rf"(?:continent|kingdom|forest|city|town|village|region|homeland)\s+(?:of|called)\s+{escaped}\b",
+        rf"\b{escaped}\b\s+(?:continent|kingdom|city|town|village|forest|glades|hall)\b",
+    ))
+
+
 class AnalysisProvider(Protocol):
     """Contract for providers that propose entities and settings."""
 
@@ -61,7 +69,10 @@ class ExtractiveAnalysisProvider:
                 evidence[value].append({"source_start": match.start(), "source_end": match.end()})
         candidates = []
         selected = sorted(
-            (item for item in counts.items() if item[1] >= self.minimum_mentions),
+            (
+                item for item in counts.items()
+                if item[1] >= self.minimum_mentions or _explicit_location(item[0], normalized)
+            ),
             key=lambda item: (-item[1], item[0].casefold()),
         )
         for index, (name, count) in enumerate(selected, start=1):
