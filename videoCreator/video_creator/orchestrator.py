@@ -25,6 +25,8 @@ from .series import (
     seed_analysis_with_shared_characters,
 )
 from .source import ingest_markdown, normalize_markdown
+from .prompts import COMPILER as PROMPT_COMPILER
+from .storyboard import PLANNER as STORYBOARD_PLANNER
 
 
 REPOSITORY = Path(__file__).resolve().parents[2]
@@ -173,11 +175,15 @@ def _automatic_narration_responses(root: Path) -> Path:
 def run_project(
     root: Path, manuscript: Path, *, project_id: str, title: str,
     rights_status: str = "unverified", series_library: Path | None = None,
-    image_provider: ImageProvider | None = None, candidates_per_item: int = 1,
+    image_provider: ImageProvider | None = None,
+    character_provider: ImageProvider | None = None,
+    scene_provider: ImageProvider | None = None, candidates_per_item: int = 1,
     maximum_attempts: int = 2, offline: bool = False, delegate_audio: bool = True,
 ) -> dict:
     """Run every stage once, resuming accepted artifacts and failing with one report."""
     root = root.resolve(); manuscript = manuscript.resolve()
+    reference_renderer = character_provider or image_provider
+    scene_renderer = scene_provider or image_provider
     executed: list[str] = []
     try:
         if not manuscript.is_file():
@@ -227,10 +233,14 @@ def run_project(
                 raise RuntimeError("scene enrichment exhausted its automatic retry budget")
 
         manifest = read_json(root / "project.json")
-        if manifest["stages"].get("storyboard", {}).get("status") != "auto_accepted":
+        storyboard_stage = manifest["stages"].get("storyboard", {})
+        if (storyboard_stage.get("status") != "auto_accepted"
+                or storyboard_stage.get("planner") != STORYBOARD_PLANNER):
             plan_project_storyboard(root); executed.append("storyboard")
         manifest = read_json(root / "project.json")
-        if manifest["stages"].get("prompts", {}).get("status") != "auto_accepted":
+        prompt_stage = manifest["stages"].get("prompts", {})
+        if (prompt_stage.get("status") != "auto_accepted"
+                or prompt_stage.get("compiler") != PROMPT_COMPILER):
             compile_project_prompts(root); executed.append("prompts")
 
         manifest = read_json(root / "project.json")
@@ -238,7 +248,7 @@ def run_project(
             prompts = read_json(root / manifest["stages"]["prompts"]["artifact"])
             reused = load_shared_references(series_library, prompts, root) if series_library else {}
             generate_project_character_references(
-                root, image_provider, candidates_per_item=candidates_per_item,
+                root, reference_renderer, candidates_per_item=candidates_per_item,
                 maximum_attempts=maximum_attempts, reused_references=reused,
             ); executed.append("character_references")
             review = review_project_character_references(root); executed.append("character_reference_review")
@@ -254,25 +264,49 @@ def run_project(
 
         manifest = read_json(root / "project.json")
         if manifest["stages"].get("shot_pilot", {}).get("status") != "generated" and manifest["stages"].get("shot_pilot_review", {}).get("status") != "auto_accepted":
-            generate_project_shot_pilot(root, image_provider, candidates_per_item=1,
+            generate_project_shot_pilot(root, scene_renderer, candidates_per_item=1,
                                         maximum_attempts=maximum_attempts)
             executed.append("shot_pilot")
         manifest = read_json(root / "project.json")
         if manifest["stages"].get("shot_pilot_review", {}).get("status") != "auto_accepted":
-            review = review_project_shot_pilot(root); executed.append("shot_pilot_review")
-            if review["status"] != "auto_accepted":
-                raise RuntimeError("shot pilot review exhausted its automatic retry budget")
+            for review_attempt in range(1, maximum_attempts + 1):
+                review = review_project_shot_pilot(root); executed.append("shot_pilot_review")
+                if review["status"] == "auto_accepted":
+                    break
+                rejected = frozenset(
+                    item["asset_id"] for item in review.get("assets", [])
+                    if item.get("status") != "auto_accepted"
+                )
+                if review_attempt == maximum_attempts or not rejected:
+                    raise RuntimeError("shot pilot review exhausted its automatic retry budget")
+                generate_project_shot_pilot(
+                    root, scene_renderer, candidates_per_item=1,
+                    maximum_attempts=maximum_attempts, force_asset_ids=rejected,
+                    generation_round=review_attempt,
+                ); executed.append("shot_pilot_retry")
 
         manifest = read_json(root / "project.json")
         if manifest["stages"].get("images", {}).get("status") != "auto_accepted":
-            generate_project_images(root, image_provider, candidates_per_item=candidates_per_item,
+            generate_project_images(root, scene_renderer, candidates_per_item=candidates_per_item,
                                     maximum_attempts=maximum_attempts)
             executed.append("images")
         manifest = read_json(root / "project.json")
         if manifest["stages"].get("image_review", {}).get("status") != "auto_accepted":
-            review = review_project_images(root); executed.append("image_review")
-            if review["status"] != "auto_accepted":
-                raise RuntimeError("production image review exhausted its automatic retry budget")
+            for review_attempt in range(1, maximum_attempts + 1):
+                review = review_project_images(root); executed.append("image_review")
+                if review["status"] == "auto_accepted":
+                    break
+                rejected = frozenset(
+                    item["asset_id"] for item in review.get("assets", [])
+                    if item.get("status") != "auto_accepted"
+                )
+                if review_attempt == maximum_attempts or not rejected:
+                    raise RuntimeError("production image review exhausted its automatic retry budget")
+                generate_project_images(
+                    root, scene_renderer, candidates_per_item=candidates_per_item,
+                    maximum_attempts=maximum_attempts, force_asset_ids=rejected,
+                    generation_round=review_attempt,
+                ); executed.append("image_retry")
 
         manifest = read_json(root / "project.json")
         if manifest["stages"].get("audio", {}).get("status") != "auto_accepted":

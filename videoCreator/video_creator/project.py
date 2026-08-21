@@ -312,6 +312,8 @@ def plan_project_storyboard(root: Path, *, target_shot_seconds: float = 15.0) ->
         "reused_count": len(storyboard["regeneration"]["reused_shot_ids"]),
         "regenerated_count": len(storyboard["regeneration"]["regenerated_shot_ids"]),
     }
+    if storyboard["regeneration"]["regenerated_shot_ids"]:
+        manifest["stages"]["prompts"] = {"status": "pending"}
     write_json_atomic(manifest_path, manifest)
     return storyboard
 
@@ -345,13 +347,21 @@ def compile_project_prompts(root: Path, *, style: str | None = None) -> dict:
         "reused_count": len(compiled["regeneration"]["reused_shot_ids"]),
         "regenerated_count": len(compiled["regeneration"]["regenerated_shot_ids"]),
     }
+    if compiled["regeneration"]["regenerated_shot_ids"]:
+        for stage in (
+            "character_references", "character_reference_review", "canonical_references",
+            "shot_pilot", "shot_pilot_review", "images", "image_review", "audio",
+            "subtitles", "timeline", "render", "evaluation",
+        ):
+            manifest["stages"][stage] = {"status": "pending"}
     write_json_atomic(manifest_path, manifest)
     return compiled
 
 
 def generate_project_images(
     root: Path, provider: ImageProvider | None = None, *, candidates_per_item: int = 2,
-    maximum_attempts: int = 2,
+    maximum_attempts: int = 2, force_asset_ids: frozenset[str] | None = None,
+    generation_round: int = 0,
 ) -> dict:
     """Generate, rank, and select all visual candidates automatically."""
     manifest_path = root / "project.json"
@@ -377,6 +387,7 @@ def generate_project_images(
         prompts, root, provider, candidates_per_item=candidates_per_item,
         maximum_attempts=maximum_attempts, previous=previous,
         canonical_references=canonical_hashes, reference_conditioning=bool(canonical_hashes),
+        force_asset_ids=force_asset_ids, seed_offset=generation_round,
     )
     issues = validate_assets(assets, prompts, root)
     if issues:
@@ -578,6 +589,7 @@ def generate_project_character_references(
 def generate_project_shot_pilot(
     root: Path, provider: ImageProvider | None = None, *, shot_limit: int = 4,
     candidates_per_item: int = 1, maximum_attempts: int = 2,
+    force_asset_ids: frozenset[str] | None = None, generation_round: int = 0,
 ) -> dict:
     """Generate an isolated bounded shot batch before full production expansion."""
     manifest_path = root / "project.json"
@@ -599,6 +611,7 @@ def generate_project_shot_pilot(
         maximum_attempts=maximum_attempts, previous=previous,
         asset_kinds=frozenset({"shot"}), asset_namespace="shot-pilot",
         canonical_references=hashes, asset_ids=identifiers, reference_conditioning=True,
+        force_asset_ids=force_asset_ids, seed_offset=generation_round,
     )
     issues = validate_assets(assets, prompts, root)
     if issues:

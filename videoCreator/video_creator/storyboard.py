@@ -10,6 +10,7 @@ from .artifacts import sha256_text
 
 
 MOTIONS = ("slow_push", "slow_pan", "static_hold", "slow_pull")
+PLANNER = "deterministic-storyboard-v2-pov-coreference"
 
 
 def _shot_fingerprint(
@@ -17,7 +18,7 @@ def _shot_fingerprint(
     canonical_entity_ids: list[str],
 ) -> str:
     payload = {
-        "planner": "deterministic-storyboard-v1",
+        "planner": PLANNER,
         "scene_dependency_sha256": scene["dependency_sha256"],
         "shot_index": index,
         "duration_seconds": duration,
@@ -49,6 +50,7 @@ def plan_storyboard(
         item["narration_id"]: item["adapted_text"]
         for item in (narration or {}).get("blocks", [])
     }
+    complete_narration = " ".join(narration_map.values())
     entity_terms = {
         item["canonical_id"]: sorted({
             str(item.get("name") or ""), str(item.get("canonical_name") or ""),
@@ -57,6 +59,26 @@ def plan_storyboard(
         for item in (analysis or {}).get("entities", [])
         if item.get("review_status") == "approved" and item.get("kind") == "character"
     }
+    for identifier, terms in entity_terms.items():
+        canonical_terms = [term for term in terms if " " in term or len(term) >= 4]
+        if any(re.search(
+            rf"\b(?:my\s+)?father\s*[,—-]?\s*{re.escape(term)}\b",
+            complete_narration, re.I,
+        ) for term in canonical_terms):
+            entity_terms[identifier] = [*terms, "my father", "father"]
+        elif any(re.search(
+            rf"\b(?:my\s+)?mother\s*[,—-]?\s*{re.escape(term)}\b",
+            complete_narration, re.I,
+        ) for term in canonical_terms):
+            entity_terms[identifier] = [*terms, "my mother", "mother"]
+    viewpoint_candidates = [
+        identifier for identifier, terms in entity_terms.items()
+        if any(re.search(
+            rf"\bmy\s+(?:full\s+)?name\b[^.!?]{{0,100}}\b{re.escape(term)}\b",
+            complete_narration, re.I,
+        ) for term in terms if len(term) >= 3)
+    ]
+    viewpoint = viewpoint_candidates[0] if len(viewpoint_candidates) == 1 else None
     for scene in scenes["scenes"]:
         if scene.get("status") != "auto_accepted":
             raise ValueError(f"storyboard planning requires accepted scene: {scene.get('scene_id')}")
@@ -71,27 +93,29 @@ def plan_storyboard(
         if not sentences:
             sentences = [scene["story_event"]]
         resolved_entities = []
-        narrator = None
         if entity_terms:
             explicit_by_sentence = [[
                 identifier for identifier in scene["canonical_entity_ids"]
                 if any(re.search(rf"\b{re.escape(term)}\b", sentence, re.I)
                        for term in entity_terms.get(identifier, []))
             ] for sentence in sentences]
-            narrator = next(
-                (identifiers[0] for identifiers in explicit_by_sentence if identifiers), None,
-            )
             last_entities = []
             for sentence, identifiers in zip(sentences, explicit_by_sentence):
                 local = list(identifiers)
-                if narrator and re.search(r"\b(?:I|me|my|mine)\b", sentence, re.I):
-                    local = list(dict.fromkeys([narrator, *local]))
+                first_person = bool(re.search(r"\b(?:I|me|my|mine)\b", sentence, re.I))
+                third_person = bool(re.search(
+                    r"\b(?:he|him|his|she|her|hers|they|them|their)\b", sentence, re.I,
+                ))
+                if viewpoint and first_person:
+                    local = list(dict.fromkeys([viewpoint, *local]))
                 if last_entities and re.search(
                     r"\b(?:he|him|his|she|her|hers|they|them|their)\b", sentence, re.I,
                 ):
                     local = list(dict.fromkeys([*last_entities, *local]))
                 if local:
-                    last_entities = list(local)
+                    last_entities = list(identifiers or local)
+                elif not first_person and not third_person:
+                    last_entities = []
                 resolved_entities.append(local)
         else:
             resolved_entities = [list(scene["canonical_entity_ids"]) for _ in sentences]
@@ -130,7 +154,7 @@ def plan_storyboard(
         "storyboard_id": "storyboard-0001",
         "scene_plan_id": scenes["scene_plan_id"],
         "source_sha256": scenes["source_sha256"],
-        "planner": "deterministic-storyboard-v1",
+        "planner": PLANNER,
         "target_shot_seconds": target_shot_seconds,
         "status": "auto_accepted",
         "release_usable": False,

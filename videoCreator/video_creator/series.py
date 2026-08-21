@@ -4,12 +4,22 @@ from __future__ import annotations
 
 import shutil
 import re
+import json
 from pathlib import Path
 
-from .artifacts import read_json, sha256_file, write_json_atomic
+from .artifacts import read_json, sha256_file, sha256_text, write_json_atomic
 
 
 CATALOG_NAME = "characters.json"
+
+
+def _profile_fingerprint(requirement: dict, visual_style: str | None) -> str:
+    return sha256_text(json.dumps({
+        "canonical_entity_id": requirement.get("canonical_entity_id"),
+        "reference_prompt": requirement.get("reference_prompt"),
+        "character_profile": requirement.get("character_profile"),
+        "visual_style": visual_style,
+    }, sort_keys=True, ensure_ascii=False))
 
 
 def seed_analysis_with_shared_characters(analysis: dict, text: str, library: Path) -> dict:
@@ -65,6 +75,8 @@ def load_shared_references(library: Path, prompts: dict, root: Path) -> dict[str
             continue
         if item.get("visual_style") and current_style and item["visual_style"] != current_style:
             continue
+        if item.get("profile_fingerprint") != _profile_fingerprint(requirement, current_style):
+            continue
         source = library / str(item.get("path") or "")
         if not source.is_file() or sha256_file(source) != item.get("sha256"):
             raise ValueError(f"shared character reference is missing or modified: {requirement['canonical_name']}")
@@ -110,6 +122,7 @@ def publish_shared_references(library: Path, canonical: dict, prompts: dict, roo
             "canonical_name": requirement["canonical_name"],
             "path": relative.as_posix(), "sha256": sha256_file(destination),
             "visual_style": current_style,
+            "profile_fingerprint": _profile_fingerprint(requirement, current_style),
         }
     catalog = {
         "schema_version": 1, "status": "auto_accepted",

@@ -8,7 +8,7 @@ import re
 from .artifacts import sha256_text
 
 
-COMPILER = "deterministic-prompt-compiler-v3-compact-scene"
+COMPILER = "deterministic-prompt-compiler-v4-hybrid-context"
 REFERENCE_BRIEF_COMPILER = "source-character-profile-v2"
 DEFAULT_VISUAL_STYLE = "anime-style illustration, polished cinematic anime key art"
 NEGATIVE_PROMPT = (
@@ -74,7 +74,12 @@ def _compact_event(value: str) -> str:
             return visible_event
     cleaned = re.sub(r"(?:\.\.\.\s*)?flip(?:,?\s*flip)*\s*(?:\.\.\.)?", " ", value, flags=re.I)
     words = cleaned.replace(";", ",").split()
-    return " ".join(words[:36]).rstrip(".,:;")
+    return " ".join(words[:90]).rstrip(".,:;")
+
+
+def _estimated_tokens(value: str) -> int:
+    """Conservatively catch prompt overflow before model-specific tokenization."""
+    return len(re.findall(r"\w+|[^\w\s]", value, re.UNICODE))
 
 
 def compile_prompts(
@@ -109,6 +114,7 @@ def compile_prompts(
             "aliases": sorted(set(aliases), key=str.casefold),
             "source_evidence": evidence, "reference_prompt": brief,
             "character_profile": profile,
+            "text_encoder": {"family": "clip", "maximum_tokens": 77},
             "brief_compiler": REFERENCE_BRIEF_COMPILER,
             "visual_constraints": visual_constraints,
             "selection_mode": "optional_user_override",
@@ -169,6 +175,7 @@ def compile_prompts(
                 "characters": names, "mood": shot["mood"],
             },
             "style": style,
+            "text_encoder": {"family": "sana-gemma", "maximum_tokens": 300},
             "dependency_sha256": fingerprint,
             "status": "auto_accepted",
         })
@@ -335,10 +342,9 @@ def _visual_reference_prompt(
             "plain early-twentieth-century child smock, bareheaded with hair visible"
         )
     base = (
-        f"Single full-body reference portrait of {name}, exactly one human character, one front view, "
-        f"natural standing pose, neutral plain background, {style}, clean anime linework, cel shading. "
-        f"Appearance: {'; '.join(constraints)}. No text, no captions, no panels, no turnaround sheet, "
-        "no alternate views, no robotic or non-human anatomy."
+        f"{style}. Full-body portrait of {name}. Exactly one human character: "
+        f"{'; '.join(constraints)}. "
+        "Single front view, natural standing pose, plain background, clean linework, cel shading."
     )
     return base, constraints, profile
 
@@ -365,10 +371,14 @@ def validate_prompts(compiled: dict, storyboard: dict, analysis: dict) -> list[s
     for item in compiled.get("reference_requirements", []):
         if not str(item.get("reference_prompt") or "").strip():
             issues.append(f"empty reference prompt for {item.get('reference_id')}")
+        if _estimated_tokens(str(item.get("reference_prompt") or "")) > 70:
+            issues.append(f"reference prompt may exceed CLIP limit: {item.get('reference_id')}")
     for item in compiled.get("prompts", []):
         identifier = item.get("shot_id")
         if not str(item.get("prompt") or "").strip() or not str(item.get("negative_prompt") or "").strip():
             issues.append(f"empty image prompt for {identifier}")
+        if _estimated_tokens(str(item.get("prompt") or "")) > 260:
+            issues.append(f"scene prompt may exceed Sana limit: {identifier}")
         unknown = set(item.get("reference_ids", [])) - valid_references
         if unknown:
             issues.append(f"unknown character references for {identifier}: {sorted(unknown)}")

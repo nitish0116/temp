@@ -125,11 +125,127 @@ class SanaImageProvider:
             prompt=prompt, negative_prompt="", width=1024, height=1024,
             num_inference_steps=self.inference_steps,
             guidance_scale=self.guidance_scale, generator=generator,
+            max_sequence_length=300,
         )
         if not result.images:
             raise RuntimeError("local Sana provider returned no image")
         output.parent.mkdir(parents=True, exist_ok=True)
         result.images[0].save(output, format="PNG")
+
+
+class SanaControlNetImageProvider:
+    """Long-context Sana scene renderer with canonical-reference edge control."""
+
+    def __init__(
+        self, model_id: str = "ishan24/Sana_600M_1024px_ControlNetPlus_diffusers", *,
+        model_revision: str = "c2c790efb0285f3d42dc6d7e73e58c80577cf447",
+        cache_directory: Path | None = None, inference_steps: int = 20,
+        guidance_scale: float = 4.5, conditioning_scale: float = 0.35,
+        device: str = "cuda",
+    ) -> None:
+        self.model_id = model_id
+        self.model_revision = model_revision
+        self.cache_directory = cache_directory
+        self.inference_steps = inference_steps
+        self.guidance_scale = guidance_scale
+        self.conditioning_scale = conditioning_scale
+        self.device = device
+        self._pipeline = None
+
+    @property
+    def name(self) -> str:
+        return (
+            f"sana-controlnet-local:{self.model_id}@{self.model_revision[:12]}:"
+            f"steps={self.inference_steps}:guidance={self.guidance_scale}:"
+            f"conditioning={self.conditioning_scale}:max_tokens=300"
+        )
+
+    def _load(self):
+        if self._pipeline is not None:
+            return self._pipeline
+        try:
+            import torch
+            from diffusers import SanaControlNetPipeline
+            from huggingface_hub import snapshot_download
+        except ImportError as error:
+            raise RuntimeError("Sana ControlNet dependencies are missing from imageEnv") from error
+        if self.device == "cuda" and not torch.cuda.is_available():
+            raise RuntimeError("CUDA is required for the Sana ControlNet provider")
+        try:
+            snapshot = snapshot_download(
+                self.model_id, revision=self.model_revision, local_files_only=True,
+                cache_dir=str(self.cache_directory) if self.cache_directory else None,
+            )
+            pipeline = SanaControlNetPipeline.from_pretrained(
+                snapshot, variant="fp16", dtype=torch.float16,
+                local_files_only=True,
+                cache_dir=str(self.cache_directory) if self.cache_directory else None,
+            )
+        except OSError as error:
+            raise RuntimeError(
+                "local Sana ControlNet cache is missing; run setup-local-images online first"
+            ) from error
+        pipeline.to(self.device)
+        self._pipeline = pipeline
+        return pipeline
+
+    @staticmethod
+    def _control_image(reference_images: list[Path] | None):
+        from PIL import Image, ImageFilter, ImageOps
+
+        if not reference_images:
+            return Image.new("RGB", (1024, 1024), "black")
+        reference = Image.open(reference_images[0]).convert("RGB")
+        width, height = reference.size
+        side = max(1, int(min(width, height) * 0.46))
+        face = reference.crop((
+            max(0, (width - side) // 2), max(0, int(height * 0.02)),
+            max(0, (width - side) // 2) + side, max(0, int(height * 0.02)) + side,
+        )).resize((320, 320))
+        edges = ImageOps.autocontrast(
+            ImageOps.grayscale(face).filter(ImageFilter.FIND_EDGES)
+        ).convert("RGB")
+        control = Image.new("RGB", (1024, 1024), "black")
+        control.paste(edges, (352, 128))
+        return control
+
+    def _generate(
+        self, prompt: str, output: Path, *, seed: int,
+        reference_images: list[Path] | None,
+    ) -> None:
+        pipeline = self._load()
+        import torch
+
+        encoded = pipeline.tokenizer(prompt, add_special_tokens=True, truncation=False)
+        if len(encoded["input_ids"]) > 300:
+            raise ValueError("Sana scene prompt exceeds the 300-token model limit")
+        result = pipeline(
+            prompt=prompt,
+            negative_prompt=(
+                "photorealism, live action, 3D render, text, watermark, duplicate character, "
+                "extra limbs, identity drift, wrong age, wrong species"
+            ),
+            control_image=self._control_image(reference_images),
+            controlnet_conditioning_scale=(self.conditioning_scale if reference_images else 0.0),
+            width=1024, height=1024, num_inference_steps=self.inference_steps,
+            guidance_scale=self.guidance_scale,
+            generator=torch.Generator(device=self.device).manual_seed(seed),
+            max_sequence_length=300,
+        )
+        if not result.images:
+            raise RuntimeError("local Sana ControlNet provider returned no image")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        result.images[0].save(output, format="PNG")
+
+    def generate(self, prompt: str, output: Path, *, seed: int) -> None:
+        self._generate(prompt, output, seed=seed, reference_images=None)
+
+    def generate_conditioned(
+        self, prompt: str, output: Path, *, seed: int, reference_images: list[Path],
+    ) -> None:
+        if not reference_images or not all(path.is_file() for path in reference_images):
+            raise ValueError("Sana scene conditioning requires canonical reference images")
+        self._generate(prompt, output, seed=seed, reference_images=reference_images)
 
 
 class AnimeIPAdapterImageProvider:
@@ -236,9 +352,19 @@ class AnimeIPAdapterImageProvider:
         else:
             pipeline.set_ip_adapter_scale(0.0)
             adapter_images = [Image.new("RGB", (512, 512), "white")]
+        tokenizer = getattr(pipeline, "tokenizer", None)
+        token_count = len(tokenizer(
+            prompt, add_special_tokens=True, truncation=False,
+        )["input_ids"]) if tokenizer else 0
+        if tokenizer and token_count > tokenizer.model_max_length:
+            raise ValueError(
+                f"Animagine reference prompt uses {token_count} tokens; maximum is "
+                f"{pipeline.tokenizer.model_max_length}"
+            )
         arguments = dict(
             prompt=prompt,
-            negative_prompt=("photorealism, live action, 3D render, character sheet, "
+            negative_prompt=("photorealism, live action, 3D render, character sheet, turnaround, "
+                             "alternate views, multiple characters, robotic anatomy, non-human anatomy, "
                              "neutral pose, different person, changed hair, changed clothing"),
             width=1024, height=1024,
             num_inference_steps=self.inference_steps, guidance_scale=self.guidance_scale,
@@ -272,6 +398,7 @@ def generate_assets(
     canonical_references: dict[str, dict[str, str] | str] | None = None,
     asset_ids: frozenset[str] | None = None,
     reference_conditioning: bool = False,
+    force_asset_ids: frozenset[str] | None = None, seed_offset: int = 0,
 ) -> dict:
     """Generate, rank, and select image and character-reference candidates."""
     if prompts.get("status") != "auto_accepted":
@@ -325,6 +452,7 @@ def generate_assets(
         existing = prior.get(identifier)
         if (
             existing
+            and identifier not in (force_asset_ids or frozenset())
             and existing.get("dependency_sha256") == dependency
             and existing.get("provider") == selected.name
             and len(existing.get("candidates", [])) == candidates_per_item
@@ -341,7 +469,9 @@ def generate_assets(
         regenerated.append(identifier)
         candidates = []
         for index in range(1, candidates_per_item + 1):
-            seed = int(hashlib.sha256(f"{identifier}:{index}".encode()).hexdigest()[:8], 16)
+            seed = int(hashlib.sha256(
+                f"{identifier}:{index}:retry-{seed_offset}".encode()
+            ).hexdigest()[:8], 16)
             relative = Path("images")
             if asset_namespace:
                 relative /= asset_namespace

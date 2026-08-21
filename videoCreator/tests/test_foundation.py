@@ -15,8 +15,8 @@ from video_creator.audio import (
     DeterministicToneProvider, generate_narration_audio, validate_narration_audio,
 )
 from video_creator.images import (
-    AnimeIPAdapterImageProvider, DeterministicFixtureImageProvider, SanaImageProvider, generate_assets,
-    validate_assets,
+    AnimeIPAdapterImageProvider, DeterministicFixtureImageProvider,
+    SanaControlNetImageProvider, SanaImageProvider, generate_assets, validate_assets,
 )
 from video_creator.project import (
     analyze_project_source, ingest_project_source, initialize_project, validate_project,
@@ -27,7 +27,7 @@ from video_creator.narration import (
     validate_narration_plan,
 )
 from video_creator.prompts import (
-    DEFAULT_VISUAL_STYLE, _compact_event, _visualize_narrative_beat, compile_prompts,
+    DEFAULT_VISUAL_STYLE, _compact_event, _estimated_tokens, _visualize_narrative_beat, compile_prompts,
     validate_prompts,
 )
 from video_creator.scenes import (
@@ -433,6 +433,37 @@ def test_storyboard_resolves_pronoun_continuation_to_last_character():
     assert shots[1]["canonical_entity_ids"] == ["alice", "arthur"]
 
 
+def test_storyboard_resolves_first_person_viewpoint_and_family_role():
+    scenes = {
+        "status": "auto_accepted", "scene_plan_id": "scene-plan-0001",
+        "source_sha256": "a" * 64, "scenes": [{
+            "scene_id": "scene-0001", "status": "auto_accepted",
+            "estimated_narration_seconds": 30, "setting_id": "training-yard",
+            "canonical_entity_ids": ["arthur", "reynolds"], "mood": "focused",
+            "visual_intent": "Show training", "dependency_sha256": "b" * 64,
+            "narration_ids": ["narration-0001"],
+        }],
+    }
+    narration = {"blocks": [{
+        "narration_id": "narration-0001",
+        "adapted_text": (
+            "I learned my full name was Arthur. My father, Reynolds entered the yard. "
+            "He put on his iron gauntlets."
+        ),
+    }]}
+    analysis = {"entities": [
+        {"review_status": "approved", "kind": "character", "canonical_id": "arthur",
+         "name": "Arthur", "canonical_name": "Arthur", "aliases": ["Art"]},
+        {"review_status": "approved", "kind": "character", "canonical_id": "reynolds",
+         "name": "Reynolds", "canonical_name": "Reynolds", "aliases": []},
+    ]}
+    shots = plan_storyboard(
+        scenes, target_shot_seconds=10, narration=narration, analysis=analysis,
+    )["shots"]
+    assert shots[0]["canonical_entity_ids"] == ["arthur"]
+    assert shots[2]["canonical_entity_ids"] == ["reynolds"]
+
+
 def test_prompt_conditioning_is_limited_to_primary_visible_character(tmp_path):
     _source, analysis, _plan, narration = adapted_fixture(tmp_path)
     analysis["entities"].append({
@@ -476,16 +507,15 @@ def test_prompt_compilation_is_complete_optional_and_selective(tmp_path):
         "aliases": ["Mira"],
         "source_evidence": [],
         "reference_prompt": (
-            "Single full-body reference portrait of Mira, exactly one human character, one front view, "
-            "natural standing pose, neutral plain background, anime-style illustration, polished "
-            "cinematic anime key art, clean anime linework, cel shading. Appearance: human adult person. "
-            "No text, no captions, no panels, no turnaround sheet, no alternate views, no robotic or "
-            "non-human anatomy."
+            "anime-style illustration, polished cinematic anime key art. Full-body portrait of Mira. "
+            "Exactly one human character: human adult person. Single front view, natural standing pose, "
+            "plain background, clean linework, cel shading."
         ),
         "character_profile": {
             "name": "Mira", "species": "human", "age_stage": "adult",
             "presentation": "person", "visible_traits": [], "source_evidence": [],
         },
+        "text_encoder": {"family": "clip", "maximum_tokens": 77},
         "brief_compiler": "source-character-profile-v2",
         "visual_constraints": ["human adult person"],
         "selection_mode": "optional_user_override",
@@ -533,14 +563,15 @@ def test_character_profiles_are_source_grounded_and_single_view(tmp_path):
         for trait in requirement["character_profile"]["visible_traits"]
     )
     assert "brown eyes" in requirement["character_profile"]["visible_traits"]
-    assert "exactly one human character" in requirement["reference_prompt"]
-    assert "no turnaround sheet" in requirement["reference_prompt"].casefold()
+    assert "exactly one human character" in requirement["reference_prompt"].casefold()
+    assert _estimated_tokens(requirement["reference_prompt"]) <= 70
+    assert requirement["text_encoder"] == {"family": "clip", "maximum_tokens": 77}
 
 
 def test_compact_event_keeps_one_coherent_contiguous_event():
-    event = " ".join(f"word{index}" for index in range(50))
+    event = " ".join(f"word{index}" for index in range(120))
     compact = _compact_event(event)
-    assert compact.split() == event.split()[:36]
+    assert compact.split() == event.split()[:90]
 
 
 def test_contrastive_narrative_beat_becomes_visual_exclusion():
@@ -560,6 +591,10 @@ def test_default_prompts_enforce_anime_illustration_style(tmp_path):
     assert all(
         DEFAULT_VISUAL_STYLE in item["reference_prompt"]
         for item in prompts["reference_requirements"]
+    )
+    assert all(
+        item["text_encoder"] == {"family": "sana-gemma", "maximum_tokens": 300}
+        for item in prompts["prompts"]
     )
 
 
@@ -614,7 +649,46 @@ def test_ip_adapter_generates_character_free_shot_with_zero_strength(tmp_path, m
     assert output.is_file()
     assert pipeline.scales == [0.0]
     assert pipeline.arguments["ip_adapter_image"][0].size == (512, 512)
-    assert pipeline.arguments["generator"].seed == 17
+
+
+def test_sana_scene_provider_uses_300_token_reference_control(tmp_path, monkeypatch):
+    from PIL import Image
+
+    class Tokenizer:
+        def __call__(self, _prompt, **_kwargs):
+            return {"input_ids": list(range(40))}
+
+    class Pipeline:
+        tokenizer = Tokenizer()
+
+        def __call__(self, **arguments):
+            self.arguments = arguments
+            return SimpleNamespace(images=[Image.new("RGB", (8, 8), "blue")])
+
+    class Generator:
+        def __init__(self, device):
+            self.device = device
+
+        def manual_seed(self, seed):
+            self.seed = seed
+            return self
+
+    reference = tmp_path / "reference.png"
+    Image.new("RGB", (512, 512), "white").save(reference)
+    pipeline = Pipeline()
+    provider = SanaControlNetImageProvider(device="cpu")
+    provider._pipeline = pipeline
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(Generator=Generator))
+    output = tmp_path / "scene.png"
+    provider.generate_conditioned(
+        "anime narrative scene with a character in a detailed room", output,
+        seed=19, reference_images=[reference],
+    )
+    assert output.is_file()
+    assert pipeline.arguments["max_sequence_length"] == 300
+    assert pipeline.arguments["controlnet_conditioning_scale"] == 0.35
+    assert pipeline.arguments["control_image"].size == (1024, 1024)
+    assert pipeline.arguments["generator"].seed == 19
 
 
 def test_narration_audio_is_complete_and_selectively_reused(tmp_path):
@@ -728,6 +802,29 @@ def test_character_reference_hash_invalidates_only_dependent_shots(tmp_path):
     )
     assert prompts["prompts"][0]["shot_id"] in second["regeneration"]["regenerated_asset_ids"]
     assert prompts["prompts"][1]["shot_id"] in second["regeneration"]["reused_asset_ids"]
+
+
+def test_forced_image_retry_changes_only_rejected_asset_seed(tmp_path):
+    _source, analysis, _plan, narration = adapted_fixture(tmp_path)
+    scenes = enrich_scenes(segment_scenes(narration, analysis), narration)
+    prompts = compile_prompts(plan_storyboard(scenes, target_shot_seconds=10), analysis)
+    provider = DeterministicFixtureImageProvider()
+    first = generate_assets(
+        prompts, tmp_path, provider, candidates_per_item=1,
+        asset_kinds=frozenset({"shot"}), asset_namespace="retry-test",
+    )
+    rejected = first["assets"][0]["asset_id"]
+    second = generate_assets(
+        prompts, tmp_path, provider, candidates_per_item=1, previous=first,
+        asset_kinds=frozenset({"shot"}), asset_namespace="retry-test",
+        force_asset_ids=frozenset({rejected}), seed_offset=1,
+    )
+    by_id_first = {item["asset_id"]: item for item in first["assets"]}
+    by_id_second = {item["asset_id"]: item for item in second["assets"]}
+    assert by_id_second[rejected]["candidates"][0]["seed"] != (
+        by_id_first[rejected]["candidates"][0]["seed"]
+    )
+    assert second["regeneration"]["regenerated_asset_ids"] == [rejected]
 
 
 def test_image_provider_failures_retry_then_use_fallback(tmp_path):
@@ -900,6 +997,23 @@ def test_semantic_reviewer_derives_acceptance_from_required_matches(tmp_path):
         "characters": ["Tanya"], "mood": "disoriented",
     }, [])
     assert result["accepted"] is True
+
+
+def test_semantic_reviewer_derives_missing_score_from_complete_matches(tmp_path):
+    image = tmp_path / "candidate.png"
+    image.write_bytes(b"fixture")
+    reviewer = SmolVLMReviewer()
+    reviewer._pipeline = lambda **_kwargs: [{"generated_text": json.dumps({
+        "character_match": True, "setting_match": True, "action_match": True,
+        "reasons": [{"reason": "identity", "match": True}],
+    })}]
+    result = reviewer.review_scene(image, {
+        "setting": "yard", "visible_event": "a warrior puts on iron gauntlets",
+        "characters": ["Reynolds"], "mood": "focused",
+    }, [])
+    assert result["accepted"] is True
+    assert result["score"] == 1.0
+    assert result["score_source"] == "derived_mandatory_matches"
 
 
 def test_semantic_reviewer_recovers_criteria_before_truncated_rationale(tmp_path):

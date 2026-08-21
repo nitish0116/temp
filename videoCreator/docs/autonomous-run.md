@@ -21,6 +21,14 @@ subtitles, the timeline, rendering, validation, and final QA. Re-running the sam
 command resumes from accepted stage artifacts. A failure writes
 `reports/run-report.json` with one exception and a concrete rerun action.
 
+The default `--provider hybrid` route uses Animagine XL for compact canonical
+character portraits and Sana ControlNet for narrative scenes. Character prompts
+are validated against CLIP's 77-token context; scene prompts use Sana's explicit
+300-token context and a cropped face/hair edge control from the selected canonical
+reference. Failed semantic checks regenerate only rejected shots with new seeds,
+up to `--maximum-attempts`. Use `--provider anime-ip-adapter` only as an explicit
+legacy override when every scene must remain on SDXL.
+
 ## Split manuscripts and recurring characters
 
 Give every part of the same novel a different workspace and the same

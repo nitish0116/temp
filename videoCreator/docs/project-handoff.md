@@ -19,7 +19,7 @@ at 0.92 speed, measures 121.1 spoken words per minute, and includes 48 sentence
 pauses plus eight scene pauses. Safe framing contains each square illustration
 over a blurred widescreen extension.
 
-The latest verification is 53 passing tests plus successful bytecode compilation.
+The latest verification is 57 passing tests plus successful bytecode compilation.
 Generated media, model weights, and dedicated `imageEnv`/`audioEnv` environments
 remain ignored and local.
 
@@ -84,6 +84,24 @@ contiguous event, use recognized fictional locations, and carry prior characters
 through pronoun continuations. SmolVLM2 now compares scene candidates directly
 with the selected canonical reference image.
 
+The production runner now defaults to a hardware-appropriate hybrid visual route:
+Animagine XL creates canonical anime portraits with exact runtime enforcement of
+CLIP's 77-token limit, while Sana ControlNet creates narrative scenes with an
+explicit 300-token context. Sana receives a compact face/hair edge control rather
+than the whole reference pose. The pinned ControlNet checkpoint is cached locally;
+offline setup verification and a real four-step 1024px conditioned smoke render
+succeeded on the 16 GB RTX PRO 4000 laptop GPU.
+
+Storyboard planner v2 identifies a first-person viewpoint from source evidence,
+maps family-role phrases such as “my father” to their canonical character, and no
+longer assumes the first named person is the narrator. SmolVLM2 review normalizes
+percentage scores and derives a missing score only when every mandatory match is
+explicitly true. Pilot and production review now regenerate only rejected assets
+with new deterministic seeds before exhausting the configured attempt count.
+Planner/compiler upgrades automatically invalidate downstream artifacts. Shared
+series portraits also carry a profile fingerprint, so legacy or changed character
+profiles regenerate once instead of silently restoring an inaccurate image.
+
 ## Git and local output state
 
 The active branch is `videoCreator`. Commit `4a823dde` completed the offline
@@ -93,6 +111,7 @@ from the history command rather than relying on these identifiers indefinitely.
 
 ## Next action
 
-Regenerate the TBAtE character references and scene prompts from the corrected
-profiles, then resume the pipeline so image generation and semantic review replace
-the three previously accepted but inaccurate character sheets and affected shots.
+Rerun the normal TBAtE `run` command with the shared series library. Confirm the
+report selects the hybrid providers, regenerates legacy profile-mismatched
+portraits, assigns the iron-gauntlet event to Reynolds rather than Alice, and then
+continues through targeted semantic retries without manual intervention.

@@ -53,6 +53,9 @@ def test_series_library_reuses_reference_without_generation(tmp_path):
     }
     write_json_atomic(second / "project.json", manifest)
     reused = load_shared_references(library, _prompts(), second)
+    changed_prompts = _prompts()
+    changed_prompts["reference_requirements"][0]["reference_prompt"] = "Mira with corrected blue hair"
+    assert load_shared_references(library, changed_prompts, second) == {}
 
     class NoGeneration:
         name = "must-not-run"
@@ -126,7 +129,7 @@ def test_cli_exposes_single_run_command_with_series_library(tmp_path):
         "--series-library", str(tmp_path / "series"), "--offline",
     ])
     assert args.command == "run"
-    assert args.provider == "anime-ip-adapter"
+    assert args.provider == "hybrid"
     assert args.offline is True
 
 

@@ -9,10 +9,11 @@ import sys
 from pathlib import Path
 
 from .artifacts import read_json
-from .images import AnimeIPAdapterImageProvider, SanaImageProvider
+from .images import AnimeIPAdapterImageProvider, SanaControlNetImageProvider, SanaImageProvider
 from .local_image_environment import (
     ACTIVE_FLAG, MODEL_ID, MODEL_REVISION, cache_root, run_local_images,
     ANIME_MODEL_ID, ANIME_MODEL_REVISION, IP_ADAPTER_MODEL_ID, IP_ADAPTER_MODEL_REVISION,
+    SANA_CONTROL_MODEL_ID, SANA_CONTROL_MODEL_REVISION,
     REVIEW_MODEL_ID, REVIEW_MODEL_REVISION, setup_local_images,
 )
 from .local_audio_environment import (
@@ -50,7 +51,10 @@ def parser() -> argparse.ArgumentParser:
         "--series-library", type=Path, default=None,
         help="Shared character library reused across manuscript-part workspaces",
     )
-    run.add_argument("--provider", choices=("fixture", "anime-ip-adapter"), default="anime-ip-adapter")
+    run.add_argument(
+        "--provider", choices=("fixture", "hybrid", "anime-ip-adapter"), default="hybrid",
+        help="hybrid uses Animagine references and 300-token Sana ControlNet scenes",
+    )
     run.add_argument("--candidates-per-item", type=int, default=1)
     run.add_argument("--maximum-attempts", type=int, default=2)
     run.add_argument("--inference-steps", type=int, default=20)
@@ -187,18 +191,28 @@ def main(argv: list[str] | None = None) -> None:
         raw_arguments = list(argv) if argv is not None else sys.argv[1:]
         if os.environ.get(ACTIVE_FLAG) != "1":
             raise SystemExit(run_local_images(raw_arguments))
-        provider = None if args.provider == "fixture" else AnimeIPAdapterImageProvider(
-            ANIME_MODEL_ID, model_revision=ANIME_MODEL_REVISION,
-            adapter_model_id=IP_ADAPTER_MODEL_ID,
-            adapter_revision=IP_ADAPTER_MODEL_REVISION,
-            inference_steps=args.inference_steps, guidance_scale=args.guidance_scale,
-        )
+        reference_provider = None
+        scene_provider = None
+        if args.provider != "fixture":
+            reference_provider = AnimeIPAdapterImageProvider(
+                ANIME_MODEL_ID, model_revision=ANIME_MODEL_REVISION,
+                adapter_model_id=IP_ADAPTER_MODEL_ID,
+                adapter_revision=IP_ADAPTER_MODEL_REVISION,
+                inference_steps=args.inference_steps, guidance_scale=args.guidance_scale,
+            )
+            scene_provider = reference_provider if args.provider == "anime-ip-adapter" else (
+                SanaControlNetImageProvider(
+                    SANA_CONTROL_MODEL_ID, model_revision=SANA_CONTROL_MODEL_REVISION,
+                    inference_steps=args.inference_steps, guidance_scale=4.5,
+                )
+            )
         result = run_project(
             args.workspace, args.manuscript,
             project_id=args.project_id or args.workspace.name,
             title=args.title or args.manuscript.stem,
             rights_status=args.rights_status, series_library=args.series_library,
-            image_provider=provider, candidates_per_item=args.candidates_per_item,
+            character_provider=reference_provider, scene_provider=scene_provider,
+            candidates_per_item=args.candidates_per_item,
             maximum_attempts=args.maximum_attempts, offline=args.offline,
         )
     elif args.command == "setup-local-images":
@@ -207,6 +221,9 @@ def main(argv: list[str] | None = None) -> None:
             "status": "ready", "environment_python": str(python),
             "model": MODEL_ID, "revision": MODEL_REVISION,
             "license": "Apache-2.0", "cache_root": str(cache_root()),
+            "scene_control_model": SANA_CONTROL_MODEL_ID,
+            "scene_control_revision": SANA_CONTROL_MODEL_REVISION,
+            "scene_prompt_tokens": 300,
             "review_model": REVIEW_MODEL_ID,
             "review_revision": REVIEW_MODEL_REVISION,
             "review_license": "Apache-2.0",

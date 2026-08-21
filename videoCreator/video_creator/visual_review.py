@@ -81,15 +81,26 @@ class SmolVLMReviewer:
                 result = json.loads(match.group())
             except json.JSONDecodeError:
                 result = ast.literal_eval(match.group())
-            score = max(0.0, min(1.0, float(result.get("score", 0))))
             reasons = [str(value)[:240] for value in result.get("reasons", [])][:6]
             criteria = {
                 key: result.get(key) is True
                 for key in ("character_match", "setting_match", "action_match")
             }
+            raw_score = result.get("score")
+            score_source = "model"
+            if raw_score is None and all(criteria.values()):
+                score = 1.0
+                score_source = "derived_mandatory_matches"
+                reasons.append("score omitted; derived from complete mandatory matches")
+            else:
+                score = float(raw_score or 0)
+                if 1 < score <= 100:
+                    score /= 100
+                    score_source = "normalized_percent"
+                score = max(0.0, min(1.0, score))
             return {
                 "accepted": score >= 0.75 and all(criteria.values()),
-                "score": score, **criteria,
+                "score": score, "score_source": score_source, **criteria,
                 "reasons": reasons or ["no reviewer rationale"],
             }
         except (ValueError, TypeError, SyntaxError):
