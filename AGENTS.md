@@ -1,18 +1,21 @@
 # Repository assistant handoff
 
-For work involving `videotranslator`, read
-`videotranslator/docs/project-handoff.md` before planning changes. Treat current
-code, tests, and Git state as authoritative when they differ from the handoff.
+Project handoffs use `<project>/docs/project-handoff.md`. Before planning work,
+read the handoff for the project in scope. When work is repository-wide, read
+each affected project handoff. Treat current code, tests, and Git state as
+authoritative when they differ from a handoff.
 
 When the user sends `/history`, asks to resume prior work, or asks for project
 status, run:
 
 ```text
-python -m videotranslator history
+python scripts/project_history.py
 ```
 
 Use the Python command from the active environment (`python3` where applicable);
-do not assume a workstation-specific environment path.
+do not assume a workstation-specific environment path. From the repository root,
+pass `--project <directory>` when the active project cannot be inferred from the
+current branch. From inside a project directory, the command discovers it.
 
 Summarize its output, then continue from the documented next step unless the user
 changes direction.
@@ -27,7 +30,7 @@ user has explicitly exported that history into the workspace.
 A human can install a prepared complete handoff with:
 
 ```text
-python -m videotranslator history --update-from path/to/handoff-next.md
+python scripts/project_history.py --project <directory> --update-from path/to/handoff-next.md
 ```
 
 ## Commit messages
