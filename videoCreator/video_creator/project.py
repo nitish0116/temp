@@ -11,7 +11,7 @@ from .analysis import (
     build_analysis_review_template, validate_analysis,
 )
 from .artifacts import read_json, sha256_file, write_json_atomic
-from .audio import generate_narration_audio, validate_narration_audio
+from .audio import KokoroNarrationProvider, generate_narration_audio, validate_narration_audio
 from .images import ImageProvider, generate_assets, validate_assets
 from .narration import (
     MappingNarrationProvider, adapt_narration, build_narration_plan,
@@ -28,7 +28,7 @@ from .storyboard import plan_storyboard, validate_storyboard
 from .subtitles import align_narration, validate_alignment, write_subtitles
 from .timeline import compile_timeline, mix_narration, validate_timeline
 from .render import render_video
-from .quality import evaluate_video
+from .quality import evaluate_narration, evaluate_video
 from .visual_review import review_character_references, review_shot_assets
 
 
@@ -423,9 +423,14 @@ def generate_project_narration_audio(root: Path) -> dict:
     if manifest.get("stages", {}).get("image_review", {}).get("status") != "auto_accepted":
         raise ValueError("narration audio requires accepted production images")
     narration = read_json(root / manifest["stages"]["narration"]["artifact"])
+    scenes = read_json(root / manifest["stages"]["scenes"]["artifact"])
+    scene_end_ids = frozenset(scene["narration_ids"][-1] for scene in scenes["scenes"])
     output = root / "audio" / "narration.json"
     previous = read_json(output) if output.is_file() else None
-    audio = generate_narration_audio(narration, root, previous=previous)
+    audio = generate_narration_audio(
+        narration, root, KokoroNarrationProvider(), previous=previous,
+        scene_end_ids=scene_end_ids,
+    )
     issues = validate_narration_audio(audio, narration, root)
     if issues: raise ValueError("invalid narration audio: " + "; ".join(issues))
     write_json_atomic(output, audio)
@@ -487,6 +492,13 @@ def evaluate_project(root: Path) -> dict:
     if render_stage.get("status") != "rendered": raise ValueError("evaluation requires a completed render")
     timeline = read_json(root / manifest["stages"]["timeline"]["artifact"])
     report = evaluate_video(root / render_stage["video"], timeline["duration_seconds"], manifest["rights"])
+    audio = read_json(root / manifest["stages"]["audio"]["artifact"])
+    narration_quality = evaluate_narration(audio); report["narration"] = narration_quality
+    render = read_json(root / render_stage["artifact"])
+    report["safe_framing"] = render.get("safe_framing")
+    if narration_quality["issues"]: report["issues"].extend(narration_quality["issues"])
+    if not report["safe_framing"]: report["issues"].append("safe image framing is not recorded")
+    report["status"] = "passed" if not report["issues"] else "failed"
     write_json_atomic(root / "reports" / "final-qa.json", report)
     manifest["stages"]["evaluation"] = {"status": report["status"], "artifact": "reports/final-qa.json",
         "release_status": report["release_status"], "updated_at": now(), "approval_required": False}

@@ -19,15 +19,23 @@ def align_narration(narration: dict, audio: dict) -> dict:
     cues, cursor = [], 0.0
     for block in narration["blocks"]:
         identifier = block["narration_id"]
-        duration = float(audio_map[identifier]["duration_seconds"])
-        chunks = _chunks(block["adapted_text"]); weights = [max(1, len(x)) for x in chunks]
-        block_end = cursor + duration
-        for index, (chunk, weight) in enumerate(zip(chunks, weights), 1):
-            end = cursor + duration * weight / sum(weights)
-            cues.append({"cue_id": f"{identifier}-cue-{index:03d}", "narration_id": identifier,
-                         "start_seconds": round(cursor, 3), "end_seconds": round(end, 3), "text": chunk})
-            cursor = end
-        cursor = block_end; cues[-1]["end_seconds"] = round(cursor, 3)
+        clip = audio_map[identifier]; duration = float(clip["duration_seconds"]); block_start = cursor
+        timing_segments = (clip.get("timing") or {}).get("segments")
+        if not timing_segments:
+            timing_segments = [{"text": block["adapted_text"], "start_seconds": 0.0, "end_seconds": duration}]
+        cue_index = 0
+        for segment in timing_segments:
+            chunks = _chunks(segment["text"]); weights = [max(1, len(x)) for x in chunks]
+            segment_start = block_start + float(segment["start_seconds"])
+            segment_duration = float(segment["end_seconds"]) - float(segment["start_seconds"])
+            segment_cursor = segment_start
+            for chunk, weight in zip(chunks, weights):
+                cue_index += 1; end = segment_cursor + segment_duration * weight / sum(weights)
+                cues.append({"cue_id": f"{identifier}-cue-{cue_index:03d}", "narration_id": identifier,
+                             "start_seconds": round(segment_cursor, 3), "end_seconds": round(end, 3), "text": chunk})
+                segment_cursor = end
+            cues[-1]["end_seconds"] = round(block_start + float(segment["end_seconds"]), 3)
+        cursor = block_start + duration
     return {"schema_version": 1, "status": "auto_accepted",
             "method": "audio-duration-proportional-sentence-v1",
             "source_sha256": narration["source_sha256"], "duration_seconds": round(cursor, 3), "cues": cues}
@@ -53,5 +61,6 @@ def validate_alignment(alignment: dict) -> list[str]:
         if end <= start: issues.append(f"invalid cue duration: {cue.get('cue_id')}")
         if len(cue.get("text", "")) > 42: issues.append(f"cue too long: {cue.get('cue_id')}")
         previous_end = end
-    if abs(previous_end - float(alignment.get("duration_seconds", 0))) > 0.01: issues.append("subtitle coverage does not match audio duration")
+    trailing_silence = float(alignment.get("duration_seconds", 0)) - previous_end
+    if not 0 <= trailing_silence <= 1.25: issues.append("subtitle coverage does not match audio duration")
     return issues

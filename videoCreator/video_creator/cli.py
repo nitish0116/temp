@@ -15,6 +15,10 @@ from .local_image_environment import (
     CONTROLNET_MODEL_ID, CONTROLNET_MODEL_REVISION,
     REVIEW_MODEL_ID, REVIEW_MODEL_REVISION, setup_local_images,
 )
+from .local_audio_environment import (
+    ACTIVE_FLAG as AUDIO_ACTIVE_FLAG, MODEL_ID as AUDIO_MODEL_ID,
+    MODEL_REVISION as AUDIO_MODEL_REVISION, run_local_audio, setup_local_audio,
+)
 from .project import (
     RIGHTS_STATES, adapt_project_narration, align_project_subtitles, analyze_project_source, ingest_project_source,
     approve_project_analysis, compile_project_prompts, compile_project_timeline, enrich_project_scenes,
@@ -137,6 +141,7 @@ def parser() -> argparse.ArgumentParser:
     image_review.add_argument("--offline", action="store_true")
     audio = commands.add_parser("generate-audio", help="Generate offline narration audio")
     audio.add_argument("workspace", type=Path)
+    audio.add_argument("--offline", action="store_true")
     subtitles = commands.add_parser("align-subtitles", help="Align narration and write subtitles")
     subtitles.add_argument("workspace", type=Path)
     timeline = commands.add_parser("compile-timeline", help="Compile motion timeline and audio mix")
@@ -149,6 +154,8 @@ def parser() -> argparse.ArgumentParser:
         "setup-local-images", help="Create imageEnv and prefetch Sana weights",
     )
     setup_images.add_argument("--offline", action="store_true")
+    setup_audio = commands.add_parser("setup-local-audio", help="Create audioEnv and prefetch Kokoro")
+    setup_audio.add_argument("--offline", action="store_true")
     validate = commands.add_parser("validate", help="Validate project artifacts")
     validate.add_argument("workspace", type=Path)
     status = commands.add_parser("status", help="Show project stage states")
@@ -169,6 +176,10 @@ def main(argv: list[str] | None = None) -> None:
             "review_revision": REVIEW_MODEL_REVISION,
             "review_license": "Apache-2.0",
         }
+    elif args.command == "setup-local-audio":
+        python = setup_local_audio(offline=args.offline)
+        result = {"status": "ready", "environment_python": str(python), "model": AUDIO_MODEL_ID,
+                  "revision": AUDIO_MODEL_REVISION, "license": "Apache-2.0"}
     elif args.command == "init":
         result = initialize_project(args.workspace, args.project_id, args.title, args.rights_status)
     elif args.command == "ingest":
@@ -238,6 +249,9 @@ def main(argv: list[str] | None = None) -> None:
             raise SystemExit(run_local_images(raw_arguments))
         result = review_project_character_references(args.workspace)
     elif args.command == "generate-audio":
+        if os.environ.get(AUDIO_ACTIVE_FLAG) != "1":
+            raw_arguments = list(argv) if argv is not None else sys.argv[1:]
+            raise SystemExit(run_local_audio(raw_arguments))
         result = generate_project_narration_audio(args.workspace)
     elif args.command == "align-subtitles":
         result = align_project_subtitles(args.workspace)

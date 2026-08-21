@@ -29,3 +29,19 @@ def evaluate_video(path: Path, expected_duration: float, rights: dict, ffmpeg: s
         "codec": video.get("codec_name"), "width": video.get("width"), "height": video.get("height"), "fps": video.get("avg_frame_rate")},
         "audio": {"codec": audio.get("codec_name"), "peak_db": peak_db}, "subtitle_codec": subtitle.get("codec_name"),
         "black_frame_events": black_events, "rights": rights}
+
+def evaluate_narration(audio: dict) -> dict:
+    words = speech_seconds = sentence_pauses = scene_pauses = 0
+    issues = []
+    for clip in audio.get("clips", []):
+        timing = clip.get("timing") or {}; segments = timing.get("segments", [])
+        words += sum(len(segment.get("text", "").split()) for segment in segments)
+        speech_seconds += sum(float(segment["end_seconds"]) - float(segment["start_seconds"]) for segment in segments)
+        sentence_pauses += max(0, len(segments) - 1)
+        if float(timing.get("trailing_pause_seconds", 0)) >= 1.0: scene_pauses += 1
+    words_per_minute = round(words / speech_seconds * 60, 1) if speech_seconds else 0
+    if not 105 <= words_per_minute <= 180: issues.append("narration speaking rate is outside the clarity range")
+    if sentence_pauses == 0: issues.append("narration has no sentence pauses")
+    if scene_pauses == 0: issues.append("narration has no scene pauses")
+    return {"provider": audio.get("provider"), "words_per_minute": words_per_minute,
+            "sentence_pause_count": sentence_pauses, "scene_pause_count": scene_pauses, "issues": issues}

@@ -42,3 +42,13 @@ silently skipped when internet access is unavailable.
 - Runtime: shared `imageEnv`; weights: shared ignored `.model-cache/huggingface`
 - Purpose: condition shot generation on edge maps derived from promoted canonical
   character references. The manifest records conditioning as a hard expansion gate.
+
+## Kokoro narration
+
+- Model: `hexgrad/Kokoro-82M`
+- Revision: `fbba31e67ad83eb66394c926627e99d35abeb087`
+- License: Apache-2.0
+- Runtime: ignored workspace-root `audioEnv`; weights: shared `.model-cache/huggingface`
+- Voice: `af_bella` at 0.92 speed
+- Setup: `python -m video_creator.cli setup-local-audio` once online, then
+  `--offline` verifies the complete model, voice, tokenizer, and runtime cache.

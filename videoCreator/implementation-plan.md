@@ -579,3 +579,16 @@ H.264 1920x1080 at 30 fps, with AAC audio peaking at -2.5 dB and an embedded
 mov_text subtitle stream; no sustained near-black frames were detected. The
 technical pipeline is complete. Release remains deliberately blocked because
 adaptation rights are still recorded as unverified.
+
+The first viewing-feedback correction pass is complete. Flite has been replaced
+by the pinned Apache-2.0 Kokoro-82M model in a managed local `audioEnv`. The
+`af_bella` voice runs at 0.92 speed and generates sentence-level timing with
+350 ms sentence pauses, 650 ms block pauses, and 1.2-second scene pauses. The
+new narration measures 121.1 spoken words per minute and records 48 sentence
+pauses plus eight scene pauses; subtitles deliberately leave those gaps empty.
+
+Rendering now contains each square source image within a 90% safe area over a
+blurred widescreen extension. Motion is limited to 2%, preventing faces and
+important composition from being cropped. Final QA now blocks on narration pace,
+pause presence, and recorded safe framing. The corrected 550.45-second render
+passes all technical and new experiential gates; release remains rights-blocked.

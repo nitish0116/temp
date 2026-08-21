@@ -5,11 +5,14 @@ from pathlib import Path
 from .artifacts import sha256_file
 
 def _motion_filter(motion: str, frames: int) -> str:
-    base = "scale=2200:1238:force_original_aspect_ratio=increase,crop=2200:1238"
-    if motion == "slow_pan": x, z = f"(iw-iw/zoom)*on/{max(1, frames)}", "1.08"
-    elif motion == "slow_pull": x, z = "(iw-iw/zoom)/2", "max(1.0,1.08-on*0.00025)"
+    base = ("split=2[background][subject];"
+            "[background]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=35[blurred];"
+            "[subject]scale=1728:972:force_original_aspect_ratio=decrease[contained];"
+            "[blurred][contained]overlay=(W-w)/2:(H-h)/2,setsar=1")
+    if motion == "slow_pan": x, z = f"(iw-iw/zoom)*on/{max(1, frames)}", "1.02"
+    elif motion == "slow_pull": x, z = "(iw-iw/zoom)/2", "max(1.0,1.02-on*0.00006)"
     elif motion == "static_hold": x, z = "(iw-iw/zoom)/2", "1.0"
-    else: x, z = "(iw-iw/zoom)/2", "min(1.08,1+on*0.00025)"
+    else: x, z = "(iw-iw/zoom)/2", "min(1.02,1+on*0.00006)"
     return f"{base},zoompan=z='{z}':x='{x}':y='(ih-ih/zoom)/2':d={frames}:s=1920x1080:fps=30,format=yuv420p"
 
 def render_video(timeline: dict, root: Path, executable: str = "ffmpeg") -> dict:
@@ -34,11 +37,13 @@ def render_video(timeline: dict, root: Path, executable: str = "ffmpeg") -> dict
     completed = subprocess.run([executable, "-hide_banner", "-loglevel", "error", "-y", "-i", str(silent),
         "-i", str(root / timeline["audio_mix"]["path"]), "-i", str(root / "subtitles" / "narration.srt"),
         "-map", "0:v:0", "-map", "1:a:0", "-map", "2:0", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
-        "-c:s", "mov_text", "-metadata:s:s:0", "language=eng", "-shortest", "-movflags", "+faststart", str(final)],
+        "-c:s", "mov_text", "-metadata:s:s:0", "language=eng", "-t", str(timeline["duration_seconds"]),
+        "-movflags", "+faststart", str(final)],
         capture_output=True, text=True, check=False)
     if completed.returncode or not final.is_file(): raise RuntimeError(completed.stderr.strip() or "final mux failed")
     return {"schema_version": 1, "status": "rendered", "path": final.relative_to(root).as_posix(),
-        "sha256": sha256_file(final), "segment_count": len(segments), "fps": 30, "width": 1920, "height": 1080}
+        "sha256": sha256_file(final), "segment_count": len(segments), "fps": 30, "width": 1920, "height": 1080,
+        "safe_framing": "contained-subject-over-blurred-extension-v1"}
 
 def probe_video(path: Path, executable: str = "ffprobe") -> dict:
     completed = subprocess.run([executable, "-v", "error", "-show_streams", "-show_format", "-of", "json", str(path)],
