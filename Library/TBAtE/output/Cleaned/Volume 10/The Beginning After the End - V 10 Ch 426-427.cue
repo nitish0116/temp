@@ -1,0 +1,22 @@
+FILE "The Beginning After the End - V 10 Ch 426-427.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "SYLVIE INDRATH"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "SYLVIE INDRATH"
+    INDEX 01 21:05:70
+  TRACK 03 AUDIO
+    TITLE "I hope."
+    INDEX 01 22:56:59
+  TRACK 04 AUDIO
+    TITLE "What am I?"
+    INDEX 01 27:25:24
+  TRACK 05 AUDIO
+    TITLE "Except it already happened. Didn't it?"
+    INDEX 01 35:03:17
+  TRACK 06 AUDIO
+    TITLE "Mother..."
+    INDEX 01 39:02:17
+  TRACK 07 AUDIO
+    TITLE "ALSO BY TURTLEME"
+    INDEX 01 40:56:54

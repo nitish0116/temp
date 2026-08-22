@@ -1,0 +1,8 @@
+Paste these timestamps into the YouTube video description:
+
+0:00 Speech and Statement
+15:41 Speech and Statement
+30:03 Role
+
+Note: YouTube requires at least 3 timestamps and the first must be 0:00.
+Chapters appear automatically once the video is published.

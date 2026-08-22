@@ -1,0 +1,10 @@
+Paste these timestamps into the YouTube video description:
+
+0:00 ARTHUR LEYWIN
+0:00 ARTHUR LEYWIN
+22:07 The First Scythe
+35:19 Greying Glimpse
+55:15 ARTHUR LEYWIN
+
+Note: YouTube requires at least 3 timestamps and the first must be 0:00.
+Chapters appear automatically once the video is published.

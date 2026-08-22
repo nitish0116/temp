@@ -1,0 +1,19 @@
+FILE "The Beginning After the End - V 10 Ch 390-392.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "Destruction."
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Destruction."
+    INDEX 01 07:04:44
+  TRACK 03 AUDIO
+    TITLE "'Art!'"
+    INDEX 01 16:54:12
+  TRACK 04 AUDIO
+    TITLE "The void..."
+    INDEX 01 18:56:34
+  TRACK 05 AUDIO
+    TITLE "BAIRON WYKES"
+    INDEX 01 28:04:04
+  TRACK 06 AUDIO
+    TITLE "CAERA DENOIR"
+    INDEX 01 59:23:26

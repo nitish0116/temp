@@ -1,0 +1,13 @@
+FILE "The Beginning After the End - V 09 Ch 337-339.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "The Relictombs ..."
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "The Relictombs ..."
+    INDEX 01 06:55:00
+  TRACK 03 AUDIO
+    TITLE "CAERA DENOIR"
+    INDEX 01 19:38:34
+  TRACK 04 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 36:08:42

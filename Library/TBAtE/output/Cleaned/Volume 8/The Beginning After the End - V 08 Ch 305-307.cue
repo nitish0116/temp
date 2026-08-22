@@ -1,0 +1,25 @@
+FILE "The Beginning After the End - V 08 Ch 305-307.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "'Arthur!'"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "'Arthur!'"
+    INDEX 01 07:29:38
+  TRACK 03 AUDIO
+    TITLE "ELEANOR LEYWIN"
+    INDEX 01 14:42:39
+  TRACK 04 AUDIO
+    TITLE "Partner..."
+    INDEX 01 20:31:38
+  TRACK 05 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 38:01:35
+  TRACK 06 AUDIO
+    TITLE "Nothing happened."
+    INDEX 01 41:44:35
+  TRACK 07 AUDIO
+    TITLE "The keystone..."
+    INDEX 01 43:01:54
+  TRACK 08 AUDIO
+    TITLE "Unless..."
+    INDEX 01 43:37:12

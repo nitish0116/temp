@@ -1,0 +1,34 @@
+FILE "The Beginning After the End - V 08 Ch 257-259.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "ELEANOR LEYWIN"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "ELEANOR LEYWIN"
+    INDEX 01 00:00:73
+  TRACK 03 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 13:50:49
+  TRACK 04 AUDIO
+    TITLE "This is going to be a long journey..."
+    INDEX 01 15:15:64
+  TRACK 05 AUDIO
+    TITLE "Aether."
+    INDEX 01 25:46:30
+  TRACK 06 AUDIO
+    TITLE "Round Two"
+    INDEX 01 31:41:41
+  TRACK 07 AUDIO
+    TITLE "I only have one shot at this."
+    INDEX 01 49:11:35
+  TRACK 08 AUDIO
+    TITLE "Now!"
+    INDEX 01 49:17:43
+  TRACK 09 AUDIO
+    TITLE "Come on..."
+    INDEX 01 49:24:69
+  TRACK 10 AUDIO
+    TITLE "Success!"
+    INDEX 01 50:07:51
+  TRACK 11 AUDIO
+    TITLE "Crap."
+    INDEX 01 51:58:19

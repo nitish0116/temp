@@ -1,0 +1,12 @@
+Paste these timestamps into the YouTube video description:
+
+0:00 ARTHUR LEYWIN
+0:01 ARTHUR LEYWIN
+31:43 Remembrance
+1:09:12 Remembrance.
+1:12:27 CHUL ASCLEPIUS
+1:21:43 CECILIA
+1:27:43 CHUL ASCLEPIUS
+
+Note: YouTube requires at least 3 timestamps and the first must be 0:00.
+Chapters appear automatically once the video is published.

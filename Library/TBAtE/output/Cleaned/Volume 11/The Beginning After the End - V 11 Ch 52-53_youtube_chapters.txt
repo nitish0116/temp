@@ -1,0 +1,10 @@
+Paste these timestamps into the YouTube video description:
+
+0:00 CECILIA
+0:01 CECILIA
+22:31 ARTHUR LEYWIN
+59:25 CECILIA SEVER
+1:11:47 ALSO BY TURTLEME
+
+Note: YouTube requires at least 3 timestamps and the first must be 0:00.
+Chapters appear automatically once the video is published.

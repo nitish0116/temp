@@ -1,0 +1,16 @@
+FILE "The Beginning After the End - V 08 Ch 266-268.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "ELEANOR LEYWIN"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "ELEANOR LEYWIN"
+    INDEX 01 00:01:21
+  TRACK 03 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 23:40:28
+  TRACK 04 AUDIO
+    TITLE "The Platform"
+    INDEX 01 41:27:56
+  TRACK 05 AUDIO
+    TITLE "Better than nothing, I thought."
+    INDEX 01 51:35:15

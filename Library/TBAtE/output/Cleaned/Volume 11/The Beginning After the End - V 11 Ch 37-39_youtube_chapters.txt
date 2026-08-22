@@ -1,0 +1,10 @@
+Paste these timestamps into the YouTube video description:
+
+0:00 SETH MILVIEW
+0:00 SETH MILVIEW
+17:30 CAERA DENOIR
+30:14 JASMINE FLAMESWORTH
+58:31 SETH MILVIEW
+
+Note: YouTube requires at least 3 timestamps and the first must be 0:00.
+Chapters appear automatically once the video is published.

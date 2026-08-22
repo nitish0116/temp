@@ -1,0 +1,19 @@
+FILE "The Beginning After the End - V 08 Ch 311-313.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "ELEANOR LEYWIN"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "ELEANOR LEYWIN"
+    INDEX 01 00:00:53
+  TRACK 03 AUDIO
+    TITLE "I should be far enough now."
+    INDEX 01 18:17:25
+  TRACK 04 AUDIO
+    TITLE "A dimension ring."
+    INDEX 01 21:33:54
+  TRACK 05 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 21:57:56
+  TRACK 06 AUDIO
+    TITLE "The Four Clans"
+    INDEX 01 41:36:01

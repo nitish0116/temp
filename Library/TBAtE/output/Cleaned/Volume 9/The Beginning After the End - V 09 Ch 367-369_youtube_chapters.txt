@@ -1,0 +1,9 @@
+Paste these timestamps into the YouTube video description:
+
+0:00 SETH MILVIEW
+0:01 SETH MILVIEW
+27:36 ARTHUR
+48:00 SETH MILVIEW
+
+Note: YouTube requires at least 3 timestamps and the first must be 0:00.
+Chapters appear automatically once the video is published.

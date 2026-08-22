@@ -1,0 +1,16 @@
+FILE "The Beginning After the End - V 11 Ch 40-42.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "... Wait."
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "... Wait."
+    INDEX 01 00:00:68
+  TRACK 03 AUDIO
+    TITLE "Fateful..."
+    INDEX 01 11:43:65
+  TRACK 04 AUDIO
+    TITLE "CAERA DENOIR"
+    INDEX 01 29:30:26
+  TRACK 05 AUDIO
+    TITLE "ELEANOR LEYWIN"
+    INDEX 01 62:31:48

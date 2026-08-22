@@ -1,0 +1,19 @@
+FILE "The Beginning After the End - V 11 Ch 13-15.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "CECILIA"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "CECILIA"
+    INDEX 01 00:01:25
+  TRACK 03 AUDIO
+    TITLE "Mine."
+    INDEX 01 00:19:05
+  TRACK 04 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 35:15:40
+  TRACK 05 AUDIO
+    TITLE "A Sword Struck"
+    INDEX 01 70:59:41
+  TRACK 06 AUDIO
+    TITLE "Shield yourself! I sent to Sylvie."
+    INDEX 01 81:22:05

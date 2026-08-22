@@ -1,0 +1,31 @@
+FILE "The Beginning After the End - V 09 Ch 340-342.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "ALDIR"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "ALDIR"
+    INDEX 01 22:15:57
+  TRACK 03 AUDIO
+    TITLE "SERIS VRITRA"
+    INDEX 01 34:46:54
+  TRACK 04 AUDIO
+    TITLE "TESSIA ERALITH"
+    INDEX 01 39:42:15
+  TRACK 05 AUDIO
+    TITLE "I'm alive."
+    INDEX 01 39:52:07
+  TRACK 06 AUDIO
+    TITLE "Before what?"
+    INDEX 01 40:32:74
+  TRACK 07 AUDIO
+    TITLE "A mana beast."
+    INDEX 01 41:09:32
+  TRACK 08 AUDIO
+    TITLE "Liar."
+    INDEX 01 44:11:44
+  TRACK 09 AUDIO
+    TITLE "The elderwood guardian's beast will ..."
+    INDEX 01 45:48:15
+  TRACK 10 AUDIO
+    TITLE "Alive?"
+    INDEX 01 46:50:68

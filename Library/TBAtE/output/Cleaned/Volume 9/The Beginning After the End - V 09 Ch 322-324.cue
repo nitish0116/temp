@@ -1,0 +1,13 @@
+FILE "The Beginning After the End - V 09 Ch 322-324.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "Imprisoned"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Imprisoned"
+    INDEX 01 11:49:65
+  TRACK 03 AUDIO
+    TITLE "Maybe..."
+    INDEX 01 25:22:49
+  TRACK 04 AUDIO
+    TITLE "CAERA DENOIR"
+    INDEX 01 28:37:08

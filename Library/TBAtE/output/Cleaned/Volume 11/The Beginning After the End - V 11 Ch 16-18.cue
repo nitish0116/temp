@@ -1,0 +1,16 @@
+FILE "The Beginning After the End - V 11 Ch 16-18.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "CECILIA"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "CECILIA"
+    INDEX 01 00:01:32
+  TRACK 03 AUDIO
+    TITLE "The Sovereign..."
+    INDEX 01 07:05:64
+  TRACK 04 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 30:41:00
+  TRACK 05 AUDIO
+    TITLE "A Certain State in Time"
+    INDEX 01 61:15:47

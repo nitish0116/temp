@@ -1,0 +1,9 @@
+Paste these timestamps into the YouTube video description:
+
+0:00 ELEANOR LEYWIN
+0:01 ELEANOR LEYWIN
+38:15 ALARIC MAER
+1:14:13 ARTHUR LEYWIN
+
+Note: YouTube requires at least 3 timestamps and the first must be 0:00.
+Chapters appear automatically once the video is published.

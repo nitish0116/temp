@@ -1,0 +1,13 @@
+FILE "The Beginning After the End - V 05 Ch 181-183.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "Elder's Assessment"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Elder's Assessment"
+    INDEX 01 18:15:57
+  TRACK 03 AUDIO
+    TITLE "KATHYLN GLAYDER"
+    INDEX 01 22:37:01
+  TRACK 04 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 35:45:09

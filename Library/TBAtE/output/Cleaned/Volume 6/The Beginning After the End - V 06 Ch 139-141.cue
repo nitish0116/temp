@@ -1,0 +1,13 @@
+FILE "The Beginning After the End - V 05 Ch 139-141.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 16:12:28
+  TRACK 03 AUDIO
+    TITLE "Ultimatum"
+    INDEX 01 19:57:13
+  TRACK 04 AUDIO
+    TITLE "What War Means For Everyone"
+    INDEX 01 34:19:23

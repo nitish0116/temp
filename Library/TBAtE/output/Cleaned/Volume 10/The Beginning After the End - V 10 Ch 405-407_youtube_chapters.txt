@@ -1,0 +1,9 @@
+Paste these timestamps into the YouTube video description:
+
+0:00 CAERA DENOIR
+0:00 CAERA DENOIR
+31:17 ARTHUR LEYWIN
+53:16 Yet Another Step
+
+Note: YouTube requires at least 3 timestamps and the first must be 0:00.
+Chapters appear automatically once the video is published.

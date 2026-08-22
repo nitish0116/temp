@@ -1,0 +1,9 @@
+Paste these timestamps into the YouTube video description:
+
+0:00 CAERA DENOIR
+11:28 CAERA DENOIR
+15:00 Grey...
+32:26 The High Hall
+
+Note: YouTube requires at least 3 timestamps and the first must be 0:00.
+Chapters appear automatically once the video is published.

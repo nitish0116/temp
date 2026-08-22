@@ -1,0 +1,13 @@
+FILE "The Beginning After the End - V 05 Ch 187-189.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "ARTHUR LEYWIN"
+    INDEX 01 00:01:26
+  TRACK 03 AUDIO
+    TITLE "Dragon Steps"
+    INDEX 01 15:46:44
+  TRACK 04 AUDIO
+    TITLE "Inside the Vault"
+    INDEX 01 33:01:10

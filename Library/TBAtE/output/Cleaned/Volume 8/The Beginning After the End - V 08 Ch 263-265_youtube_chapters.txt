@@ -1,0 +1,11 @@
+Paste these timestamps into the YouTube video description:
+
+0:00 Mother Lode
+13:29 Mother Lode
+18:26 Let's do this.
+28:42 Damn it.
+31:12 Let's hope this works.
+34:58 Purge
+
+Note: YouTube requires at least 3 timestamps and the first must be 0:00.
+Chapters appear automatically once the video is published.

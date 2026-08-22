@@ -1,0 +1,10 @@
+FILE "The Beginning After the End - V 05 Ch 163-165.mp3" MP3
+  TRACK 01 AUDIO
+    TITLE "TESSIA ERALITH"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "TESSIA ERALITH"
+    INDEX 01 16:55:02
+  TRACK 03 AUDIO
+    TITLE "Center of Attention"
+    INDEX 01 35:53:61
