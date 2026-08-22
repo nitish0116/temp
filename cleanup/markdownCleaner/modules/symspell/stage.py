@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from logging import getLogger
 
 from .broken_words import (
     BrokenWordEvaluator,
@@ -38,6 +39,7 @@ class SymSpellStage(PipelineStage):
     config_section = "symspell"
     WORD_PATTERN = SpellCorrector.WORD_PATTERN
     DETACHED_OCR_SUFFIXES = BrokenWordEvaluator.DETACHED_OCR_SUFFIXES
+    LOGGER = getLogger("ocr_cleanup")
     def __init__(self, config):
         """Initialize immutable settings before dictionaries are loaded."""
 
@@ -108,6 +110,18 @@ class SymSpellStage(PipelineStage):
                 self.context_validator_settings,
                 training_writer=training_writer,
             )
+            try:
+                self.context_validator.ensure_ready()
+            except Exception as error:
+                if self.context_validator_settings.fail_open:
+                    self.LOGGER.warning(
+                        "Context validator initialization failed; "
+                        "continuing without transformer scoring: %s",
+                        error,
+                    )
+                    self.context_validator = None
+                else:
+                    raise
         for word, frequency in self.dictionary.words.items():
             if frequency >= self.settings.minimum_dictionary_frequency:
                 self.engine.add_word(word, frequency)

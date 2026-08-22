@@ -21,6 +21,12 @@ from markdownCleaner.modules.symspell.context_validator import (
     BoundaryContextValidator,
     ContextValidatorSettings,
     ScoringVariant,
+    TransformerVariantScorer,
+    preferred_device,
+)
+from markdownCleaner.modules.symspell.transformer_environment import (
+    prepare_transformer_environment,
+    shared_cache_root,
 )
 from markdownCleaner.modules.symspell.decisions import (
     AcceptedBoundary,
@@ -268,7 +274,7 @@ def test_context_validator_settings_are_strict_and_bounded():
     assert settings.merge_margin == 0.5
 
 
-def test_stage_preserves_and_logs_transformer_rejection(tmp_path):
+def test_stage_preserves_and_logs_transformer_rejection(monkeypatch, tmp_path):
     dictionary = tmp_path / "dictionary.txt"
     dictionary.write_text(
         "be 1000000\ncause 1000000\nbecause 1000000\n",
@@ -298,6 +304,11 @@ def test_stage_preserves_and_logs_transformer_rejection(tmp_path):
     )
     context = ProcessingContext(config)
     context.load_markdown(source)
+    monkeypatch.setattr(
+        TransformerVariantScorer,
+        "ensure_ready",
+        lambda self: None,
+    )
     stage = SymSpellStage(config)
     stage.initialize(context)
     stage.context_validator = BoundaryContextValidator(
@@ -315,3 +326,81 @@ def test_stage_preserves_and_logs_transformer_rejection(tmp_path):
     assert record.broken_word == "be cause"
     assert "Transformer rejected" in record.reason
     assert "spaced=-0.200" in record.reason
+
+
+def test_stage_fail_open_disables_context_validator_when_model_unavailable(
+    monkeypatch,
+    tmp_path,
+):
+    dictionary = tmp_path / "dictionary.txt"
+    dictionary.write_text(
+        "be 1000000\ncause 1000000\nbecause 1000000\n",
+        encoding="utf-8",
+    )
+    candidates = tmp_path / "candidates.json"
+    candidates.write_text(
+        json.dumps({"candidates": {"be cause": "because"}}),
+        encoding="utf-8",
+    )
+    source = tmp_path / "book.md"
+    source.write_text("It happened be cause they left.", encoding="utf-8")
+    config = PipelineConfig(
+        {
+            "paths": {"output_directory": str(tmp_path / "output")},
+            "backup": {"enabled": False},
+            "symspell": {
+                "dictionary": str(dictionary),
+                "wordfreq_enabled": False,
+                "auto_protect_proper_nouns": False,
+            },
+            "context_validator": {
+                "enabled": True,
+                "candidate_file": str(candidates),
+                "fail_open": True,
+            },
+        }
+    )
+    context = ProcessingContext(config)
+    context.load_markdown(source)
+
+    def _raise_missing_cache(self):
+        raise RuntimeError("offline model cache missing")
+
+    monkeypatch.setattr(
+        TransformerVariantScorer,
+        "ensure_ready",
+        _raise_missing_cache,
+    )
+
+    stage = SymSpellStage(config)
+    result = stage.execute(context)
+
+    assert result.success
+    assert stage.context_validator is None
+    assert context.get_markdown() == "It happened be cause they left."
+
+
+def test_transformer_cache_defaults_to_workspace():
+    env: dict[str, str] = {}
+
+    prepared = prepare_transformer_environment(env)
+
+    assert shared_cache_root(env).name == ".model-cache"
+    assert Path(prepared["HF_HOME"]) == shared_cache_root(env) / "huggingface"
+    assert Path(prepared["HF_HUB_CACHE"]) == Path(prepared["HF_HOME"]) / "hub"
+
+
+def test_transformer_cache_honors_machine_configuration(tmp_path):
+    custom = tmp_path / "models"
+    env = {"PYTHON_CACHE_HOME": str(custom)}
+
+    prepared = prepare_transformer_environment(env)
+
+    assert shared_cache_root(env) == custom
+    assert prepared["TORCH_HOME"] == str(custom / "torch")
+
+
+def test_auto_device_prefers_cuda_and_uses_cpu_only_as_fallback():
+    assert preferred_device("auto", cuda_available=True) == "cuda"
+    assert preferred_device("auto", cuda_available=False) == "cpu"
+    assert preferred_device("cpu", cuda_available=True) == "cpu"

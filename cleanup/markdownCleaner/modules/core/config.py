@@ -41,6 +41,7 @@ _BOOLEAN_KEYS = (
     "contextual_real_words.enabled",
     "context_validator.enabled",
     "context_validator.local_files_only",
+    "context_validator.fail_open",
     "classifier_dataset.enabled",
 )
 _CORRECTION_KEYS = (

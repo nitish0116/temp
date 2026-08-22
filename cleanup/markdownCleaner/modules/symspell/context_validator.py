@@ -14,10 +14,20 @@ from .broken_words import (
     MergeEvidenceKind,
 )
 from .training_data import BoundaryTrainingDataWriter, example_id
+from .transformer_environment import prepare_transformer_environment
 from ..core.config import require_bool
 
 
 LOGGER = logging.getLogger("ocr_cleanup")
+
+
+def preferred_device(requested: str, *, cuda_available: bool) -> str:
+    """Resolve automatic execution to CUDA first and CPU only as fallback."""
+
+    normalized = requested.strip().casefold()
+    if normalized == "auto":
+        return "cuda" if cuda_available else "cpu"
+    return normalized
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +43,7 @@ class ContextValidatorSettings:
     merge_margin: float = 0.35
     device: str = "auto"
     local_files_only: bool = False
+    fail_open: bool = True
 
     @classmethod
     def from_config(cls, config) -> "ContextValidatorSettings":
@@ -64,6 +75,10 @@ class ContextValidatorSettings:
             local_files_only=require_bool(
                 get("context_validator.local_files_only", False),
                 "context_validator.local_files_only",
+            ),
+            fail_open=require_bool(
+                get("context_validator.fail_open", True),
+                "context_validator.fail_open",
             ),
         )
 
@@ -124,6 +139,7 @@ class TransformerVariantScorer:
     def _initialize(self) -> None:
         if self._model is not None:
             return
+        prepare_transformer_environment()
         try:
             import torch
             from transformers import AutoModelForMaskedLM, AutoTokenizer
@@ -148,23 +164,43 @@ class TransformerVariantScorer:
             local_files_only=self.settings.local_files_only,
         )
         requested = self.settings.device.strip().casefold()
-        device = (
-            "cuda"
-            if requested == "auto" and torch.cuda.is_available()
-            else "cpu"
-            if requested == "auto"
-            else requested
-        )
-        if device == "cuda" and not torch.cuda.is_available():
+        cuda_available = torch.cuda.is_available()
+        device = preferred_device(requested, cuda_available=cuda_available)
+        if device == "cuda" and not cuda_available:
             raise RuntimeError(
                 "context_validator.device is cuda, but CUDA is unavailable."
             )
-        model.to(device)
+        try:
+            model.to(device)
+        except (RuntimeError, OSError) as error:
+            if requested != "auto" or device != "cuda":
+                raise
+            LOGGER.warning(
+                "Context validator CUDA initialization failed; "
+                "falling back to CPU: %s",
+                error,
+            )
+            device = "cpu"
+            model.to(device)
         model.eval()
         self._torch = torch
         self._tokenizer = tokenizer
         self._model = model
         self._device = device
+        LOGGER.info(
+            "Context validator model loaded on %s%s.",
+            device.upper(),
+            (
+                f" ({torch.cuda.get_device_name(0)})"
+                if device == "cuda"
+                else ""
+            ),
+        )
+
+    def ensure_ready(self) -> None:
+        """Load tokenizer/model eagerly so startup failures happen once."""
+
+        self._initialize()
 
     def score(self, variants: Sequence[ScoringVariant]) -> list[float]:
         """Return mean target-token log probability for every variant."""
@@ -263,6 +299,13 @@ class BoundaryContextValidator:
         self.settings = settings
         self.scorer = scorer or TransformerVariantScorer(settings)
         self.training_writer = training_writer
+
+    def ensure_ready(self) -> None:
+        """Eagerly initialize model-backed scorers when supported."""
+
+        ensure_ready = getattr(self.scorer, "ensure_ready", None)
+        if callable(ensure_ready):
+            ensure_ready()
 
     def validate(
         self,
@@ -418,6 +461,7 @@ class BoundaryContextValidator:
 __all__ = [
     "BoundaryContextValidator",
     "ContextValidatorSettings",
+    "preferred_device",
     "ScoringVariant",
     "TransformerVariantScorer",
     "ValidationOutcome",

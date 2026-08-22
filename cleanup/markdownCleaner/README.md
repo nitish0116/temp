@@ -258,6 +258,12 @@ do not consume model inference. This import updates
 `context_validator.candidate_file`; it never grants trusted-decision status.
 
 Use `--promote-broken-word-review` only on explicitly human-reviewed files.
+
+When `context_validator.local_files_only` is `true` and the model is missing
+from local cache, `context_validator.fail_open` controls behavior:
+
+- `true` (default): continue SymSpell without transformer context validation;
+- `false`: treat missing model/cache initialization as a stage failure.
 Promotion validates the complete decision schema, preserves optional context
 blockers, and updates the configuration-relative
 `symspell.broken_word_decisions` file. Reviewed decisions bypass the model;
@@ -272,6 +278,23 @@ first:
 ```powershell
 python -m pip install -r markdownCleaner\requirements-transformer.txt
 ```
+
+On Windows, the managed setup command keeps these dependencies isolated and
+prefetches the model separately from package installation:
+
+```powershell
+.\markdownCleaner\install-transformer.ps1
+.\markdownCleaner\install-transformer.ps1 -Offline
+```
+
+The environment is created once as the ignored workspace-root
+`ocrTransformerEnv` and refreshed only when the requirements fingerprint or
+Python minor version changes. The first command installs packages and downloads
+`distilbert/distilroberta-base` (Apache-2.0); the second verifies that both the
+environment and weights are ready without network access. Model files use the
+active workstation's `PYTHON_CACHE_HOME`, falling back to the workspace-root
+`.model-cache`; `HF_HOME` and `TORCH_HOME` are honored when already configured.
+Use `-SkipPrefetch` when only the environment should be prepared.
 
 Then configure:
 

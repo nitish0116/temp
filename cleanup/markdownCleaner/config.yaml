@@ -121,6 +121,9 @@ context_validator:
   merge_margin: 0.35
   device: "auto"
   local_files_only: true
+  # If model files are missing offline, continue SymSpell without transformer
+  # context validation instead of failing the stage.
+  fail_open: true
 
 classifier_dataset:
   # Capture transformer suggestions for human review and classifier training.
