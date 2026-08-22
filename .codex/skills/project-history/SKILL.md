@@ -9,7 +9,7 @@ Activate the environment configured for the current workstation, then run this
 from the repository root:
 
 ```text
-python -m videotranslator history
+python scripts/project_history.py
 ```
 
 Use `python3` instead when that is the active environment's Python command. Do
@@ -26,6 +26,11 @@ paths. An absolute path may be used only when the user explicitly requests an
 external location; record that exception as workstation-local, not portable
 project history.
 
+The command discovers the project from the working directory or current branch.
+When discovery is ambiguous, pass `--project <directory>`. Handoffs live at
+`<project>/docs/project-handoff.md`; this convention applies to every project in
+the repository, not only `videotranslator`.
+
 Use the printed handoff, Git status, and recent commits to summarize:
 
 1. the last verified outcome;
@@ -33,18 +38,18 @@ Use the printed handoff, Git status, and recent commits to summarize:
 3. uncommitted or unpushed work;
 4. the next documented action.
 
-Read files linked by `videotranslator/docs/project-handoff.md` only when needed.
+Read files linked by the selected project handoff only when needed.
 Prefer current code, tests, and Git evidence over stale prose.
 
-When recording a new handoff, update `videotranslator/docs/project-handoff.md`
+When recording a new handoff, update `<project>/docs/project-handoff.md`
 directly, or prepare a complete replacement and run:
 
 ```text
-python -m videotranslator history --update-from path/to/handoff-next.md
+python scripts/project_history.py --project <directory> --update-from path/to/handoff-next.md
 ```
 
-The replacement must start with `# Video Translator project handoff`. Record
-durable decisions, verification results, blockers, and one concrete next step.
+The replacement must start with a level-one heading ending in `project handoff`.
+Record durable decisions, verification results, blockers, and one concrete next step.
 Keep it concise. Never include raw conversations, secrets, credentials, personal
 data, or bulky logs. Acknowledge that unexported assistant transcripts cannot be
 recovered from the repository. Run the display command again to review the result.

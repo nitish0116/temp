@@ -1,0 +1,7 @@
+# Local source manuscripts and generated project workspaces.
+/The Saga of Tanya the Evil - Volume 01 Chapter 0 Prologue.md
+/workspaces/
+
+__pycache__/
+.pytest_cache/
+*.pyc

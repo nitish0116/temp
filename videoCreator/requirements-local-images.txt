@@ -1,0 +1,8 @@
+diffusers==0.40.0
+transformers==5.15.1
+accelerate==1.14.0
+huggingface-hub==1.28.0
+sentencepiece==0.2.2
+protobuf==6.33.6
+safetensors==0.8.0
+num2words==0.5.14
